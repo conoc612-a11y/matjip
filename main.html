@@ -24,6 +24,9 @@
     .banner a { color:var(--accent); font-weight:600; }
     .search-inp { width:100%; font:inherit; padding:10px 12px; border:1px solid var(--line); border-radius:8px; margin-bottom:12px; }
     .search-inp:focus { outline:2px solid var(--accent); border-color:var(--accent); }
+    .kakao-btn { width:100%; font:inherit; padding:9px; border:1px solid var(--accent); color:var(--accent); background:#fff; border-radius:8px; cursor:pointer; margin-bottom:12px; }
+    .kakao-btn:hover { background:var(--accent); color:#fff; }
+    .kakao-back { background:none; border:none; color:var(--accent); cursor:pointer; font:inherit; padding:2px 0 10px; }
     .rec { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:10px; cursor:pointer; }
     .rec:hover { border-color:var(--accent); }
     .rec h3 { margin:0 0 4px; font-size:16px; }
@@ -53,6 +56,7 @@
     <div id="map"></div>
     <div class="panel">
       <input type="text" id="search" class="search-inp" placeholder="🔍 식당 이름·태그 검색" autocomplete="off" />
+      <button id="kakao-btn" class="kakao-btn">🔎 카카오에서 실제 식당 검색</button>
       <div class="banner" id="banner"></div>
       <div id="rec-list"></div>
     </div>
@@ -66,6 +70,11 @@
 
     // ── V-World 인증키: 발급받으면 아래에 넣으세요. 비어 있으면 OSM 지도로 자동 대체 ──
     const VWORLD_KEY = 'B2CDEEDD-D622-311B-883B-CC7890E50822';
+
+    // ── 카카오 실시간 장소검색 (REST API, 도메인 등록 불필요) ──
+    const KAKAO_REST_KEY = ''; // developers.kakao.com 앱 > 앱키 > REST API 키. 비우면 버튼 숨김.
+    let kakaoMarkers = [];
+    function clearKakaoMarkers() { kakaoMarkers.forEach((m) => map.removeLayer(m)); kakaoMarkers = []; }
 
     // ── 지도 초기화 (서울 중심) ──
     const map = L.map('map').setView([37.5665, 126.9780], 12);
@@ -191,6 +200,83 @@
 
     $('logout').addEventListener('click', async () => { await sb.auth.signOut(); location.href = 'index.html'; });
     $('search').addEventListener('input', (e) => { query = e.target.value; render(); });
+
+    // ── 카카오 검색 (REST API) ──
+    if (!KAKAO_REST_KEY) $('kakao-btn').style.display = 'none';
+    $('kakao-btn').addEventListener('click', runKakaoSearch);
+
+    async function runKakaoSearch() {
+      const q = $('search').value.trim();
+      if (!q) { alert('검색어를 입력해 주세요.'); return; }
+      if (!KAKAO_REST_KEY) { alert('카카오 REST API 키가 설정되지 않았어요.'); return; }
+      $('kakao-btn').disabled = true;
+      $('kakao-btn').textContent = '검색 중…';
+      try {
+        const url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(q)}&category_group_code=FD6&size=15`;
+        const res = await fetch(url, { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` } });
+        if (!res.ok) throw new Error(`카카오 API ${res.status}`);
+        const data = await res.json();
+        renderKakao(data.documents || []);
+      } catch (e) {
+        renderKakao([]);
+        alert('검색 실패: ' + e.message);
+      } finally {
+        $('kakao-btn').disabled = false;
+        $('kakao-btn').textContent = '🔎 카카오에서 실제 식당 검색';
+      }
+    }
+
+    function renderKakao(data) {
+      Object.values(markers).forEach((m) => map.removeLayer(m));
+      clearKakaoMarkers();
+      const back = '<button class="kakao-back" id="kakao-back">← 추천 목록으로</button>';
+      if (!data.length) {
+        $('rec-list').innerHTML = back + '<div style="text-align:center;color:var(--muted);padding:24px 0;">카카오 검색 결과가 없어요.</div>';
+        $('kakao-back').addEventListener('click', render); return;
+      }
+      $('rec-list').innerHTML = back + data.map((p, i) => `
+        <div class="rec" data-i="${i}">
+          <h3>${esc(p.place_name)}</h3>
+          <div class="meta">${esc((p.category_name || '').split('>').pop().trim())} · ${esc(p.road_address_name || p.address_name || '')}</div>
+          <div class="actions">
+            <button class="save ksave" data-i="${i}">내 목록에 저장</button>
+            ${p.place_url ? `<a href="${p.place_url}" target="_blank" rel="noopener">카카오맵</a>` : ''}
+          </div>
+        </div>`).join('');
+      const pts = [];
+      data.forEach((p) => {
+        const m = L.marker([Number(p.y), Number(p.x)]).addTo(map).bindPopup(`<b>${esc(p.place_name)}</b>`);
+        kakaoMarkers.push(m); pts.push([Number(p.y), Number(p.x)]);
+      });
+      if (pts.length) map.fitBounds(pts, { padding: [40, 40], maxZoom: 16 });
+      $('kakao-back').addEventListener('click', render);
+      $('rec-list').querySelectorAll('.rec').forEach((card) => card.addEventListener('click', (e) => {
+        if (e.target.closest('.actions')) return;
+        const p = data[Number(card.dataset.i)]; map.setView([Number(p.y), Number(p.x)], 16);
+      }));
+      $('rec-list').querySelectorAll('.ksave').forEach((btn) => btn.addEventListener('click', (e) => {
+        e.stopPropagation(); saveKakaoPlace(data[Number(btn.dataset.i)], btn);
+      }));
+    }
+
+    async function saveKakaoPlace(p, btn) {
+      if (!user) { alert('로그인 후 저장할 수 있어요.'); location.href = 'onboarding.html'; return; }
+      btn.disabled = true; btn.textContent = '저장 중…';
+      const { data: found } = await sb.from('mj_restaurants').select('id').eq('name', p.place_name).limit(1);
+      let rid = found && found[0] && found[0].id;
+      if (!rid) {
+        const { data: ins, error } = await sb.from('mj_restaurants').insert({
+          name: p.place_name, address: p.road_address_name || p.address_name || null,
+          lat: Number(p.y), lng: Number(p.x),
+          category: (p.category_name || '').split('>').pop().trim() || null, tags: []
+        }).select('id').single();
+        if (error) { btn.disabled = false; btn.textContent = '실패'; return; }
+        rid = ins.id;
+      }
+      const { error: se } = await sb.from('saved_restaurants').upsert({ user_id: user.id, restaurant_id: rid }, { onConflict: 'user_id,restaurant_id' });
+      btn.textContent = se ? '실패' : '저장됨 ✓';
+      if (!se) { btn.style.background = 'var(--ok)'; const { data: rs } = await sb.from('mj_restaurants').select('*'); if (rs) restaurants = rs; }
+    }
 
     loadAll();
   </script>
