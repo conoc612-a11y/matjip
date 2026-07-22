@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "matjip": {
+      "command": "node",
+      "args": ["mcp/server.js"]
+    }
+  }
+}
