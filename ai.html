@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>맛집 탐방 — 자연어 추천</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    :root { --bg:#f4f5f7; --card:#fff; --line:#e6e8eb; --text:#1c1e21; --muted:#8a9099; --accent:#e8590c; --ok:#2f9e44; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--text);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic",sans-serif;
+      display:flex; justify-content:center; padding:32px 16px; }
+    .app { width:100%; max-width:560px; }
+    header a { color:var(--accent); text-decoration:none; font-size:14px; }
+    h1 { font-size:22px; margin:8px 0 4px; }
+    .sub { color:var(--muted); font-size:13px; margin:0 0 18px; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:14px; }
+    textarea { width:100%; font:inherit; padding:12px; border:1px solid var(--line); border-radius:8px; resize:vertical; }
+    textarea:focus { outline:2px solid var(--accent); border-color:var(--accent); }
+    .btn { width:100%; font:inherit; font-weight:600; padding:12px; border:none; border-radius:8px; background:var(--accent); color:#fff; cursor:pointer; margin-top:10px; }
+    .chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+    .chip { font-size:12px; background:#f1f3f5; border-radius:12px; padding:4px 10px; }
+    .ex { font-size:12px; color:var(--muted); margin-top:8px; }
+    .ex a { color:var(--accent); cursor:pointer; }
+    .rec { border-bottom:1px solid var(--line); padding:10px 0; }
+    .rec:last-child { border:none; }
+    .rec b { font-size:15px; } .score { float:right; color:var(--accent); font-weight:700; font-size:13px; }
+    .why { font-size:12px; color:var(--ok); }
+    .note { font-size:12px; color:var(--muted); margin-top:8px; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header><a href="main.html">← 메인으로</a></header>
+    <h1>🤖 자연어로 맛집 찾기</h1>
+    <p class="sub">"오늘 뭐 먹고 싶어?"를 문장으로 적으면 취향을 해석해 추천해 드려요.</p>
+
+    <div class="card">
+      <textarea id="q" rows="3" placeholder="예: 매운 거 좋아하고 회식 장소 찾고 있어"></textarea>
+      <div class="ex">예시:
+        <a data-ex="담백하고 혼자 조용히 먹고 싶어">담백·혼밥</a> ·
+        <a data-ex="매콤한 데이트 코스">매콤·데이트</a> ·
+        <a data-ex="단짠 친구모임">단짠·친구</a>
+      </div>
+      <button class="btn" id="go">추천 받기</button>
+    </div>
+
+    <div class="card" id="parsed" style="display:none;">
+      <b style="font-size:14px;">이렇게 이해했어요</b>
+      <div class="chips" id="parsed-chips"></div>
+    </div>
+
+    <div class="card" id="result" style="display:none;"></div>
+
+    <p class="note">※ 이 페이지는 키워드 기반 간이 파서입니다. 실제 LLM(예: Claude API) 연동은 Supabase Edge Function으로 키를 안전하게 감춰 확장할 수 있어요.</p>
+  </div>
+
+  <script>
+    const sb = window.supabase.createClient(
+      'https://bhgijvaxxjnocgfnaaeu.supabase.co',
+      'sb_publishable_rYaGd3kk5UuFBe3TSpFA8g_uGHWwkqM'
+    );
+    const $ = (id) => document.getElementById(id);
+    const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+
+    // ── 자연어 → 취향 파싱 (키워드 규칙) ──
+    function parse(text) {
+      const t = text.toLowerCase();
+      const flavor = new Set(), situation = new Set();
+      let spicy = 2;
+      if (/(맵|매콤|얼큰|화끈|불맛)/.test(text)) { flavor.add('매콤'); spicy = 4; }
+      if (/(담백|순한|깔끔|안 매)/.test(text)) { flavor.add('담백'); spicy = 1; }
+      if (/(단짠|달달|달콤)/.test(text)) { flavor.add(text.includes('단짠') ? '단짠' : '달콤'); }
+      if (/(새콤|상큼)/.test(text)) flavor.add('새콤');
+      if (/(기름|느끼|고소)/.test(text)) flavor.add('기름진');
+      if (/(혼자|혼밥|조용)/.test(text)) situation.add('혼밥');
+      if (/(회식|단체|팀)/.test(text)) situation.add('회식');
+      if (/(데이트|연인|분위기)/.test(text)) situation.add('데이트');
+      if (/(가족|부모|어른)/.test(text)) situation.add('가족모임');
+      if (/(친구|모임)/.test(text)) situation.add('친구모임');
+      return { spicy_level: spicy, flavor_tags: [...flavor], situation_tags: [...situation] };
+    }
+
+    function score(r, taste) {
+      const want = new Set([...(taste.flavor_tags||[]), ...(taste.situation_tags||[])]);
+      const hits = []; let s = 0;
+      (r.tags || []).forEach((x) => { if (want.has(x)) { s += 2; hits.push(x); } });
+      const sp = taste.spicy_level ?? 2;
+      if (sp >= 3 && (r.tags||[]).includes('매콤') && !hits.includes('매콤')) { s += 2; hits.push('매콤'); }
+      if (sp <= 1 && (r.tags||[]).includes('담백') && !hits.includes('담백')) { s += 2; hits.push('담백'); }
+      return { score: s, hits };
+    }
+
+    async function run(text) {
+      const taste = parse(text);
+      $('parsed').style.display = 'block';
+      $('parsed-chips').innerHTML =
+        `<span class="chip">매운맛 ${taste.spicy_level}/5</span>` +
+        taste.flavor_tags.map((t) => `<span class="chip">맛:${esc(t)}</span>`).join('') +
+        taste.situation_tags.map((t) => `<span class="chip">상황:${esc(t)}</span>`).join('') ||
+        '<span class="chip">기본값</span>';
+
+      const { data: rs, error } = await sb.from('mj_restaurants').select('*');
+      if (error) { $('result').style.display='block'; $('result').textContent = '조회 실패: ' + error.message; return; }
+      const ranked = (rs||[]).map((r) => ({ ...r, ...score(r, taste) }))
+        .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name)).slice(0, 5);
+      $('result').style.display = 'block';
+      $('result').innerHTML = ranked.map((r) =>
+        `<div class="rec"><span class="score">${r.score}점</span><b>${esc(r.name)}</b>
+         <div style="font-size:12px;color:var(--muted)">${esc(r.category||'')} · ${(r.tags||[]).join(', ')}</div>
+         <div class="why">${r.hits.length ? '일치: ' + r.hits.join(', ') : '취향과 겹치는 태그 없음'}</div>
+         <a href="detail.html?id=${r.id}" style="font-size:13px;color:var(--accent)">상세 · 길찾기 →</a></div>`
+      ).join('');
+    }
+
+    $('go').addEventListener('click', () => run($('q').value.trim() || '아무거나'));
+    document.querySelectorAll('[data-ex]').forEach((a) =>
+      a.addEventListener('click', () => { $('q').value = a.dataset.ex; run(a.dataset.ex); }));
+  </script>
+</body>
+</html>

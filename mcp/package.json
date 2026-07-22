@@ -1,0 +1,11 @@
+{
+  "name": "matjip-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "맛집 탐방 데이터를 노출하는 MCP 서버",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.23.0"
+  }
+}
