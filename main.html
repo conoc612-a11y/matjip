@@ -40,7 +40,7 @@
 </head>
 <body>
   <header>
-    <h1>맛집 탐방 🍜</h1>
+    <a href="index.html" style="text-decoration:none;color:inherit;"><h1 style="cursor:pointer;">맛집 탐방 🍜</h1></a>
     <div class="right">
       <span id="who"></span>
       <a href="ai.html">🤖 AI 추천</a>
@@ -189,7 +189,7 @@
       render();
     }
 
-    $('logout').addEventListener('click', async () => { await sb.auth.signOut(); location.reload(); });
+    $('logout').addEventListener('click', async () => { await sb.auth.signOut(); location.href = 'index.html'; });
     $('search').addEventListener('input', (e) => { query = e.target.value; render(); });
 
     loadAll();
