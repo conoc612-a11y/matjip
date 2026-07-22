@@ -107,10 +107,16 @@
 
       // 지도
       map = L.map('map').setView([r.lat, r.lng], 15);
-      const tile = VWORLD_KEY
-        ? [`https://api.vworld.kr/req/wmts/1.0.0/${VWORLD_KEY}/Base/{z}/{y}/{x}.png`, { maxZoom:19, attribution:'© VWorld' }]
-        : ['https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, attribution:'© OpenStreetMap' }];
-      L.tileLayer(...tile).addTo(map);
+      (function addBaseLayer() {
+        const osm = () => L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+          { maxZoom:19, attribution:'© OpenStreetMap' }).addTo(map);
+        if (!VWORLD_KEY) { osm(); return; }
+        const vw = L.tileLayer(`https://api.vworld.kr/req/wmts/1.0.0/${VWORLD_KEY}/Base/{z}/{y}/{x}.png`,
+          { maxZoom:19, attribution:'© VWorld' });
+        let fell = false;
+        vw.on('tileerror', () => { if (!fell) { fell = true; map.removeLayer(vw); osm(); } });
+        vw.addTo(map);
+      })();
       destMarker = L.marker([r.lat, r.lng]).addTo(map).bindPopup(`<b>${esc(r.name)}</b>`).openPopup();
 
       // 길찾기 링크 (기본: 목적지만)
