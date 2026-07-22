@@ -28,9 +28,10 @@
 - `GET  /api/saved` — 저장 맛집 조회
 
 외부 API(후보):
-- 지도 렌더링: Kakao Maps (권장) / 서울시 공공 지도
+- 지도 렌더링: 서울시 공공 지도
 - 공공 교통정보: data.go.kr, 서울 열린데이터광장
 - 대중교통 길찾기: ODsay OPEN API
+- 식당 검색 : 카카오 실시간 장소검색
 
 ## 6. DB (5테이블)
 - `profiles` (auth.users 확장): id, email, created_at
