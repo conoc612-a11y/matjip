@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>맛집 탐방 — 온보딩</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    :root {
+      --bg:#f4f5f7; --card:#fff; --line:#e6e8eb; --text:#1c1e21;
+      --muted:#8a9099; --accent:#e8590c; --accent-d:#d9480f; --ok:#2f9e44;
+    }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--text);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic",sans-serif;
+      display:flex; justify-content:center; padding:40px 16px; }
+    .app { width:100%; max-width:520px; }
+    h1 { font-size:26px; margin:0 0 4px; }
+    .sub { color:var(--muted); font-size:13px; margin:0 0 24px; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:20px; margin-bottom:16px; }
+    label.fld { display:block; font-size:13px; color:var(--muted); margin:14px 0 6px; }
+    input[type=email], input[type=password] { width:100%; font:inherit; padding:11px 12px; border-radius:8px; border:1px solid var(--line); }
+    input:focus { outline:2px solid var(--accent); border-color:var(--accent); }
+    .btn { width:100%; font:inherit; font-weight:600; padding:12px; border:none; border-radius:8px;
+      background:var(--accent); color:#fff; cursor:pointer; margin-top:16px; }
+    .btn:hover { background:var(--accent-d); }
+    .btn:disabled { opacity:.5; cursor:default; }
+    .switch { text-align:center; font-size:13px; color:var(--muted); margin-top:14px; }
+    .switch a { color:var(--accent); cursor:pointer; }
+    .msg { font-size:13px; margin-top:12px; min-height:18px; }
+    .msg.err { color:#e03131; } .msg.ok { color:var(--ok); }
+    .chips { display:flex; flex-wrap:wrap; gap:8px; }
+    .chip { padding:8px 14px; border:1px solid var(--line); border-radius:20px; cursor:pointer; font-size:14px; user-select:none; }
+    .chip.on { background:var(--accent); color:#fff; border-color:var(--accent); }
+    .row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    input[type=range] { width:70%; accent-color:var(--accent); }
+    .spicy-val { font-weight:700; color:var(--accent); }
+    .topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+    .logout { background:none; border:1px solid var(--line); border-radius:8px; padding:6px 12px; font-size:13px; cursor:pointer; color:var(--muted); }
+    .hidden { display:none; }
+    .done-box { text-align:center; padding:8px 0; }
+    .done-box .big { font-size:40px; }
+  </style>
+</head>
+<body>
+  <div class="app">
+
+    <!-- (A) 로그인/회원가입 -->
+    <div id="auth-view">
+      <h1>맛집 탐방 🍜</h1>
+      <p class="sub">취향을 알려주시면 딱 맞는 서울 맛집을 추천해 드려요. 먼저 로그인해 주세요.</p>
+      <div class="card">
+        <h2 id="auth-title" style="margin:0 0 4px;font-size:18px;">로그인</h2>
+        <label class="fld">이메일</label>
+        <input type="email" id="email" placeholder="name@example.com" />
+        <label class="fld">비밀번호 (6자 이상)</label>
+        <input type="password" id="password" placeholder="••••••" />
+        <button class="btn" id="auth-btn">로그인</button>
+        <div class="msg" id="auth-msg"></div>
+        <div class="switch" id="auth-switch">계정이 없으신가요? <a id="to-signup">회원가입</a></div>
+      </div>
+    </div>
+
+    <!-- (B) 온보딩 설문 -->
+    <div id="onb-view" class="hidden">
+      <div class="topbar">
+        <div><h1 style="font-size:22px;margin:0;">취향 온보딩</h1><span class="sub" id="who"></span></div>
+        <button class="logout" id="logout">로그아웃</button>
+      </div>
+
+      <div class="card">
+        <label class="fld">얼마나 매운 걸 좋아하세요?</label>
+        <div class="row">
+          <input type="range" id="spicy" min="0" max="5" value="2" />
+          <span class="spicy-val"><span id="spicy-val">2</span> / 5</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <label class="fld">선호하는 맛 (여러 개 선택 가능)</label>
+        <div class="chips" id="flavors"></div>
+      </div>
+
+      <div class="card">
+        <label class="fld">주로 어떤 상황에서 드세요?</label>
+        <div class="chips" id="situations"></div>
+      </div>
+
+      <button class="btn" id="save-btn">취향 저장하기</button>
+      <div class="msg" id="onb-msg"></div>
+
+      <div class="card hidden" id="done-card">
+        <div class="done-box">
+          <div class="big">🎉</div>
+          <p><b>취향이 저장됐어요!</b></p>
+          <p class="sub" id="done-summary"></p>
+          <p class="sub">다음 단계(메인 화면: 지도 + 추천)는 곧 만듭니다.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://bhgijvaxxjnocgfnaaeu.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_rYaGd3kk5UuFBe3TSpFA8g_uGHWwkqM';
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const $ = (id) => document.getElementById(id);
+
+    const FLAVORS = ['매콤','담백','단짠','새콤','기름진','달콤'];
+    const SITUATIONS = ['혼밥','회식','데이트','가족모임','친구모임'];
+    let mode = 'login'; // login | signup
+
+    // ── 태그 칩 렌더 ──
+    function renderChips(el, items) {
+      el.innerHTML = items.map((t) => `<span class="chip" data-tag="${t}">${t}</span>`).join('');
+      el.querySelectorAll('.chip').forEach((c) =>
+        c.addEventListener('click', () => c.classList.toggle('on')));
+    }
+    function selected(el) {
+      return [...el.querySelectorAll('.chip.on')].map((c) => c.dataset.tag);
+    }
+    function setSelected(el, tags) {
+      el.querySelectorAll('.chip').forEach((c) =>
+        c.classList.toggle('on', (tags || []).includes(c.dataset.tag)));
+    }
+    renderChips($('flavors'), FLAVORS);
+    renderChips($('situations'), SITUATIONS);
+
+    $('spicy').addEventListener('input', () => { $('spicy-val').textContent = $('spicy').value; });
+
+    // ── 로그인/회원가입 전환 ──
+    function bindSwitch() {
+      const link = $('auth-switch').querySelector('a');
+      if (link) link.addEventListener('click', toggleMode);
+    }
+    function toggleMode() {
+      mode = mode === 'login' ? 'signup' : 'login';
+      $('auth-title').textContent = mode === 'login' ? '로그인' : '회원가입';
+      $('auth-btn').textContent = mode === 'login' ? '로그인' : '회원가입';
+      $('auth-switch').innerHTML = mode === 'login'
+        ? '계정이 없으신가요? <a>회원가입</a>'
+        : '이미 계정이 있으신가요? <a>로그인</a>';
+      bindSwitch();
+      $('auth-msg').textContent = '';
+    }
+    bindSwitch();
+
+    // ── 로그인/회원가입 실행 ──
+    $('auth-btn').addEventListener('click', async () => {
+      const email = $('email').value.trim();
+      const password = $('password').value;
+      const msg = $('auth-msg');
+      if (!email || !password) { msg.textContent = '이메일과 비밀번호를 입력해 주세요.'; msg.className = 'msg err'; return; }
+      $('auth-btn').disabled = true;
+      const fn = mode === 'login'
+        ? sb.auth.signInWithPassword({ email, password })
+        : sb.auth.signUp({ email, password });
+      const { data, error } = await fn;
+      $('auth-btn').disabled = false;
+      if (error) { msg.textContent = error.message; msg.className = 'msg err'; return; }
+      if (!data.session) { // 이메일 확인이 켜져 있는 경우
+        msg.textContent = '가입 확인 메일을 보냈어요. 메일을 확인해 주세요.'; msg.className = 'msg ok'; return;
+      }
+      showOnboarding(data.user);
+    });
+
+    $('logout').addEventListener('click', async () => {
+      await sb.auth.signOut();
+      $('onb-view').classList.add('hidden');
+      $('auth-view').classList.remove('hidden');
+    });
+
+    // ── 취향 저장 ──
+    $('save-btn').addEventListener('click', async () => {
+      const { data: { user } } = await sb.auth.getUser();
+      if (!user) return;
+      const msg = $('onb-msg');
+      $('save-btn').disabled = true;
+      const payload = {
+        user_id: user.id,
+        spicy_level: Number($('spicy').value),
+        flavor_tags: selected($('flavors')),
+        situation_tags: selected($('situations')),
+      };
+      const { error } = await sb.from('taste_profiles').upsert(payload, { onConflict: 'user_id' });
+      $('save-btn').disabled = false;
+      if (error) { msg.textContent = '저장 실패: ' + error.message; msg.className = 'msg err'; return; }
+      msg.textContent = '';
+      $('done-summary').textContent =
+        `매운맛 ${payload.spicy_level}/5 · 맛 [${payload.flavor_tags.join(', ') || '없음'}] · 상황 [${payload.situation_tags.join(', ') || '없음'}]`;
+      $('done-card').classList.remove('hidden');
+      $('done-card').scrollIntoView({ behavior: 'smooth' });
+    });
+
+    // ── 화면 전환 + 기존 취향 불러오기 ──
+    async function showOnboarding(user) {
+      $('auth-view').classList.add('hidden');
+      $('onb-view').classList.remove('hidden');
+      $('who').textContent = user.email;
+      const { data } = await sb.from('taste_profiles').select('*').eq('user_id', user.id).maybeSingle();
+      if (data) {
+        $('spicy').value = data.spicy_level ?? 2;
+        $('spicy-val').textContent = $('spicy').value;
+        setSelected($('flavors'), data.flavor_tags);
+        setSelected($('situations'), data.situation_tags);
+      }
+    }
+
+    // ── 세션 확인 (새로고침해도 로그인 유지) ──
+    (async () => {
+      const { data: { session } } = await sb.auth.getSession();
+      if (session) showOnboarding(session.user);
+    })();
+  </script>
+</body>
+</html>
