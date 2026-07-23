@@ -72,8 +72,14 @@
     const VWORLD_KEY = 'B2CDEEDD-D622-311B-883B-CC7890E50822';
 
     // ── 카카오 실시간 장소검색 (REST API, 도메인 등록 불필요) ──
-    const KAKAO_REST_KEY = '3ef7b0590a529d895294ff81247f7de1'; // developers.kakao.com 앱 > 앱키 > REST API 키. 비우면 버튼 숨김.
-    let kakaoMarkers = [];
+    const KAKAO_JS_KEY = '725e7ddf965a3ffff3da1f2ac771cc57'; // developers.kakao.com 앱 > 앱키 > JavaScript 키 (Web 도메인 등록 필요). 비우면 버튼 숨김.
+    let kakaoReady = false, kakaoMarkers = [];
+    if (KAKAO_JS_KEY) {
+      const ks = document.createElement('script');
+      ks.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_JS_KEY}&libraries=services&autoload=false`;
+      ks.onload = () => window.kakao && kakao.maps.load(() => { kakaoReady = true; });
+      document.head.appendChild(ks);
+    }
     function clearKakaoMarkers() { kakaoMarkers.forEach((m) => map.removeLayer(m)); kakaoMarkers = []; }
 
     // ── 지도 초기화 (서울 중심) ──
@@ -201,29 +207,22 @@
     $('logout').addEventListener('click', async () => { await sb.auth.signOut(); location.href = 'index.html'; });
     $('search').addEventListener('input', (e) => { query = e.target.value; render(); });
 
-    // ── 카카오 검색 (REST API) ──
-    if (!KAKAO_REST_KEY) $('kakao-btn').style.display = 'none';
+    // ── 카카오 검색 (지도 SDK · services.Places) ──
+    if (!KAKAO_JS_KEY) $('kakao-btn').style.display = 'none';
     $('kakao-btn').addEventListener('click', runKakaoSearch);
 
-    async function runKakaoSearch() {
+    function runKakaoSearch() {
       const q = $('search').value.trim();
       if (!q) { alert('검색어를 입력해 주세요.'); return; }
-      if (!KAKAO_REST_KEY) { alert('카카오 REST API 키가 설정되지 않았어요.'); return; }
+      if (!kakaoReady) { alert('장소검색 로딩 중… 잠시 후 다시 눌러 주세요.'); return; }
       $('kakao-btn').disabled = true;
       $('kakao-btn').textContent = '검색 중…';
-      try {
-        const url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(q)}&category_group_code=FD6&size=15`;
-        const res = await fetch(url, { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` } });
-        if (!res.ok) throw new Error(`카카오 API ${res.status}`);
-        const data = await res.json();
-        renderKakao(data.documents || []);
-      } catch (e) {
-        renderKakao([]);
-        alert('검색 실패: ' + e.message);
-      } finally {
+      const ps = new kakao.maps.services.Places();
+      ps.keywordSearch(q, (data, status) => {
         $('kakao-btn').disabled = false;
         $('kakao-btn').textContent = '🔎 카카오에서 실제 식당 검색';
-      }
+        renderKakao(status === kakao.maps.services.Status.OK ? data : []);
+      }, { category_group_code: 'FD6', size: 15 });
     }
 
     function renderKakao(data) {
