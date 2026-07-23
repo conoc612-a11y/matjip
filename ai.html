@@ -38,10 +38,13 @@
 
     <div class="card">
       <textarea id="q" rows="3" placeholder="예: 매운 거 좋아하고 회식 장소 찾고 있어"></textarea>
-      <div class="ex">예시:
+      <div class="ex">취향으로 추천:
         <a data-ex="담백하고 혼자 조용히 먹고 싶어">담백·혼밥</a> ·
         <a data-ex="매콤한 데이트 코스">매콤·데이트</a> ·
         <a data-ex="단짠 친구모임">단짠·친구</a>
+        <br>상호로 찾기:
+        <a data-ex="스타벅스 위치 알려줘">스타벅스</a> ·
+        <a data-ex="김밥천국 근처">김밥천국</a>
       </div>
       <button class="btn" id="go">추천 받기</button>
     </div>
@@ -53,7 +56,7 @@
 
     <div class="card" id="result" style="display:none;"></div>
 
-    <p class="note">※ 이 페이지는 키워드 기반 간이 파서입니다. 실제 LLM(예: Claude API) 연동은 Supabase Edge Function으로 키를 안전하게 감춰 확장할 수 있어요.</p>
+    <p class="note">※ 취향 키워드(매콤·담백·혼밥 등)가 있으면 DB 추천, 상호/브랜드면 카카오 실시간 장소검색으로 자동 분기합니다. 더 똑똑한 자연어 이해는 실제 LLM(Supabase Edge Function + Claude API)으로 확장 가능해요.</p>
   </div>
 
   <script>
@@ -63,6 +66,16 @@
     );
     const $ = (id) => document.getElementById(id);
     const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+
+    // ── 카카오 장소검색 SDK ──
+    const KAKAO_JS_KEY = '725e7ddf965a3ffff3da1f2ac771cc57';
+    let kakaoReady = false;
+    if (KAKAO_JS_KEY) {
+      const ks = document.createElement('script');
+      ks.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_JS_KEY}&libraries=services&autoload=false`;
+      ks.onload = () => window.kakao && kakao.maps.load(() => { kakaoReady = true; });
+      document.head.appendChild(ks);
+    }
 
     // ── 자연어 → 취향 파싱 (키워드 규칙) ──
     function parse(text) {
@@ -92,15 +105,24 @@
       return { score: s, hits };
     }
 
+    // 장소검색용: 문장에서 조사/불용어 제거 → 상호만 남기기
+    function cleanQuery(text) {
+      return text.replace(/내\s*근처|근처|주변|위치|어디(에|야|인지)?|알려\s*줘|찾아\s*줘|좀|추천\s*해\s*줘|추천|해\s*줘|가고\s*싶어|\?/g, '').trim();
+    }
+
     async function run(text) {
       const taste = parse(text);
+      const hasTaste = taste.flavor_tags.length || taste.situation_tags.length;
+      if (hasTaste) return recommendByTaste(taste);      // 취향 문장 → DB 추천
+      return placeSearch(cleanQuery(text) || text);       // 상호/브랜드 → 카카오 장소검색
+    }
+
+    async function recommendByTaste(taste) {
       $('parsed').style.display = 'block';
-      $('parsed-chips').innerHTML =
+      $('parsed-chips').innerHTML = `<span class="chip">🍽 취향 추천</span>` +
         `<span class="chip">매운맛 ${taste.spicy_level}/5</span>` +
         taste.flavor_tags.map((t) => `<span class="chip">맛:${esc(t)}</span>`).join('') +
-        taste.situation_tags.map((t) => `<span class="chip">상황:${esc(t)}</span>`).join('') ||
-        '<span class="chip">기본값</span>';
-
+        taste.situation_tags.map((t) => `<span class="chip">상황:${esc(t)}</span>`).join('');
       const { data: rs, error } = await sb.from('mj_restaurants').select('*');
       if (error) { $('result').style.display='block'; $('result').textContent = '조회 실패: ' + error.message; return; }
       const ranked = (rs||[]).map((r) => ({ ...r, ...score(r, taste) }))
@@ -112,6 +134,49 @@
          <div class="why">${r.hits.length ? '일치: ' + r.hits.join(', ') : '취향과 겹치는 태그 없음'}</div>
          <a href="detail.html?id=${r.id}" style="font-size:13px;color:var(--accent)">상세 · 길찾기 →</a></div>`
       ).join('');
+    }
+
+    function placeSearch(q) {
+      $('parsed').style.display = 'block';
+      $('parsed-chips').innerHTML = `<span class="chip">🔎 장소검색: ${esc(q)}</span>`;
+      $('result').style.display = 'block';
+      if (!kakaoReady) { $('result').innerHTML = '<div class="note">장소검색 로딩 중… 잠시 후 다시 시도해 주세요.</div>'; return; }
+      const ps = new kakao.maps.services.Places();
+      ps.keywordSearch(q, (data, status) => {
+        if (status !== kakao.maps.services.Status.OK || !data.length) {
+          $('result').innerHTML = '<div class="note">검색 결과가 없어요.</div>'; return;
+        }
+        $('result').innerHTML = data.slice(0, 8).map((p, i) => `
+          <div class="rec" data-i="${i}"><b>${esc(p.place_name)}</b>
+            <div style="font-size:12px;color:var(--muted)">${esc((p.category_name||'').split('>').pop().trim())} · ${esc(p.road_address_name || p.address_name || '')}</div>
+            <div style="margin-top:6px;display:flex;gap:8px;align-items:center;">
+              <button class="psave" data-i="${i}" style="font-size:13px;padding:6px 10px;border:none;border-radius:7px;background:var(--accent);color:#fff;cursor:pointer;">저장</button>
+              ${p.place_url ? `<a href="${p.place_url}" target="_blank" rel="noopener" style="font-size:13px;color:var(--accent);">카카오맵 →</a>` : ''}
+            </div>
+          </div>`).join('');
+        $('result').querySelectorAll('.psave').forEach((btn) =>
+          btn.addEventListener('click', () => savePlace(data[Number(btn.dataset.i)], btn)));
+      });
+    }
+
+    async function savePlace(p, btn) {
+      const { data: { user } } = await sb.auth.getUser();
+      if (!user) { alert('로그인 후 저장할 수 있어요.'); location.href = 'onboarding.html'; return; }
+      btn.disabled = true; btn.textContent = '저장 중…';
+      const { data: found } = await sb.from('mj_restaurants').select('id').eq('name', p.place_name).limit(1);
+      let rid = found && found[0] && found[0].id;
+      if (!rid) {
+        const { data: ins, error } = await sb.from('mj_restaurants').insert({
+          name: p.place_name, address: p.road_address_name || p.address_name || null,
+          lat: Number(p.y), lng: Number(p.x),
+          category: (p.category_name || '').split('>').pop().trim() || null, tags: []
+        }).select('id').single();
+        if (error) { btn.disabled = false; btn.textContent = '실패'; return; }
+        rid = ins.id;
+      }
+      const { error: se } = await sb.from('saved_restaurants').upsert({ user_id: user.id, restaurant_id: rid }, { onConflict: 'user_id,restaurant_id' });
+      btn.textContent = se ? '실패' : '저장됨 ✓';
+      if (!se) btn.style.background = 'var(--ok)';
     }
 
     $('go').addEventListener('click', () => run($('q').value.trim() || '아무거나'));
