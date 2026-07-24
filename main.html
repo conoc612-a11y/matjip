@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>맛집 탐방 — 메인</title>
   <!-- 네이버 지도 v3 (ncpKeyId 방식). 인증은 등록된 도메인(https://conoc612-a11y.github.io)에서만 성공 -->
-  <script src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=kw4t9xfkhz"></script>
+  <script src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=kw4t9xfkhz&submodules=geocoder"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <style>
     :root { --bg:#f4f5f7; --card:#fff; --line:#e6e8eb; --text:#1c1e21; --muted:#8a9099; --accent:#e8590c; --ok:#2f9e44; }
@@ -60,6 +60,7 @@
     <div id="map"></div>
     <div class="panel">
       <input type="text" id="search" class="search-inp" placeholder="🔍 식당 이름·태그 검색" autocomplete="off" />
+      <button id="geo-btn" class="kakao-btn">📍 내 위치에서 찾기</button>
       <button id="kakao-btn" class="kakao-btn">🔎 카카오에서 실제 식당 검색</button>
       <div class="banner" id="banner"></div>
       <div id="rec-list"></div>
@@ -97,6 +98,35 @@
     // 공통 InfoWindow(팝업) 하나 재사용
     const infoWindow = new naver.maps.InfoWindow({ borderWidth: 1, borderColor: '#e6e8eb', anchorSize: new naver.maps.Size(0, 0) });
     function openInfo(marker, html) { infoWindow.setContent(`<div style="padding:7px 11px;font-size:13px;line-height:1.4;">${html}</div>`); infoWindow.open(map, marker); }
+
+    // ── [Reverse Geocoding] 좌표 → 주소 (네이버 geocoder 서브모듈, 브라우저 안전) ──
+    function showAddress(coord, label) {
+      if (!(naver.maps.Service && naver.maps.Service.reverseGeocode)) return;
+      naver.maps.Service.reverseGeocode({
+        coords: coord,
+        orders: [naver.maps.Service.OrderType.ROAD_ADDR, naver.maps.Service.OrderType.ADDR].join(','),
+      }, (status, res) => {
+        if (status !== naver.maps.Service.Status.OK) { openInfo(coord, `${label} 주소를 못 찾았어요`); return; }
+        const a = res.v2.address;
+        const addr = a.roadAddress || a.jibunAddress || '(주소 정보 없음)';
+        openInfo(coord, `${label}<br><b>${esc(addr)}</b>`);
+      });
+    }
+    // 지도를 클릭하면 그 지점의 주소를 표시
+    naver.maps.Event.addListener(map, 'click', (e) => showAddress(e.coord, '📍 클릭한 위치'));
+    // 📍 내 위치에서 찾기 (GPS → 지도 이동 → 주소 표시)
+    $('geo-btn').addEventListener('click', () => {
+      if (!navigator.geolocation) { alert('이 브라우저는 위치를 지원하지 않아요.'); return; }
+      $('geo-btn').textContent = '위치 찾는 중…'; $('geo-btn').disabled = true;
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          $('geo-btn').textContent = '📍 내 위치에서 찾기'; $('geo-btn').disabled = false;
+          const ll = latLng(pos.coords.latitude, pos.coords.longitude);
+          map.setCenter(ll); map.setZoom(15); showAddress(ll, '📍 내 위치');
+        },
+        () => { $('geo-btn').textContent = '📍 내 위치에서 찾기'; $('geo-btn').disabled = false; alert('위치 권한이 필요해요.'); }
+      );
+    });
 
     // 토지·규제 레이어(용도지역/지적/그린벨트 등)는 네이버 v3가 정부 WMS 오버레이를
     // 지원하지 않아 별도 페이지 land.html(Leaflet + V-World)에서 제공한다. 헤더의 '토지지도' 링크.
