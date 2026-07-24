@@ -61,7 +61,7 @@
     <div class="panel">
       <input type="text" id="search" class="search-inp" placeholder="🔍 식당 이름·태그 검색" autocomplete="off" />
       <button id="geo-btn" class="kakao-btn">📍 내 위치에서 찾기</button>
-      <button id="kakao-btn" class="kakao-btn">🔎 카카오에서 실제 식당 검색</button>
+      <button id="search-btn" class="kakao-btn">🔎 네이버로 검색</button>
       <div class="banner" id="banner"></div>
       <div id="rec-list"></div>
     </div>
@@ -79,16 +79,13 @@
       if (b) b.innerHTML = '⚠️ 네이버 지도 인증 실패 — NCP 콘솔의 Web 서비스 URL에 <b>https://conoc612-a11y.github.io</b> 가 등록됐는지 확인해 주세요.';
     };
 
-    // ── 카카오 실시간 장소검색 (지도 SDK · services.Places) ──
-    const KAKAO_JS_KEY = '725e7ddf965a3ffff3da1f2ac771cc57'; // developers.kakao.com JavaScript 키. 비우면 버튼 숨김.
-    let kakaoReady = false, kakaoMarkers = [];
-    if (KAKAO_JS_KEY) {
-      const ks = document.createElement('script');
-      ks.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_JS_KEY}&libraries=services&autoload=false`;
-      ks.onload = () => window.kakao && kakao.maps.load(() => { kakaoReady = true; });
-      document.head.appendChild(ks);
-    }
-    function clearKakaoMarkers() { kakaoMarkers.forEach((m) => m.setMap(null)); kakaoMarkers = []; }
+    // ── 네이버 실시간 장소검색 (Supabase Edge Function 프록시 경유) ──
+    // 네이버 지역검색 API는 Client Secret+CORS 때문에 브라우저 직접 호출 불가 →
+    // Supabase Edge Function(quick-handler)이 서버에서 중계. 호출 시 publishable 키 헤더 필요.
+    const NAVER_SEARCH_FN = 'https://bhgijvaxxjnocgfnaaeu.supabase.co/functions/v1/quick-handler';
+    let searchMarkers = [];
+    function clearSearchMarkers() { searchMarkers.forEach((m) => m.setMap(null)); searchMarkers = []; }
+    const stripB = (s) => String(s || '').replace(/<\/?b>/g, '');
 
     // ── 네이버 지도 초기화 (서울 중심) ──
     const map = new naver.maps.Map('map', {
@@ -102,6 +99,22 @@
     // 공통 InfoWindow(팝업) 하나 재사용
     const infoWindow = new naver.maps.InfoWindow({ borderWidth: 1, borderColor: '#e6e8eb', anchorSize: new naver.maps.Size(0, 0) });
     function openInfo(marker, html) { infoWindow.setContent(`<div style="padding:7px 11px;font-size:13px;line-height:1.4;">${html}</div>`); infoWindow.open(map, marker); }
+
+    // 마커/리스트 클릭 시 뜨는 카드(네이버 지도 스타일). 사진·리뷰는 검색 API 미제공 → '네이버지도' 링크로 열림.
+    function restaurantCard(r) {
+      const tags = (r.tags || []).slice(0, 4).map((t) =>
+        `<span style="font-size:11px;background:#f1f3f5;border-radius:10px;padding:2px 8px;margin:3px 3px 0 0;display:inline-block;">${esc(t)}</span>`).join('');
+      const nq = encodeURIComponent(r.name);
+      return `<div style="min-width:210px;max-width:250px;">
+        <div style="font-weight:700;font-size:15px;">${esc(r.name)}</div>
+        <div style="font-size:12px;color:#8a9099;margin:3px 0 2px;">${esc(r.category || '')}${r.address ? ' · ' + esc(r.address) : ''}</div>
+        <div>${tags}</div>
+        <div style="display:flex;gap:6px;margin-top:9px;">
+          <a href="detail.html?id=${r.id}" style="flex:1;text-align:center;font-size:12px;padding:7px 0;border-radius:6px;background:#e8590c;color:#fff;text-decoration:none;">상세·길찾기</a>
+          <a href="https://map.naver.com/p/search/${nq}" target="_blank" rel="noopener" style="flex:1;text-align:center;font-size:12px;padding:7px 0;border-radius:6px;border:1px solid #e6e8eb;color:#1c1e21;text-decoration:none;">네이버지도</a>
+        </div>
+      </div>`;
+    }
 
     // 네이버 지도용 커스텀 마커(초록 별 핀 — 실제 네이버 지도 스타일). color로 구분.
     function starIcon(color) {
@@ -216,12 +229,12 @@
 
       // 마커 (네이버)
       Object.values(markers).forEach((m) => m.setMap(null));
-      clearKakaoMarkers();
+      clearSearchMarkers();
       const pts = [];
       scored.forEach(({ r }) => {
         if (r.lat == null || r.lng == null) return;
         const m = new naver.maps.Marker({ position: latLng(r.lat, r.lng), map, title: r.name, icon: starIcon('#2f9e44') });
-        naver.maps.Event.addListener(m, 'click', () => openInfo(m, `<b>${esc(r.name)}</b><br>${esc(r.category || '')}`));
+        naver.maps.Event.addListener(m, 'click', () => openInfo(m, restaurantCard(r)));
         markers[r.id] = m;
         pts.push([Number(r.lat), Number(r.lng)]);
       });
@@ -236,7 +249,7 @@
         card.addEventListener('click', (e) => {
           if (e.target.closest('.actions')) return;
           const r = restaurants.find((x) => x.id == card.dataset.id);
-          if (r && r.lat != null) { map.setCenter(latLng(r.lat, r.lng)); map.setZoom(15); if (markers[r.id]) openInfo(markers[r.id], `<b>${esc(r.name)}</b><br>${esc(r.category || '')}`); }
+          if (r && r.lat != null) { map.setCenter(latLng(r.lat, r.lng)); map.setZoom(15); if (markers[r.id]) openInfo(markers[r.id], restaurantCard(r)); }
         });
       });
       $('rec-list').querySelectorAll('.save').forEach((btn) => {
@@ -271,68 +284,81 @@
     $('logout').addEventListener('click', async () => { await sb.auth.signOut(); location.href = 'index.html'; });
     $('search').addEventListener('input', (e) => { query = e.target.value; render(); });
 
-    // ── 카카오 검색 ──
-    if (!KAKAO_JS_KEY) $('kakao-btn').style.display = 'none';
-    $('kakao-btn').addEventListener('click', runKakaoSearch);
+    // ── 네이버 실시간 검색 (프록시 경유) ──
+    $('search-btn').addEventListener('click', runNaverSearch);
+    $('search').addEventListener('keydown', (e) => { if (e.key === 'Enter') runNaverSearch(); });
 
-    function runKakaoSearch() {
+    async function runNaverSearch() {
       const q = $('search').value.trim();
       if (!q) { alert('검색어를 입력해 주세요.'); return; }
-      if (!kakaoReady) { alert('장소검색 로딩 중… 잠시 후 다시 눌러 주세요.'); return; }
-      $('kakao-btn').disabled = true;
-      $('kakao-btn').textContent = '검색 중…';
-      const ps = new kakao.maps.services.Places();
-      ps.keywordSearch(q, (data, status) => {
-        $('kakao-btn').disabled = false;
-        $('kakao-btn').textContent = '🔎 카카오에서 실제 식당 검색';
-        renderKakao(status === kakao.maps.services.Status.OK ? data : []);
-      }, { category_group_code: 'FD6', size: 15 });
+      $('search-btn').disabled = true;
+      $('search-btn').textContent = '검색 중…';
+      try {
+        const r = await fetch(`${NAVER_SEARCH_FN}?query=${encodeURIComponent(q)}`, {
+          headers: { Authorization: 'Bearer ' + SUPABASE_KEY },
+        });
+        const j = await r.json();
+        renderNaver(j.items || []);
+      } catch (e) {
+        alert('검색에 실패했어요: ' + e);
+      } finally {
+        $('search-btn').disabled = false;
+        $('search-btn').textContent = '🔎 네이버로 검색';
+      }
     }
 
-    function renderKakao(data) {
+    function naverPt(p) { return { lat: Number(p.mapy) / 1e7, lng: Number(p.mapx) / 1e7 }; }
+
+    function renderNaver(items) {
       Object.values(markers).forEach((m) => m.setMap(null));
-      clearKakaoMarkers();
-      const back = '<button class="kakao-back" id="kakao-back">← 추천 목록으로</button>';
-      if (!data.length) {
-        $('rec-list').innerHTML = back + '<div style="text-align:center;color:var(--muted);padding:24px 0;">카카오 검색 결과가 없어요.</div>';
-        $('kakao-back').addEventListener('click', render); return;
+      clearSearchMarkers();
+      const back = '<button class="kakao-back" id="s-back">← 추천 목록으로</button>';
+      if (!items.length) {
+        $('rec-list').innerHTML = back + '<div style="text-align:center;color:var(--muted);padding:24px 0;">네이버 검색 결과가 없어요.</div>';
+        $('s-back').addEventListener('click', render); return;
       }
-      $('rec-list').innerHTML = back + data.map((p, i) => `
-        <div class="rec" data-i="${i}">
-          <h3>${esc(p.place_name)}</h3>
-          <div class="meta">${esc((p.category_name || '').split('>').pop().trim())} · ${esc(p.road_address_name || p.address_name || '')}</div>
+      $('rec-list').innerHTML = back + items.map((p, i) => {
+        const name = stripB(p.title);
+        const cat = (p.category || '').split('>').pop().trim();
+        const addr = p.roadAddress || p.address || '';
+        return `<div class="rec" data-i="${i}">
+          <h3>${esc(name)}</h3>
+          <div class="meta">${esc(cat)} · ${esc(addr)}</div>
           <div class="actions">
-            <button class="save ksave" data-i="${i}">내 목록에 저장</button>
-            ${p.place_url ? `<a href="${p.place_url}" target="_blank" rel="noopener">카카오맵</a>` : ''}
+            <button class="save nsave" data-i="${i}">내 목록에 저장</button>
+            <a href="https://map.naver.com/p/search/${encodeURIComponent(name)}" target="_blank" rel="noopener">네이버지도</a>
           </div>
-        </div>`).join('');
+        </div>`;
+      }).join('');
       const pts = [];
-      data.forEach((p) => {
-        const m = new naver.maps.Marker({ position: latLng(p.y, p.x), map, title: p.place_name, icon: starIcon('#e8590c') });
-        naver.maps.Event.addListener(m, 'click', () => openInfo(m, `<b>${esc(p.place_name)}</b>`));
-        kakaoMarkers.push(m); pts.push([Number(p.y), Number(p.x)]);
+      items.forEach((p) => {
+        const { lat, lng } = naverPt(p);
+        const m = new naver.maps.Marker({ position: latLng(lat, lng), map, title: stripB(p.title), icon: starIcon('#e8590c') });
+        naver.maps.Event.addListener(m, 'click', () => openInfo(m, `<b>${esc(stripB(p.title))}</b>`));
+        searchMarkers.push(m); pts.push([lat, lng]);
       });
       fitToPoints(pts);
-      $('kakao-back').addEventListener('click', render);
+      $('s-back').addEventListener('click', render);
       $('rec-list').querySelectorAll('.rec').forEach((card) => card.addEventListener('click', (e) => {
         if (e.target.closest('.actions')) return;
-        const p = data[Number(card.dataset.i)]; map.setCenter(latLng(p.y, p.x)); map.setZoom(16);
+        const { lat, lng } = naverPt(items[Number(card.dataset.i)]); map.setCenter(latLng(lat, lng)); map.setZoom(16);
       }));
-      $('rec-list').querySelectorAll('.ksave').forEach((btn) => btn.addEventListener('click', (e) => {
-        e.stopPropagation(); saveKakaoPlace(data[Number(btn.dataset.i)], btn);
+      $('rec-list').querySelectorAll('.nsave').forEach((btn) => btn.addEventListener('click', (e) => {
+        e.stopPropagation(); saveNaverPlace(items[Number(btn.dataset.i)], btn);
       }));
     }
 
-    async function saveKakaoPlace(p, btn) {
+    async function saveNaverPlace(p, btn) {
       if (!user) { alert('로그인 후 저장할 수 있어요.'); location.href = 'onboarding.html'; return; }
+      const name = stripB(p.title);
+      const { lat, lng } = naverPt(p);
       btn.disabled = true; btn.textContent = '저장 중…';
-      const { data: found } = await sb.from('mj_restaurants').select('id').eq('name', p.place_name).limit(1);
+      const { data: found } = await sb.from('mj_restaurants').select('id').eq('name', name).limit(1);
       let rid = found && found[0] && found[0].id;
       if (!rid) {
         const { data: ins, error } = await sb.from('mj_restaurants').insert({
-          name: p.place_name, address: p.road_address_name || p.address_name || null,
-          lat: Number(p.y), lng: Number(p.x),
-          category: (p.category_name || '').split('>').pop().trim() || null, tags: []
+          name, address: p.roadAddress || p.address || null,
+          lat, lng, category: (p.category || '').split('>').pop().trim() || null, tags: [],
         }).select('id').single();
         if (error) { btn.disabled = false; btn.textContent = '실패'; return; }
         rid = ins.id;
