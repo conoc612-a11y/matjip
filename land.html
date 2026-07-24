@@ -121,7 +121,14 @@
       });
       // 레이어 코드는 V-World 공식 WMS 가이드에서 확인함(추측 아님).
       // 일부(그린벨트·진흥지구)는 도심 중앙엔 데이터가 없어 외곽에서 보임 — 정상.
+      // 토지거래허가구역(동 단위 근사) — 지정 동 경계 GeoJSON 색칠. 정확·최신은 land.seoul.go.kr.
+      const tojiLayer = L.geoJSON(null, {
+        style: { color: '#c92a2a', weight: 1, fillColor: '#e8590c', fillOpacity: 0.28 },
+        onEachFeature: (f, layer) => layer.bindTooltip(`🚫 토지거래허가구역 · ${f.properties.name}`, { sticky: true }),
+      });
+      fetch('toji_heoga.geojson').then((r) => r.json()).then((gj) => tojiLayer.addData(gj)).catch(() => {});
       const landOverlays = {
+        '🚫 토지거래허가구역(동 근사)': tojiLayer,
         '🗺️ 용도지역': wms('lt_c_uq111', 0.55),
         '📐 연속지적도(필지)': wms('lp_pa_cbnd_bubun', 0.6),
         '🌳 개발제한구역(그린벨트)': wms('lt_c_ud801', 0.5),
