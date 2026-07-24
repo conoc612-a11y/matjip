@@ -103,6 +103,14 @@
     const infoWindow = new naver.maps.InfoWindow({ borderWidth: 1, borderColor: '#e6e8eb', anchorSize: new naver.maps.Size(0, 0) });
     function openInfo(marker, html) { infoWindow.setContent(`<div style="padding:7px 11px;font-size:13px;line-height:1.4;">${html}</div>`); infoWindow.open(map, marker); }
 
+    // 네이버 지도용 커스텀 마커(초록 별 핀 — 실제 네이버 지도 스타일). color로 구분.
+    function starIcon(color) {
+      return {
+        content: `<div style="width:26px;height:26px;background:${color};border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;line-height:1;">★</div>`,
+        anchor: new naver.maps.Point(13, 13),
+      };
+    }
+
     // ── [Reverse Geocoding] 좌표 → 주소 (네이버 geocoder 서브모듈, 브라우저 안전) ──
     function showAddress(coord, label) {
       if (!(naver.maps.Service && naver.maps.Service.reverseGeocode)) return;
@@ -212,7 +220,7 @@
       const pts = [];
       scored.forEach(({ r }) => {
         if (r.lat == null || r.lng == null) return;
-        const m = new naver.maps.Marker({ position: latLng(r.lat, r.lng), map, title: r.name });
+        const m = new naver.maps.Marker({ position: latLng(r.lat, r.lng), map, title: r.name, icon: starIcon('#2f9e44') });
         naver.maps.Event.addListener(m, 'click', () => openInfo(m, `<b>${esc(r.name)}</b><br>${esc(r.category || '')}`));
         markers[r.id] = m;
         pts.push([Number(r.lat), Number(r.lng)]);
@@ -300,7 +308,7 @@
         </div>`).join('');
       const pts = [];
       data.forEach((p) => {
-        const m = new naver.maps.Marker({ position: latLng(p.y, p.x), map, title: p.place_name });
+        const m = new naver.maps.Marker({ position: latLng(p.y, p.x), map, title: p.place_name, icon: starIcon('#e8590c') });
         naver.maps.Event.addListener(m, 'click', () => openInfo(m, `<b>${esc(p.place_name)}</b>`));
         kakaoMarkers.push(m); pts.push([Number(p.y), Number(p.x)]);
       });
