@@ -56,6 +56,10 @@
   <div class="layout">
     <div id="map"></div>
     <div class="panel">
+      <div style="display:flex;gap:6px;margin-bottom:12px;">
+        <input type="text" id="vsearch" class="search-inp" style="margin-bottom:0;" placeholder="📍 주소·지명 검색 (예: 강남역, 서초구청)" autocomplete="off" />
+        <button id="vsearch-btn" class="kakao-btn" style="width:auto;margin-bottom:0;white-space:nowrap;">이동</button>
+      </div>
       <input type="text" id="search" class="search-inp" placeholder="🔍 식당 이름·태그 검색" autocomplete="off" />
       <button id="kakao-btn" class="kakao-btn">🔎 카카오에서 실제 식당 검색</button>
       <div class="banner" id="banner"></div>
@@ -85,17 +89,23 @@
 
     // ── 지도 초기화 (서울 중심) ──
     const map = L.map('map').setView([37.5665, 126.9780], 12);
-    // V-World 타일 시도 → 실패(도메인 불일치 등) 시 OSM로 자동 대체 → 지도가 항상 뜸
-    (function addBaseLayer() {
-      const osm = () => L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
-      if (!VWORLD_KEY) { osm(); return; }
-      const vw = L.tileLayer(`https://api.vworld.kr/req/wmts/1.0.0/${VWORLD_KEY}/Base/{z}/{y}/{x}.png`,
-        { maxZoom: 19, attribution: '© VWorld' });
-      let fell = false;
-      vw.on('tileerror', () => { if (!fell) { fell = true; map.removeLayer(vw); osm(); } });
-      vw.addTo(map);
-    })();
+    // V-World 다중 배경지도 (일반/항공영상/하이브리드) — S-Map 유사 룩.
+    // Satellite는 jpeg, Base·Hybrid는 png (실측 확인). 우측 상단 레이어에서 전환.
+    const vTile = (layer, ext) => L.tileLayer(
+      `https://api.vworld.kr/req/wmts/1.0.0/${VWORLD_KEY}/${layer}/{z}/{y}/{x}.${ext}`,
+      { maxZoom: 19, attribution: '© V-World' });
+    const osmBase = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      { maxZoom: 19, attribution: '© OpenStreetMap' });
+    const baseLayers = VWORLD_KEY ? {
+      '🗺️ 일반지도': vTile('Base', 'png'),
+      '🛰️ 항공영상': vTile('Satellite', 'jpeg'),
+      '🏙️ 항공+라벨': L.layerGroup([vTile('Satellite', 'jpeg'), vTile('Hybrid', 'png')]),
+      'OSM(대체)': osmBase,
+    } : { 'OSM': osmBase };
+    const defaultBase = baseLayers['🗺️ 일반지도'] || baseLayers['OSM'];
+    defaultBase.addTo(map);
+    // 기본(일반지도) 타일 실패 시 OSM 자동 대체
+    if (VWORLD_KEY) { let fell = false; defaultBase.on('tileerror', () => { if (!fell) { fell = true; map.removeLayer(defaultBase); osmBase.addTo(map); } }); }
 
     // ── [토지 레이어] V-World 국토·토지정보 오버레이 (토글) ─────────────────
     // 근거: V-World 공개 WMS(api.vworld.kr) / 서울 토지정보 land.seoul.go.kr.
@@ -118,8 +128,34 @@
         '🏗️ 개발진흥지구': wms('lt_c_uq129', 0.5),
         '📦 사업지구경계(LH)': wms('lt_c_lhzone', 0.5),
       };
-      L.control.layers(null, landOverlays, { collapsed: true, position: 'topright' }).addTo(map);
+      L.control.layers(baseLayers, landOverlays, { collapsed: true, position: 'topright' }).addTo(map);
     }
+
+    // ── [V-World 검색 API] 주소·지명 검색 → 지도 이동 (JSONP로 브라우저 CORS 회피) ──
+    let vsMarker = null;
+    function vworldSearch(q, type) {
+      if (!q) return;
+      const cb = '__vw_' + Date.now();
+      const clean = () => { try { delete window[cb]; } catch (e) {} };
+      window[cb] = (data) => {
+        clean();
+        const items = (data.response && data.response.result && data.response.result.items) || [];
+        if (!items.length) {
+          if (type === 'place') { vworldSearch(q, 'address'); return; } // 장소 없으면 주소로 재검색
+          alert('검색 결과가 없어요: ' + q); return;
+        }
+        const it = items[0], x = Number(it.point.x), y = Number(it.point.y);
+        map.setView([y, x], 16);
+        if (vsMarker) map.removeLayer(vsMarker);
+        vsMarker = L.marker([y, x]).addTo(map).bindPopup(`<b>${it.title || q}</b>`).openPopup();
+      };
+      const s = document.createElement('script');
+      s.src = `https://api.vworld.kr/req/search?service=search&request=search&version=2.0&crs=EPSG:4326&size=5&page=1&query=${encodeURIComponent(q)}&type=${type}&format=json&key=${VWORLD_KEY}&callback=${cb}`;
+      s.onerror = clean;
+      document.head.appendChild(s);
+    }
+    $('vsearch-btn').addEventListener('click', () => vworldSearch($('vsearch').value.trim(), 'place'));
+    $('vsearch').addEventListener('keydown', (e) => { if (e.key === 'Enter') vworldSearch($('vsearch').value.trim(), 'place'); });
 
     const markers = {}; // id -> marker
     let restaurants = [];
