@@ -101,9 +101,11 @@
     // 우측 상단 레이어 버튼에서 켜고 '줌인'하면 필지·용도지역이 색으로 표시됩니다.
     // (광역 줌에서는 비어 보일 수 있음 — 지적/용도지역은 확대해야 그려짐.)
     if (VWORLD_KEY) {
+      // 주의: STYLES는 넘기지 않는다 — Leaflet 기본값(styles:'')이 이미 있어,
+      // 중복 지정하면 'STYLES=&STYLES='가 되어 V-World가 타일을 거부한다(빈 화면 원인).
       const wms = (layers, opacity) => L.tileLayer.wms('https://api.vworld.kr/req/wms', {
         layers, format: 'image/png', transparent: true, version: '1.3.0', uppercase: true,
-        STYLES: '', KEY: VWORLD_KEY, DOMAIN: location.origin,
+        KEY: VWORLD_KEY, DOMAIN: location.origin,
         opacity, attribution: '© V-World', maxZoom: 19,
       });
       const landOverlays = {
