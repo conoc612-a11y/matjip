@@ -96,6 +96,23 @@
       vw.addTo(map);
     })();
 
+    // ── [토지 레이어] V-World 국토·토지정보 오버레이 (토글) ─────────────────
+    // 근거: V-World 공개 WMS(api.vworld.kr) / 서울 토지정보 land.seoul.go.kr.
+    // 우측 상단 레이어 버튼에서 켜고 '줌인'하면 필지·용도지역이 색으로 표시됩니다.
+    // (광역 줌에서는 비어 보일 수 있음 — 지적/용도지역은 확대해야 그려짐.)
+    if (VWORLD_KEY) {
+      const wms = (layers, opacity) => L.tileLayer.wms('https://api.vworld.kr/req/wms', {
+        layers, format: 'image/png', transparent: true, version: '1.3.0', uppercase: true,
+        STYLES: '', KEY: VWORLD_KEY, DOMAIN: location.origin,
+        opacity, attribution: '© V-World', maxZoom: 19,
+      });
+      const landOverlays = {
+        '🗺️ 용도지역': wms('lt_c_uq111', 0.55),
+        '📐 연속지적도(필지)': wms('lp_pa_cbnd_bubun', 0.6),
+      };
+      L.control.layers(null, landOverlays, { collapsed: true, position: 'topright' }).addTo(map);
+    }
+
     const markers = {}; // id -> marker
     let restaurants = [];
     let taste = null;
