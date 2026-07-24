@@ -108,9 +108,14 @@
         KEY: VWORLD_KEY, DOMAIN: location.origin,
         opacity, attribution: '© V-World', maxZoom: 19,
       });
+      // 레이어 코드는 V-World 공식 WMS 가이드에서 확인함(추측 아님).
+      // 일부(그린벨트·진흥지구)는 도심 중앙엔 데이터가 없어 외곽에서 보임 — 정상.
       const landOverlays = {
         '🗺️ 용도지역': wms('lt_c_uq111', 0.55),
         '📐 연속지적도(필지)': wms('lp_pa_cbnd_bubun', 0.6),
+        '🌳 개발제한구역(그린벨트)': wms('lt_c_ud801', 0.5),
+        '🏗️ 개발진흥지구': wms('lt_c_uq129', 0.5),
+        '📦 사업지구경계(LH)': wms('lt_c_lhzone', 0.5),
       };
       L.control.layers(null, landOverlays, { collapsed: true, position: 'topright' }).addTo(map);
     }
