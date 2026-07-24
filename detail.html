@@ -50,6 +50,7 @@
     const SUPABASE_KEY = 'sb_publishable_rYaGd3kk5UuFBe3TSpFA8g_uGHWwkqM';
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     const VWORLD_KEY = 'B2CDEEDD-D622-311B-883B-CC7890E50822'; // V-World 지도
+    const ODSAY_KEY = 'H4Vo/z04g/E+AUShnTQIiQ'; // ODsay 대중교통(웹 도메인 잠금 키 → 프론트 노출 안전)
     const $ = (id) => document.getElementById(id);
     const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 
@@ -68,6 +69,34 @@
       let u = `https://www.google.com/maps/dir/?api=1&destination=${r.lat},${r.lng}&travelmode=${mode}`;
       if (origin) u += `&origin=${origin[0]},${origin[1]}`;
       return u;
+    }
+
+    // ODsay 대중교통 상세 경로 (현재위치 → 맛집). origin=[lat,lng]
+    async function showOdsay(origin) {
+      const box = $('odsay'); if (!box) return;
+      box.textContent = '🚌 대중교통 경로 불러오는 중…';
+      try {
+        const url = `https://api.odsay.com/v1/api/searchPubTransPathT?SX=${origin[1]}&SY=${origin[0]}&EX=${r.lng}&EY=${r.lat}&apiKey=${encodeURIComponent(ODSAY_KEY)}`;
+        const j = await (await fetch(url)).json();
+        if (j.error || !j.result || !(j.result.path || []).length) {
+          box.textContent = j.error ? ('대중교통 경로 없음: ' + (j.error.msg || '')) : '가까운 거리라 대중교통 경로가 없어요(도보 권장).';
+          return;
+        }
+        const best = j.result.path[0], info = best.info, ICON = { 1: '🚇', 2: '🚌', 3: '🚶' };
+        const steps = best.subPath
+          .filter((s) => s.trafficType !== 3 || s.sectionTime > 0)
+          .map((s) => {
+            if (s.trafficType === 3) return `🚶 도보 ${s.sectionTime}분`;
+            const lane = (s.lane && s.lane[0]) || {};
+            const name = s.trafficType === 1 ? (lane.name || '지하철') : (lane.busNo ? lane.busNo + '번' : '버스');
+            return `${ICON[s.trafficType]} ${esc(name)} · ${esc(s.startName)}→${esc(s.endName)} (${s.stationCount}정거장)`;
+          });
+        box.innerHTML =
+          `<div style="font-weight:700;color:var(--text);margin-bottom:6px;">🚌 대중교통 약 ${info.totalTime}분 · ${info.payment.toLocaleString()}원 · 환승 ${info.busTransitCount + info.subwayTransitCount}회</div>`
+          + '<ol style="margin:0;padding-left:18px;line-height:1.7;color:var(--text);">' + steps.map((x) => `<li>${x}</li>`).join('') + '</ol>';
+      } catch (e) {
+        box.textContent = '대중교통 경로 조회 실패(잠시 후 다시 시도).';
+      }
     }
 
     async function init() {
@@ -103,6 +132,7 @@
           </div>
           <button class="btn sec" id="gps" style="margin-top:12px;">📍 현재 위치에서 길찾기</button>
           <div class="dist" id="dist"></div>
+          <div class="dist" id="odsay"></div>
         </div>`;
 
       // 지도
@@ -161,6 +191,7 @@
           $('r-transit').href = gmapDir('transit', me);
           $('r-walk').href = gmapDir('walking', me);
           $('r-car').href = gmapDir('driving', me);
+          showOdsay(me); // 앱 내부 대중교통 상세 경로
         }, () => { $('dist').textContent = '위치 권한이 거부되었어요. (브라우저 주소창 위치 허용 필요)'; });
       });
 
