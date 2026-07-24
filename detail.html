@@ -99,6 +99,27 @@
       }
     }
 
+    // ── 앱 내부 자차 경로 (OSRM 무료 라우팅, 실제 도로 따라감). origin=[lat,lng] ──
+    async function drawDrivingRoute(me) {
+      if (line) { map.removeLayer(line); line = null; }
+      $('dist').textContent = '🚗 자차 경로 계산 중…';
+      const url = `https://router.project-osrm.org/route/v1/driving/${me[1]},${me[0]};${r.lng},${r.lat}?overview=full&geometries=geojson`;
+      try {
+        const j = await (await fetch(url)).json();
+        if (j.code === 'Ok' && j.routes && j.routes[0]) {
+          const rt = j.routes[0];
+          const latlngs = rt.geometry.coordinates.map((c) => [c[1], c[0]]);
+          line = L.polyline(latlngs, { color: '#1c6dd0', weight: 5, opacity: 0.85 }).addTo(map);
+          map.fitBounds(line.getBounds().pad(0.2));
+          $('dist').innerHTML = `🚗 자차 약 <b>${(rt.distance / 1000).toFixed(1)}km · ${Math.round(rt.duration / 60)}분</b> · 직선 ${haversine(me, [r.lat, r.lng]).toFixed(1)}km`;
+          return;
+        }
+      } catch (e) { /* 폴백으로 */ }
+      line = L.polyline([me, [r.lat, r.lng]], { color: '#e8590c', dashArray: '6' }).addTo(map);
+      map.fitBounds(line.getBounds().pad(0.3));
+      $('dist').textContent = `직선 거리 약 ${haversine(me, [r.lat, r.lng]).toFixed(1)}km (자차 경로 응답 없음)`;
+    }
+
     async function init() {
       const { data: { session } } = await sb.auth.getSession();
       user = session ? session.user : null;
@@ -184,9 +205,7 @@
           if (userMarker) map.removeLayer(userMarker);
           if (line) map.removeLayer(line);
           userMarker = L.marker(me).addTo(map).bindPopup('현재 위치').openPopup();
-          line = L.polyline([me, [r.lat, r.lng]], { color: '#e8590c', dashArray: '6' }).addTo(map);
-          map.fitBounds(line.getBounds().pad(0.3));
-          $('dist').textContent = `직선 거리 약 ${haversine(me, [r.lat, r.lng]).toFixed(1)}km · 아래 버튼이 현재 위치 기준으로 바뀌었어요.`;
+          drawDrivingRoute(me); // 앱 내부 자차 경로(OSRM 무료)
           // 길찾기 링크를 현재위치 출발로 갱신
           $('r-transit').href = gmapDir('transit', me);
           $('r-walk').href = gmapDir('walking', me);
