@@ -6,6 +6,7 @@
   <title>맛집 탐방 — 메인</title>
   <!-- 네이버 지도 v3 (ncpKeyId 방식). 인증은 등록된 도메인(https://conoc612-a11y.github.io)에서만 성공 -->
   <script src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=kw4t9xfkhz&submodules=geocoder"></script>
+  <script src="https://cdn.jsdelivr.net/gh/navermaps/marker-tools.js@master/marker-clustering/src/MarkerClustering.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <style>
     :root { --bg:#f4f5f7; --card:#fff; --line:#e6e8eb; --text:#1c1e21; --muted:#8a9099; --accent:#e8590c; --ok:#2f9e44; }
@@ -157,6 +158,7 @@
     // 지원하지 않아 별도 페이지 land.html(Leaflet + V-World)에서 제공한다. 헤더의 '토지지도' 링크.
 
     const markers = {}; // id -> naver.maps.Marker
+    let markerClustering = null; // 마커 클러스터링 인스턴스
     let restaurants = [];
     let taste = null;
     let user = null;
@@ -187,6 +189,50 @@
     }
 
     function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+
+    // ── 마커 클러스터링 (착한가격 1,300+곳을 가까운 것끼리 묶어 표시) ──
+    const cIcon = (px) => ({
+      content: `<div style="cursor:pointer;width:${px}px;height:${px}px;line-height:${px - 4}px;background:#2f9e44;border:2px solid #fff;border-radius:50%;color:#fff;text-align:center;font-weight:700;font-size:13px;box-shadow:0 1px 5px rgba(0,0,0,.4);"></div>`,
+      size: new naver.maps.Size(px, px),
+      anchor: new naver.maps.Point(px / 2, px / 2),
+    });
+    const clusterIcons = [cIcon(34), cIcon(42), cIcon(50), cIcon(58)];
+
+    function buildClusters() {
+      if (markerClustering) { markerClustering.setMap(null); markerClustering = null; }
+      Object.values(markers).forEach((m) => m.setMap(null));
+      for (const k in markers) delete markers[k];
+      const arr = [];
+      restaurants.forEach((r) => {
+        if (r.lat == null || r.lng == null) return;
+        const m = new naver.maps.Marker({ position: latLng(r.lat, r.lng), title: r.name, icon: starIcon('#2f9e44') });
+        naver.maps.Event.addListener(m, 'click', () => openInfo(m, restaurantCard(r)));
+        markers[r.id] = m;
+        arr.push(m);
+      });
+      markerClustering = new MarkerClustering({
+        minClusterSize: 2, maxZoom: 15, map, markers: arr,
+        disableClickZoom: false, gridSize: 120, icons: clusterIcons,
+        indexGenerator: [10, 50, 200],
+        stylingFunction: (cm, count) => { const d = cm.getElement().querySelector('div'); if (d) d.textContent = count; },
+      });
+    }
+
+    // Supabase는 요청당 1,000행 제한 → 페이지네이션으로 전체 로드
+    async function loadAllRestaurants() {
+      const all = [], size = 1000; let from = 0;
+      for (;;) {
+        const { data, error } = await sb.from('mj_restaurants').select('*').range(from, from + size - 1);
+        if (error) throw error;
+        all.push(...(data || []));
+        if (!data || data.length < size) break;
+        from += size;
+      }
+      return all;
+    }
+
+    // 네이버 검색 결과 → 추천 목록으로 복귀 (클러스터 복원)
+    function backToList() { clearSearchMarkers(); if (markerClustering) markerClustering.setMap(map); render(); }
 
     function render() {
       const q = (query || '').trim().toLowerCase();
@@ -227,21 +273,11 @@
       }).join('');
       if (!scored.length) $('rec-list').innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px 0;">검색 결과가 없어요.</div>';
 
-      // 마커 (네이버)
-      Object.values(markers).forEach((m) => m.setMap(null));
-      clearSearchMarkers();
-      const pts = [];
-      scored.forEach(({ r }) => {
-        if (r.lat == null || r.lng == null) return;
-        const m = new naver.maps.Marker({ position: latLng(r.lat, r.lng), map, title: r.name, icon: starIcon('#2f9e44') });
-        naver.maps.Event.addListener(m, 'click', () => openInfo(m, restaurantCard(r)));
-        markers[r.id] = m;
-        pts.push([Number(r.lat), Number(r.lng)]);
-      });
-      // 검색 중이면 결과 위치로 지도 이동
-      if (q && pts.length) {
-        fitToPoints(pts);
-        if (pts.length === 1) openInfo(markers[scored[0].r.id], `<b>${esc(scored[0].r.name)}</b>`);
+      // 지도 마커는 loadAll에서 클러스터링으로 한 번만 구성함(render는 리스트만 갱신).
+      // 텍스트 검색 시 결과 위치로 지도 이동.
+      if (q && scored.length && scored[0].r.lat != null) {
+        map.setCenter(latLng(scored[0].r.lat, scored[0].r.lng));
+        if (scored.length <= 5) map.setZoom(16);
       }
 
       // 리스트 클릭 → 지도 이동 / 저장
@@ -249,7 +285,7 @@
         card.addEventListener('click', (e) => {
           if (e.target.closest('.actions')) return;
           const r = restaurants.find((x) => x.id == card.dataset.id);
-          if (r && r.lat != null) { map.setCenter(latLng(r.lat, r.lng)); map.setZoom(15); if (markers[r.id]) openInfo(markers[r.id], restaurantCard(r)); }
+          if (r && r.lat != null) { map.setCenter(latLng(r.lat, r.lng)); map.setZoom(16); if (markers[r.id]) openInfo(markers[r.id], restaurantCard(r)); }
         });
       });
       $('rec-list').querySelectorAll('.save').forEach((btn) => {
@@ -275,9 +311,9 @@
         const { data: t } = await sb.from('taste_profiles').select('*').eq('user_id', user.id).maybeSingle();
         taste = t || null;
       }
-      const { data: rs, error } = await sb.from('mj_restaurants').select('*');
-      if (error) { $('banner').textContent = '맛집을 불러오지 못했어요: ' + error.message; return; }
-      restaurants = rs || [];
+      try { restaurants = await loadAllRestaurants(); }
+      catch (e) { $('banner').textContent = '맛집을 불러오지 못했어요: ' + e.message; return; }
+      buildClusters();
       render();
     }
 
@@ -310,12 +346,12 @@
     function naverPt(p) { return { lat: Number(p.mapy) / 1e7, lng: Number(p.mapx) / 1e7 }; }
 
     function renderNaver(items) {
-      Object.values(markers).forEach((m) => m.setMap(null));
+      if (markerClustering) markerClustering.setMap(null);
       clearSearchMarkers();
       const back = '<button class="kakao-back" id="s-back">← 추천 목록으로</button>';
       if (!items.length) {
         $('rec-list').innerHTML = back + '<div style="text-align:center;color:var(--muted);padding:24px 0;">네이버 검색 결과가 없어요.</div>';
-        $('s-back').addEventListener('click', render); return;
+        $('s-back').addEventListener('click', backToList); return;
       }
       $('rec-list').innerHTML = back + items.map((p, i) => {
         const name = stripB(p.title);
@@ -338,7 +374,7 @@
         searchMarkers.push(m); pts.push([lat, lng]);
       });
       fitToPoints(pts);
-      $('s-back').addEventListener('click', render);
+      $('s-back').addEventListener('click', backToList);
       $('rec-list').querySelectorAll('.rec').forEach((card) => card.addEventListener('click', (e) => {
         if (e.target.closest('.actions')) return;
         const { lat, lng } = naverPt(items[Number(card.dataset.i)]); map.setCenter(latLng(lat, lng)); map.setZoom(16);
