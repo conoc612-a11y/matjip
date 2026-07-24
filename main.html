@@ -94,6 +94,10 @@
     const map = new naver.maps.Map('map', {
       center: new naver.maps.LatLng(37.5665, 126.9780),
       zoom: 12,
+      // [Map Style] 지도 유형 전환 컨트롤(일반/위성/지형/하이브리드). 커스텀 스타일은
+      // 콘솔 Map Style Editor에서 스타일 ID를 만든 뒤 customStyleId 옵션으로 교체 가능.
+      mapTypeControl: true,
+      mapTypeControlOptions: { style: naver.maps.MapTypeControlStyle.BUTTON, position: naver.maps.Position.TOP_RIGHT },
     });
     // 공통 InfoWindow(팝업) 하나 재사용
     const infoWindow = new naver.maps.InfoWindow({ borderWidth: 1, borderColor: '#e6e8eb', anchorSize: new naver.maps.Size(0, 0) });
