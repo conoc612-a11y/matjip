@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>맛집 탐방 — 메인</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- 네이버 지도 v3 (ncpKeyId 방식). 인증은 등록된 도메인(https://conoc612-a11y.github.io)에서만 성공 -->
+  <script src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=kw4t9xfkhz"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <style>
     :root { --bg:#f4f5f7; --card:#fff; --line:#e6e8eb; --text:#1c1e21; --muted:#8a9099; --accent:#e8590c; --ok:#2f9e44; }
@@ -20,6 +20,9 @@
     .layout { display:flex; flex-wrap:wrap; }
     #map { flex:1 1 380px; height:60vh; min-height:360px; }
     .panel { flex:1 1 320px; max-height:60vh; overflow-y:auto; padding:12px 16px; }
+    .layer-toggle { display:flex; align-items:center; gap:7px; font-size:13px; color:var(--text);
+      background:#fff; border:1px solid var(--line); border-radius:8px; padding:9px 12px; margin-bottom:12px; cursor:pointer; }
+    .layer-toggle input { accent-color:var(--accent); width:16px; height:16px; }
     .banner { background:#fff4e6; border:1px solid #ffd8a8; color:#a85; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:12px; }
     .banner a { color:var(--accent); font-weight:600; }
     .search-inp { width:100%; font:inherit; padding:10px 12px; border:1px solid var(--line); border-radius:8px; margin-bottom:12px; }
@@ -55,6 +58,10 @@
   <div class="layout">
     <div id="map"></div>
     <div class="panel">
+      <label class="layer-toggle" for="cadastral-toggle">
+        <input type="checkbox" id="cadastral-toggle" />
+        🗺️ 지적편집도(용도지역·지적) 표시
+      </label>
       <input type="text" id="search" class="search-inp" placeholder="🔍 식당 이름·태그 검색" autocomplete="off" />
       <button id="kakao-btn" class="kakao-btn">🔎 카카오에서 실제 식당 검색</button>
       <div class="banner" id="banner"></div>
@@ -68,11 +75,14 @@
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     const $ = (id) => document.getElementById(id);
 
-    // ── V-World 인증키: 발급받으면 아래에 넣으세요. 비어 있으면 OSM 지도로 자동 대체 ──
-    const VWORLD_KEY = 'B2CDEEDD-D622-311B-883B-CC7890E50822';
+    // 네이버 지도 인증 실패 시(도메인 미등록/키 오류) 조용히 죽지 않고 안내 ──
+    window.navermap_authFailure = function () {
+      const b = $('banner');
+      if (b) b.innerHTML = '⚠️ 네이버 지도 인증 실패 — NCP 콘솔의 Web 서비스 URL에 <b>https://conoc612-a11y.github.io</b> 가 등록됐는지 확인해 주세요.';
+    };
 
-    // ── 카카오 실시간 장소검색 (REST API, 도메인 등록 불필요) ──
-    const KAKAO_JS_KEY = '725e7ddf965a3ffff3da1f2ac771cc57'; // developers.kakao.com 앱 > 앱키 > JavaScript 키 (Web 도메인 등록 필요). 비우면 버튼 숨김.
+    // ── 카카오 실시간 장소검색 (지도 SDK · services.Places) ──
+    const KAKAO_JS_KEY = '725e7ddf965a3ffff3da1f2ac771cc57'; // developers.kakao.com JavaScript 키. 비우면 버튼 숨김.
     let kakaoReady = false, kakaoMarkers = [];
     if (KAKAO_JS_KEY) {
       const ks = document.createElement('script');
@@ -80,51 +90,42 @@
       ks.onload = () => window.kakao && kakao.maps.load(() => { kakaoReady = true; });
       document.head.appendChild(ks);
     }
-    function clearKakaoMarkers() { kakaoMarkers.forEach((m) => map.removeLayer(m)); kakaoMarkers = []; }
+    function clearKakaoMarkers() { kakaoMarkers.forEach((m) => m.setMap(null)); kakaoMarkers = []; }
 
-    // ── 지도 초기화 (서울 중심) ──
-    const map = L.map('map').setView([37.5665, 126.9780], 12);
-    // V-World 타일 시도 → 실패(도메인 불일치 등) 시 OSM로 자동 대체 → 지도가 항상 뜸
-    (function addBaseLayer() {
-      const osm = () => L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
-      if (!VWORLD_KEY) { osm(); return; }
-      const vw = L.tileLayer(`https://api.vworld.kr/req/wmts/1.0.0/${VWORLD_KEY}/Base/{z}/{y}/{x}.png`,
-        { maxZoom: 19, attribution: '© VWorld' });
-      let fell = false;
-      vw.on('tileerror', () => { if (!fell) { fell = true; map.removeLayer(vw); osm(); } });
-      vw.addTo(map);
-    })();
+    // ── 네이버 지도 초기화 (서울 중심) ──
+    const map = new naver.maps.Map('map', {
+      center: new naver.maps.LatLng(37.5665, 126.9780),
+      zoom: 12,
+    });
+    // 공통 InfoWindow(팝업) 하나 재사용
+    const infoWindow = new naver.maps.InfoWindow({ borderWidth: 1, borderColor: '#e6e8eb', anchorSize: new naver.maps.Size(0, 0) });
+    function openInfo(marker, html) { infoWindow.setContent(`<div style="padding:7px 11px;font-size:13px;line-height:1.4;">${html}</div>`); infoWindow.open(map, marker); }
 
-    // ── [토지 레이어] V-World 국토·토지정보 오버레이 (토글) ─────────────────
-    // 근거: V-World 공개 WMS(api.vworld.kr) / 서울 토지정보 land.seoul.go.kr.
-    // 우측 상단 레이어 버튼에서 켜고 '줌인'하면 필지·용도지역이 색으로 표시됩니다.
-    // (광역 줌에서는 비어 보일 수 있음 — 지적/용도지역은 확대해야 그려짐.)
-    if (VWORLD_KEY) {
-      // 주의: STYLES는 넘기지 않는다 — Leaflet 기본값(styles:'')이 이미 있어,
-      // 중복 지정하면 'STYLES=&STYLES='가 되어 V-World가 타일을 거부한다(빈 화면 원인).
-      const wms = (layers, opacity) => L.tileLayer.wms('https://api.vworld.kr/req/wms', {
-        layers, format: 'image/png', transparent: true, version: '1.3.0', uppercase: true,
-        KEY: VWORLD_KEY, DOMAIN: location.origin,
-        opacity, attribution: '© V-World', maxZoom: 19,
-      });
-      // 레이어 코드는 V-World 공식 WMS 가이드에서 확인함(추측 아님).
-      // 일부(그린벨트·진흥지구)는 도심 중앙엔 데이터가 없어 외곽에서 보임 — 정상.
-      const landOverlays = {
-        '🗺️ 용도지역': wms('lt_c_uq111', 0.55),
-        '📐 연속지적도(필지)': wms('lp_pa_cbnd_bubun', 0.6),
-        '🌳 개발제한구역(그린벨트)': wms('lt_c_ud801', 0.5),
-        '🏗️ 개발진흥지구': wms('lt_c_uq129', 0.5),
-        '📦 사업지구경계(LH)': wms('lt_c_lhzone', 0.5),
-      };
-      L.control.layers(null, landOverlays, { collapsed: true, position: 'topright' }).addTo(map);
-    }
+    // ── [토지 레이어] 네이버 네이티브 지적편집도(CadastralLayer) 토글 ──────────
+    // 용도지역(주거/상업/공업/녹지 색상)과 지적을 네이버가 직접 렌더 → 정렬 완벽.
+    // (그린벨트·개발진흥지구 등 세부 규제 레이어는 네이버 API로는 못 얹어 제외.
+    //  필요하면 V-World 기반 Leaflet 버전으로 별도 제공 가능.)
+    const cadastral = new naver.maps.CadastralLayer();
+    $('cadastral-toggle').addEventListener('change', (e) => {
+      cadastral.setMap(e.target.checked ? map : null);
+    });
 
-    const markers = {}; // id -> marker
+    const markers = {}; // id -> naver.maps.Marker
     let restaurants = [];
     let taste = null;
     let user = null;
     let query = '';
+
+    function latLng(lat, lng) { return new naver.maps.LatLng(Number(lat), Number(lng)); }
+    // 여러 좌표에 맞춰 지도 이동 (1개면 확대, 여러 개면 영역에 맞춤)
+    function fitToPoints(pts) {
+      if (!pts.length) return;
+      if (pts.length === 1) { map.setCenter(latLng(pts[0][0], pts[0][1])); map.setZoom(16); return; }
+      const lats = pts.map((p) => p[0]), lngs = pts.map((p) => p[1]);
+      const sw = latLng(Math.min(...lats), Math.min(...lngs));
+      const ne = latLng(Math.max(...lats), Math.max(...lngs));
+      map.fitBounds(new naver.maps.LatLngBounds(sw, ne));
+    }
 
     // ── 규칙기반 추천 점수 ──
     function score(r) {
@@ -180,23 +181,29 @@
       }).join('');
       if (!scored.length) $('rec-list').innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px 0;">검색 결과가 없어요.</div>';
 
-      // 마커
-      Object.values(markers).forEach((m) => map.removeLayer(m));
+      // 마커 (네이버)
+      Object.values(markers).forEach((m) => m.setMap(null));
+      clearKakaoMarkers();
+      const pts = [];
       scored.forEach(({ r }) => {
         if (r.lat == null || r.lng == null) return;
-        const m = L.marker([r.lat, r.lng]).addTo(map).bindPopup(`<b>${esc(r.name)}</b><br>${esc(r.category || '')}`);
+        const m = new naver.maps.Marker({ position: latLng(r.lat, r.lng), map, title: r.name });
+        naver.maps.Event.addListener(m, 'click', () => openInfo(m, `<b>${esc(r.name)}</b><br>${esc(r.category || '')}`));
         markers[r.id] = m;
+        pts.push([Number(r.lat), Number(r.lng)]);
       });
       // 검색 중이면 결과 위치로 지도 이동
-      const pts = scored.map(({ r }) => (r.lat != null ? [r.lat, r.lng] : null)).filter(Boolean);
-      if (q && pts.length) { map.fitBounds(pts, { padding: [40, 40], maxZoom: 16 }); if (pts.length === 1) markers[scored[0].r.id]?.openPopup(); }
+      if (q && pts.length) {
+        fitToPoints(pts);
+        if (pts.length === 1) openInfo(markers[scored[0].r.id], `<b>${esc(scored[0].r.name)}</b>`);
+      }
 
       // 리스트 클릭 → 지도 이동 / 저장
       $('rec-list').querySelectorAll('.rec').forEach((card) => {
         card.addEventListener('click', (e) => {
           if (e.target.closest('.actions')) return;
           const r = restaurants.find((x) => x.id == card.dataset.id);
-          if (r && r.lat != null) { map.setView([r.lat, r.lng], 15); markers[r.id]?.openPopup(); }
+          if (r && r.lat != null) { map.setCenter(latLng(r.lat, r.lng)); map.setZoom(15); if (markers[r.id]) openInfo(markers[r.id], `<b>${esc(r.name)}</b><br>${esc(r.category || '')}`); }
         });
       });
       $('rec-list').querySelectorAll('.save').forEach((btn) => {
@@ -231,7 +238,7 @@
     $('logout').addEventListener('click', async () => { await sb.auth.signOut(); location.href = 'index.html'; });
     $('search').addEventListener('input', (e) => { query = e.target.value; render(); });
 
-    // ── 카카오 검색 (지도 SDK · services.Places) ──
+    // ── 카카오 검색 ──
     if (!KAKAO_JS_KEY) $('kakao-btn').style.display = 'none';
     $('kakao-btn').addEventListener('click', runKakaoSearch);
 
@@ -250,7 +257,7 @@
     }
 
     function renderKakao(data) {
-      Object.values(markers).forEach((m) => map.removeLayer(m));
+      Object.values(markers).forEach((m) => m.setMap(null));
       clearKakaoMarkers();
       const back = '<button class="kakao-back" id="kakao-back">← 추천 목록으로</button>';
       if (!data.length) {
@@ -268,14 +275,15 @@
         </div>`).join('');
       const pts = [];
       data.forEach((p) => {
-        const m = L.marker([Number(p.y), Number(p.x)]).addTo(map).bindPopup(`<b>${esc(p.place_name)}</b>`);
+        const m = new naver.maps.Marker({ position: latLng(p.y, p.x), map, title: p.place_name });
+        naver.maps.Event.addListener(m, 'click', () => openInfo(m, `<b>${esc(p.place_name)}</b>`));
         kakaoMarkers.push(m); pts.push([Number(p.y), Number(p.x)]);
       });
-      if (pts.length) map.fitBounds(pts, { padding: [40, 40], maxZoom: 16 });
+      fitToPoints(pts);
       $('kakao-back').addEventListener('click', render);
       $('rec-list').querySelectorAll('.rec').forEach((card) => card.addEventListener('click', (e) => {
         if (e.target.closest('.actions')) return;
-        const p = data[Number(card.dataset.i)]; map.setView([Number(p.y), Number(p.x)], 16);
+        const p = data[Number(card.dataset.i)]; map.setCenter(latLng(p.y, p.x)); map.setZoom(16);
       }));
       $('rec-list').querySelectorAll('.ksave').forEach((btn) => btn.addEventListener('click', (e) => {
         e.stopPropagation(); saveKakaoPlace(data[Number(btn.dataset.i)], btn);
