@@ -20,6 +20,15 @@
     header h1 { font-size:18px; margin:0; }
     header .right { font-size:13px; color:var(--muted); display:flex; gap:10px; align-items:center; }
     header a, header button { color:var(--accent); background:none; border:none; cursor:pointer; font:inherit; text-decoration:none; }
+    .nav-tab { color:var(--muted); padding:6px 10px; border-radius:7px; text-decoration:none; }
+    .nav-tab:hover { background:#f1f3f5; }
+    .nav-tab.active { background:var(--accent); color:#fff; }
+    .ac-wrap { position:relative; }
+    .ac { position:absolute; left:0; right:0; top:100%; background:#fff; border:1px solid var(--accent); border-top:none; border-radius:0 0 8px 8px; z-index:1500; max-height:240px; overflow-y:auto; display:none; box-shadow:0 4px 10px rgba(0,0,0,.08); }
+    .ac.on { display:block; }
+    .ac-item { padding:8px 12px; font-size:13px; cursor:pointer; display:flex; gap:8px; align-items:center; }
+    .ac-item:hover { background:#f1f3f5; }
+    .ac-item .t { margin-left:auto; color:var(--muted); font-size:11px; }
     .layout { display:flex; flex-wrap:wrap; }
     #map { flex:1 1 380px; height:60vh; min-height:360px; }
     .panel { flex:1 1 320px; max-height:60vh; overflow-y:auto; padding:12px 16px; }
@@ -49,9 +58,10 @@
     <a href="main.html" style="text-decoration:none;color:inherit;"><h1 style="cursor:pointer;">토지·규제 지도 🗺️</h1></a>
     <div class="right">
       <span id="who"></span>
-      <a href="main.html">🍜 맛집 지도</a>
-      <a href="ai.html">🤖 AI 추천</a>
-      <a href="onboarding.html" id="taste-link">취향 설정</a>
+      <a href="main.html" class="nav-tab">🍜 맛집</a>
+      <a href="land.html" class="nav-tab active">🗺️ 토지·규제</a>
+      <a href="ai.html" class="nav-tab">🤖 AI추천</a>
+      <a href="onboarding.html" id="taste-link" class="nav-tab">취향</a>
       <button id="logout" style="display:none;">로그아웃</button>
     </div>
   </header>
@@ -59,7 +69,10 @@
   <div class="layout">
     <div id="map"></div>
     <div class="panel">
-      <input type="text" id="search" class="search-inp" placeholder="🔍 식당·태그 검색 · 주소·지명은 Enter로 이동" autocomplete="off" />
+      <div class="ac-wrap">
+        <input type="text" id="search" class="search-inp" placeholder="🔍 식당·태그 검색 · 주소·지명은 Enter로 이동" autocomplete="off" />
+        <div id="ac" class="ac"></div>
+      </div>
       <button id="kakao-btn" class="kakao-btn">🔎 카카오에서 실제 식당 검색</button>
       <div class="banner" id="banner"></div>
       <div id="rec-list"></div>
@@ -321,8 +334,23 @@
     }
 
     $('logout').addEventListener('click', async () => { await sb.auth.signOut(); location.href = 'index.html'; });
-    $('search').addEventListener('input', (e) => { query = e.target.value; render(); });
-    $('search').addEventListener('keydown', (e) => { if (e.key === 'Enter') vworldSearch($('search').value.trim(), 'place'); });
+    $('search').addEventListener('input', (e) => { query = e.target.value; render(); renderAC(); });
+    $('search').addEventListener('keydown', (e) => { if (e.key === 'Enter') { $('ac').className = 'ac'; vworldSearch($('search').value.trim(), 'place'); } });
+    $('search').addEventListener('blur', () => setTimeout(() => { $('ac').className = 'ac'; }, 150));
+    function renderAC() {
+      const raw = $('search').value.trim(), q = raw.toLowerCase(), ac = $('ac');
+      if (!q) { ac.className = 'ac'; ac.innerHTML = ''; return; }
+      const rs = restaurants.filter((r) => `${r.name} ${(r.tags || []).join(' ')}`.toLowerCase().includes(q)).slice(0, 6);
+      ac.innerHTML = rs.map((r) => `<div class="ac-item" data-id="${r.id}"><span>🍜</span>${esc(r.name)}<span class="t">식당</span></div>`).join('')
+        + `<div class="ac-item" data-place="1"><span>📍</span>'${esc(raw)}' 위치로 이동<span class="t">지명</span></div>`;
+      ac.className = 'ac on';
+      ac.querySelectorAll('.ac-item').forEach((it) => it.addEventListener('mousedown', (ev) => {
+        ev.preventDefault();
+        if (it.dataset.place) { vworldSearch(raw, 'place'); }
+        else { const r = restaurants.find((x) => x.id == it.dataset.id); if (r && r.lat != null) map.setView([r.lat, r.lng], 16); $('search').value = r ? r.name : raw; query = $('search').value; render(); }
+        ac.className = 'ac';
+      }));
+    }
 
     // ── 카카오 검색 (지도 SDK · services.Places) ──
     if (!KAKAO_JS_KEY) $('kakao-btn').style.display = 'none';
