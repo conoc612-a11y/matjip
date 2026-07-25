@@ -59,11 +59,7 @@
   <div class="layout">
     <div id="map"></div>
     <div class="panel">
-      <div style="display:flex;gap:6px;margin-bottom:12px;">
-        <input type="text" id="vsearch" class="search-inp" style="margin-bottom:0;" placeholder="📍 주소·지명 검색 (예: 강남역, 서초구청)" autocomplete="off" />
-        <button id="vsearch-btn" class="kakao-btn" style="width:auto;margin-bottom:0;white-space:nowrap;">이동</button>
-      </div>
-      <input type="text" id="search" class="search-inp" placeholder="🔍 식당 이름·태그 검색" autocomplete="off" />
+      <input type="text" id="search" class="search-inp" placeholder="🔍 식당·태그 검색 · 주소·지명은 Enter로 이동" autocomplete="off" />
       <button id="kakao-btn" class="kakao-btn">🔎 카카오에서 실제 식당 검색</button>
       <div class="banner" id="banner"></div>
       <div id="rec-list"></div>
@@ -182,8 +178,7 @@
       s.onerror = clean;
       document.head.appendChild(s);
     }
-    $('vsearch-btn').addEventListener('click', () => vworldSearch($('vsearch').value.trim(), 'place'));
-    $('vsearch').addEventListener('keydown', (e) => { if (e.key === 'Enter') vworldSearch($('vsearch').value.trim(), 'place'); });
+    // 검색 통합: 식당 필터는 #search 입력, 주소·지명 이동은 #search Enter로 처리(아래 참조).
 
     const markers = {}; // id -> marker
     let restaurants = [];
@@ -295,6 +290,7 @@
 
     $('logout').addEventListener('click', async () => { await sb.auth.signOut(); location.href = 'index.html'; });
     $('search').addEventListener('input', (e) => { query = e.target.value; render(); });
+    $('search').addEventListener('keydown', (e) => { if (e.key === 'Enter') vworldSearch($('search').value.trim(), 'place'); });
 
     // ── 카카오 검색 (지도 SDK · services.Places) ──
     if (!KAKAO_JS_KEY) $('kakao-btn').style.display = 'none';
