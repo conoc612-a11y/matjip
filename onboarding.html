@@ -40,10 +40,18 @@
     .hidden { display:none; }
     .done-box { text-align:center; padding:8px 0; }
     .done-box .big { font-size:40px; }
+    .nav-tab { color:var(--muted); padding:6px 10px; border-radius:7px; text-decoration:none; font-size:14px; }
+    .nav-tab:hover { background:#f1f3f5; }
+    .nav-tab.active { background:var(--accent); color:#fff; }
   </style>
 </head>
 <body>
   <div class="app">
+    <div style="display:flex;gap:6px;margin-bottom:18px;">
+      <a href="main.html" class="nav-tab">🍜 맛집</a>
+      <a href="land.html" class="nav-tab">🏙️ 부동산</a>
+      <span class="nav-tab active">👤 내 정보</span>
+    </div>
 
     <!-- (A) 로그인/회원가입 -->
     <div id="auth-view">
