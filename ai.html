@@ -13,6 +13,9 @@
       display:flex; justify-content:center; padding:32px 16px; }
     .app { width:100%; max-width:560px; }
     header a { color:var(--accent); text-decoration:none; font-size:14px; }
+    .nav-tab { color:var(--muted); padding:6px 10px; border-radius:7px; text-decoration:none; font-size:14px; }
+    .nav-tab:hover { background:#f1f3f5; }
+    .nav-tab.active { background:var(--accent); color:#fff; }
     h1 { font-size:22px; margin:8px 0 4px; }
     .sub { color:var(--muted); font-size:13px; margin:0 0 18px; }
     .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:14px; }
@@ -32,7 +35,11 @@
 </head>
 <body>
   <div class="app">
-    <header><a href="main.html">← 메인으로</a></header>
+    <header style="display:flex;gap:6px;margin-bottom:14px;">
+      <a href="main.html" class="nav-tab active">🍜 맛집</a>
+      <a href="land.html" class="nav-tab">🏙️ 부동산</a>
+      <a href="onboarding.html" class="nav-tab">👤 내 정보</a>
+    </header>
     <h1>🤖 자연어로 맛집 찾기</h1>
     <p class="sub">"오늘 뭐 먹고 싶어?"를 문장으로 적으면 취향을 해석해 추천해 드려요.</p>
 
