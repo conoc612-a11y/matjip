@@ -127,21 +127,53 @@
       });
       fetch('toji_heoga.geojson').then((r) => r.json()).then((gj) => tojiLayer.addData(gj)).catch(() => {});
 
-      // 아파트 실거래가·노후도 (서울+경기 9천여 단지, 건축년도 색상, 클러스터링, 처음 켤 때 로드)
+      // ── 아파트 실거래가·노후도 (서울+경기 9천여 단지) : 필터 + 범례 + 카드 팝업 ──
       const ageColor = (b) => { const y = parseInt(b) || 0; return !y ? '#868e96' : y >= 2015 ? '#2f9e44' : y >= 2005 ? '#94d82d' : y >= 1995 ? '#fab005' : y >= 1985 ? '#fd7e14' : '#e03131'; };
       const realpriceCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 60 });
-      let rpLoaded = false;
+      let rpRows = null;
+      const rpFilter = { price: 'all', age: 'all' };
+      const inPrice = (p) => { if (rpFilter.price === 'all') return true; if (p == null) return false; const v = Number(p); return rpFilter.price === 'u10' ? v < 10 : rpFilter.price === '10_20' ? (v >= 10 && v < 20) : rpFilter.price === '20_30' ? (v >= 20 && v < 30) : v >= 30; };
+      const inAge = (b) => { if (rpFilter.age === 'all') return true; const y = parseInt(b) || 0; return rpFilter.age === 'new' ? y >= 2015 : rpFilter.age === 'mid' ? (y >= 2000 && y < 2015) : (y > 0 && y < 2000); };
+      function rpBuild() {
+        if (!rpRows) return;
+        realpriceCluster.clearLayers();
+        realpriceCluster.addLayers(rpRows.filter((d) => inPrice(d.priceEok) && inAge(d.build)).map((d) => {
+          const m = L.circleMarker([d.lat, d.lng], { radius: 5, color: '#fff', weight: 1, fillColor: ageColor(d.build), fillOpacity: 0.9 });
+          m.bindTooltip(d.priceEok == null ? d.name : d.priceEok + '억', { direction: 'top' });
+          m.bindPopup(`<div style="min-width:180px;"><div style="font-weight:700;font-size:14px;">${d.name}</div><div style="font-size:12px;color:#8a9099;margin:2px 0 6px;">${d.gu} ${d.dong}</div><div style="font-size:15px;font-weight:700;color:#e8590c;">💰 실거래가 ${d.priceEok == null ? '-' : d.priceEok + '억'}</div><div style="font-size:12px;margin-top:3px;">${d.area}㎡ · ${d.floor}층 · 거래 ${d.ymd}</div><div style="font-size:12px;margin-top:4px;"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};margin-right:5px;"></span>🏗️ ${d.build || '?'}년 건축</div></div>`);
+          return m;
+        }));
+      }
+      const rpFilterCtrl = L.control({ position: 'topleft' });
+      rpFilterCtrl.onAdd = () => {
+        const div = L.DomUtil.create('div');
+        div.style.cssText = 'background:#fff;padding:8px 10px;border-radius:8px;box-shadow:0 1px 5px rgba(0,0,0,.2);font-size:12px;';
+        div.innerHTML = '<div style="font-weight:700;margin-bottom:5px;">🏢 실거래가 필터</div>'
+          + '<label style="display:block;margin-bottom:4px;">실거래가 <select id="rp-price" style="font:inherit;font-size:12px;"><option value="all">전체</option><option value="u10">10억 이하</option><option value="10_20">10~20억</option><option value="20_30">20~30억</option><option value="o30">30억+</option></select></label>'
+          + '<label style="display:block;">건축년도 <select id="rp-age" style="font:inherit;font-size:12px;"><option value="all">전체</option><option value="new">2015~ 신축</option><option value="mid">2000~2014</option><option value="old">2000 이전</option></select></label>';
+        L.DomEvent.disableClickPropagation(div);
+        return div;
+      };
+      const rpLegend = L.control({ position: 'bottomright' });
+      rpLegend.onAdd = () => {
+        const div = L.DomUtil.create('div');
+        div.style.cssText = 'background:rgba(255,255,255,.94);padding:8px 10px;border-radius:8px;box-shadow:0 1px 5px rgba(0,0,0,.15);font-size:11px;line-height:1.6;';
+        const row = (c, t) => `<div><span style="display:inline-block;width:10px;height:10px;background:${c};border-radius:50%;margin-right:5px;"></span>${t}</div>`;
+        div.innerHTML = '<div style="font-weight:700;margin-bottom:3px;">건축년도(노후도)</div>' + row('#2f9e44', '신축 2015~') + row('#94d82d', '2005~') + row('#fab005', '1995~') + row('#fd7e14', '1985~') + row('#e03131', '노후 ~1985');
+        return div;
+      };
       map.on('overlayadd', (e) => {
-        if (e.layer !== realpriceCluster || rpLoaded) return;
-        rpLoaded = true;
-        fetch('realprice_seoul_gg.json').then((r) => r.json()).then((rows) => {
-          realpriceCluster.addLayers(rows.map((d) => {
-            const m = L.circleMarker([d.lat, d.lng], { radius: 5, color: '#fff', weight: 1, fillColor: ageColor(d.build), fillOpacity: 0.9 });
-            m.bindPopup(`<b>${d.name}</b><br>${d.gu} ${d.dong}<br>💰 ${d.priceEok == null ? '-' : d.priceEok + '억'} · ${d.area}㎡ · ${d.floor}층<br>🏗️ ${d.build || '?'}년 건축 · 거래 ${d.ymd}`);
-            return m;
-          }));
-        }).catch(() => {});
+        if (e.layer !== realpriceCluster) return;
+        rpFilterCtrl.addTo(map); rpLegend.addTo(map);
+        setTimeout(() => {
+          const ps = document.getElementById('rp-price'), ag = document.getElementById('rp-age');
+          if (ps && !ps._w) { ps._w = 1; ps.value = rpFilter.price; ps.addEventListener('change', () => { rpFilter.price = ps.value; rpBuild(); }); }
+          if (ag && !ag._w) { ag._w = 1; ag.value = rpFilter.age; ag.addEventListener('change', () => { rpFilter.age = ag.value; rpBuild(); }); }
+        }, 60);
+        if (rpRows) return;
+        fetch('realprice_seoul_gg.json').then((r) => r.json()).then((rows) => { rpRows = rows; rpBuild(); }).catch(() => {});
       });
+      map.on('overlayremove', (e) => { if (e.layer === realpriceCluster) { map.removeControl(rpFilterCtrl); map.removeControl(rpLegend); } });
 
       const landOverlays = {
         '🏢 아파트 실거래가·노후도': realpriceCluster,
