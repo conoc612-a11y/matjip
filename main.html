@@ -31,6 +31,12 @@
     .banner a { color:var(--accent); font-weight:600; }
     .search-inp { width:100%; font:inherit; padding:10px 12px; border:1px solid var(--line); border-radius:8px; margin-bottom:12px; }
     .search-inp:focus { outline:2px solid var(--accent); border-color:var(--accent); }
+    .ac-wrap { position:relative; }
+    .ac { position:absolute; left:0; right:0; top:100%; background:#fff; border:1px solid var(--accent); border-top:none; border-radius:0 0 8px 8px; z-index:1500; max-height:240px; overflow-y:auto; display:none; box-shadow:0 4px 10px rgba(0,0,0,.08); }
+    .ac.on { display:block; }
+    .ac-item { padding:8px 12px; font-size:13px; cursor:pointer; display:flex; gap:8px; align-items:center; }
+    .ac-item:hover { background:#f1f3f5; }
+    .ac-item .t { margin-left:auto; color:var(--muted); font-size:11px; }
     .toolbar { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; }
     .tool-btn { font:inherit; font-size:12px; padding:6px 9px; border:1px solid var(--line); background:#fff; color:var(--text); border-radius:7px; cursor:pointer; }
     .tool-btn:hover { border-color:var(--accent); color:var(--accent); }
@@ -75,7 +81,10 @@
         <button id="tool-share" class="tool-btn">🔗 공유</button>
         <button id="tool-clear" class="tool-btn" style="display:none;">✖ 지우기</button>
       </div>
-      <input type="text" id="search" class="search-inp" placeholder="🔍 식당·태그 검색 · Enter로 네이버 검색" autocomplete="off" />
+      <div class="ac-wrap">
+        <input type="text" id="search" class="search-inp" placeholder="🔍 식당·태그 검색 · Enter로 네이버 검색" autocomplete="off" />
+        <div id="ac" class="ac"></div>
+      </div>
       <button id="geo-btn" class="kakao-btn">📍 내 위치에서 찾기</button>
       <div class="banner" id="banner"></div>
       <div id="rec-list"></div>
@@ -401,7 +410,22 @@
     }
 
     $('logout').addEventListener('click', async () => { await sb.auth.signOut(); location.href = 'index.html'; });
-    $('search').addEventListener('input', (e) => { query = e.target.value; render(); });
+    $('search').addEventListener('input', (e) => { query = e.target.value; render(); renderAC(); });
+    $('search').addEventListener('blur', () => setTimeout(() => { $('ac').className = 'ac'; }, 150));
+    function renderAC() {
+      const raw = $('search').value.trim(), q = raw.toLowerCase(), ac = $('ac');
+      if (!q) { ac.className = 'ac'; ac.innerHTML = ''; return; }
+      const rs = restaurants.filter((r) => `${r.name} ${(r.tags || []).join(' ')}`.toLowerCase().includes(q)).slice(0, 6);
+      ac.innerHTML = rs.map((r) => `<div class="ac-item" data-id="${r.id}"><span>🍜</span>${esc(r.name)}<span class="t">식당</span></div>`).join('')
+        + `<div class="ac-item" data-search="1"><span>🔎</span>'${esc(raw)}' 네이버 검색<span class="t">검색</span></div>`;
+      ac.className = 'ac on';
+      ac.querySelectorAll('.ac-item').forEach((it) => it.addEventListener('mousedown', (ev) => {
+        ev.preventDefault();
+        if (it.dataset.search) { runNaverSearch(); }
+        else { const r = restaurants.find((x) => x.id == it.dataset.id); if (r && r.lat != null) { map.setCenter(latLng(r.lat, r.lng)); map.setZoom(16); if (markers[r.id]) openInfo(markers[r.id], restaurantCard(r)); } $('search').value = r ? r.name : raw; query = $('search').value; render(); }
+        ac.className = 'ac';
+      }));
+    }
 
     // ── 네이버 실시간 검색 (프록시 경유) ──
     // 검색 통합: 입력=식당 필터(render), Enter=네이버 실시간 검색
