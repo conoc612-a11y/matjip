@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>맛집 탐방 — 토지·규제 지도</title>
+  <title>맛집 탐방 — 부동산 지도</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
@@ -23,6 +23,11 @@
     .nav-tab { color:var(--muted); padding:6px 10px; border-radius:7px; text-decoration:none; }
     .nav-tab:hover { background:#f1f3f5; }
     .nav-tab.active { background:var(--accent); color:#fff; }
+    .profile { position:relative; }
+    .profile-menu { position:absolute; right:0; top:calc(100% + 6px); background:#fff; border:1px solid var(--line); border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,.12); min-width:170px; display:none; z-index:2000; overflow:hidden; }
+    .profile-menu.on { display:block; }
+    .profile-menu a, .profile-menu button { display:block; width:100%; text-align:left; padding:9px 12px; font:inherit; font-size:13px; color:var(--text); background:none; border:none; border-bottom:1px solid #f1f3f5; cursor:pointer; text-decoration:none; }
+    .profile-menu a:hover, .profile-menu button:hover { background:#f1f3f5; }
     .ac-wrap { position:relative; }
     .ac { position:absolute; left:0; right:0; top:100%; background:#fff; border:1px solid var(--accent); border-top:none; border-radius:0 0 8px 8px; z-index:1500; max-height:240px; overflow-y:auto; display:none; box-shadow:0 4px 10px rgba(0,0,0,.08); }
     .ac.on { display:block; }
@@ -55,14 +60,18 @@
 </head>
 <body>
   <header>
-    <a href="main.html" style="text-decoration:none;color:inherit;"><h1 style="cursor:pointer;">토지·규제 지도 🗺️</h1></a>
+    <a href="land.html" style="text-decoration:none;color:inherit;"><h1 style="cursor:pointer;">부동산 지도 🏙️</h1></a>
     <div class="right">
-      <span id="who"></span>
       <a href="main.html" class="nav-tab">🍜 맛집</a>
-      <a href="land.html" class="nav-tab active">🗺️ 토지·규제</a>
-      <a href="ai.html" class="nav-tab">🤖 AI추천</a>
-      <a href="onboarding.html" id="taste-link" class="nav-tab">취향</a>
-      <button id="logout" style="display:none;">로그아웃</button>
+      <a href="land.html" class="nav-tab active">🏙️ 부동산</a>
+      <div class="profile">
+        <button id="profile-btn" class="nav-tab">👤 내 정보 ▾</button>
+        <div id="profile-menu" class="profile-menu">
+          <a href="#" id="who" style="color:var(--muted);font-size:11px;pointer-events:none;">로그인 안 됨</a>
+          <a href="onboarding.html">⚙️ 취향 설정</a>
+          <button id="logout" style="display:none;">🚪 로그아웃</button>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -190,12 +199,12 @@
 
       const landOverlays = {
         '🏢 아파트 실거래가·노후도': realpriceCluster,
-        '🚫 토지거래허가구역(동 근사)': tojiLayer,
+        '🚫 토지거래허가구역': tojiLayer,
         '🗺️ 용도지역': wms('lt_c_uq111', 0.55),
-        '📐 연속지적도(필지)': wms('lp_pa_cbnd_bubun', 0.6),
+        '📐 지적도(필지 경계)': wms('lp_pa_cbnd_bubun', 0.6),
         '🌳 개발제한구역(그린벨트)': wms('lt_c_ud801', 0.5),
         '🏗️ 개발진흥지구': wms('lt_c_uq129', 0.5),
-        '📦 사업지구경계(LH)': wms('lt_c_lhzone', 0.5),
+        '📦 택지·사업지구': wms('lt_c_lhzone', 0.5),
       };
       L.control.layers(baseLayers, landOverlays, { collapsed: true, position: 'topright' }).addTo(map);
     }
@@ -334,6 +343,8 @@
     }
 
     $('logout').addEventListener('click', async () => { await sb.auth.signOut(); location.href = 'index.html'; });
+    $('profile-btn').addEventListener('click', (e) => { e.stopPropagation(); $('profile-menu').classList.toggle('on'); });
+    document.addEventListener('click', () => $('profile-menu').classList.remove('on'));
     $('search').addEventListener('input', (e) => { query = e.target.value; render(); renderAC(); });
     $('search').addEventListener('keydown', (e) => { if (e.key === 'Enter') { $('ac').className = 'ac'; vworldSearch($('search').value.trim(), 'place'); } });
     $('search').addEventListener('blur', () => setTimeout(() => { $('ac').className = 'ac'; }, 150));
