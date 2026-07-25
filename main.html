@@ -71,9 +71,8 @@
         <button id="tool-share" class="tool-btn">🔗 공유</button>
         <button id="tool-clear" class="tool-btn" style="display:none;">✖ 지우기</button>
       </div>
-      <input type="text" id="search" class="search-inp" placeholder="🔍 식당 이름·태그 검색" autocomplete="off" />
+      <input type="text" id="search" class="search-inp" placeholder="🔍 식당·태그 검색 · Enter로 네이버 검색" autocomplete="off" />
       <button id="geo-btn" class="kakao-btn">📍 내 위치에서 찾기</button>
-      <button id="search-btn" class="kakao-btn">🔎 네이버로 검색</button>
       <div class="banner" id="banner"></div>
       <div id="rec-list"></div>
     </div>
@@ -401,14 +400,13 @@
     $('search').addEventListener('input', (e) => { query = e.target.value; render(); });
 
     // ── 네이버 실시간 검색 (프록시 경유) ──
-    $('search-btn').addEventListener('click', runNaverSearch);
+    // 검색 통합: 입력=식당 필터(render), Enter=네이버 실시간 검색
     $('search').addEventListener('keydown', (e) => { if (e.key === 'Enter') runNaverSearch(); });
 
     async function runNaverSearch() {
       const q = $('search').value.trim();
       if (!q) { alert('검색어를 입력해 주세요.'); return; }
-      $('search-btn').disabled = true;
-      $('search-btn').textContent = '검색 중…';
+      $('banner').textContent = '🔎 네이버 검색 중…';
       try {
         const r = await fetch(`${NAVER_SEARCH_FN}?query=${encodeURIComponent(q)}`, {
           headers: { Authorization: 'Bearer ' + SUPABASE_KEY },
@@ -417,9 +415,6 @@
         renderNaver(j.items || []);
       } catch (e) {
         alert('검색에 실패했어요: ' + e);
-      } finally {
-        $('search-btn').disabled = false;
-        $('search-btn').textContent = '🔎 네이버로 검색';
       }
     }
 
