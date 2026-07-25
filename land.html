@@ -6,6 +6,9 @@
   <title>맛집 탐방 — 토지·규제 지도</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <style>
     :root { --bg:#f4f5f7; --card:#fff; --line:#e6e8eb; --text:#1c1e21; --muted:#8a9099; --accent:#e8590c; --ok:#2f9e44; }
@@ -127,7 +130,25 @@
         onEachFeature: (f, layer) => layer.bindTooltip(`🚫 토지거래허가구역 · ${f.properties.name}`, { sticky: true }),
       });
       fetch('toji_heoga.geojson').then((r) => r.json()).then((gj) => tojiLayer.addData(gj)).catch(() => {});
+
+      // 아파트 실거래가·노후도 (서울+경기 9천여 단지, 건축년도 색상, 클러스터링, 처음 켤 때 로드)
+      const ageColor = (b) => { const y = parseInt(b) || 0; return !y ? '#868e96' : y >= 2015 ? '#2f9e44' : y >= 2005 ? '#94d82d' : y >= 1995 ? '#fab005' : y >= 1985 ? '#fd7e14' : '#e03131'; };
+      const realpriceCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 60 });
+      let rpLoaded = false;
+      map.on('overlayadd', (e) => {
+        if (e.layer !== realpriceCluster || rpLoaded) return;
+        rpLoaded = true;
+        fetch('realprice_seoul_gg.json').then((r) => r.json()).then((rows) => {
+          realpriceCluster.addLayers(rows.map((d) => {
+            const m = L.circleMarker([d.lat, d.lng], { radius: 5, color: '#fff', weight: 1, fillColor: ageColor(d.build), fillOpacity: 0.9 });
+            m.bindPopup(`<b>${d.name}</b><br>${d.gu} ${d.dong}<br>💰 ${d.priceEok == null ? '-' : d.priceEok + '억'} · ${d.area}㎡ · ${d.floor}층<br>🏗️ ${d.build || '?'}년 건축 · 거래 ${d.ymd}`);
+            return m;
+          }));
+        }).catch(() => {});
+      });
+
       const landOverlays = {
+        '🏢 아파트 실거래가·노후도': realpriceCluster,
         '🚫 토지거래허가구역(동 근사)': tojiLayer,
         '🗺️ 용도지역': wms('lt_c_uq111', 0.55),
         '📐 연속지적도(필지)': wms('lp_pa_cbnd_bubun', 0.6),
