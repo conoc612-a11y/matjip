@@ -79,11 +79,17 @@
     <div id="map"></div>
     <div class="panel">
       <div class="ac-wrap">
-        <input type="text" id="search" class="search-inp" placeholder="🔍 식당·태그 검색 · 주소·지명은 Enter로 이동" autocomplete="off" />
+        <input type="text" id="search" class="search-inp" placeholder="🔍 주소·지명 검색 (Enter로 이동)" autocomplete="off" />
         <div id="ac" class="ac"></div>
       </div>
-      <button id="kakao-btn" class="kakao-btn">🔎 카카오에서 실제 식당 검색</button>
+      <button id="kakao-btn" class="kakao-btn" style="display:none;">🔎 카카오에서 실제 식당 검색</button>
+      <div style="background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.6;margin-bottom:12px;">
+        <b>🏙️ 부동산 지도 이용법</b><br>
+        우측 상단 <b>레이어</b>에서 <b>🏢 아파트 실거래가·노후도</b>·용도지역·토지거래허가구역 등을 켜세요.<br>
+        마커 클릭 → 실거래가·건축년도, 좌상단에서 <b>실거래가·건축년도 필터</b>를 쓸 수 있어요.
+      </div>
       <div class="banner" id="banner"></div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px;">🍜 이 지역 맛집 (참고)</div>
       <div id="rec-list"></div>
     </div>
   </div>
