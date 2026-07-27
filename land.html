@@ -191,6 +191,8 @@
     // 기본(일반지도) 타일 실패 시 OSM 자동 대체
     if (VWORLD_KEY) { let fell = false; defaultBase.on('tileerror', () => { if (!fell) { fell = true; map.removeLayer(defaultBase); osmBase.addTo(map); } }); }
 
+    let rpRows = null;  // 실거래가 원본 (실거래가 레이어 켜면 로드됨) — 지도 클릭 정보/근처 실거래에서 참조. VWORLD 블록보다 먼저 선언(TDZ 방지)
+
     // ── [토지 레이어] V-World 국토·토지정보 오버레이 (토글) ─────────────────
     // 근거: V-World 공개 WMS(api.vworld.kr) / 서울 토지정보 land.seoul.go.kr.
     // 우측 상단 레이어 버튼에서 켜고 '줌인'하면 필지·용도지역이 색으로 표시됩니다.
@@ -325,7 +327,6 @@
     let taste = null;
     let user = null;
     let query = '';
-    let rpRows = null;  // 실거래가 원본 (실거래가 레이어 켜면 로드됨) — 지도 클릭 정보에서 참조
 
     // ── V-World 역지오코딩 (좌표→주소, JSONP CORS 회피) ──
     function reverseGeocode(lat, lng, cb) {
