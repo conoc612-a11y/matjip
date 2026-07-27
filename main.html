@@ -170,6 +170,10 @@
           <a href="detail.html?id=${r.id}" style="flex:1;text-align:center;font-size:12px;padding:7px 0;border-radius:6px;background:#e8590c;color:#fff;text-decoration:none;">상세·길찾기</a>
           <a href="https://map.naver.com/p/search/${nq}" target="_blank" rel="noopener" style="flex:1;text-align:center;font-size:12px;padding:7px 0;border-radius:6px;border:1px solid #e6e8eb;color:#1c1e21;text-decoration:none;">네이버지도</a>
         </div>
+        ${r.lat != null ? `<div style="display:flex;gap:6px;margin-top:6px;">
+          <button onclick="setRoutePt('s',${r.lat},${r.lng})" style="flex:1;font:inherit;font-size:12px;padding:6px 0;border:1px solid #2f9e44;color:#2f9e44;background:#fff;border-radius:6px;cursor:pointer;">🚩 출발</button>
+          <button onclick="setRoutePt('e',${r.lat},${r.lng})" style="flex:1;font:inherit;font-size:12px;padding:6px 0;border:1px solid #e03131;color:#e03131;background:#fff;border-radius:6px;cursor:pointer;">🏁 도착</button>
+        </div>` : ''}
       </div>`;
     }
 
@@ -194,30 +198,53 @@
         openInfo(coord, `${label}<br><b>${esc(addr)}</b><div style="margin-top:7px;display:flex;gap:6px;"><button onclick="setRoutePt('s',${la},${lo})" style="font:inherit;font-size:12px;padding:5px 10px;border:1px solid #2f9e44;color:#2f9e44;background:#fff;border-radius:6px;cursor:pointer;">🚩 출발</button><button onclick="setRoutePt('e',${la},${lo})" style="font:inherit;font-size:12px;padding:5px 10px;border:1px solid #e03131;color:#e03131;background:#fff;border-radius:6px;cursor:pointer;">🏁 도착</button></div>`);
       });
     }
-    // ── 지도 클릭 출발/도착 → 대중교통 경로(ODsay) ──
-    let rStart = null, rEnd = null, rStartMk = null, rEndMk = null, rLine = null;
+    // ── 출발/도착 길찾기 → 도보·자차(OSRM) / 대중교통(ODsay) ──
+    let rStart = null, rEnd = null, rStartMk = null, rEndMk = null, rLine = null, rMode = 'transit';
     function rMarker(la, lo, color, label) {
       return new naver.maps.Marker({ position: latLng(la, lo), map, icon: { content: `<div style="background:${color};color:#fff;font-size:11px;font-weight:700;padding:3px 8px;border-radius:11px;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.35);white-space:nowrap;">${label}</div>`, anchor: new naver.maps.Point(24, 13) } });
     }
+    function modeBar() {
+      const label = { walk: '🚶도보', transit: '🚌대중교통', car: '🚗자차' };
+      return ' <span style="display:inline-flex;gap:4px;margin:0 4px;">' + ['walk', 'transit', 'car'].map((m) =>
+        `<a href="#" onclick="setRouteMode('${m}');return false;" style="padding:2px 7px;border-radius:10px;text-decoration:none;border:1px solid ${rMode === m ? '#e8590c' : '#ddd'};background:${rMode === m ? '#e8590c' : '#fff'};color:${rMode === m ? '#fff' : '#555'};">${label[m]}</a>`).join('') + '</span>';
+    }
+    const clrLink = ' <a href="#" onclick="clearRoute();return false;">✖ 초기화</a>';
+    function pathBounds(path) { const la = path.map((p) => p.lat()), lo = path.map((p) => p.lng()); return new naver.maps.LatLngBounds(latLng(Math.min(...la), Math.min(...lo)), latLng(Math.max(...la), Math.max(...lo))); }
     window.setRoutePt = function (w, la, lo) {
       infoWindow.close();
       if (w === 's') { if (rStartMk) rStartMk.setMap(null); rStart = { la, lo }; rStartMk = rMarker(la, lo, '#2f9e44', '🚩 출발'); }
       else { if (rEndMk) rEndMk.setMap(null); rEnd = { la, lo }; rEndMk = rMarker(la, lo, '#e03131', '🏁 도착'); }
-      if (rStart && rEnd) computeTransit();
-      else $('banner').textContent = rStart ? '🏁 도착지를 지도에서 클릭해 [도착]을 누르세요.' : '🚩 출발지를 지도에서 클릭해 [출발]을 누르세요.';
+      if (rStart && rEnd) computeRoute();
+      else $('banner').textContent = rStart ? '🏁 도착지를 지도/마커에서 [도착]으로 지정하세요.' : '🚩 출발지를 [출발]로 지정하세요.';
     };
-    async function computeTransit() {
-      if (rLine) rLine.setMap(null);
-      rLine = new naver.maps.Polyline({ map, path: [latLng(rStart.la, rStart.lo), latLng(rEnd.la, rEnd.lo)], strokeColor: '#378add', strokeWeight: 4, strokeStyle: 'shortdash', strokeOpacity: 0.9 });
-      map.fitBounds(new naver.maps.LatLngBounds(latLng(Math.min(rStart.la, rEnd.la), Math.min(rStart.lo, rEnd.lo)), latLng(Math.max(rStart.la, rEnd.la), Math.max(rStart.lo, rEnd.lo))));
-      $('banner').textContent = '🚌 출발→도착 경로 계산 중…';
+    window.setRouteMode = function (m) { rMode = m; computeRoute(); };
+    async function computeRoute() {
+      if (!(rStart && rEnd)) return;
+      if (rLine) { rLine.setMap(null); rLine = null; }
+      $('banner').innerHTML = '경로 계산 중…' + modeBar() + clrLink;
       try {
-        const url = `https://api.odsay.com/v1/api/searchPubTransPathT?SX=${rStart.lo}&SY=${rStart.la}&EX=${rEnd.lo}&EY=${rEnd.la}&apiKey=${encodeURIComponent(ODSAY_KEY)}`;
-        const j = await (await fetch(url)).json();
-        const p = j.result && j.result.path && j.result.path[0];
-        if (p) { const i = p.info; $('banner').innerHTML = `🚌 <b>출발→도착 ${i.totalTime}분</b> · ${i.payment.toLocaleString()}원 · 환승 ${i.busTransitCount + i.subwayTransitCount}회 <a href="#" onclick="clearRoute();return false;" style="margin-left:6px;">✖ 초기화</a>`; }
-        else $('banner').innerHTML = '가까워서 대중교통 경로가 없어요(도보 권장). <a href="#" onclick="clearRoute();return false;">✖ 초기화</a>';
-      } catch (e) { $('banner').innerHTML = '경로 조회 실패. <a href="#" onclick="clearRoute();return false;">✖</a>'; }
+        if (rMode === 'transit') {
+          rLine = new naver.maps.Polyline({ map, path: [latLng(rStart.la, rStart.lo), latLng(rEnd.la, rEnd.lo)], strokeColor: '#378add', strokeWeight: 4, strokeStyle: 'shortdash', strokeOpacity: 0.9 });
+          map.fitBounds(pathBounds([latLng(rStart.la, rStart.lo), latLng(rEnd.la, rEnd.lo)]));
+          const url = `https://api.odsay.com/v1/api/searchPubTransPathT?SX=${rStart.lo}&SY=${rStart.la}&EX=${rEnd.lo}&EY=${rEnd.la}&apiKey=${encodeURIComponent(ODSAY_KEY)}`;
+          const j = await (await fetch(url)).json();
+          const p = j.result && j.result.path && j.result.path[0];
+          if (p) { const i = p.info; $('banner').innerHTML = `🚌 <b>${i.totalTime}분</b> · ${i.payment.toLocaleString()}원 · 환승 ${i.busTransitCount + i.subwayTransitCount}회` + modeBar() + clrLink; }
+          else $('banner').innerHTML = '가까워서 대중교통 경로가 없어요(도보 권장).' + modeBar() + clrLink;
+        } else {
+          const url = `https://router.project-osrm.org/route/v1/driving/${rStart.lo},${rStart.la};${rEnd.lo},${rEnd.la}?overview=full&geometries=geojson`;
+          const j = await (await fetch(url)).json();
+          const rt = j.routes && j.routes[0];
+          if (!rt) { $('banner').innerHTML = '경로를 찾지 못했어요.' + modeBar() + clrLink; return; }
+          const path = rt.geometry.coordinates.map((c) => latLng(c[1], c[0]));
+          const color = rMode === 'walk' ? '#2f9e44' : '#e8590c';
+          rLine = new naver.maps.Polyline({ map, path, strokeColor: color, strokeWeight: 5, strokeOpacity: 0.85 });
+          map.fitBounds(pathBounds(path));
+          const km = rt.distance / 1000;
+          const min = rMode === 'walk' ? Math.round(km / 4.5 * 60) : Math.round(rt.duration / 60);
+          $('banner').innerHTML = `${rMode === 'walk' ? '🚶 도보' : '🚗 자차'} 약 <b>${min}분</b> · ${km.toFixed(1)}km` + (rMode === 'walk' ? ' <span style="color:#999;">(4.5km/h 추정)</span>' : '') + modeBar() + clrLink;
+        }
+      } catch (e) { $('banner').innerHTML = '경로 조회 실패(네트워크).' + modeBar() + clrLink; }
     }
     window.clearRoute = function () { rStart = rEnd = null; [rStartMk, rEndMk, rLine].forEach((o) => o && o.setMap(null)); rStartMk = rEndMk = rLine = null; render(); };
     // 지도를 클릭하면 그 지점의 주소를 표시
