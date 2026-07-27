@@ -186,7 +186,7 @@
           const m = L.circleMarker([d.lat, d.lng], { radius: 5, color: '#fff', weight: 1, fillColor: ageColor(d.build), fillOpacity: 0.9 });
           m._rp = d;
           m.bindTooltip(d.priceEok == null ? d.name : d.priceEok + '억', { direction: 'top' });
-          m.bindPopup(`<div style="min-width:180px;"><div style="font-weight:700;font-size:14px;">${d.name}</div><div style="font-size:12px;color:#8a9099;margin:2px 0 6px;">${d.gu} ${d.dong}</div><div style="font-size:15px;font-weight:700;color:#e8590c;">💰 실거래가 ${d.priceEok == null ? '-' : d.priceEok + '억'}</div><div style="font-size:12px;margin-top:3px;">${d.area}㎡ · ${d.floor}층 · 거래 ${d.ymd}</div><div style="font-size:12px;margin-top:4px;"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};margin-right:5px;"></span>🏗️ ${d.build || '?'}년 건축</div><button class="rp-save" style="margin-top:8px;width:100%;padding:7px;border:1px solid #e8590c;background:#fff;color:#e8590c;border-radius:7px;cursor:pointer;font:inherit;font-size:13px;">☆ 저장</button></div>`);
+          m.bindPopup(`<div style="min-width:180px;"><div style="font-weight:700;font-size:14px;">${d.name}</div><div style="font-size:12px;color:#8a9099;margin:2px 0 6px;">${d.gu} ${d.dong}</div><div style="font-size:15px;font-weight:700;color:#e8590c;">💰 실거래가 ${d.priceEok == null ? '-' : d.priceEok + '억'}</div><div style="font-size:12px;margin-top:3px;">${d.area}㎡ · ${d.floor}층 · 거래 ${d.ymd}</div><div style="font-size:12px;margin-top:4px;"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};margin-right:5px;"></span>🏗️ ${d.build || '?'}년 건축</div><button class="rp-save" style="margin-top:8px;width:100%;padding:7px;border:1px solid #e8590c;background:#fff;color:#e8590c;border-radius:7px;cursor:pointer;font:inherit;font-size:13px;">☆ 저장</button><div style="display:flex;gap:6px;margin-top:6px;"><button class="rt-start" style="flex:1;padding:6px;border:1px solid #e6e8eb;border-radius:6px;background:#fff;cursor:pointer;font:inherit;font-size:12px;">🚩 출발</button><button class="rt-end" style="flex:1;padding:6px;border:1px solid #e6e8eb;border-radius:6px;background:#fff;cursor:pointer;font:inherit;font-size:12px;">🏁 도착</button></div></div>`);
           return m;
         }));
       }
@@ -237,6 +237,9 @@
         };
         paint();
         btn.onclick = () => { togglePropSave(d); paint(); if (landMode === 'favorites') render(); };
+        const sBtn = node.querySelector('.rt-start'), eBtn = node.querySelector('.rt-end');
+        if (sBtn) sBtn.onclick = () => { setRoutePoint('start', d.lat, d.lng); m.closePopup(); };
+        if (eBtn) eBtn.onclick = () => { setRoutePoint('end', d.lat, d.lng); m.closePopup(); };
       });
 
       const landOverlays = {
@@ -314,9 +317,85 @@
       }
       reverseGeocode(lat, lng, (addr) => {
         if (!clickMarker) return;
-        clickMarker.setPopupContent(`<div style="min-width:190px;"><div style="font-weight:700;">📍 클릭 위치</div><div style="font-size:12px;color:#555;margin:3px 0;">${addr ? esc(addr) : '주소를 찾지 못했어요'}</div><div style="font-size:11px;color:#999;">${lat.toFixed(5)}, ${lng.toFixed(5)}</div>${nearHtml}</div>`).openPopup();
+        const rtBtns = `<div style="display:flex;gap:6px;margin-top:8px;"><button class="rt-start" style="flex:1;padding:6px;border:1px solid #e6e8eb;border-radius:6px;background:#fff;cursor:pointer;font:inherit;font-size:12px;">🚩 출발</button><button class="rt-end" style="flex:1;padding:6px;border:1px solid #e6e8eb;border-radius:6px;background:#fff;cursor:pointer;font:inherit;font-size:12px;">🏁 도착</button></div>`;
+        clickMarker.setPopupContent(`<div style="min-width:190px;"><div style="font-weight:700;">📍 클릭 위치</div><div style="font-size:12px;color:#555;margin:3px 0;">${addr ? esc(addr) : '주소를 찾지 못했어요'}</div><div style="font-size:11px;color:#999;">${lat.toFixed(5)}, ${lng.toFixed(5)}</div>${nearHtml}${rtBtns}</div>`).openPopup();
+        const el = clickMarker.getPopup().getElement();
+        const sBtn = el && el.querySelector('.rt-start'), eBtn = el && el.querySelector('.rt-end');
+        if (sBtn) sBtn.onclick = () => { setRoutePoint('start', lat, lng); clickMarker.closePopup(); };
+        if (eBtn) eBtn.onclick = () => { setRoutePoint('end', lat, lng); clickMarker.closePopup(); };
       });
     });
+
+    // ── 길찾기: 출발/도착 + 도보(OSRM)·대중교통(ODsay)·자차(OSRM) ──
+    const ODSAY_KEY = 'H4Vo/z04g/E+AUShnTQIiQ';
+    let routeOrigin = null, routeDest = null, routeLine = null, routeMode = 'car', originMarker = null, destMarker = null, routeCtrl = null;
+    function ensureRouteCtrl() {
+      if (routeCtrl) return;
+      routeCtrl = L.control({ position: 'topleft' });
+      routeCtrl.onAdd = () => {
+        const div = L.DomUtil.create('div');
+        div.style.cssText = 'background:#fff;padding:8px 10px;border-radius:8px;box-shadow:0 1px 5px rgba(0,0,0,.2);font-size:12px;min-width:160px;';
+        const mbtn = (m, t) => `<button class="rt-mode" data-m="${m}" style="flex:1;font:inherit;font-size:11px;padding:4px 2px;border:1px solid #e6e8eb;border-radius:6px;background:#fff;cursor:pointer;">${t}</button>`;
+        div.innerHTML = '<div style="font-weight:700;margin-bottom:5px;">🧭 길찾기</div>'
+          + '<div id="rt-pts" style="font-size:11px;color:#555;margin-bottom:5px;"></div>'
+          + `<div style="display:flex;gap:4px;margin-bottom:5px;">${mbtn('walk', '🚶도보')}${mbtn('transit', '🚌대중교통')}${mbtn('car', '🚗자차')}</div>`
+          + '<div id="rt-info" style="font-size:11px;color:#333;min-height:16px;"></div>'
+          + '<button id="rt-clear" style="margin-top:5px;width:100%;font:inherit;font-size:11px;padding:4px;border:1px solid #e6e8eb;border-radius:6px;background:#fff;cursor:pointer;">초기화</button>';
+        L.DomEvent.disableClickPropagation(div);
+        return div;
+      };
+      routeCtrl.addTo(map);
+      setTimeout(() => {
+        document.querySelectorAll('.rt-mode').forEach((b) => b.addEventListener('click', () => { routeMode = b.dataset.m; highlightMode(); drawRoute(); }));
+        const c = document.getElementById('rt-clear'); if (c) c.addEventListener('click', clearRoute);
+        highlightMode(); updatePts();
+      }, 50);
+    }
+    function highlightMode() { document.querySelectorAll('.rt-mode').forEach((b) => { const on = b.dataset.m === routeMode; b.style.background = on ? '#e8590c' : '#fff'; b.style.color = on ? '#fff' : '#333'; }); }
+    function updatePts() { const el = document.getElementById('rt-pts'); if (el) el.innerHTML = `🚩 ${routeOrigin ? '출발✓' : '출발 미지정'} · 🏁 ${routeDest ? '도착✓' : '도착 미지정'}`; }
+    function setRoutePoint(kind, lat, lng) {
+      ensureRouteCtrl();
+      if (kind === 'start') { routeOrigin = { lat, lng }; if (originMarker) map.removeLayer(originMarker); originMarker = L.marker([lat, lng]).addTo(map).bindTooltip('🚩 출발', { permanent: true, direction: 'top' }); }
+      else { routeDest = { lat, lng }; if (destMarker) map.removeLayer(destMarker); destMarker = L.marker([lat, lng]).addTo(map).bindTooltip('🏁 도착', { permanent: true, direction: 'top' }); }
+      updatePts();
+      if (routeOrigin && routeDest) drawRoute();
+    }
+    function clearRoute() {
+      routeOrigin = routeDest = null;
+      [routeLine, originMarker, destMarker].forEach((l) => { if (l) map.removeLayer(l); });
+      routeLine = originMarker = destMarker = null;
+      updatePts(); const info = document.getElementById('rt-info'); if (info) info.textContent = '';
+    }
+    async function drawRoute() {
+      if (!(routeOrigin && routeDest)) return;
+      const info = document.getElementById('rt-info'); if (info) info.textContent = '경로 계산 중…';
+      if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+      const o = routeOrigin, d = routeDest;
+      try {
+        if (routeMode === 'transit') {
+          const url = `https://api.odsay.com/v1/api/searchPubTransPathT?SX=${o.lng}&SY=${o.lat}&EX=${d.lng}&EY=${d.lat}&apiKey=${encodeURIComponent(ODSAY_KEY)}`;
+          const j = await (await fetch(url)).json();
+          const p = j.result && j.result.path && j.result.path[0];
+          if (!p) { if (info) info.textContent = '대중교통 경로를 찾지 못했어요.'; return; }
+          const i = p.info;
+          routeLine = L.polyline([[o.lat, o.lng], [d.lat, d.lng]], { color: '#1c7ed6', weight: 4, dashArray: '6,8' }).addTo(map);
+          map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
+          if (info) info.innerHTML = `🚌 총 <b>${i.totalTime}분</b> · ${(i.totalDistance / 1000).toFixed(1)}km<br>환승 ${i.busTransitCount + i.subwayTransitCount}회 · 요금 ${i.payment}원`;
+        } else {
+          const url = `https://router.project-osrm.org/route/v1/driving/${o.lng},${o.lat};${d.lng},${d.lat}?overview=full&geometries=geojson`;
+          const j = await (await fetch(url)).json();
+          const rt = j.routes && j.routes[0];
+          if (!rt) { if (info) info.textContent = '경로를 찾지 못했어요.'; return; }
+          const coords = rt.geometry.coordinates.map((c) => [c[1], c[0]]);
+          const color = routeMode === 'walk' ? '#2f9e44' : '#e8590c';
+          routeLine = L.polyline(coords, { color, weight: 5, opacity: 0.8 }).addTo(map);
+          map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
+          const km = rt.distance / 1000;
+          const min = routeMode === 'walk' ? Math.round(km / 4.5 * 60) : Math.round(rt.duration / 60);
+          if (info) info.innerHTML = `${routeMode === 'walk' ? '🚶 도보' : '🚗 자차'} 약 <b>${min}분</b> · ${km.toFixed(1)}km${routeMode === 'walk' ? '<br><span style="color:#999;">(도보 4.5km/h 추정)</span>' : ''}`;
+        }
+      } catch (e) { if (info) info.textContent = '경로 계산 실패(네트워크).'; }
+    }
 
     // ── 규칙기반 추천 점수 ──
     function score(r) {
