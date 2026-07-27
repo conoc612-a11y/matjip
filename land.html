@@ -225,8 +225,8 @@
         realpriceCluster.addLayers(rpRows.filter((d) => inPrice(d.priceEok) && inAge(d.build)).map((d) => {
           const m = L.circleMarker([d.lat, d.lng], { radius: 5, color: '#fff', weight: 1, fillColor: ageColor(d.build), fillOpacity: 0.9 });
           m._rp = d;
-          m.bindTooltip(d.priceEok == null ? d.name : d.priceEok + '억', { direction: 'top' });
-          m.bindPopup(`<div style="min-width:180px;"><div style="font-weight:700;font-size:14px;">${d.name}</div><div style="font-size:12px;color:#8a9099;margin:2px 0 6px;">${d.gu} ${d.dong}</div><div style="font-size:15px;font-weight:700;color:#e8590c;">💰 실거래가 ${d.priceEok == null ? '-' : d.priceEok + '억'}</div><div style="font-size:12px;margin-top:3px;">${d.area}㎡ · ${d.floor}층 · 거래 ${d.ymd}</div><div style="font-size:12px;margin-top:4px;"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};margin-right:5px;"></span>🏗️ ${d.build || '?'}년 건축</div><button class="rp-save" style="margin-top:8px;width:100%;padding:7px;border:1px solid #e8590c;background:#fff;color:#e8590c;border-radius:7px;cursor:pointer;font:inherit;font-size:13px;">☆ 저장</button><div style="display:flex;gap:6px;margin-top:6px;"><button class="rt-start" style="flex:1;padding:6px;border:1px solid #e6e8eb;border-radius:6px;background:#fff;cursor:pointer;font:inherit;font-size:12px;">🚩 출발</button><button class="rt-end" style="flex:1;padding:6px;border:1px solid #e6e8eb;border-radius:6px;background:#fff;cursor:pointer;font:inherit;font-size:12px;">🏁 도착</button></div></div>`);
+          m.bindTooltip(d.priceEok == null ? esc(d.name) : d.priceEok + '억', { direction: 'top' });
+          m.bindPopup(`<div style="min-width:180px;"><div style="font-weight:700;font-size:14px;">${esc(d.name)}</div><div style="font-size:12px;color:#8a9099;margin:2px 0 6px;">${esc(d.gu)} ${esc(d.dong)}</div><div style="font-size:15px;font-weight:700;color:#e8590c;">💰 실거래가 ${d.priceEok == null ? '-' : d.priceEok + '억'}</div><div style="font-size:12px;margin-top:3px;">${esc(d.area)}㎡ · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="font-size:12px;margin-top:4px;"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};margin-right:5px;"></span>🏗️ ${esc(d.build || '?')}년 건축</div><button class="rp-save" style="margin-top:8px;width:100%;padding:7px;border:1px solid #e8590c;background:#fff;color:#e8590c;border-radius:7px;cursor:pointer;font:inherit;font-size:13px;">☆ 저장</button><div style="display:flex;gap:6px;margin-top:6px;"><button class="rt-start" style="flex:1;padding:6px;border:1px solid #e6e8eb;border-radius:6px;background:#fff;cursor:pointer;font:inherit;font-size:12px;">🚩 출발</button><button class="rt-end" style="flex:1;padding:6px;border:1px solid #e6e8eb;border-radius:6px;background:#fff;cursor:pointer;font:inherit;font-size:12px;">🏁 도착</button></div></div>`);
           return m;
         }));
       }
@@ -311,7 +311,7 @@
         const it = items[0], x = Number(it.point.x), y = Number(it.point.y);
         map.setView([y, x], 16);
         if (vsMarker) map.removeLayer(vsMarker);
-        vsMarker = L.marker([y, x]).addTo(map).bindPopup(`<b>${it.title || q}</b>`).openPopup();
+        vsMarker = L.marker([y, x]).addTo(map).bindPopup(`<b>${esc(it.title || q)}</b>`).openPopup();
       };
       const s = document.createElement('script');
       s.src = `https://api.vworld.kr/req/search?service=search&request=search&version=2.0&crs=EPSG:4326&size=5&page=1&query=${encodeURIComponent(q)}&type=${type}&format=json&key=${VWORLD_KEY}&callback=${cb}`;
@@ -452,6 +452,8 @@
     }
 
     function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+    // 외부 URL은 http/https만 허용(javascript:·data: 스킴 차단)
+    function safeUrl(u) { u = String(u || ''); return /^https?:\/\//i.test(u) ? esc(u) : '#'; }
 
     let landMode = 'agents';   // 'agents'(인근 공인중개사) | 'favorites'(부동산 즐겨찾기)
     const savedIds = new Set();
@@ -569,7 +571,7 @@
       const c = map.getCenter();
       new kakao.maps.services.Places().keywordSearch('공인중개사', (data, status) => {
         if (status !== kakao.maps.services.Status.OK || !data.length) { $('rec-list').innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px 0;">인근 공인중개사가 없어요. 지도를 옮겨보세요.</div>'; return; }
-        $('rec-list').innerHTML = data.map((p, i) => { const dm = Number(p.distance) || 0; const dtxt = dm ? `📍 ${dm >= 1000 ? (dm / 1000).toFixed(1) + 'km' : dm + 'm'} · 🚶 ${Math.max(1, Math.round(dm / 1000 / 4.5 * 60))}분` : ''; return `<div class="rec" data-i="${i}"><h3>${esc(p.place_name)}</h3><div class="meta">${esc((p.category_name || '').split('>').pop().trim())} · ${esc(p.road_address_name || p.address_name || '')}</div>${dtxt ? `<div class="meta" style="color:var(--accent);margin-top:2px;">${dtxt}</div>` : ''}<div class="actions">${p.phone ? `<a href="tel:${esc(p.phone)}">📞 ${esc(p.phone)}</a>` : ''}${p.place_url ? `<a href="${p.place_url}" target="_blank" rel="noopener">카카오맵</a>` : ''}</div></div>`; }).join('');
+        $('rec-list').innerHTML = data.map((p, i) => { const dm = Number(p.distance) || 0; const dtxt = dm ? `📍 ${dm >= 1000 ? (dm / 1000).toFixed(1) + 'km' : dm + 'm'} · 🚶 ${Math.max(1, Math.round(dm / 1000 / 4.5 * 60))}분` : ''; return `<div class="rec" data-i="${i}"><h3>${esc(p.place_name)}</h3><div class="meta">${esc((p.category_name || '').split('>').pop().trim())} · ${esc(p.road_address_name || p.address_name || '')}</div>${dtxt ? `<div class="meta" style="color:var(--accent);margin-top:2px;">${dtxt}</div>` : ''}<div class="actions">${p.phone ? `<a href="tel:${esc(p.phone)}">📞 ${esc(p.phone)}</a>` : ''}${p.place_url ? `<a href="${safeUrl(p.place_url)}" target="_blank" rel="noopener">카카오맵</a>` : ''}</div></div>`; }).join('');
         data.forEach((p) => { const m = L.marker([Number(p.y), Number(p.x)]).addTo(map).bindPopup(`<b>${esc(p.place_name)}</b><br>${esc(p.phone || '')}`); agentMarkers.push(m); });
         $('rec-list').querySelectorAll('.rec').forEach((card) => card.addEventListener('click', (e) => { if (e.target.closest('.actions')) return; const p = data[Number(card.dataset.i)]; map.setView([Number(p.y), Number(p.x)], 17); }));
       }, { location: new kakao.maps.LatLng(c.lat, c.lng), radius: 3000, sort: kakao.maps.services.SortBy.DISTANCE, size: 15 });
@@ -663,7 +665,7 @@
           <div class="meta">${esc((p.category_name || '').split('>').pop().trim())} · ${esc(p.road_address_name || p.address_name || '')}</div>
           <div class="actions">
             <button class="save ksave" data-i="${i}">내 목록에 저장</button>
-            ${p.place_url ? `<a href="${p.place_url}" target="_blank" rel="noopener">카카오맵</a>` : ''}
+            ${p.place_url ? `<a href="${safeUrl(p.place_url)}" target="_blank" rel="noopener">카카오맵</a>` : ''}
           </div>
         </div>`).join('');
       const pts = [];
