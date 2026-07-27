@@ -68,6 +68,18 @@
     .rec .actions a, .rec .actions button { font-size:13px; padding:6px 10px; border-radius:7px; border:1px solid var(--line); cursor:pointer; background:#fff; color:var(--text); text-decoration:none; }
     .rec .actions .save { background:var(--accent); color:#fff; border:none; }
     .score { float:right; font-size:12px; color:var(--accent); font-weight:700; }
+    .cmp-check { float:right; font-size:11px; color:var(--muted); cursor:pointer; user-select:none; }
+    .sheet-handle { display:none; }
+    @media (max-width:640px) {
+      .layout { display:block; }
+      #map { height:100vh; min-height:0; }
+      .panel { position:fixed; left:0; right:0; bottom:0; max-height:82vh; height:auto; z-index:1200;
+        background:var(--card); border-radius:16px 16px 0 0; box-shadow:0 -4px 20px rgba(0,0,0,.18);
+        transform:translateY(calc(100% - 138px)); transition:transform .28s ease; }
+      .panel.sheet-open { transform:translateY(0); }
+      .sheet-handle { display:block; text-align:center; padding:8px 0 6px; position:sticky; top:0; background:var(--card); border-radius:16px 16px 0 0; cursor:pointer; z-index:2; }
+      .sheet-handle::before { content:''; display:inline-block; width:42px; height:5px; border-radius:3px; background:#c1c4c9; }
+    }
   </style>
 </head>
 <body>
@@ -91,6 +103,7 @@
   <div class="layout">
     <div id="map"></div>
     <div class="panel">
+      <div class="sheet-handle" id="sheet-handle" title="위로 올려서 목록 보기"></div>
       <div style="display:flex;gap:6px;">
         <div class="ac-wrap" style="flex:9;">
           <input type="text" id="search" class="search-inp" style="margin-bottom:0;" placeholder="🔍 주소·지명 검색 (Enter)" autocomplete="off" />
@@ -112,6 +125,7 @@
       </div>
       <div class="banner" id="banner"></div>
       <div id="recent" style="display:none;font-size:12px;margin-bottom:10px;color:var(--muted);"></div>
+      <div id="cmp-bar" style="display:none;background:#fff4e6;border:1px solid #ffd8a8;border-radius:8px;padding:8px 12px;font-size:13px;margin-bottom:10px;"></div>
       <div id="rec-list"></div>
     </div>
   </div>
@@ -457,9 +471,38 @@
       saveSavedProps(a);
     }
 
+    // ── 부동산 비교 ──
+    const cmpSel = new Map(); // id -> item
+    function updateCmpBar() {
+      const bar = $('cmp-bar'); if (!bar) return;
+      if (landMode === 'favorites' && cmpSel.size >= 1) {
+        bar.style.display = '';
+        bar.innerHTML = `⚖️ 비교 선택 <b>${cmpSel.size}</b>개 `
+          + `<button id="cmp-go" style="font:inherit;font-size:12px;padding:4px 10px;border:none;background:var(--accent);color:#fff;border-radius:6px;cursor:pointer;margin-left:6px;">비교표 보기</button> `
+          + `<button id="cmp-clear" style="font:inherit;font-size:12px;padding:4px 10px;border:1px solid var(--line);background:#fff;border-radius:6px;cursor:pointer;">해제</button>`;
+        $('cmp-go').onclick = openCompare;
+        $('cmp-clear').onclick = () => { cmpSel.clear(); render(); };
+      } else { bar.style.display = 'none'; bar.innerHTML = ''; }
+    }
+    function openCompare() {
+      const items = [...cmpSel.values()];
+      if (items.length < 2) { alert('2개 이상 선택해 주세요.'); return; }
+      const pyeong = (a) => (a ? a / 3.3058 : 0);
+      const perPyeong = (d) => { if (d.priceEok == null || !d.area) return '-'; return Math.round(d.priceEok * 10000 / pyeong(d.area)).toLocaleString() + '만/평'; };
+      const rows = [['실거래가', (d) => d.priceEok == null ? '-' : d.priceEok + '억'], ['전용면적', (d) => (d.area || '?') + '㎡'], ['평단가', perPyeong], ['건축년도', (d) => (d.build || '?') + '년'], ['층', (d) => (d.floor || '?') + '층'], ['거래일', (d) => d.ymd || '-'], ['위치', (d) => `${d.gu || ''} ${d.dong || ''}`]];
+      let modal = $('cmp-modal');
+      if (!modal) { modal = document.createElement('div'); modal.id = 'cmp-modal'; modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px;'; document.body.appendChild(modal); modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; }); }
+      const th = items.map((d) => `<th style="padding:8px;border-bottom:2px solid #e8590c;font-size:13px;">${esc(d.name)}</th>`).join('');
+      const trs = rows.map(([label, fn]) => `<tr><td style="padding:7px 8px;color:#8a9099;font-size:12px;white-space:nowrap;border-bottom:1px solid #eee;">${label}</td>${items.map((d) => `<td style="padding:7px 8px;font-size:13px;border-bottom:1px solid #eee;text-align:center;">${esc(fn(d))}</td>`).join('')}</tr>`).join('');
+      modal.innerHTML = `<div style="background:#fff;color:#1c1e21;border-radius:12px;max-width:600px;width:100%;max-height:82vh;overflow:auto;padding:16px;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><b style="font-size:16px;">⚖️ 부동산 비교</b><button id="cmp-close" style="border:1px solid #ddd;background:#fff;border-radius:7px;padding:6px 10px;cursor:pointer;font:inherit;">✖ 닫기</button></div><table style="width:100%;border-collapse:collapse;"><thead><tr><th></th>${th}</tr></thead><tbody>${trs}</tbody></table></div>`;
+      modal.style.display = 'flex';
+      $('cmp-close').onclick = () => { modal.style.display = 'none'; };
+    }
+
     function render() {
-      if (landMode === 'agents') { renderAgents(); return; }
+      if (landMode === 'agents') { renderAgents(); updateCmpBar(); return; }
       renderFavProps();
+      updateCmpBar();
     }
 
     // ── 부동산 즐겨찾기 목록 (localStorage) ──
@@ -474,6 +517,7 @@
       const distLabel = (d) => { if (d.lat == null) return ''; const m = map.distance([d.lat, d.lng], [ctr.lat, ctr.lng]); const min = Math.max(1, Math.round(m / 1000 / 4.5 * 60)); return `📍 ${m >= 1000 ? (m / 1000).toFixed(1) + 'km' : Math.round(m) + 'm'} · 🚶 ${min}분`; };
       $('rec-list').innerHTML = list.length ? list.map((d, i) => `
         <div class="rec" data-i="${i}">
+          <label class="cmp-check"><input type="checkbox" class="cmp" data-i="${i}" ${cmpSel.has(d.id) ? 'checked' : ''} /> 비교</label>
           <span class="score">${d.priceEok == null ? '' : d.priceEok + '억'}</span>
           <h3>${esc(d.name)}</h3>
           <div class="meta">${esc(d.gu || '')} ${esc(d.dong || '')} · ${esc(d.area || '?')}㎡ · ${esc(d.floor || '?')}층</div>
@@ -496,13 +540,18 @@
 
       $('rec-list').querySelectorAll('.rec').forEach((card) => {
         card.addEventListener('click', (e) => {
-          if (e.target.closest('.actions')) return;
+          if (e.target.closest('.actions') || e.target.closest('.cmp-check')) return;
           const d = list[Number(card.dataset.i)];
-          if (d && d.lat != null) { map.setView([d.lat, d.lng], 16); markers[d.id]?.openPopup(); }
+          if (d && d.lat != null) { map.setView([d.lat, d.lng], 16); markers[d.id]?.openPopup(); document.querySelector('.panel').classList.remove('sheet-open'); }
         });
         card.addEventListener('mouseenter', () => { const d = list[Number(card.dataset.i)]; const m = markers[d && d.id]; if (m) m.setStyle({ radius: 11, fillColor: '#e8590c', weight: 3 }); });
         card.addEventListener('mouseleave', () => { const d = list[Number(card.dataset.i)]; const m = markers[d && d.id]; if (m) m.setStyle({ radius: 7, fillColor: '#e8590c', weight: 2 }); });
       });
+      $('rec-list').querySelectorAll('.cmp').forEach((cb) => cb.addEventListener('change', (e) => {
+        e.stopPropagation(); const d = list[Number(cb.dataset.i)];
+        if (cb.checked) cmpSel.set(d.id, d); else cmpSel.delete(d.id);
+        updateCmpBar();
+      }));
       $('rec-list').querySelectorAll('.unsave').forEach((btn) => btn.addEventListener('click', (e) => {
         e.stopPropagation();
         const d = list[Number(btn.dataset.i)];
@@ -560,6 +609,7 @@
       renderRecent();
     }
 
+    (function initSheet() { const h = $('sheet-handle'), p = document.querySelector('.panel'); if (h && p) h.addEventListener('click', () => p.classList.toggle('sheet-open')); })();
     $('logout').addEventListener('click', async () => { await sb.auth.signOut(); location.href = 'index.html'; });
     $('profile-btn').addEventListener('click', (e) => { e.stopPropagation(); $('profile-menu').classList.toggle('on'); });
     document.addEventListener('click', () => $('profile-menu').classList.remove('on'));
