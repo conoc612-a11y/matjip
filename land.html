@@ -42,6 +42,10 @@
     .list-tabs { display:flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; margin:12px 0; }
     .list-tab { flex:1; font:inherit; font-size:12px; padding:8px; border:none; background:#fff; color:var(--muted); cursor:pointer; }
     .list-tab.active { background:var(--accent); color:#fff; }
+    .fav-cats { display:none; gap:6px; flex-wrap:wrap; margin:-4px 0 12px; }
+    .fav-cats.on { display:flex; }
+    .fav-cat { font:inherit; font-size:12px; padding:5px 12px; border:1px solid var(--line); background:#fff; color:var(--muted); border-radius:16px; cursor:pointer; }
+    .fav-cat.active { background:var(--accent); color:#fff; border-color:var(--accent); }
     .banner { background:#fff4e6; border:1px solid #ffd8a8; color:#a85; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:12px; }
     .banner a { color:var(--accent); font-weight:600; }
     .search-inp { width:100%; font:inherit; padding:10px 12px; border:1px solid var(--line); border-radius:8px; margin-bottom:12px; }
@@ -94,6 +98,13 @@
       <div class="list-tabs">
         <button class="list-tab" data-mode="favorites">⭐ 즐겨찾기</button>
         <button class="list-tab active" data-mode="agents">🏢 인근 공인중개사 정보</button>
+      </div>
+      <div class="fav-cats" id="fav-cats">
+        <button class="fav-cat active" data-cat="전체">전체</button>
+        <button class="fav-cat" data-cat="아파트">아파트</button>
+        <button class="fav-cat" data-cat="다세대">다세대</button>
+        <button class="fav-cat" data-cat="다가구">다가구</button>
+        <button class="fav-cat" data-cat="단독주택">단독주택</button>
       </div>
       <div class="banner" id="banner"></div>
       <div id="rec-list"></div>
@@ -173,8 +184,9 @@
         realpriceCluster.clearLayers();
         realpriceCluster.addLayers(rpRows.filter((d) => inPrice(d.priceEok) && inAge(d.build)).map((d) => {
           const m = L.circleMarker([d.lat, d.lng], { radius: 5, color: '#fff', weight: 1, fillColor: ageColor(d.build), fillOpacity: 0.9 });
+          m._rp = d;
           m.bindTooltip(d.priceEok == null ? d.name : d.priceEok + '억', { direction: 'top' });
-          m.bindPopup(`<div style="min-width:180px;"><div style="font-weight:700;font-size:14px;">${d.name}</div><div style="font-size:12px;color:#8a9099;margin:2px 0 6px;">${d.gu} ${d.dong}</div><div style="font-size:15px;font-weight:700;color:#e8590c;">💰 실거래가 ${d.priceEok == null ? '-' : d.priceEok + '억'}</div><div style="font-size:12px;margin-top:3px;">${d.area}㎡ · ${d.floor}층 · 거래 ${d.ymd}</div><div style="font-size:12px;margin-top:4px;"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};margin-right:5px;"></span>🏗️ ${d.build || '?'}년 건축</div></div>`);
+          m.bindPopup(`<div style="min-width:180px;"><div style="font-weight:700;font-size:14px;">${d.name}</div><div style="font-size:12px;color:#8a9099;margin:2px 0 6px;">${d.gu} ${d.dong}</div><div style="font-size:15px;font-weight:700;color:#e8590c;">💰 실거래가 ${d.priceEok == null ? '-' : d.priceEok + '억'}</div><div style="font-size:12px;margin-top:3px;">${d.area}㎡ · ${d.floor}층 · 거래 ${d.ymd}</div><div style="font-size:12px;margin-top:4px;"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};margin-right:5px;"></span>🏗️ ${d.build || '?'}년 건축</div><button class="rp-save" style="margin-top:8px;width:100%;padding:7px;border:1px solid #e8590c;background:#fff;color:#e8590c;border-radius:7px;cursor:pointer;font:inherit;font-size:13px;">☆ 저장</button></div>`);
           return m;
         }));
       }
@@ -208,6 +220,24 @@
         fetch('realprice_seoul_gg.json').then((r) => r.json()).then((rows) => { rpRows = rows; rpBuild(); }).catch(() => {});
       });
       map.on('overlayremove', (e) => { if (e.layer === realpriceCluster) { map.removeControl(rpFilterCtrl); map.removeControl(rpLegend); } });
+
+      // 실거래가 마커 팝업의 ☆저장 버튼 → localStorage 즐겨찾기 토글
+      map.on('popupopen', (e) => {
+        const m = e.popup._source;
+        if (!m || !m._rp) return;
+        const node = e.popup._contentNode || e.popup.getElement();
+        const btn = node && node.querySelector('.rp-save');
+        if (!btn) return;
+        const d = m._rp;
+        const paint = () => {
+          const on = isPropSaved(d);
+          btn.textContent = on ? '⭐ 저장됨 (해제)' : '☆ 저장';
+          btn.style.background = on ? '#e8590c' : '#fff';
+          btn.style.color = on ? '#fff' : '#e8590c';
+        };
+        paint();
+        btn.onclick = () => { togglePropSave(d); paint(); if (landMode === 'favorites') render(); };
+      });
 
       const landOverlays = {
         '🏢 아파트 실거래가·노후도': realpriceCluster,
@@ -267,70 +297,68 @@
 
     function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
 
-    let landMode = 'agents';   // 'agents'(인근 공인중개사) | 'favorites'(즐겨찾기)
+    let landMode = 'agents';   // 'agents'(인근 공인중개사) | 'favorites'(부동산 즐겨찾기)
     const savedIds = new Set();
+    let propCat = '전체';       // 부동산 즐겨찾기 유형 필터
+
+    // ── 부동산 ⭐저장 (이 기기 localStorage에 보관) ──
+    const PROP_KEY = 'mj_saved_props';
+    function loadSavedProps() { try { return JSON.parse(localStorage.getItem(PROP_KEY) || '[]'); } catch (e) { return []; } }
+    function saveSavedProps(a) { try { localStorage.setItem(PROP_KEY, JSON.stringify(a)); } catch (e) {} }
+    function propId(d) { return `${d.name}|${d.dong}|${d.ymd}|${d.area}|${d.floor}`; }
+    function isPropSaved(d) { const id = propId(d); return loadSavedProps().some((x) => x.id === id); }
+    function togglePropSave(d) {
+      let a = loadSavedProps();
+      const id = propId(d);
+      if (a.some((x) => x.id === id)) a = a.filter((x) => x.id !== id);
+      else a.push({ id, name: d.name, gu: d.gu, dong: d.dong, lat: d.lat, lng: d.lng, priceEok: d.priceEok, area: d.area, floor: d.floor, ymd: d.ymd, build: d.build, type: d.type || '아파트' });
+      saveSavedProps(a);
+    }
+
     function render() {
       if (landMode === 'agents') { renderAgents(); return; }
-      // 즐겨찾기: 저장한 식당
-      const q = (query || '').trim().toLowerCase();
-      let base = q
-        ? restaurants.filter((r) => `${r.name} ${r.category || ''} ${(r.tags || []).join(' ')}`.toLowerCase().includes(q))
-        : restaurants;
-      base = base.filter((r) => savedIds.has(Number(r.id)));
-      const scored = base.map((r) => ({ r, ...score(r) })).sort((a, b) => a.r.name.localeCompare(b.r.name));
-      $('banner').textContent = user ? '⭐ 저장한 식당 목록이에요.' : '로그인하면 즐겨찾기를 쓸 수 있어요.';
+      renderFavProps();
+    }
 
-      // 리스트
-      $('rec-list').innerHTML = scored.map(({ r, score, hits }) => {
-        const tagsHtml = (r.tags || []).map((t) =>
-          `<span class="tag${hits.includes(t) ? ' hit' : ''}">${esc(t)}</span>`).join('');
-        const why = taste
-          ? (hits.length ? `취향 일치: ${hits.join(', ')}` : '취향과 겹치는 태그 없음')
-          : '';
-        return `<div class="rec" data-id="${r.id}">
-          ${taste ? `<span class="score">${score}점</span>` : ''}
-          <h3>${esc(r.name)}</h3>
-          <div class="meta">${esc(r.category || '')} · ${esc(r.address || '')}</div>
-          <div class="tags">${tagsHtml}</div>
-          <div class="why">${esc(why)}</div>
-          <div class="actions">
-            <button class="save" data-id="${r.id}">저장</button>
-            <a href="detail.html?id=${r.id}">상세 · 길찾기</a>
-          </div>
-        </div>`;
-      }).join('');
-      if (!scored.length) $('rec-list').innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px 0;">검색 결과가 없어요.</div>';
-
-      // 마커
+    // ── 부동산 즐겨찾기 목록 (localStorage) ──
+    function renderFavProps() {
       Object.values(markers).forEach((m) => map.removeLayer(m));
-      scored.forEach(({ r }) => {
-        if (r.lat == null || r.lng == null) return;
-        const m = L.marker([r.lat, r.lng]).addTo(map).bindPopup(`<b>${esc(r.name)}</b><br>${esc(r.category || '')}`);
-        markers[r.id] = m;
-      });
-      // 검색 중이면 결과 위치로 지도 이동
-      const pts = scored.map(({ r }) => (r.lat != null ? [r.lat, r.lng] : null)).filter(Boolean);
-      if (q && pts.length) { map.fitBounds(pts, { padding: [40, 40], maxZoom: 16 }); if (pts.length === 1) markers[scored[0].r.id]?.openPopup(); }
+      agentMarkers.forEach((m) => map.removeLayer(m)); agentMarkers = [];
+      let list = loadSavedProps();
+      if (propCat !== '전체') list = list.filter((x) => (x.type || '아파트') === propCat);
+      $('banner').textContent = '⭐ 저장한 부동산 목록이에요. (이 기기에 보관 · 실거래가 마커의 ☆저장 버튼으로 추가)';
 
-      // 리스트 클릭 → 지도 이동 / 저장
-      $('rec-list').querySelectorAll('.rec').forEach((card) => {
-        card.addEventListener('click', (e) => {
-          if (e.target.closest('.actions')) return;
-          const r = restaurants.find((x) => x.id == card.dataset.id);
-          if (r && r.lat != null) { map.setView([r.lat, r.lng], 15); markers[r.id]?.openPopup(); }
-        });
+      $('rec-list').innerHTML = list.length ? list.map((d, i) => `
+        <div class="rec" data-i="${i}">
+          <span class="score">${d.priceEok == null ? '' : d.priceEok + '억'}</span>
+          <h3>${esc(d.name)}</h3>
+          <div class="meta">${esc(d.gu || '')} ${esc(d.dong || '')} · ${esc(d.area || '?')}㎡ · ${esc(d.floor || '?')}층</div>
+          <div class="tags"><span class="tag">${esc(d.type || '아파트')}</span><span class="tag">🏗️ ${esc(d.build || '?')}년</span><span class="tag">거래 ${esc(d.ymd || '')}</span></div>
+          <div class="actions">
+            <button class="unsave" data-i="${i}">⭐ 저장 해제</button>
+          </div>
+        </div>`).join('')
+        : '<div style="text-align:center;color:var(--muted);padding:24px 0;">저장한 부동산이 없어요.<br>지도의 「🏢 아파트 실거래가」 마커를 클릭해 ☆저장을 눌러보세요.</div>';
+
+      list.forEach((d) => {
+        if (d.lat == null || d.lng == null) return;
+        const m = L.circleMarker([d.lat, d.lng], { radius: 7, color: '#fff', weight: 2, fillColor: '#e8590c', fillOpacity: 0.95 }).addTo(map)
+          .bindPopup(`<b>${esc(d.name)}</b><br>${esc(d.gu || '')} ${esc(d.dong || '')}<br>💰 ${d.priceEok == null ? '-' : d.priceEok + '억'}`);
+        markers[d.id] = m;
       });
-      $('rec-list').querySelectorAll('.save').forEach((btn) => {
-        btn.addEventListener('click', async (e) => {
-          e.stopPropagation();
-          if (!user) { alert('로그인 후 저장할 수 있어요.'); location.href = 'onboarding.html'; return; }
-          btn.disabled = true;
-          const { error } = await sb.from('saved_restaurants')
-            .upsert({ user_id: user.id, restaurant_id: Number(btn.dataset.id) }, { onConflict: 'user_id,restaurant_id' });
-          btn.textContent = error ? '실패' : '저장됨 ✓';
-          if (!error) btn.style.background = 'var(--ok)';
-        });
-      });
+      const pts = list.map((d) => (d.lat != null ? [d.lat, d.lng] : null)).filter(Boolean);
+      if (pts.length) map.fitBounds(pts, { padding: [40, 40], maxZoom: 15 });
+
+      $('rec-list').querySelectorAll('.rec').forEach((card) => card.addEventListener('click', (e) => {
+        if (e.target.closest('.actions')) return;
+        const d = list[Number(card.dataset.i)];
+        if (d && d.lat != null) { map.setView([d.lat, d.lng], 16); markers[d.id]?.openPopup(); }
+      }));
+      $('rec-list').querySelectorAll('.unsave').forEach((btn) => btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const d = list[Number(btn.dataset.i)];
+        togglePropSave(d); render();
+      }));
     }
 
     // ── 인근 공인중개사 (카카오 장소검색, 지도 중심 반경) ──
@@ -351,7 +379,13 @@
     // 목록 탭 전환 + GPS
     document.querySelectorAll('.list-tab').forEach((t) => t.addEventListener('click', () => {
       document.querySelectorAll('.list-tab').forEach((x) => x.classList.remove('active'));
-      t.classList.add('active'); landMode = t.dataset.mode; render();
+      t.classList.add('active'); landMode = t.dataset.mode;
+      $('fav-cats').classList.toggle('on', landMode === 'favorites');
+      render();
+    }));
+    document.querySelectorAll('.fav-cat').forEach((c) => c.addEventListener('click', () => {
+      document.querySelectorAll('.fav-cat').forEach((x) => x.classList.remove('active'));
+      c.classList.add('active'); propCat = c.dataset.cat; render();
     }));
     $('geo-btn').addEventListener('click', () => {
       if (!navigator.geolocation) { alert('이 브라우저는 위치를 지원하지 않아요.'); return; }
