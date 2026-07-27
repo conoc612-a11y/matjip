@@ -564,10 +564,16 @@
 
     // ── 인근 공인중개사 (카카오 장소검색, 지도 중심 반경) ──
     let agentMarkers = [];
+    let kakaoTries = 0;
     function renderAgents() {
       Object.values(markers).forEach((m) => map.removeLayer(m));
       agentMarkers.forEach((m) => map.removeLayer(m)); agentMarkers = [];
-      if (!(window.kakao && kakao.maps && kakao.maps.services)) { $('rec-list').innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px 0;">장소검색 로딩 중…</div>'; setTimeout(() => { if (landMode === 'agents') renderAgents(); }, 900); return; }
+      if (!(window.kakao && kakao.maps && kakao.maps.services)) {
+        if (kakaoTries++ < 8) { $('rec-list').innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px 0;">장소검색 로딩 중…</div>'; setTimeout(() => { if (landMode === 'agents') renderAgents(); }, 800); }
+        else { $('banner').textContent = '🏢 인근 공인중개사'; $('rec-list').innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px 0;">장소검색(카카오)을 불러오지 못했어요.<br>⭐즐겨찾기 탭은 정상 이용 가능합니다.</div>'; }
+        return;
+      }
+      kakaoTries = 0;
       $('banner').textContent = '🏢 지도 중심 인근 공인중개사예요. 지도를 옮기고 📍버튼으로 갱신하세요.';
       const c = map.getCenter();
       new kakao.maps.services.Places().keywordSearch('공인중개사', (data, status) => {
