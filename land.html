@@ -12,6 +12,9 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <style>
     :root { --bg:#f4f5f7; --card:#fff; --line:#e6e8eb; --text:#1c1e21; --muted:#8a9099; --accent:#e8590c; --ok:#2f9e44; }
+    :root.dark { --bg:#1a1b1e; --card:#25262b; --line:#373a40; --text:#e9ecef; --muted:#909296; }
+    .recent-chip { display:inline-block; margin:2px 4px 2px 0; padding:3px 9px; border:1px solid var(--line); border-radius:12px; text-decoration:none; color:var(--text); background:var(--card); }
+    .recent-chip:hover { border-color:var(--accent); color:var(--accent); }
     * { box-sizing:border-box; }
     body { margin:0; background:var(--bg); color:var(--text);
       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic",sans-serif; }
@@ -73,6 +76,7 @@
     <div class="right">
       <a href="main.html" class="nav-tab">🍜 맛집</a>
       <a href="land.html" class="nav-tab active">🏙️ 부동산</a>
+      <button id="theme-btn" class="nav-tab" title="다크모드" aria-label="다크모드">🌙</button>
       <div class="profile">
         <button id="profile-btn" class="nav-tab">👤 내 정보 ▾</button>
         <div id="profile-menu" class="profile-menu">
@@ -107,6 +111,7 @@
         <button class="fav-cat" data-cat="단독주택">단독주택</button>
       </div>
       <div class="banner" id="banner"></div>
+      <div id="recent" style="display:none;font-size:12px;margin-bottom:10px;color:var(--muted);"></div>
       <div id="rec-list"></div>
     </div>
   </div>
@@ -116,6 +121,27 @@
     const SUPABASE_KEY = 'sb_publishable_rYaGd3kk5UuFBe3TSpFA8g_uGHWwkqM';
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     const $ = (id) => document.getElementById(id);
+
+    // ── 다크모드 (localStorage 저장, 맛집 지도와 동일 키) ──
+    function applyTheme(dark) { document.documentElement.classList.toggle('dark', dark); const b = $('theme-btn'); if (b) b.textContent = dark ? '☀️' : '🌙'; }
+    applyTheme(localStorage.getItem('mj_theme') === 'dark');
+    function initThemeBtn() { const b = $('theme-btn'); if (b) b.addEventListener('click', () => { const dark = !document.documentElement.classList.contains('dark'); localStorage.setItem('mj_theme', dark ? 'dark' : 'light'); applyTheme(dark); }); }
+    initThemeBtn();
+
+    // ── 최근 본 곳 (부동산 전용 키, 최대 8개) ──
+    const RECENT_KEY = 'mj_recent_land';
+    function loadRecent() { try { return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); } catch (e) { return []; } }
+    function pushRecent(item) { let a = loadRecent().filter((x) => x.key !== item.key); a.unshift(item); a = a.slice(0, 8); try { localStorage.setItem(RECENT_KEY, JSON.stringify(a)); } catch (e) {} renderRecent(); }
+    function renderRecent() {
+      const a = loadRecent(), el = $('recent'); if (!el) return;
+      if (!a.length) { el.style.display = 'none'; return; }
+      el.style.display = '';
+      el.innerHTML = '🕘 최근 본 곳: ' + a.map((x, i) => `<a href="#" class="recent-chip" data-i="${i}">${esc(x.name)}</a>`).join('');
+      el.querySelectorAll('.recent-chip').forEach((c) => c.addEventListener('click', (e) => {
+        e.preventDefault(); const x = a[Number(c.dataset.i)];
+        if (x && x.lat != null) map.setView([x.lat, x.lng], 16);
+      }));
+    }
 
     // ── V-World 인증키: 발급받으면 아래에 넣으세요. 비어 있으면 OSM 지도로 자동 대체 ──
     const VWORLD_KEY = 'B2CDEEDD-D622-311B-883B-CC7890E50822';
@@ -229,6 +255,7 @@
         const btn = node && node.querySelector('.rp-save');
         if (!btn) return;
         const d = m._rp;
+        pushRecent({ key: propId(d), name: d.name, lat: d.lat, lng: d.lng });
         const paint = () => {
           const on = isPropSaved(d);
           btn.textContent = on ? '⭐ 저장됨 (해제)' : '☆ 저장';
@@ -523,6 +550,7 @@
       const { data: rs } = await sb.from('mj_restaurants').select('*');
       restaurants = rs || [];
       render();
+      renderRecent();
     }
 
     $('logout').addEventListener('click', async () => { await sb.auth.signOut(); location.href = 'index.html'; });
