@@ -398,6 +398,11 @@
 
     function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
 
+    // ── 거리·소요시간(지도 중심 기준) + 리스트↔지도 호버 연동 ──
+    function distLabel(r) { if (r.lat == null) return ''; const d = hav(map.getCenter(), latLng(r.lat, r.lng)); const min = Math.max(1, Math.round(d / 1000 / 4.5 * 60)); return `📍 ${fmtDist(d)} · 🚶 ${min}분`; }
+    function hlIcon() { return { content: `<div style="width:32px;height:32px;background:#e8590c;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 7px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;color:#fff;font-size:17px;">★</div>`, anchor: new naver.maps.Point(16, 16) }; }
+    function highlightCard(id, on) { const c = $('rec-list').querySelector(`.rec[data-id="${id}"]`); if (c) c.style.outline = on ? '2px solid var(--accent)' : ''; }
+
     // ── 마커 클러스터링 (착한가격 1,300+곳을 가까운 것끼리 묶어 표시) ──
     const cIcon = (px) => ({
       content: `<div style="cursor:pointer;width:${px}px;height:${px}px;line-height:${px - 4}px;background:#2f9e44;border:2px solid #fff;border-radius:50%;color:#fff;text-align:center;font-weight:700;font-size:13px;box-shadow:0 1px 5px rgba(0,0,0,.4);"></div>`,
@@ -415,6 +420,8 @@
         if (r.lat == null || r.lng == null) return;
         const m = new naver.maps.Marker({ position: latLng(r.lat, r.lng), title: r.name, icon: starIcon('#2f9e44') });
         naver.maps.Event.addListener(m, 'click', () => { openInfo(m, restaurantCard(r)); pushRecent({ key: 'r' + r.id, id: r.id, name: r.name, lat: r.lat, lng: r.lng }); });
+        naver.maps.Event.addListener(m, 'mouseover', () => highlightCard(r.id, true));
+        naver.maps.Event.addListener(m, 'mouseout', () => highlightCard(r.id, false));
         markers[r.id] = m;
         arr.push(m);
       });
@@ -474,10 +481,12 @@
         const why = taste
           ? (hits.length ? `취향 일치: ${hits.join(', ')}` : '취향과 겹치는 태그 없음')
           : '';
+        const dl = distLabel(r);
         return `<div class="rec" data-id="${r.id}">
           ${taste ? `<span class="score">${score}점</span>` : ''}
           <h3>${esc(r.name)}</h3>
           <div class="meta">${esc(r.category || '')} · ${esc(r.address || '')}</div>
+          ${dl ? `<div class="meta" style="color:var(--accent);margin-top:2px;">${dl}</div>` : ''}
           <div class="tags">${tagsHtml}</div>
           <div class="why">${esc(why)}</div>
           <div class="actions">
@@ -502,6 +511,8 @@
           const r = restaurants.find((x) => x.id == card.dataset.id);
           if (r && r.lat != null) { map.setCenter(latLng(r.lat, r.lng)); map.setZoom(16); if (markers[r.id]) openInfo(markers[r.id], restaurantCard(r)); pushRecent({ key: 'r' + r.id, id: r.id, name: r.name, lat: r.lat, lng: r.lng }); }
         });
+        card.addEventListener('mouseenter', () => { const m = markers[card.dataset.id]; if (m) { m.setZIndex(1000); m.setIcon(hlIcon()); } });
+        card.addEventListener('mouseleave', () => { const m = markers[card.dataset.id]; if (m) { m.setZIndex(50); m.setIcon(starIcon('#2f9e44')); } });
       });
       $('rec-list').querySelectorAll('.save').forEach((btn) => {
         btn.addEventListener('click', async (e) => {

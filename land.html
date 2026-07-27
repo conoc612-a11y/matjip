@@ -470,11 +470,14 @@
       if (propCat !== '전체') list = list.filter((x) => (x.type || '아파트') === propCat);
       $('banner').textContent = '⭐ 저장한 부동산 목록이에요. (이 기기에 보관 · 실거래가 마커의 ☆저장 버튼으로 추가)';
 
+      const ctr = map.getCenter();
+      const distLabel = (d) => { if (d.lat == null) return ''; const m = map.distance([d.lat, d.lng], [ctr.lat, ctr.lng]); const min = Math.max(1, Math.round(m / 1000 / 4.5 * 60)); return `📍 ${m >= 1000 ? (m / 1000).toFixed(1) + 'km' : Math.round(m) + 'm'} · 🚶 ${min}분`; };
       $('rec-list').innerHTML = list.length ? list.map((d, i) => `
         <div class="rec" data-i="${i}">
           <span class="score">${d.priceEok == null ? '' : d.priceEok + '억'}</span>
           <h3>${esc(d.name)}</h3>
           <div class="meta">${esc(d.gu || '')} ${esc(d.dong || '')} · ${esc(d.area || '?')}㎡ · ${esc(d.floor || '?')}층</div>
+          <div class="meta" style="color:var(--accent);margin-top:2px;">${distLabel(d)}</div>
           <div class="tags"><span class="tag">${esc(d.type || '아파트')}</span><span class="tag">🏗️ ${esc(d.build || '?')}년</span><span class="tag">거래 ${esc(d.ymd || '')}</span></div>
           <div class="actions">
             <button class="unsave" data-i="${i}">⭐ 저장 해제</button>
@@ -491,11 +494,15 @@
       const pts = list.map((d) => (d.lat != null ? [d.lat, d.lng] : null)).filter(Boolean);
       if (pts.length) map.fitBounds(pts, { padding: [40, 40], maxZoom: 15 });
 
-      $('rec-list').querySelectorAll('.rec').forEach((card) => card.addEventListener('click', (e) => {
-        if (e.target.closest('.actions')) return;
-        const d = list[Number(card.dataset.i)];
-        if (d && d.lat != null) { map.setView([d.lat, d.lng], 16); markers[d.id]?.openPopup(); }
-      }));
+      $('rec-list').querySelectorAll('.rec').forEach((card) => {
+        card.addEventListener('click', (e) => {
+          if (e.target.closest('.actions')) return;
+          const d = list[Number(card.dataset.i)];
+          if (d && d.lat != null) { map.setView([d.lat, d.lng], 16); markers[d.id]?.openPopup(); }
+        });
+        card.addEventListener('mouseenter', () => { const d = list[Number(card.dataset.i)]; const m = markers[d && d.id]; if (m) m.setStyle({ radius: 11, fillColor: '#e8590c', weight: 3 }); });
+        card.addEventListener('mouseleave', () => { const d = list[Number(card.dataset.i)]; const m = markers[d && d.id]; if (m) m.setStyle({ radius: 7, fillColor: '#e8590c', weight: 2 }); });
+      });
       $('rec-list').querySelectorAll('.unsave').forEach((btn) => btn.addEventListener('click', (e) => {
         e.stopPropagation();
         const d = list[Number(btn.dataset.i)];
@@ -513,7 +520,7 @@
       const c = map.getCenter();
       new kakao.maps.services.Places().keywordSearch('공인중개사', (data, status) => {
         if (status !== kakao.maps.services.Status.OK || !data.length) { $('rec-list').innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px 0;">인근 공인중개사가 없어요. 지도를 옮겨보세요.</div>'; return; }
-        $('rec-list').innerHTML = data.map((p, i) => `<div class="rec" data-i="${i}"><h3>${esc(p.place_name)}</h3><div class="meta">${esc((p.category_name || '').split('>').pop().trim())} · ${esc(p.road_address_name || p.address_name || '')}</div><div class="actions">${p.phone ? `<a href="tel:${esc(p.phone)}">📞 ${esc(p.phone)}</a>` : ''}${p.place_url ? `<a href="${p.place_url}" target="_blank" rel="noopener">카카오맵</a>` : ''}</div></div>`).join('');
+        $('rec-list').innerHTML = data.map((p, i) => { const dm = Number(p.distance) || 0; const dtxt = dm ? `📍 ${dm >= 1000 ? (dm / 1000).toFixed(1) + 'km' : dm + 'm'} · 🚶 ${Math.max(1, Math.round(dm / 1000 / 4.5 * 60))}분` : ''; return `<div class="rec" data-i="${i}"><h3>${esc(p.place_name)}</h3><div class="meta">${esc((p.category_name || '').split('>').pop().trim())} · ${esc(p.road_address_name || p.address_name || '')}</div>${dtxt ? `<div class="meta" style="color:var(--accent);margin-top:2px;">${dtxt}</div>` : ''}<div class="actions">${p.phone ? `<a href="tel:${esc(p.phone)}">📞 ${esc(p.phone)}</a>` : ''}${p.place_url ? `<a href="${p.place_url}" target="_blank" rel="noopener">카카오맵</a>` : ''}</div></div>`; }).join('');
         data.forEach((p) => { const m = L.marker([Number(p.y), Number(p.x)]).addTo(map).bindPopup(`<b>${esc(p.place_name)}</b><br>${esc(p.phone || '')}`); agentMarkers.push(m); });
         $('rec-list').querySelectorAll('.rec').forEach((card) => card.addEventListener('click', (e) => { if (e.target.closest('.actions')) return; const p = data[Number(card.dataset.i)]; map.setView([Number(p.y), Number(p.x)], 17); }));
       }, { location: new kakao.maps.LatLng(c.lat, c.lng), radius: 3000, sort: kakao.maps.services.SortBy.DISTANCE, size: 15 });
