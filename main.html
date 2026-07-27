@@ -487,8 +487,10 @@
         $('banner').textContent = `📍 ${user.email} 님 취향 + 내 위치 인근 추천.`;
       }
 
-      // 리스트
-      $('rec-list').innerHTML = scored.map(({ r, score, hits }) => {
+      // 리스트 — 성능: 화면엔 가까운/관련 상위 LIST_MAX개만 렌더(전체 1,300+ 카드 렌더 금지)
+      const LIST_MAX = 50;
+      const shown = scored.slice(0, LIST_MAX);
+      $('rec-list').innerHTML = shown.map(({ r, score, hits }) => {
         const tagsHtml = (r.tags || []).map((t) =>
           `<span class="tag${hits.includes(t) ? ' hit' : ''}">${esc(t)}</span>`).join('');
         const why = taste
@@ -507,7 +509,7 @@
             <a href="detail.html?id=${r.id}">상세 · 길찾기</a>
           </div>
         </div>`;
-      }).join('');
+      }).join('') + (scored.length > LIST_MAX ? `<div style="text-align:center;color:var(--muted);font-size:12px;padding:10px 0;">가까운 ${LIST_MAX}곳만 표시 중 · 전체 ${scored.length}곳 (검색으로 좁혀보세요)</div>` : '');
       if (!scored.length) $('rec-list').innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px 0;">검색 결과가 없어요.</div>';
 
       // 지도 마커는 loadAll에서 클러스터링으로 한 번만 구성함(render는 리스트만 갱신).
@@ -577,7 +579,8 @@
     $('profile-btn').addEventListener('click', (e) => { e.stopPropagation(); $('profile-menu').classList.toggle('on'); });
     document.addEventListener('click', () => $('profile-menu').classList.remove('on'));
     $('fav-link').addEventListener('click', (e) => { e.preventDefault(); $('profile-menu').classList.remove('on'); document.querySelector('.list-tab[data-mode="favorites"]').click(); });
-    $('search').addEventListener('input', (e) => { query = e.target.value; render(); renderAC(); });
+    let searchDebounce = null;
+    $('search').addEventListener('input', (e) => { query = e.target.value; renderAC(); clearTimeout(searchDebounce); searchDebounce = setTimeout(render, 140); });
     $('search').addEventListener('blur', () => setTimeout(() => { $('ac').className = 'ac'; }, 150));
     function renderAC() {
       const raw = $('search').value.trim(), q = raw.toLowerCase(), ac = $('ac');
