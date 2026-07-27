@@ -298,8 +298,9 @@
         jbCluster.addLayers(jbRows.filter((d) => jbFilter[jbGroup(d.gubun)]).map((d) => {
           const g = jbGroup(d.gubun), c = JB_COLOR[g];
           const m = L.circleMarker([d.lat, d.lng], { radius: 6, color: '#fff', weight: 1, fillColor: c, fillOpacity: 0.9 });
+          m._jb = d;
           m.bindTooltip(esc(d.name), { direction: 'top' });
-          m.bindPopup(`<div style="min-width:195px;"><span style="display:inline-block;background:${c};color:#fff;font-size:11px;padding:2px 7px;border-radius:10px;">${g}</span> <b style="font-size:11px;color:#555;">${esc(d.stage || '')}</b><div style="font-weight:700;font-size:14px;margin:4px 0 2px;">${esc(d.name)}</div><div style="font-size:12px;color:#8a9099;">${esc(d.gu)} ${esc(d.jibun)}${d.approx ? ' <span style="color:#e8590c;">(동 근사위치)</span>' : ''}</div><div style="font-size:11px;color:#999;margin-top:3px;">사업구분: ${esc(d.gubun)}</div></div>`);
+          m.bindPopup(`<div style="min-width:195px;"><span style="display:inline-block;background:${c};color:#fff;font-size:11px;padding:2px 7px;border-radius:10px;">${g}</span> <b style="font-size:11px;color:#555;">${esc(d.stage || '')}</b><div style="font-weight:700;font-size:14px;margin:4px 0 2px;">${esc(d.name)}</div><div style="font-size:12px;color:#8a9099;">${esc(d.gu)} ${esc(d.jibun)}${d.approx ? ' <span style="color:#e8590c;">(동 근사위치)</span>' : ''}</div><div style="font-size:11px;color:#999;margin-top:3px;">사업구분: ${esc(d.gubun)}</div><div style="display:flex;gap:6px;margin-top:8px;"><button class="rt-start" style="flex:1;padding:6px;border:1px solid #2f9e44;color:#2f9e44;background:#fff;border-radius:6px;cursor:pointer;font:inherit;font-size:12px;">🚩 출발</button><button class="rt-end" style="flex:1;padding:6px;border:1px solid #e03131;color:#e03131;background:#fff;border-radius:6px;cursor:pointer;font:inherit;font-size:12px;">🏁 도착</button></div></div>`);
           return m;
         }));
       }
@@ -319,6 +320,17 @@
         fetch('redevelop_seoul.json').then((r) => r.json()).then((rows) => { jbRows = rows; jbBuild(); }).catch(() => {});
       });
       map.on('overlayremove', (e) => { if (e.layer === jbCluster) map.removeControl(jbCtrl); });
+      // 정비구역 팝업의 출발/도착 → 길찾기
+      map.on('popupopen', (e) => {
+        const m = e.popup._source;
+        if (!m || !m._jb) return;
+        const node = e.popup._contentNode || e.popup.getElement();
+        const d = m._jb;
+        pushRecent({ key: 'jb' + d.name + d.jibun, name: d.name, lat: d.lat, lng: d.lng });
+        const sBtn = node.querySelector('.rt-start'), eBtn = node.querySelector('.rt-end');
+        if (sBtn) sBtn.onclick = () => { setRoutePoint('start', d.lat, d.lng); m.closePopup(); };
+        if (eBtn) eBtn.onclick = () => { setRoutePoint('end', d.lat, d.lng); m.closePopup(); };
+      });
 
       const landOverlays = {
         '🏗️ 정비사업(재개발·재건축)': jbCluster,

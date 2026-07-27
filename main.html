@@ -115,8 +115,10 @@
         <button id="tool-dist" class="tool-btn">📏 거리</button>
         <button id="tool-radius" class="tool-btn">⭕ 반경</button>
         <button id="tool-share" class="tool-btn">🔗 공유</button>
+        <button id="tool-jb" class="tool-btn">🏗️ 정비사업</button>
         <button id="tool-clear" class="tool-btn" style="display:none;">✖ 지우기</button>
       </div>
+      <div id="jb-cats" style="display:none;gap:5px;flex-wrap:wrap;margin-bottom:10px;"></div>
       <div style="display:flex;gap:6px;">
         <div class="ac-wrap" style="flex:9;">
           <input type="text" id="search" class="search-inp" style="margin-bottom:0;" placeholder="🔍 식당·지역 검색" autocomplete="off" />
@@ -689,6 +691,43 @@
       btn.textContent = se ? '실패' : '저장됨 ✓';
       if (!se) { btn.style.background = 'var(--ok)'; const { data: rs } = await sb.from('mj_restaurants').select('*'); if (rs) restaurants = rs; }
     }
+
+    // ── [정비사업] 서울 재개발·재건축 1,100여 구역 (정보몽땅 공식자료) — 토글 오버레이 ──
+    const JB_COLOR = { '재개발': '#e03131', '재건축': '#7048e8', '가로주택': '#2f9e44', '지역주택': '#1c7ed6', '리모델링': '#f08c00', '기타': '#868e96' };
+    function jbGroup(g) { g = g || ''; if (g.indexOf('재건축') >= 0) return '재건축'; if (g.indexOf('재개발') >= 0) return '재개발'; if (g.indexOf('가로') >= 0) return '가로주택'; if (g.indexOf('지역주택') >= 0) return '지역주택'; if (g.indexOf('리모델링') >= 0) return '리모델링'; return '기타'; }
+    function jbIcon(color) { return { content: `<div style="width:14px;height:14px;background:${color};border:2px solid #fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.45);"></div>`, anchor: new naver.maps.Point(9, 9) }; }
+    const jbCIcon = (px) => ({ content: `<div style="cursor:pointer;width:${px}px;height:${px}px;line-height:${px - 4}px;background:#495057;border:2px solid #fff;border-radius:50%;color:#fff;text-align:center;font-weight:700;font-size:13px;box-shadow:0 1px 5px rgba(0,0,0,.4);"></div>`, size: new naver.maps.Size(px, px), anchor: new naver.maps.Point(px / 2, px / 2) });
+    const jbClusterIcons = [jbCIcon(34), jbCIcon(42), jbCIcon(50), jbCIcon(58)];
+    function jbCard(d) {
+      const g = jbGroup(d.gubun), c = JB_COLOR[g];
+      return `<div style="min-width:195px;"><span style="display:inline-block;background:${c};color:#fff;font-size:11px;padding:2px 7px;border-radius:10px;">${g}</span> <b style="font-size:11px;color:#555;">${esc(d.stage || '')}</b><div style="font-weight:700;font-size:14px;margin:4px 0 2px;">${esc(d.name)}</div><div style="font-size:12px;color:#8a9099;">${esc(d.gu)} ${esc(d.jibun)}${d.approx ? ' (동 근사)' : ''}</div><div style="font-size:11px;color:#999;margin-top:3px;">사업구분: ${esc(d.gubun)}</div><div style="display:flex;gap:6px;margin-top:8px;"><button onclick="setRoutePt('s',${d.lat},${d.lng})" style="flex:1;font:inherit;font-size:12px;padding:5px 0;border:1px solid #2f9e44;color:#2f9e44;background:#fff;border-radius:6px;cursor:pointer;">🚩 출발</button><button onclick="setRoutePt('e',${d.lat},${d.lng})" style="flex:1;font:inherit;font-size:12px;padding:5px 0;border:1px solid #e03131;color:#e03131;background:#fff;border-radius:6px;cursor:pointer;">🏁 도착</button></div></div>`;
+    }
+    let jbRows = null, jbClustering = null, jbOn = false;
+    const jbFilter = { '재개발': true, '재건축': true, '가로주택': true, '지역주택': true, '리모델링': true, '기타': true };
+    function jbBuildNaver() {
+      if (jbClustering) { jbClustering.setMap(null); jbClustering = null; }
+      if (!jbRows || !jbOn) return;
+      const arr = [];
+      jbRows.forEach((d) => {
+        if (!jbFilter[jbGroup(d.gubun)]) return;
+        const m = new naver.maps.Marker({ position: latLng(d.lat, d.lng), icon: jbIcon(JB_COLOR[jbGroup(d.gubun)]), title: d.name });
+        naver.maps.Event.addListener(m, 'click', () => openInfo(m, jbCard(d)));
+        arr.push(m);
+      });
+      jbClustering = new MarkerClustering({ minClusterSize: 2, maxZoom: 15, map, markers: arr, disableClickZoom: false, gridSize: 100, icons: jbClusterIcons, indexGenerator: [10, 50, 200], stylingFunction: (cm, count) => { const dv = cm.getElement().querySelector('div'); if (dv) dv.textContent = count; } });
+    }
+    (function initJbCats() {
+      $('jb-cats').innerHTML = Object.keys(JB_COLOR).map((g) => `<button class="fav-cat active" data-g="${g}" style="display:inline-flex;align-items:center;gap:5px;"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${JB_COLOR[g]};"></span>${g}</button>`).join('');
+      $('jb-cats').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => { const g = b.dataset.g; jbFilter[g] = !jbFilter[g]; b.classList.toggle('active', jbFilter[g]); jbBuildNaver(); }));
+    })();
+    $('tool-jb').addEventListener('click', () => {
+      jbOn = !jbOn;
+      $('tool-jb').classList.toggle('on', jbOn);
+      $('jb-cats').style.display = jbOn ? 'flex' : 'none';
+      $('banner').textContent = jbOn ? '🏗️ 정비사업 구역(재개발·재건축 등)을 유형별로 표시 중이에요.' : '';
+      if (jbOn && !jbRows) { fetch('redevelop_seoul.json').then((r) => r.json()).then((rows) => { jbRows = rows; jbBuildNaver(); }).catch(() => { $('banner').textContent = '정비사업 데이터를 불러오지 못했어요.'; }); }
+      else jbBuildNaver();
+    });
 
     loadAll();
   </script>
