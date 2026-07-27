@@ -34,6 +34,10 @@
     .list-tabs { display:flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; margin:12px 0; }
     .list-tab { flex:1; font:inherit; font-size:12px; padding:8px; border:none; background:#fff; color:var(--muted); cursor:pointer; }
     .list-tab.active { background:var(--accent); color:#fff; }
+    .fav-cats { display:none; gap:5px; flex-wrap:wrap; margin-bottom:10px; }
+    .fav-cats.on { display:flex; }
+    .fav-cat { font:inherit; font-size:12px; padding:5px 11px; border:1px solid var(--line); background:#fff; color:var(--text); border-radius:16px; cursor:pointer; }
+    .fav-cat.active { background:var(--accent); color:#fff; border-color:var(--accent); }
     .layer-toggle { display:flex; align-items:center; gap:7px; font-size:13px; color:var(--text);
       background:#fff; border:1px solid var(--line); border-radius:8px; padding:9px 12px; margin-bottom:12px; cursor:pointer; }
     .layer-toggle input { accent-color:var(--accent); width:16px; height:16px; }
@@ -106,6 +110,13 @@
       <div class="list-tabs">
         <button class="list-tab" data-mode="favorites">⭐ 즐겨찾기</button>
         <button class="list-tab active" data-mode="recommend">📍 인근식당 추천</button>
+      </div>
+      <div class="fav-cats" id="fav-cats">
+        <button class="fav-cat active" data-cat="전체">전체</button>
+        <button class="fav-cat" data-cat="한식">한식</button>
+        <button class="fav-cat" data-cat="일식">일식</button>
+        <button class="fav-cat" data-cat="중식">중식</button>
+        <button class="fav-cat" data-cat="양식">양식</button>
       </div>
       <div class="banner" id="banner"></div>
       <div id="rec-list"></div>
@@ -378,6 +389,7 @@
     function backToList() { clearSearchMarkers(); if (markerClustering) markerClustering.setMap(map); render(); }
 
     let panelMode = 'recommend';   // 'recommend'(내 위치 인근) | 'favorites'(즐겨찾기)
+    let favCat = '전체';
     const savedIds = new Set();
     function distSq(r) { const c = map.getCenter(), la = c.lat(); const dLa = r.lat - la, dLo = (r.lng - c.lng()) * Math.cos(la * Math.PI / 180); return dLa * dLa + dLo * dLo; }
     function render() {
@@ -385,7 +397,7 @@
       let base = q
         ? restaurants.filter((r) => `${r.name} ${r.category || ''} ${(r.tags || []).join(' ')}`.toLowerCase().includes(q))
         : restaurants;
-      if (panelMode === 'favorites') base = base.filter((r) => savedIds.has(Number(r.id)));
+      if (panelMode === 'favorites') { base = base.filter((r) => savedIds.has(Number(r.id))); if (favCat !== '전체') base = base.filter((r) => (r.category || '').includes(favCat)); }
       const scored = base.map((r) => ({ r, ...score(r) }));
       if (panelMode === 'recommend') scored.sort((a, b) => b.score - a.score || (a.r.lat != null && b.r.lat != null ? distSq(a.r) - distSq(b.r) : a.r.name.localeCompare(b.r.name)));
       else scored.sort((a, b) => a.r.name.localeCompare(b.r.name));
@@ -472,7 +484,13 @@
     // 패널 목록 탭(즐겨찾기/인근추천) 전환
     document.querySelectorAll('.list-tab').forEach((t) => t.addEventListener('click', () => {
       document.querySelectorAll('.list-tab').forEach((x) => x.classList.remove('active'));
-      t.classList.add('active'); panelMode = t.dataset.mode; render();
+      t.classList.add('active'); panelMode = t.dataset.mode;
+      $('fav-cats').classList.toggle('on', panelMode === 'favorites');
+      render();
+    }));
+    document.querySelectorAll('.fav-cat').forEach((c) => c.addEventListener('click', () => {
+      document.querySelectorAll('.fav-cat').forEach((x) => x.classList.remove('active'));
+      c.classList.add('active'); favCat = c.dataset.cat; render();
     }));
     // 👤 내 정보 드롭다운
     $('profile-btn').addEventListener('click', (e) => { e.stopPropagation(); $('profile-menu').classList.toggle('on'); });
