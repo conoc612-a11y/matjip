@@ -10,6 +10,9 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <style>
     :root { --bg:#f4f5f7; --card:#fff; --line:#e6e8eb; --text:#1c1e21; --muted:#8a9099; --accent:#e8590c; --ok:#2f9e44; }
+    :root.dark { --bg:#1a1b1e; --card:#25262b; --line:#373a40; --text:#e9ecef; --muted:#909296; }
+    .recent-chip { display:inline-block; margin:2px 4px 2px 0; padding:3px 9px; border:1px solid var(--line); border-radius:12px; text-decoration:none; color:var(--text); background:var(--card); }
+    .recent-chip:hover { border-color:var(--accent); color:var(--accent); }
     * { box-sizing:border-box; }
     body { margin:0; background:var(--bg); color:var(--text);
       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic",sans-serif; }
@@ -78,6 +81,7 @@
     <div class="right">
       <a href="main.html" class="nav-tab active">🍜 맛집</a>
       <a href="land.html" class="nav-tab">🏙️ 부동산</a>
+      <button id="theme-btn" class="nav-tab" title="다크모드" aria-label="다크모드">🌙</button>
       <div class="profile">
         <button id="profile-btn" class="nav-tab">👤 내 정보 ▾</button>
         <div id="profile-menu" class="profile-menu">
@@ -119,6 +123,7 @@
         <button class="fav-cat" data-cat="양식">양식</button>
       </div>
       <div class="banner" id="banner"></div>
+      <div id="recent" style="display:none;font-size:12px;margin-bottom:10px;color:var(--muted);"></div>
       <div id="rec-list"></div>
     </div>
   </div>
@@ -129,6 +134,28 @@
     const ODSAY_KEY = 'H4Vo/z04g/E+AUShnTQIiQ'; // ODsay 대중교통(웹 도메인 잠금 키)
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     const $ = (id) => document.getElementById(id);
+
+    // ── 다크모드 (localStorage 저장) ──
+    function applyTheme(dark) { document.documentElement.classList.toggle('dark', dark); const b = $('theme-btn'); if (b) b.textContent = dark ? '☀️' : '🌙'; }
+    applyTheme(localStorage.getItem('mj_theme') === 'dark');
+    document.addEventListener('DOMContentLoaded', () => applyTheme(localStorage.getItem('mj_theme') === 'dark'));
+    function initThemeBtn() { const b = $('theme-btn'); if (b) b.addEventListener('click', () => { const dark = !document.documentElement.classList.contains('dark'); localStorage.setItem('mj_theme', dark ? 'dark' : 'light'); applyTheme(dark); }); }
+    initThemeBtn();
+
+    // ── 최근 본 곳 (localStorage, 최대 8개) ──
+    const RECENT_KEY = 'mj_recent';
+    function loadRecent() { try { return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); } catch (e) { return []; } }
+    function pushRecent(item) { let a = loadRecent().filter((x) => x.key !== item.key); a.unshift(item); a = a.slice(0, 8); try { localStorage.setItem(RECENT_KEY, JSON.stringify(a)); } catch (e) {} renderRecent(); }
+    function renderRecent() {
+      const a = loadRecent(), el = $('recent'); if (!el) return;
+      if (!a.length) { el.style.display = 'none'; return; }
+      el.style.display = '';
+      el.innerHTML = '🕘 최근 본 곳: ' + a.map((x, i) => `<a href="#" class="recent-chip" data-i="${i}">${esc(x.name)}</a>`).join('');
+      el.querySelectorAll('.recent-chip').forEach((c) => c.addEventListener('click', (e) => {
+        e.preventDefault(); const x = a[Number(c.dataset.i)];
+        if (x && x.lat != null) { map.setCenter(latLng(x.lat, x.lng)); map.setZoom(16); if (markers[x.id]) openInfo(markers[x.id], restaurantCard(restaurants.find((r) => r.id == x.id) || x)); }
+      }));
+    }
 
     // 네이버 지도 인증 실패 시(도메인 미등록/키 오류) 조용히 죽지 않고 안내 ──
     window.navermap_authFailure = function () {
@@ -387,7 +414,7 @@
       restaurants.forEach((r) => {
         if (r.lat == null || r.lng == null) return;
         const m = new naver.maps.Marker({ position: latLng(r.lat, r.lng), title: r.name, icon: starIcon('#2f9e44') });
-        naver.maps.Event.addListener(m, 'click', () => openInfo(m, restaurantCard(r)));
+        naver.maps.Event.addListener(m, 'click', () => { openInfo(m, restaurantCard(r)); pushRecent({ key: 'r' + r.id, id: r.id, name: r.name, lat: r.lat, lng: r.lng }); });
         markers[r.id] = m;
         arr.push(m);
       });
@@ -473,7 +500,7 @@
         card.addEventListener('click', (e) => {
           if (e.target.closest('.actions')) return;
           const r = restaurants.find((x) => x.id == card.dataset.id);
-          if (r && r.lat != null) { map.setCenter(latLng(r.lat, r.lng)); map.setZoom(16); if (markers[r.id]) openInfo(markers[r.id], restaurantCard(r)); }
+          if (r && r.lat != null) { map.setCenter(latLng(r.lat, r.lng)); map.setZoom(16); if (markers[r.id]) openInfo(markers[r.id], restaurantCard(r)); pushRecent({ key: 'r' + r.id, id: r.id, name: r.name, lat: r.lat, lng: r.lng }); }
         });
       });
       $('rec-list').querySelectorAll('.save').forEach((btn) => {
@@ -505,6 +532,7 @@
       catch (e) { $('banner').textContent = '맛집을 불러오지 못했어요: ' + e.message; return; }
       buildClusters();
       render();
+      renderRecent();
     }
 
     $('logout').addEventListener('click', async () => { await sb.auth.signOut(); location.href = 'index.html'; });
