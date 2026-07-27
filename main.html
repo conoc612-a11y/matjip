@@ -73,6 +73,18 @@
     .rec .actions a, .rec .actions button { font-size:13px; padding:6px 10px; border-radius:7px; border:1px solid var(--line); cursor:pointer; background:#fff; color:var(--text); text-decoration:none; }
     .rec .actions .save { background:var(--accent); color:#fff; border:none; }
     .score { float:right; font-size:12px; color:var(--accent); font-weight:700; }
+    .sheet-handle { display:none; }
+    /* 모바일: 패널을 지도 위로 올라오는 하단 시트로 */
+    @media (max-width:640px) {
+      .layout { display:block; }
+      #map { height:100vh; min-height:0; }
+      .panel { position:fixed; left:0; right:0; bottom:0; max-height:82vh; height:auto; z-index:1200;
+        background:var(--card); border-radius:16px 16px 0 0; box-shadow:0 -4px 20px rgba(0,0,0,.18);
+        transform:translateY(calc(100% - 138px)); transition:transform .28s ease; }
+      .panel.sheet-open { transform:translateY(0); }
+      .sheet-handle { display:block; text-align:center; padding:8px 0 6px; position:sticky; top:0; background:var(--card); border-radius:16px 16px 0 0; cursor:pointer; z-index:2; }
+      .sheet-handle::before { content:''; display:inline-block; width:42px; height:5px; border-radius:3px; background:#c1c4c9; }
+    }
   </style>
 </head>
 <body>
@@ -97,6 +109,7 @@
   <div class="layout">
     <div id="map"></div>
     <div class="panel">
+      <div class="sheet-handle" id="sheet-handle" title="위로 올려서 목록 보기"></div>
       <div class="toolbar">
         <button id="tool-street" class="tool-btn">🧭 거리뷰</button>
         <button id="tool-dist" class="tool-btn">📏 거리</button>
@@ -509,7 +522,7 @@
         card.addEventListener('click', (e) => {
           if (e.target.closest('.actions')) return;
           const r = restaurants.find((x) => x.id == card.dataset.id);
-          if (r && r.lat != null) { map.setCenter(latLng(r.lat, r.lng)); map.setZoom(16); if (markers[r.id]) openInfo(markers[r.id], restaurantCard(r)); pushRecent({ key: 'r' + r.id, id: r.id, name: r.name, lat: r.lat, lng: r.lng }); }
+          if (r && r.lat != null) { map.setCenter(latLng(r.lat, r.lng)); map.setZoom(16); if (markers[r.id]) openInfo(markers[r.id], restaurantCard(r)); pushRecent({ key: 'r' + r.id, id: r.id, name: r.name, lat: r.lat, lng: r.lng }); document.querySelector('.panel').classList.remove('sheet-open'); }
         });
         card.addEventListener('mouseenter', () => { const m = markers[card.dataset.id]; if (m) { m.setZIndex(1000); m.setIcon(hlIcon()); } });
         card.addEventListener('mouseleave', () => { const m = markers[card.dataset.id]; if (m) { m.setZIndex(50); m.setIcon(starIcon('#2f9e44')); } });
@@ -546,6 +559,8 @@
       renderRecent();
     }
 
+    // 모바일 하단 시트 열고/닫기
+    (function initSheet() { const h = $('sheet-handle'), p = document.querySelector('.panel'); if (h && p) h.addEventListener('click', () => p.classList.toggle('sheet-open')); })();
     $('logout').addEventListener('click', async () => { await sb.auth.signOut(); location.href = 'index.html'; });
     // 패널 목록 탭(즐겨찾기/인근추천) 전환
     document.querySelectorAll('.list-tab').forEach((t) => t.addEventListener('click', () => {
