@@ -485,13 +485,30 @@
         clickMarker.setPopupContent(`<div style="min-width:210px;"><div style="font-weight:700;font-size:15px;">${esc(best.name)}</div><div style="font-size:12px;color:#8a9099;margin:2px 0 4px;">${esc(best.gu || '')} ${esc(best.dong || '')}</div><div style="font-size:15px;font-weight:700;color:#e8590c;">💰 ${best.priceEok == null ? '-' : best.priceEok + '억'}</div><div style="font-size:12px;margin-top:3px;">${esc(best.area || '?')}㎡ · ${esc(best.floor || '?')}층 · 거래 ${esc(best.ymd || '')}</div><div style="font-size:12px;margin-top:4px;"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(best.build)};margin-right:5px;"></span>🏗️ ${esc(best.build || '?')}년 건축</div><a href="${naverUrl}" target="_blank" rel="noopener" style="display:block;margin-top:8px;padding:7px;background:#03c75a;color:#fff;border-radius:7px;text-align:center;text-decoration:none;font-size:13px;font-weight:600;">🏠 네이버 부동산 보기</a>${rtBtns}</div>`).openPopup();
         bindRtBtns();
       } else {
-        // 200m 이상 → 역지오코딩 주소 + 근처 요약
+        // 200m 이상 → 역지오코딩 주소 + 건물명(Naver geocoder) + 네이버 부동산 + 근처 요약
         let nearHtml = '';
         if (best && bd < 1.5) nearHtml = `<div style="font-size:12px;margin-top:6px;border-top:1px solid #eee;padding-top:6px;">🏢 반경 700m 실거래 <b>${cnt}건</b><br>최근접: <b>${esc(best.name)}</b> ${best.priceEok == null ? '' : best.priceEok + '억'} · ${esc(best.build || '?')}년</div>`;
-        reverseGeocode(lat, lng, (addr) => {
+        const buildClickPopup = (addr, bldName) => {
           if (!clickMarker) return;
-          clickMarker.setPopupContent(`<div style="min-width:190px;"><div style="font-weight:700;">📍 클릭 위치</div><div style="font-size:12px;color:#555;margin:3px 0;">${addr ? esc(addr) : '주소를 찾지 못했어요'}</div><div style="font-size:11px;color:#999;">${lat.toFixed(5)}, ${lng.toFixed(5)}</div>${nearHtml}${rtBtns}</div>`).openPopup();
+          const bldHtml = bldName ? `<div style="font-weight:700;font-size:15px;margin-bottom:4px;">🏠 ${esc(bldName)}</div>` : '';
+          const naverLand = addr ? `<a href="https://land.naver.com/search?query=${encodeURIComponent(addr)}" target="_blank" rel="noopener" style="display:block;margin-top:8px;padding:7px;background:#03c75a;color:#fff;border-radius:7px;text-align:center;text-decoration:none;font-size:13px;font-weight:600;">🏠 네이버 부동산 검색</a>` : '';
+          clickMarker.setPopupContent(`<div style="min-width:190px;">${bldHtml}<div style="font-size:12px;color:#555;">📍 ${addr ? esc(addr) : '주소를 찾지 못했어요'}</div><div style="font-size:11px;color:#999;margin-top:2px;">${lat.toFixed(5)}, ${lng.toFixed(5)}</div>${nearHtml}${naverLand}${rtBtns}</div>`).openPopup();
           bindRtBtns();
+        };
+        reverseGeocode(lat, lng, (addr) => {
+          if (NAVER_KEY && window.naver && naver.maps && naver.maps.Service) {
+            naver.maps.Service.reverseGeocode({ coords: new naver.maps.LatLng(lat, lng), orders: [naver.maps.Service.OrderType.ADDR] }, (status, res) => {
+              let bldName = null;
+              if (status === naver.maps.Service.Status.OK) {
+                const land = res.v2 && res.v2.results && res.v2.results[0] && res.v2.results[0].land;
+                const add0 = land && land.addition0;
+                if (add0 && add0.type === 'building' && add0.value) bldName = add0.value;
+              }
+              buildClickPopup(addr, bldName);
+            });
+          } else {
+            buildClickPopup(addr, null);
+          }
         });
       }
     });
@@ -504,21 +521,29 @@
     const NAVER_KEY = 'kw4t9xfkhz';
     if (NAVER_KEY) {
       const ns = document.createElement('script');
-      ns.src = `https://openapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${NAVER_KEY}&submodules=panorama`;
+      ns.src = `https://openapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${NAVER_KEY}&submodules=panorama,geocoder`;
       document.head.appendChild(ns);
     }
     function showStreetView(lat, lng) {
       if (NAVER_KEY && window.naver && naver.maps && naver.maps.Panorama) {
+        let backdrop = document.getElementById('sv-backdrop');
         let ov = document.getElementById('sv-overlay');
         if (!ov) {
+          backdrop = document.createElement('div');
+          backdrop.id = 'sv-backdrop';
+          backdrop.style.cssText = 'position:fixed;inset:0;z-index:2999;background:rgba(0,0,0,.5);';
+          document.body.appendChild(backdrop);
           ov = document.createElement('div');
           ov.id = 'sv-overlay';
-          ov.style.cssText = 'position:fixed;inset:0;z-index:3000;background:#000;';
-          ov.innerHTML = '<button id="sv-close" style="position:absolute;top:12px;right:12px;z-index:3001;padding:8px 14px;background:#fff;border:none;border-radius:7px;cursor:pointer;font-size:14px;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,.3);">✕ 닫기</button><div id="sv-pano" style="width:100%;height:100%;"></div>';
+          ov.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(92vw,680px);height:min(75vh,460px);z-index:3000;border-radius:14px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.7);';
+          ov.innerHTML = '<button id="sv-close" style="position:absolute;top:10px;right:10px;z-index:3001;padding:6px 12px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:13px;font-weight:600;">✕ 닫기</button><div id="sv-pano" style="width:100%;height:100%;"></div>';
           document.body.appendChild(ov);
-          ov.querySelector('#sv-close').onclick = () => { ov.style.display = 'none'; };
+          const close = () => { ov.style.display = 'none'; backdrop.style.display = 'none'; };
+          ov.querySelector('#sv-close').onclick = close;
+          backdrop.onclick = close;
         }
         ov.style.display = 'block';
+        backdrop.style.display = 'block';
         document.getElementById('sv-pano').innerHTML = '';
         new naver.maps.Panorama(document.getElementById('sv-pano'), { position: new naver.maps.LatLng(lat, lng), pov: { pan: 0, tilt: 0, fov: 100 } });
       } else {
