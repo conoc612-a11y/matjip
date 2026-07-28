@@ -242,6 +242,9 @@
     }
     let rpRows = null;  // 실거래가 원본 (실거래가 레이어 켜면 로드됨) — 지도 클릭 정보/근처 실거래에서 참조. VWORLD 블록보다 먼저 선언(TDZ 방지)
     let _jbRowsGlobal = null; // 정비사업 행 전역 참조 (VWORLD 블록 밖 클릭 핸들러에서 참조)
+    // 노후도 색상. VWORLD 블록 안에 두면 블록 밖 지도 클릭 핸들러에서 ReferenceError가 나서
+    // 팝업이 '정보 불러오는 중…'에서 멈춘다. 반드시 최상위 스코프에 유지할 것.
+    const ageColor = (b) => { const y = parseInt(b) || 0; return !y ? '#868e96' : y >= 2015 ? '#2f9e44' : y >= 2005 ? '#94d82d' : y >= 1995 ? '#fab005' : y >= 1985 ? '#fd7e14' : '#e03131'; };
 
     // ── [토지 레이어] V-World 국토·토지정보 오버레이 (토글) ─────────────────
     // 근거: V-World 공개 WMS(api.vworld.kr) / 서울 토지정보 land.seoul.go.kr.
@@ -265,7 +268,6 @@
       fetch('toji_heoga.geojson').then((r) => r.json()).then((gj) => tojiLayer.addData(gj)).catch(() => {});
 
       // ── 아파트 실거래가·노후도 (서울+경기 9천여 단지) : 필터 + 범례 + 카드 팝업 ──
-      const ageColor = (b) => { const y = parseInt(b) || 0; return !y ? '#868e96' : y >= 2015 ? '#2f9e44' : y >= 2005 ? '#94d82d' : y >= 1995 ? '#fab005' : y >= 1985 ? '#fd7e14' : '#e03131'; };
       const realpriceCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 60 });
       // 팝업·툴팁은 마우스가 닿는 순간에만 생성 (9천개 미리 만들면 지도가 멈춘다)
       realpriceCluster.on('mouseover', (e) => {
@@ -579,6 +581,13 @@
       const { lat, lng } = e.latlng;
       if (clickMarker) map.removeLayer(clickMarker);
       clickMarker = L.marker([lat, lng]).addTo(map).bindPopup('📍 정보 불러오는 중…').openPopup();
+      // 안전장치: 예외나 응답 지연으로 팝업이 '불러오는 중…'에 갇히면 6초 뒤 최소 정보라도 보여준다.
+      const _stuckGuard = setTimeout(() => {
+        const pel = clickMarker && clickMarker.getPopup() && clickMarker.getPopup().getElement();
+        if (!pel || !/불러오는 중/.test(pel.textContent)) return;
+        clickMarker.setPopupContent(`<div class="pc"><div class="pc-head">📍 위치 정보</div><div class="pc-body"><div>주소를 가져오지 못했어요</div><div style="font-size:11px;color:var(--c-muted);margin-top:2px;">${lat.toFixed(5)}, ${lng.toFixed(5)}</div></div><div class="pc-actions">${rtBtns}</div></div>`);
+        bindRtBtns();
+      }, 6000);
       const kmDist = (a, b, c, d) => { const dx = (a - c) * 111, dy = (b - d) * 88; return Math.sqrt(dx * dx + dy * dy); };
       let best = null, bd = 1e9, cnt = 0;
       if (rpRows && rpRows.length) {
@@ -586,6 +595,7 @@
       }
       const rtBtns = `<div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline">🚩 출발</button><button class="rt-end pc-btn pc-btn-outline">🏁 도착</button></div><button class="sv-btn pc-btn pc-btn-outline">🛣️ 거리뷰</button>`;
       const bindRtBtns = () => {
+        clearTimeout(_stuckGuard);  // 실제 내용이 들어왔으니 안전장치 해제 (양쪽 성공 경로가 모두 여기를 지난다)
         const el = clickMarker && clickMarker.getPopup() && clickMarker.getPopup().getElement();
         const sBtn = el && el.querySelector('.rt-start'), eBtn = el && el.querySelector('.rt-end');
         if (sBtn) sBtn.onclick = () => { setRoutePoint('start', lat, lng); clickMarker.closePopup(); };
@@ -703,14 +713,32 @@
         });
         const dot = new naver.maps.Marker({ position: new naver.maps.LatLng(lat, lng), map: miniMap, icon: mkIcon(0) });
 
-        naver.maps.Event.addListener(panorama, 'position_changed', () => {
+        // 파노라마 이동 추적: 화살표로 이동하면 'pano_changed'가 발생한다.
+        // 'position_changed'는 setPosition()을 직접 호출할 때만 발생해서, 이것만 듣고 있으면
+        // 사용자가 이동해도 미니맵 빨간점이 그대로 멈춰 있었다. 두 이벤트 모두 구독한다.
+        let _lastPan = 0;
+        const syncDot = () => {
           const p = panorama.getPosition();
-          if (p) { miniMap.setCenter(p); dot.setPosition(p); }
-        });
+          if (!p) return;
+          miniMap.setCenter(p);
+          dot.setPosition(p);
+          dot.setIcon(mkIcon(_lastPan));  // 위치가 바뀌어도 바라보는 방향 유지
+        };
+        ['pano_changed', 'position_changed', 'init'].forEach((ev) => naver.maps.Event.addListener(panorama, ev, syncDot));
         naver.maps.Event.addListener(panorama, 'pov_changed', () => {
           const pov = panorama.getPov();
-          if (pov != null) dot.setIcon(mkIcon(pov.pan));
+          if (pov != null) { _lastPan = pov.pan; dot.setIcon(mkIcon(pov.pan)); }
         });
+
+        // 미니맵을 드래그로 리사이즈하면 네이버 지도에 새 크기를 알려야 타일이 다시 그려진다.
+        if (window.ResizeObserver) {
+          const mmEl = document.getElementById('sv-minimap');
+          let _rt = null;
+          new ResizeObserver(() => {
+            clearTimeout(_rt);
+            _rt = setTimeout(() => { try { miniMap.refresh(true); } catch (e) {} }, 80);
+          }).observe(mmEl);
+        }
       } else {
         window.open(`https://map.naver.com/p/street-view?c=${lng},${lat},15,0,0,0,dh`, '_blank', 'noopener');
       }
