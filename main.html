@@ -731,7 +731,7 @@
       $('tool-jb').classList.toggle('on', jbOn);
       $('jb-cats').style.display = jbOn ? 'flex' : 'none';
       $('banner').textContent = jbOn ? '🏗️ 정비사업 구역(재개발·재건축 등)을 유형별로 표시 중이에요.' : '';
-      if (jbOn && !jbRows) { fetch('redevelop_seoul.json').then((r) => r.json()).then((rows) => { jbRows = rows; jbBuildNaver(); }).catch(() => { $('banner').textContent = '정비사업 데이터를 불러오지 못했어요.'; }); }
+      if (jbOn && !jbRows) { fetch('redevelop_seoul.json?v=3').then((r) => r.json()).then((rows) => { jbRows = rows; jbBuildNaver(); }).catch(() => { $('banner').textContent = '정비사업 데이터를 불러오지 못했어요.'; }); }
       else jbBuildNaver();
     });
 

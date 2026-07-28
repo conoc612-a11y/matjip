@@ -321,7 +321,7 @@
         jbCtrl.addTo(map);
         setTimeout(() => { document.querySelectorAll('.jb-f').forEach((cb) => { if (cb._w) return; cb._w = 1; cb.addEventListener('change', () => { jbFilter[cb.dataset.g] = cb.checked; jbBuild(); }); }); }, 60);
         if (jbRows) return;
-        fetch('redevelop_seoul.json').then((r) => r.json()).then((rows) => { jbRows = rows; jbBuild(); }).catch(() => {});
+        fetch('redevelop_seoul.json?v=3').then((r) => r.json()).then((rows) => { jbRows = rows; jbBuild(); }).catch(() => {});
       });
       map.on('overlayremove', (e) => { if (e.layer === jbCluster) map.removeControl(jbCtrl); });
       // 정비구역 팝업의 출발/도착 → 길찾기
