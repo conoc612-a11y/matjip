@@ -68,11 +68,22 @@
     .rec .tags { margin:8px 0; display:flex; flex-wrap:wrap; gap:6px; }
     .tag { font-size:11px; background:#f1f3f5; border-radius:12px; padding:3px 9px; }
     .tag.hit { background:var(--accent); color:#fff; }
-    .rec .why { font-size:12px; color:var(--ok); margin:6px 0; min-height:15px; }
+    .rec .why { font-size:12px; color:var(--ok); margin-top:5px; }
     .rec .actions { display:flex; gap:8px; margin-top:8px; }
     .rec .actions a, .rec .actions button { font-size:13px; padding:6px 10px; border-radius:7px; border:1px solid var(--line); cursor:pointer; background:#fff; color:var(--text); text-decoration:none; }
     .rec .actions .save { background:var(--accent); color:#fff; border:none; }
     .score { float:right; font-size:12px; color:var(--accent); font-weight:700; }
+    /* ── 카드 헤더 (이름 + 거리 뱃지) ── */
+    .rec-header { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+    .dist-badge { font-size:11px; color:var(--accent); background:#fff4e6; padding:2px 8px; border-radius:10px; white-space:nowrap; flex-shrink:0; line-height:1.9; font-weight:600; }
+    :root.dark .dist-badge { background:#3d1f0d; }
+    /* ── 스켈레톤 로딩 ── */
+    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+    .skel { background:linear-gradient(90deg,var(--line) 25%,var(--bg) 50%,var(--line) 75%); background-size:200% 100%; animation:shimmer 1.5s infinite; border-radius:5px; }
+    .skel-card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:10px; }
+    .skel-h { height:16px; width:55%; margin-bottom:10px; }
+    .skel-m { height:12px; width:82%; margin-bottom:6px; }
+    .skel-s { height:11px; width:38%; }
     .sheet-handle { display:none; }
     /* 모바일: 패널을 지도 위로 올라오는 하단 시트로 */
     @media (max-width:640px) {
@@ -485,15 +496,20 @@
     let panelMode = 'recommend';   // 'recommend'(내 위치 인근) | 'favorites'(즐겨찾기)
     let favCat = '전체';
     const savedIds = new Set();
-    function distSq(r) { const c = map.getCenter(), la = c.lat(); const dLa = r.lat - la, dLo = (r.lng - c.lng()) * Math.cos(la * Math.PI / 180); return dLa * dLa + dLo * dLo; }
     function render() {
+      const center = map.getCenter(); // 한 번만 계산
       const q = (query || '').trim().toLowerCase();
       let base = q
         ? restaurants.filter((r) => `${r.name} ${r.category || ''} ${(r.tags || []).join(' ')}`.toLowerCase().includes(q))
         : restaurants;
       if (panelMode === 'favorites') { base = base.filter((r) => savedIds.has(Number(r.id))); if (favCat !== '전체') base = base.filter((r) => (r.category || '').includes(favCat)); }
-      const scored = base.map((r) => ({ r, ...score(r) }));
-      if (panelMode === 'recommend') scored.sort((a, b) => b.score - a.score || (a.r.lat != null && b.r.lat != null ? distSq(a.r) - distSq(b.r) : a.r.name.localeCompare(b.r.name)));
+      // 거리 + 점수 한 번에 계산 (render마다 map.getCenter() N회 호출 제거)
+      const scored = base.map((r) => {
+        const { score: s, hits } = score(r);
+        const dist = r.lat != null ? hav(center, latLng(r.lat, r.lng)) : null;
+        return { r, score: s, hits, dist };
+      });
+      if (panelMode === 'recommend') scored.sort((a, b) => b.score - a.score || (a.dist != null && b.dist != null ? a.dist - b.dist : a.r.name.localeCompare(b.r.name)));
       else scored.sort((a, b) => a.r.name.localeCompare(b.r.name));
 
       // 배너
@@ -507,63 +523,83 @@
         $('banner').textContent = `📍 ${user.email} 님 취향 + 내 위치 인근 추천.`;
       }
 
-      // 리스트 — 성능: 화면엔 가까운/관련 상위 LIST_MAX개만 렌더(전체 1,300+ 카드 렌더 금지)
+      // 리스트 — 상위 LIST_MAX개만 렌더(전체 1,300+ 카드 렌더 금지)
       const LIST_MAX = 50;
       const shown = scored.slice(0, LIST_MAX);
-      $('rec-list').innerHTML = shown.map(({ r, score, hits }) => {
+      $('rec-list').innerHTML = shown.map(({ r, score: s, hits, dist }) => {
         const tagsHtml = (r.tags || []).map((t) =>
           `<span class="tag${hits.includes(t) ? ' hit' : ''}">${esc(t)}</span>`).join('');
-        const why = taste
-          ? (hits.length ? `취향 일치: ${hits.join(', ')}` : '취향과 겹치는 태그 없음')
-          : '';
-        const dl = distLabel(r);
+        const why = taste && hits.length ? `✓ 취향 일치: ${hits.join(', ')}` : '';
+        const dl = dist != null ? `📍 ${fmtDist(dist)} · 🚶 ${Math.max(1, Math.round(dist / 1000 / 4.5 * 60))}분` : '';
+        const saved = savedIds.has(Number(r.id));
         return `<div class="rec" data-id="${r.id}">
-          ${taste ? `<span class="score">${score}점</span>` : ''}
-          <h3>${esc(r.name)}</h3>
-          <div class="meta">${esc(r.category || '')} · ${esc(r.address || '')}</div>
-          ${dl ? `<div class="meta" style="color:var(--accent);margin-top:2px;">${dl}</div>` : ''}
-          <div class="tags">${tagsHtml}</div>
-          <div class="why">${esc(why)}</div>
+          <div class="rec-header">
+            <h3 style="margin:0;">${esc(r.name)}</h3>
+            ${dl ? `<span class="dist-badge">${dl}</span>` : (taste && s > 0 ? `<span class="score">${s}점</span>` : '')}
+          </div>
+          <div class="meta" style="margin-top:3px;">${esc(r.category || '')}${r.address ? ' · ' + esc(r.address) : ''}</div>
+          ${tagsHtml ? `<div class="tags">${tagsHtml}</div>` : ''}
+          ${why ? `<div class="why">${esc(why)}</div>` : ''}
           <div class="actions">
-            <button class="save" data-id="${r.id}">저장</button>
+            <button class="save" data-id="${r.id}" style="${saved ? 'background:var(--ok);' : ''}">${saved ? '저장됨 ✓' : '저장'}</button>
             <a href="detail.html?id=${r.id}">상세 · 길찾기</a>
           </div>
         </div>`;
       }).join('') + (scored.length > LIST_MAX ? `<div style="text-align:center;color:var(--muted);font-size:12px;padding:10px 0;">가까운 ${LIST_MAX}곳만 표시 중 · 전체 ${scored.length}곳 (검색으로 좁혀보세요)</div>` : '');
       if (!scored.length) $('rec-list').innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px 0;">검색 결과가 없어요.</div>';
 
-      // 지도 마커는 loadAll에서 클러스터링으로 한 번만 구성함(render는 리스트만 갱신).
-      // 텍스트 검색 시 결과 위치로 지도 이동.
+      // 텍스트 검색 시 결과 위치로 지도 이동
       if (q && scored.length && scored[0].r.lat != null) {
         map.setCenter(latLng(scored[0].r.lat, scored[0].r.lng));
         if (scored.length <= 5) map.setZoom(16);
       }
-
-      // 리스트 클릭 → 지도 이동 / 저장
-      $('rec-list').querySelectorAll('.rec').forEach((card) => {
-        card.addEventListener('click', (e) => {
-          if (e.target.closest('.actions')) return;
-          const r = restaurants.find((x) => x.id == card.dataset.id);
-          if (r && r.lat != null) { map.setCenter(latLng(r.lat, r.lng)); map.setZoom(16); if (markers[r.id]) openInfo(markers[r.id], restaurantCard(r)); pushRecent({ key: 'r' + r.id, id: r.id, name: r.name, lat: r.lat, lng: r.lng }); document.querySelector('.panel').classList.remove('sheet-open'); }
-        });
-        card.addEventListener('mouseenter', () => { const m = markers[card.dataset.id]; if (m) { m.setZIndex(1000); m.setIcon(hlIcon()); } });
-        card.addEventListener('mouseleave', () => { const m = markers[card.dataset.id]; if (m) { m.setZIndex(50); m.setIcon(starIcon('#2f9e44')); } });
-      });
-      $('rec-list').querySelectorAll('.save').forEach((btn) => {
-        btn.addEventListener('click', async (e) => {
-          e.stopPropagation();
-          if (!user) { alert('로그인 후 저장할 수 있어요.'); location.href = 'onboarding.html'; return; }
-          btn.disabled = true;
-          const { error } = await sb.from('saved_restaurants')
-            .upsert({ user_id: user.id, restaurant_id: Number(btn.dataset.id) }, { onConflict: 'user_id,restaurant_id' });
-          btn.textContent = error ? '실패' : '저장됨 ✓';
-          if (!error) { btn.style.background = 'var(--ok)'; savedIds.add(Number(btn.dataset.id)); }
-        });
-      });
+      // 리스트 이벤트는 setupListDelegation()의 위임 리스너가 처리 (render마다 재등록 불필요)
     }
+
+    // ── 이벤트 위임: render마다 N개 리스너 재등록 대신 컨테이너에 1회 등록 ──
+    async function handleSave(btn) {
+      const id = Number(btn.dataset.id);
+      if (!user) { alert('로그인 후 저장할 수 있어요.'); location.href = 'onboarding.html'; return; }
+      if (btn.disabled) return;
+      btn.disabled = true;
+      const { error } = await sb.from('saved_restaurants')
+        .upsert({ user_id: user.id, restaurant_id: id }, { onConflict: 'user_id,restaurant_id' });
+      btn.textContent = error ? '실패' : '저장됨 ✓';
+      if (!error) { btn.style.background = 'var(--ok)'; savedIds.add(id); }
+      btn.disabled = !!error;
+    }
+    (function setupListDelegation() {
+      const list = $('rec-list');
+      list.addEventListener('click', (e) => {
+        const saveBtn = e.target.closest('.save[data-id]');
+        if (saveBtn) { e.stopPropagation(); handleSave(saveBtn); return; }
+        const card = e.target.closest('.rec[data-id]');
+        if (!card || e.target.closest('.actions')) return;
+        const r = restaurants.find((x) => x.id == card.dataset.id);
+        if (r && r.lat != null) {
+          map.setCenter(latLng(r.lat, r.lng)); map.setZoom(16);
+          if (markers[r.id]) openInfo(markers[r.id], restaurantCard(r));
+          pushRecent({ key: 'r' + r.id, id: r.id, name: r.name, lat: r.lat, lng: r.lng });
+          document.querySelector('.panel').classList.remove('sheet-open');
+        }
+      });
+      list.addEventListener('mouseover', (e) => {
+        const card = e.target.closest('.rec[data-id]');
+        if (!card || e.relatedTarget?.closest('.rec[data-id]') === card) return;
+        const m = markers[card.dataset.id]; if (m) { m.setZIndex(1000); m.setIcon(hlIcon()); }
+        highlightCard(card.dataset.id, true);
+      });
+      list.addEventListener('mouseout', (e) => {
+        const card = e.target.closest('.rec[data-id]');
+        if (!card || e.relatedTarget?.closest('.rec[data-id]') === card) return;
+        const m = markers[card.dataset.id]; if (m) { m.setZIndex(50); m.setIcon(starIcon('#2f9e44')); }
+        highlightCard(card.dataset.id, false);
+      });
+    })();
 
     // ── 데이터 로드 ──
     async function loadAll() {
+      $('rec-list').innerHTML = Array(4).fill('<div class="skel-card"><div class="skel skel-h"></div><div class="skel skel-m"></div><div class="skel skel-s"></div></div>').join('');
       const { data: { session } } = await sb.auth.getSession();
       user = session ? session.user : null;
       if (user) {
