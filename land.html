@@ -39,9 +39,12 @@
     .ac-item { padding:8px 12px; font-size:13px; cursor:pointer; display:flex; gap:8px; align-items:center; }
     .ac-item:hover { background:#f1f3f5; }
     .ac-item .t { margin-left:auto; color:var(--muted); font-size:11px; }
-    .layout { display:flex; flex-wrap:wrap; flex:8.5; min-height:0; overflow:hidden; }
-    #map { flex:7.5 1 380px; min-height:300px; }
-    .panel { flex:2.5 1 220px; overflow-y:auto; padding:12px 16px; }
+    /* 지도를 최대한 크게. 세로 9.4:0.6(푸터), 가로 9:1(우측 패널).
+       basis를 0으로 둬야 flex 비율이 그대로 화면 비율이 된다(basis가 남아 있으면 비율이 왜곡됨).
+       패널은 min-width로 하한만 둔다 — 9:1을 그대로 두면 넓은 화면에서 190px까지 줄어 카드가 깨진다. */
+    .layout { display:flex; flex-wrap:wrap; flex:9.4; min-height:0; overflow:hidden; }
+    #map { flex:9 1 0; min-height:300px; }
+    .panel { flex:1 1 0; min-width:240px; overflow-y:auto; padding:10px 12px; }
     .gps-btn { flex:1; min-width:42px; border:1px solid var(--line); background:#fff; color:var(--accent); border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
     .gps-btn:hover { border-color:var(--accent); background:#fff4e6; }
     .list-tabs { display:flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; margin:12px 0; }
@@ -70,13 +73,15 @@
     .score { float:right; font-size:12px; color:var(--accent); font-weight:700; }
     .cmp-check { float:right; font-size:11px; color:var(--muted); cursor:pointer; user-select:none; }
     .sheet-handle { display:none; }
-    .site-footer { flex:1.5; flex-shrink:0; background:var(--card); border-top:2px solid var(--line);
-      padding:10px 24px; display:flex; flex-direction:column; justify-content:center; gap:6px; }
-    .footer-links { display:flex; gap:16px; flex-wrap:wrap; }
-    .footer-links a { font-size:12px; color:var(--muted); text-decoration:none; }
+    /* 푸터는 지도 공간을 최대한 양보. 3줄을 1줄로 합쳐 높이를 최소화한다. */
+    .site-footer { flex:0.6; flex-shrink:0; background:var(--card); border-top:1px solid var(--line);
+      padding:5px 16px; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:4px 14px; }
+    .footer-links { display:flex; gap:12px; flex-wrap:wrap; }
+    .footer-links a { font-size:11px; color:var(--muted); text-decoration:none; }
     .footer-links a:hover { color:var(--accent); }
-    .footer-stats { display:flex; font-size:12px; color:var(--text); }
-    .footer-stats span { padding:0 12px; border-right:1px solid var(--line); }
+    .footer-stats { display:flex; font-size:11px; color:var(--text); }
+    .footer-contact { font-size:11px; color:var(--muted); }
+    .footer-stats span { padding:0 10px; border-right:1px solid var(--line); }
     .footer-stats span:first-child { padding-left:0; }
     .footer-stats b { color:var(--accent); }
     .footer-contact { font-size:12px; color:var(--muted); }
@@ -166,7 +171,9 @@
       <span>오늘방문자 <b id="f-today">—</b></span>
       <span>누적방문자 <b id="f-total">—</b></span>
     </div>
-    <div class="footer-contact">호룡리싱앤리얼리티 &nbsp;·&nbsp; 오재호 010.4353.6501 &nbsp;·&nbsp; conoc@naver.com</div>
+    <div class="footer-contact">호룡리싱앤리얼리티 &nbsp;·&nbsp; 오재호 010.4353.6501 &nbsp;·&nbsp; conoc@naver.com
+      <!-- 빌드 태그: 브라우저가 옛 파일을 캐시하고 있는지 한눈에 확인하는 용도. 배포마다 올린다. -->
+      &nbsp;·&nbsp; <span style="opacity:.6;">build 2026-07-29-b6</span></div>
   </footer>
 
   <script>
@@ -629,6 +636,68 @@
         });
       } catch (err) { cb(null); }
     }
+    // ── 건물 정보 (V-World 건물정보 LT_C_BLDGINFO, JSONP) ────────────
+    // 아파트가 아닌 건물(단독·다세대·근린생활 등)의 용도·층수·연면적·사용승인일을 제공한다.
+    // 실측 주의: 이 레이어의 usability는 그룹코드(01000/02000/04000…)만 내려온다.
+    // 5자리 세부코드(예: 02003 다세대주택)는 제공되지 않아 '다세대 vs 다가구' 구분은 불가능하다.
+    // 그래서 계열까지만 표기하고, 층수·연면적으로 사용자가 판단할 수 있게 함께 보여준다.
+    const BLD_USE = {
+      '01000': '단독주택 계열 (단독·다중·다가구)',
+      '02000': '공동주택 계열 (아파트·연립·다세대)',
+      '03000': '제1종 근린생활시설', '04000': '제2종 근린생활시설',
+      '05000': '문화 및 집회시설', '06000': '종교시설', '07000': '판매시설',
+      '08000': '운수시설', '09000': '의료시설', '10000': '교육연구시설',
+      '11000': '노유자시설', '12000': '수련시설', '13000': '운동시설',
+      '14000': '업무시설', '15000': '숙박시설', '16000': '위락시설',
+      '17000': '공장', '18000': '창고시설', '19000': '위험물 저장·처리시설',
+      '20000': '자동차 관련시설', '21000': '동물·식물 관련시설', '22000': '자원순환 관련시설',
+    };
+    const _bldInfoCache = new Map();
+    function vworldBuilding(lat, lng, cb) {
+      const key = _gcKey(lat, lng);
+      if (_bldInfoCache.has(key)) { cb(_bldInfoCache.get(key)); return; }
+      const cbName = '__vwb_' + key.replace(/[^0-9]/g, '_');
+      let done = false;
+      const finish = (val) => {
+        if (done) return;
+        done = true;
+        try { delete window[cbName]; } catch (e) {}
+        _bldInfoCache.set(key, val);
+        cb(val);
+      };
+      window[cbName] = (data) => {
+        let p = null;
+        try {
+          const fs = (data.response.result.featureCollection.features) || [];
+          // 한 좌표에 건물 피처가 여러 개 겹칠 수 있다. 용도코드가 있는 것을 채택.
+          p = fs.map((f) => f.properties).find((x) => x && x.usability) || null;
+        } catch (e) {}
+        finish(p);
+      };
+      const s = document.createElement('script');
+      s.src = `https://api.vworld.kr/req/data?service=data&version=2.0&request=GetFeature&format=json&size=5`
+        + `&crs=EPSG:4326&geomFilter=POINT(${lng}%20${lat})&data=LT_C_BLDGINFO&key=${VWORLD_KEY}`
+        + `&domain=${encodeURIComponent(location.origin)}&callback=${cbName}`;
+      s.onerror = () => finish(null);
+      document.head.appendChild(s);
+      setTimeout(() => finish(null), 7000);
+    }
+    function bldInfoHtml(p) {
+      if (!p) return '';
+      const use = BLD_USE[p.usability] || (p.usability ? '용도코드 ' + esc(p.usability) : '');
+      const flr = p.grnd_flr && p.grnd_flr !== '0'
+        ? `지상 ${esc(p.grnd_flr)}층` + (p.ugrnd_flr && p.ugrnd_flr !== '0' ? ` · 지하 ${esc(p.ugrnd_flr)}층` : '') : '';
+      const area = p.totalarea && p.totalarea !== '0' ? `연면적 ${Number(p.totalarea).toLocaleString()}㎡` : '';
+      const ok8 = /^\d{8}$/.test(p.useapr_day || '');
+      const day = ok8 ? `${p.useapr_day.slice(0, 4)}.${p.useapr_day.slice(4, 6)} 사용승인` : '';
+      const lines = [use, [flr, area].filter(Boolean).join(' · '), day].filter(Boolean);
+      if (!lines.length) return '';
+      const yr = ok8 ? p.useapr_day.slice(0, 4) : '';
+      const dot = yr ? `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${ageColor(yr)};margin-right:5px;"></span>` : '';
+      const old = yr && parseInt(yr) <= 1994 ? '<span style="background:#e03131;color:#fff;font-size:10px;padding:1px 6px;border-radius:9px;margin-left:5px;">🔨 30년↑</span>' : '';
+      return `<div style="font-size:12px;margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;"><b>🏢 건물 정보</b>${old}<br>${dot}${lines.join('<br>')}</div>`;
+    }
+
     // 좌표를 함께 넘겨 네이버 지도가 그 지점으로 이동하게 한다 (동명이 단지 오검색 방지)
     const naverSearchUrl = (q, lat, lng) => `https://map.naver.com/p/search/${encodeURIComponent(q)}?c=${lng},${lat},17,0,0,0,dh`;
     // 팝업이 열린 뒤 제목·네이버 링크를 실제 건물명으로 교체.
@@ -700,8 +769,17 @@
           if (!clickMarker) return;
           const bldHtml = bldName ? `<div style="font-weight:700;font-size:14px;margin-bottom:2px;">🏠 ${esc(bldName)}</div>` : '';
           const naverLand = addr ? `<a href="${naverSearchUrl(bldName || addr, lat, lng)}" target="_blank" rel="noopener" class="pc-btn pc-btn-green">🏠 네이버 부동산 검색</a>` : '';
-          clickMarker.setPopupContent(`<div class="pc"><div class="pc-head">📍 위치 정보</div><div class="pc-body">${bldHtml}<div>📍 ${addr ? esc(addr) : '주소를 찾지 못했어요'}</div><div style="font-size:11px;color:var(--c-muted);margin-top:2px;">${lat.toFixed(5)}, ${lng.toFixed(5)}</div>${nearHtml}${jbNearHtml}</div><div class="pc-actions">${naverLand}${rtBtns}</div></div>`).openPopup();
+          clickMarker.setPopupContent(`<div class="pc"><div class="pc-head">📍 위치 정보</div><div class="pc-body">${bldHtml}<div>📍 ${addr ? esc(addr) : '주소를 찾지 못했어요'}</div><div style="font-size:11px;color:var(--c-muted);margin-top:2px;">${lat.toFixed(5)}, ${lng.toFixed(5)}</div><div class="bld-info"></div>${nearHtml}${jbNearHtml}</div><div class="pc-actions">${naverLand}${rtBtns}</div></div>`).openPopup();
           bindRtBtns();
+          // 건축물 용도·층수·연면적·사용승인일을 비동기로 채운다 (아파트가 아닌 건물의 정체를 알려주는 핵심 정보)
+          const _pel = clickMarker.getPopup().getElement();
+          vworldBuilding(lat, lng, (p) => {
+            const holder = _pel && _pel.querySelector('.bld-info');
+            if (!holder) return;
+            holder.innerHTML = bldInfoHtml(p);
+            const pp = clickMarker && clickMarker.getPopup();
+            if (pp && pp.isOpen()) pp.update();  // 내용이 늘어났으니 팝업 크기 재계산
+          });
         };
         const cacheKey = _gcKey(lat, lng);
         if (_gcCache.has(cacheKey)) { buildClickPopup(...Object.values(_gcCache.get(cacheKey))); return; }
@@ -715,9 +793,13 @@
                 const rg = r.region, ld = r.land;
                 addr = [rg && rg.area1 && rg.area1.name, rg && rg.area2 && rg.area2.name, rg && rg.area3 && rg.area3.name, ld && ld.name, ld && (ld.number1 + (ld.number2 ? '-' + ld.number2 : ''))].filter(Boolean).join(' ');
               }
-              const j = results.find((x) => x.name === 'legalcode') || results[0];
-              const add0 = j && j.land && j.land.addition0;
-              if (add0 && add0.type === 'building' && add0.value) bldName = add0.value;
+              // 건물명은 roadaddr 결과의 land.addition0 에 실려 온다.
+              // 이전 코드는 요청하지도 않은 'legalcode' 를 찾다가 항상 results[0](지번주소)로
+              // 폴백해서 건물명을 한 번도 못 집어냈다. 전체 결과를 훑는다.
+              for (const x of results) {
+                const a0 = x && x.land && x.land.addition0;
+                if (a0 && a0.type === 'building' && a0.value) { bldName = a0.value; break; }
+              }
             }
             _gcCache.set(cacheKey, { addr, bldName });
             buildClickPopup(addr, bldName);
