@@ -708,17 +708,26 @@
       const g = jbGroup(d.gubun), c = JB_COLOR[g];
       return `<div style="min-width:195px;"><span style="display:inline-block;background:${c};color:#fff;font-size:11px;padding:2px 7px;border-radius:10px;">${g}</span> <b style="font-size:11px;color:#555;">${esc(d.stage || '')}</b><div style="font-weight:700;font-size:14px;margin:4px 0 2px;">${esc(d.name)}</div><div style="font-size:12px;color:#8a9099;">${esc(d.gu)} ${esc(d.jibun)}${d.approx ? ' (동 근사)' : ''}</div><div style="font-size:11px;color:#999;margin-top:3px;">사업구분: ${esc(d.gubun)}${d.method ? ' · ' + esc(d.method) : ''}</div>${(d.rc || d.cafe) ? `<div style="display:flex;gap:6px;margin-top:7px;">${d.rc ? `<a href="https://urban.seoul.go.kr/view/map/mapPopup.html?recordCode=${encodeURIComponent(d.rc)}" target="_blank" rel="noopener" style="flex:1;text-align:center;padding:6px;border:1px solid #7048e8;color:#7048e8;border-radius:6px;text-decoration:none;font-size:12px;">🗺️ 경계지도</a>` : ''}${d.cafe ? `<a href="https://cleanup.seoul.go.kr/cafe/mainIndx.do?cafeUrl=${encodeURIComponent(d.cafe)}" target="_blank" rel="noopener" style="flex:1;text-align:center;padding:6px;border:1px solid #1c7ed6;color:#1c7ed6;border-radius:6px;text-decoration:none;font-size:12px;">📂 정보공개</a>` : ''}</div>` : ''}<div style="display:flex;gap:6px;margin-top:8px;"><button onclick="setRoutePt('s',${d.lat},${d.lng})" style="flex:1;font:inherit;font-size:12px;padding:5px 0;border:1px solid #2f9e44;color:#2f9e44;background:#fff;border-radius:6px;cursor:pointer;">🚩 출발</button><button onclick="setRoutePt('e',${d.lat},${d.lng})" style="flex:1;font:inherit;font-size:12px;padding:5px 0;border:1px solid #e03131;color:#e03131;background:#fff;border-radius:6px;cursor:pointer;">🏁 도착</button></div></div>`;
     }
-    let jbRows = null, jbClustering = null, jbOn = false;
+    let jbRows = null, jbClustering = null, jbOn = false, jbPolys = null, jbPolysNaver = [];
     const jbFilter = { '재개발': true, '재건축': true, '모아': true, '지역주택': true, '리모델링': true, '기타': true };
     function jbBuildNaver() {
       if (jbClustering) { jbClustering.setMap(null); jbClustering = null; }
+      jbPolysNaver.forEach((p) => p.setMap(null)); jbPolysNaver = [];
       if (!jbRows || !jbOn) return;
       const arr = [];
       jbRows.forEach((d) => {
         if (!jbFilter[jbGroup(d.gubun)]) return;
-        const m = new naver.maps.Marker({ position: latLng(d.lat, d.lng), icon: jbIcon(JB_COLOR[jbGroup(d.gubun)]), title: d.name });
-        naver.maps.Event.addListener(m, 'click', () => openInfo(m, jbCard(d)));
-        arr.push(m);
+        const c = JB_COLOR[jbGroup(d.gubun)];
+        if (d.rc && jbPolys && jbPolys[d.rc]) {
+          const paths = jbPolys[d.rc].map((ring) => ring.map((p) => latLng(p[0], p[1])));
+          const poly = new naver.maps.Polygon({ map, paths, fillColor: c, fillOpacity: 0.28, strokeColor: c, strokeWeight: 2, strokeOpacity: 0.9 });
+          naver.maps.Event.addListener(poly, 'click', (e) => { infoWindow.setContent('<div style="padding:7px 11px;font-size:13px;line-height:1.4;">' + jbCard(d) + '</div>'); infoWindow.open(map, e.coord); });
+          jbPolysNaver.push(poly);
+        } else {
+          const m = new naver.maps.Marker({ position: latLng(d.lat, d.lng), icon: jbIcon(c), title: d.name });
+          naver.maps.Event.addListener(m, 'click', () => openInfo(m, jbCard(d)));
+          arr.push(m);
+        }
       });
       jbClustering = new MarkerClustering({ minClusterSize: 2, maxZoom: 15, map, markers: arr, disableClickZoom: false, gridSize: 100, icons: jbClusterIcons, indexGenerator: [10, 50, 200], stylingFunction: (cm, count) => { const dv = cm.getElement().querySelector('div'); if (dv) dv.textContent = count; } });
     }
@@ -731,7 +740,7 @@
       $('tool-jb').classList.toggle('on', jbOn);
       $('jb-cats').style.display = jbOn ? 'flex' : 'none';
       $('banner').textContent = jbOn ? '🏗️ 정비사업 구역(재개발·재건축 등)을 유형별로 표시 중이에요.' : '';
-      if (jbOn && !jbRows) { fetch('redevelop_seoul.json?v=3').then((r) => r.json()).then((rows) => { jbRows = rows; jbBuildNaver(); }).catch(() => { $('banner').textContent = '정비사업 데이터를 불러오지 못했어요.'; }); }
+      if (jbOn && !jbRows) { Promise.all([fetch('redevelop_seoul.json?v=3').then((r) => r.json()), fetch('redevelop_polygons.json?v=1').then((r) => r.json()).catch(() => ({}))]).then(([rows, polys]) => { jbRows = rows; jbPolys = polys; jbBuildNaver(); }).catch(() => { $('banner').textContent = '정비사업 데이터를 불러오지 못했어요.'; }); }
       else jbBuildNaver();
     });
 
