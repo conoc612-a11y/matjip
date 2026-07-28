@@ -255,7 +255,7 @@
           const m = L.circleMarker([d.lat, d.lng], { radius: 5, color: '#fff', weight: 1, fillColor: ageColor(d.build), fillOpacity: 0.9 });
           m._rp = d;
           m.bindTooltip(d.priceEok == null ? esc(d.name) : d.priceEok + '억', { direction: 'top' });
-          m.bindPopup(`<div style="min-width:180px;"><div style="font-weight:700;font-size:14px;">${esc(d.name)}</div><div style="font-size:12px;color:#8a9099;margin:2px 0 6px;">${esc(d.gu)} ${esc(d.dong)}</div><div style="font-size:15px;font-weight:700;color:#e8590c;">💰 실거래가 ${d.priceEok == null ? '-' : d.priceEok + '억'}</div><div style="font-size:12px;margin-top:3px;">${esc(d.area)}㎡ · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="font-size:12px;margin-top:4px;"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};margin-right:5px;"></span>🏗️ ${esc(d.build || '?')}년 건축</div><button class="rp-save" style="margin-top:8px;width:100%;padding:7px;border:1px solid #e8590c;background:#fff;color:#e8590c;border-radius:7px;cursor:pointer;font:inherit;font-size:13px;">☆ 저장</button><a href="https://land.naver.com/search?query=${encodeURIComponent(d.name + ' ' + (d.gu || ''))}" target="_blank" rel="noopener" style="display:block;margin-top:6px;padding:7px;background:#03c75a;color:#fff;border-radius:7px;text-align:center;text-decoration:none;font-size:13px;font-weight:600;">🏠 네이버 부동산</a><div style="display:flex;gap:6px;margin-top:6px;"><button class="rt-start" style="flex:1;padding:6px;border:1px solid #e6e8eb;border-radius:6px;background:#fff;cursor:pointer;font:inherit;font-size:12px;">🚩 출발</button><button class="rt-end" style="flex:1;padding:6px;border:1px solid #e6e8eb;border-radius:6px;background:#fff;cursor:pointer;font:inherit;font-size:12px;">🏁 도착</button></div><button class="sv-btn" style="width:100%;margin-top:6px;padding:7px;border:1px solid #868e96;background:#fff;color:#495057;border-radius:7px;cursor:pointer;font:inherit;font-size:13px;">🛣️ 거리뷰</button></div>`);
+          m.bindPopup(`<div style="min-width:180px;"><div style="font-weight:700;font-size:14px;">${esc(d.name)}</div><div style="font-size:12px;color:#8a9099;margin:2px 0 6px;">${esc(d.gu)} ${esc(d.dong)}</div><div style="font-size:15px;font-weight:700;color:#e8590c;">💰 실거래가 ${d.priceEok == null ? '-' : d.priceEok + '억'}</div><div style="font-size:12px;margin-top:3px;">${esc(d.area)}㎡ · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="font-size:12px;margin-top:4px;"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};margin-right:5px;"></span>🏗️ ${esc(d.build || '?')}년 건축</div><button class="rp-save" style="margin-top:8px;width:100%;padding:7px;border:1px solid #e8590c;background:#fff;color:#e8590c;border-radius:7px;cursor:pointer;font:inherit;font-size:13px;">☆ 저장</button><a href="https://map.naver.com/p/search/${encodeURIComponent(d.name + ' ' + (d.gu || ''))}" target="_blank" rel="noopener" style="display:block;margin-top:6px;padding:7px;background:#03c75a;color:#fff;border-radius:7px;text-align:center;text-decoration:none;font-size:13px;font-weight:600;">🏠 네이버 부동산</a><div style="display:flex;gap:6px;margin-top:6px;"><button class="rt-start" style="flex:1;padding:6px;border:1px solid #e6e8eb;border-radius:6px;background:#fff;cursor:pointer;font:inherit;font-size:12px;">🚩 출발</button><button class="rt-end" style="flex:1;padding:6px;border:1px solid #e6e8eb;border-radius:6px;background:#fff;cursor:pointer;font:inherit;font-size:12px;">🏁 도착</button></div><button class="sv-btn" style="width:100%;margin-top:6px;padding:7px;border:1px solid #868e96;background:#fff;color:#495057;border-radius:7px;cursor:pointer;font:inherit;font-size:13px;">🛣️ 거리뷰</button></div>`);
           return m;
         }));
       }
@@ -481,7 +481,7 @@
       };
       if (best && bd < 0.2) {
         // 200m 이내 아파트 → 아파트 상세 팝업 즉시 표시
-        const naverUrl = `https://land.naver.com/search?query=${encodeURIComponent(best.name + ' ' + (best.gu || ''))}`;
+        const naverUrl = `https://map.naver.com/p/search/${encodeURIComponent(best.name + ' ' + (best.gu || ''))}`;
         clickMarker.setPopupContent(`<div style="min-width:210px;"><div style="font-weight:700;font-size:15px;">${esc(best.name)}</div><div style="font-size:12px;color:#8a9099;margin:2px 0 4px;">${esc(best.gu || '')} ${esc(best.dong || '')}</div><div style="font-size:15px;font-weight:700;color:#e8590c;">💰 ${best.priceEok == null ? '-' : best.priceEok + '억'}</div><div style="font-size:12px;margin-top:3px;">${esc(best.area || '?')}㎡ · ${esc(best.floor || '?')}층 · 거래 ${esc(best.ymd || '')}</div><div style="font-size:12px;margin-top:4px;"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(best.build)};margin-right:5px;"></span>🏗️ ${esc(best.build || '?')}년 건축</div><a href="${naverUrl}" target="_blank" rel="noopener" style="display:block;margin-top:8px;padding:7px;background:#03c75a;color:#fff;border-radius:7px;text-align:center;text-decoration:none;font-size:13px;font-weight:600;">🏠 네이버 부동산 보기</a>${rtBtns}</div>`).openPopup();
         bindRtBtns();
       } else {
@@ -491,7 +491,7 @@
         const buildClickPopup = (addr, bldName) => {
           if (!clickMarker) return;
           const bldHtml = bldName ? `<div style="font-weight:700;font-size:15px;margin-bottom:4px;">🏠 ${esc(bldName)}</div>` : '';
-          const naverLand = addr ? `<a href="https://land.naver.com/search?query=${encodeURIComponent(addr)}" target="_blank" rel="noopener" style="display:block;margin-top:8px;padding:7px;background:#03c75a;color:#fff;border-radius:7px;text-align:center;text-decoration:none;font-size:13px;font-weight:600;">🏠 네이버 부동산 검색</a>` : '';
+          const naverLand = addr ? `<a href="https://map.naver.com/p/search/${encodeURIComponent(addr)}" target="_blank" rel="noopener" style="display:block;margin-top:8px;padding:7px;background:#03c75a;color:#fff;border-radius:7px;text-align:center;text-decoration:none;font-size:13px;font-weight:600;">🏠 네이버 부동산 검색</a>` : '';
           clickMarker.setPopupContent(`<div style="min-width:190px;">${bldHtml}<div style="font-size:12px;color:#555;">📍 ${addr ? esc(addr) : '주소를 찾지 못했어요'}</div><div style="font-size:11px;color:#999;margin-top:2px;">${lat.toFixed(5)}, ${lng.toFixed(5)}</div>${nearHtml}${naverLand}${rtBtns}</div>`).openPopup();
           bindRtBtns();
         };
@@ -526,26 +526,59 @@
     }
     function showStreetView(lat, lng) {
       if (NAVER_KEY && window.naver && naver.maps && naver.maps.Panorama) {
-        let backdrop = document.getElementById('sv-backdrop');
-        let ov = document.getElementById('sv-overlay');
-        if (!ov) {
-          backdrop = document.createElement('div');
-          backdrop.id = 'sv-backdrop';
-          backdrop.style.cssText = 'position:fixed;inset:0;z-index:2999;background:rgba(0,0,0,.5);';
-          document.body.appendChild(backdrop);
-          ov = document.createElement('div');
-          ov.id = 'sv-overlay';
-          ov.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(92vw,680px);height:min(75vh,460px);z-index:3000;border-radius:14px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.7);';
-          ov.innerHTML = '<button id="sv-close" style="position:absolute;top:10px;right:10px;z-index:3001;padding:6px 12px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:13px;font-weight:600;">✕ 닫기</button><div id="sv-pano" style="width:100%;height:100%;"></div>';
-          document.body.appendChild(ov);
-          const close = () => { ov.style.display = 'none'; backdrop.style.display = 'none'; };
-          ov.querySelector('#sv-close').onclick = close;
-          backdrop.onclick = close;
-        }
-        ov.style.display = 'block';
-        backdrop.style.display = 'block';
-        document.getElementById('sv-pano').innerHTML = '';
-        new naver.maps.Panorama(document.getElementById('sv-pano'), { position: new naver.maps.LatLng(lat, lng), pov: { pan: 0, tilt: 0, fov: 100 } });
+        const oldBd = document.getElementById('sv-backdrop'), oldOv = document.getElementById('sv-overlay');
+        if (oldBd) oldBd.remove();
+        if (oldOv) oldOv.remove();
+
+        const backdrop = document.createElement('div');
+        backdrop.id = 'sv-backdrop';
+        backdrop.style.cssText = 'position:fixed;inset:0;z-index:2999;background:rgba(0,0,0,.5);';
+        document.body.appendChild(backdrop);
+
+        const ov = document.createElement('div');
+        ov.id = 'sv-overlay';
+        ov.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(94vw,820px);height:min(82vh,560px);z-index:3000;border-radius:14px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.7);background:#111;';
+        ov.innerHTML = '<div id="sv-pano" style="width:100%;height:100%;"></div>'
+          + '<div id="sv-minimap" style="position:absolute;bottom:16px;left:16px;width:200px;height:150px;border-radius:8px;overflow:hidden;resize:both;border:2px solid rgba(255,255,255,.85);box-shadow:0 2px 10px rgba(0,0,0,.5);z-index:3001;min-width:100px;min-height:80px;max-width:400px;max-height:300px;background:#e8e8e8;"></div>'
+          + '<button id="sv-close" style="position:absolute;top:10px;right:10px;z-index:3002;padding:6px 14px;background:rgba(0,0,0,.65);color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:13px;font-weight:600;">✕ 닫기</button>';
+        document.body.appendChild(ov);
+
+        const close = () => { ov.remove(); backdrop.remove(); };
+        ov.querySelector('#sv-close').onclick = close;
+        backdrop.onclick = close;
+
+        const panorama = new naver.maps.Panorama(document.getElementById('sv-pano'), {
+          position: new naver.maps.LatLng(lat, lng),
+          pov: { pan: 0, tilt: 0, fov: 100 },
+          flightSpot: true,
+          aroundControl: true,
+          logoControl: true,
+          zoomControl: true,
+        });
+
+        const miniMap = new naver.maps.Map(document.getElementById('sv-minimap'), {
+          center: new naver.maps.LatLng(lat, lng),
+          zoom: 17,
+          mapTypeId: naver.maps.MapTypeId.NORMAL,
+          scaleControl: false,
+          mapDataControl: false,
+          logoControl: false,
+        });
+
+        const mkIcon = (pan) => ({
+          content: `<div style="position:relative;width:24px;height:24px;"><div style="position:absolute;top:1px;left:50%;width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:13px solid rgba(224,49,49,.72);transform:translateX(-50%) rotate(${pan}deg);transform-origin:50% calc(100% + 6px);"></div><div style="position:absolute;top:50%;left:50%;width:12px;height:12px;background:#e03131;border-radius:50%;border:2.5px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.55);transform:translate(-50%,-50%);"></div></div>`,
+          anchor: new naver.maps.Point(12, 12),
+        });
+        const dot = new naver.maps.Marker({ position: new naver.maps.LatLng(lat, lng), map: miniMap, icon: mkIcon(0) });
+
+        naver.maps.Event.addListener(panorama, 'position_changed', () => {
+          const p = panorama.getPosition();
+          if (p) { miniMap.setCenter(p); dot.setPosition(p); }
+        });
+        naver.maps.Event.addListener(panorama, 'pov_changed', () => {
+          const pov = panorama.getPov();
+          if (pov != null) dot.setIcon(mkIcon(pov.pan));
+        });
       } else {
         window.open(`https://map.naver.com/p/street-view?c=${lng},${lat},15,0,0,0,dh`, '_blank', 'noopener');
       }
