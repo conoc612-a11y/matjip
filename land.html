@@ -213,7 +213,9 @@
     }
 
     // ── 지도 초기화 (서울 중심) ──
-    const map = L.map('map', { wheelPxPerZoomLevel: 120 }).setView([37.5665, 126.9780], 12);
+    // preferCanvas: 벡터(마커 9천개 + 폴리곤 정점 4.2만개)를 SVG DOM 대신 캔버스 1장에 그린다.
+    // SVG 렌더러는 도형마다 <path> DOM을 만들고 팬/줌마다 전부 좌표를 재계산해서 지도가 버벅인다.
+    const map = L.map('map', { wheelPxPerZoomLevel: 120, preferCanvas: true }).setView([37.5665, 126.9780], 12);
     // V-World 다중 배경지도 (일반/항공영상/하이브리드) — S-Map 유사 룩.
     // Satellite는 jpeg, Base·Hybrid는 png (실측 확인). 우측 상단 레이어에서 전환.
     const vTile = (layer, ext) => L.tileLayer(
@@ -393,7 +395,7 @@
           if (jbActiveStage !== 'all' && !(d.stage || '').includes(jbActiveStage)) return;
           const c = JB_COLOR[jbGroup(d.gubun)];
           if (d.rc && jbPolys && jbPolys[d.rc]) {
-            const poly = L.polygon(jbPolys[d.rc].map((r) => [r]), { color: c, weight: 2.5, fillColor: c, fillOpacity: 0.35 });
+            const poly = L.polygon(jbPolys[d.rc].map((r) => [r]), { color: c, weight: 2.5, fillColor: c, fillOpacity: 0.35, smoothFactor: 2 });  // smoothFactor: 정점 단순화(육안 차이 없음)
             poly._jb = d;
             poly.bindTooltip(`<b>${esc(d.name)}</b><br><span style="font-size:11px;color:#555">${esc(d.stage || '')}</span>`, { sticky: true });
             poly.bindPopup(() => jbPopupHtml(d));  // 열 때 생성
