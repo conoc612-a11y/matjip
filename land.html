@@ -255,7 +255,7 @@
           const m = L.circleMarker([d.lat, d.lng], { radius: 5, color: '#fff', weight: 1, fillColor: ageColor(d.build), fillOpacity: 0.9 });
           m._rp = d;
           m.bindTooltip(d.priceEok == null ? esc(d.name) : d.priceEok + '억', { direction: 'top' });
-          m.bindPopup(`<div style="min-width:180px;"><div style="font-weight:700;font-size:14px;">${esc(d.name)}</div><div style="font-size:12px;color:#8a9099;margin:2px 0 6px;">${esc(d.gu)} ${esc(d.dong)}</div><div style="font-size:15px;font-weight:700;color:#e8590c;">💰 실거래가 ${d.priceEok == null ? '-' : d.priceEok + '억'}</div><div style="font-size:12px;margin-top:3px;">${esc(d.area)}㎡ · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="font-size:12px;margin-top:4px;"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};margin-right:5px;"></span>🏗️ ${esc(d.build || '?')}년 건축</div><button class="rp-save" style="margin-top:8px;width:100%;padding:7px;border:1px solid #e8590c;background:#fff;color:#e8590c;border-radius:7px;cursor:pointer;font:inherit;font-size:13px;">☆ 저장</button><div style="display:flex;gap:6px;margin-top:6px;"><button class="rt-start" style="flex:1;padding:6px;border:1px solid #e6e8eb;border-radius:6px;background:#fff;cursor:pointer;font:inherit;font-size:12px;">🚩 출발</button><button class="rt-end" style="flex:1;padding:6px;border:1px solid #e6e8eb;border-radius:6px;background:#fff;cursor:pointer;font:inherit;font-size:12px;">🏁 도착</button></div></div>`);
+          m.bindPopup(`<div style="min-width:180px;"><div style="font-weight:700;font-size:14px;">${esc(d.name)}</div><div style="font-size:12px;color:#8a9099;margin:2px 0 6px;">${esc(d.gu)} ${esc(d.dong)}</div><div style="font-size:15px;font-weight:700;color:#e8590c;">💰 실거래가 ${d.priceEok == null ? '-' : d.priceEok + '억'}</div><div style="font-size:12px;margin-top:3px;">${esc(d.area)}㎡ · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="font-size:12px;margin-top:4px;"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};margin-right:5px;"></span>🏗️ ${esc(d.build || '?')}년 건축</div><button class="rp-save" style="margin-top:8px;width:100%;padding:7px;border:1px solid #e8590c;background:#fff;color:#e8590c;border-radius:7px;cursor:pointer;font:inherit;font-size:13px;">☆ 저장</button><a href="https://land.naver.com/search?query=${encodeURIComponent(d.name + ' ' + (d.gu || ''))}" target="_blank" rel="noopener" style="display:block;margin-top:6px;padding:7px;background:#03c75a;color:#fff;border-radius:7px;text-align:center;text-decoration:none;font-size:13px;font-weight:600;">🏠 네이버 부동산</a><div style="display:flex;gap:6px;margin-top:6px;"><button class="rt-start" style="flex:1;padding:6px;border:1px solid #e6e8eb;border-radius:6px;background:#fff;cursor:pointer;font:inherit;font-size:12px;">🚩 출발</button><button class="rt-end" style="flex:1;padding:6px;border:1px solid #e6e8eb;border-radius:6px;background:#fff;cursor:pointer;font:inherit;font-size:12px;">🏁 도착</button></div></div>`);
           return m;
         }));
       }
@@ -409,6 +409,8 @@
       };
       L.control.layers(baseLayers, landOverlays, { collapsed: true, position: 'topright' }).addTo(map);
     }
+    // 실거래가 데이터 백그라운드 미리 로드 (레이어 비활성 상태에서도 클릭 팝업에 사용)
+    fetch('realprice_seoul_gg.json').then((r) => r.json()).then((rows) => { if (!rpRows) rpRows = rows; }).catch(() => {});
 
     // ── [V-World 검색 API] 주소·지명 검색 → 지도 이동 (JSONP로 브라우저 CORS 회피) ──
     let vsMarker = null;
@@ -458,24 +460,34 @@
     map.on('click', (e) => {
       const { lat, lng } = e.latlng;
       if (clickMarker) map.removeLayer(clickMarker);
-      clickMarker = L.marker([lat, lng]).addTo(map).bindPopup('📍 위치 정보 불러오는 중…').openPopup();
-      // 근처 실거래가(0.7km 내 건수 + 최근접 단지) — 레이어를 켜서 rpRows가 로드된 경우만
-      let nearHtml = '';
+      clickMarker = L.marker([lat, lng]).addTo(map).bindPopup('📍 정보 불러오는 중…').openPopup();
+      const kmDist = (a, b, c, d) => { const dx = (a - c) * 111, dy = (b - d) * 88; return Math.sqrt(dx * dx + dy * dy); };
+      let best = null, bd = 1e9, cnt = 0;
       if (rpRows && rpRows.length) {
-        const kmDist = (a, b, c, d) => { const dx = (a - c) * 111, dy = (b - d) * 88; return Math.sqrt(dx * dx + dy * dy); };
-        let best = null, bd = 1e9, cnt = 0;
         rpRows.forEach((r) => { if (r.lat == null) return; const dist = kmDist(lat, lng, r.lat, r.lng); if (dist < 0.7) cnt++; if (dist < bd) { bd = dist; best = r; } });
-        if (best && bd < 1.5) nearHtml = `<div style="font-size:12px;margin-top:6px;border-top:1px solid #eee;padding-top:6px;">🏢 반경 700m 실거래 <b>${cnt}건</b><br>최근접: <b>${esc(best.name)}</b> ${best.priceEok == null ? '' : best.priceEok + '억'} · ${esc(best.build || '?')}년</div>`;
       }
-      reverseGeocode(lat, lng, (addr) => {
-        if (!clickMarker) return;
-        const rtBtns = `<div style="display:flex;gap:6px;margin-top:8px;"><button class="rt-start" style="flex:1;padding:6px;border:1px solid #e6e8eb;border-radius:6px;background:#fff;cursor:pointer;font:inherit;font-size:12px;">🚩 출발</button><button class="rt-end" style="flex:1;padding:6px;border:1px solid #e6e8eb;border-radius:6px;background:#fff;cursor:pointer;font:inherit;font-size:12px;">🏁 도착</button></div>`;
-        clickMarker.setPopupContent(`<div style="min-width:190px;"><div style="font-weight:700;">📍 클릭 위치</div><div style="font-size:12px;color:#555;margin:3px 0;">${addr ? esc(addr) : '주소를 찾지 못했어요'}</div><div style="font-size:11px;color:#999;">${lat.toFixed(5)}, ${lng.toFixed(5)}</div>${nearHtml}${rtBtns}</div>`).openPopup();
-        const el = clickMarker.getPopup().getElement();
+      const rtBtns = `<div style="display:flex;gap:6px;margin-top:8px;"><button class="rt-start" style="flex:1;padding:6px;border:1px solid #e6e8eb;border-radius:6px;background:#fff;cursor:pointer;font:inherit;font-size:12px;">🚩 출발</button><button class="rt-end" style="flex:1;padding:6px;border:1px solid #e6e8eb;border-radius:6px;background:#fff;cursor:pointer;font:inherit;font-size:12px;">🏁 도착</button></div>`;
+      const bindRtBtns = () => {
+        const el = clickMarker && clickMarker.getPopup() && clickMarker.getPopup().getElement();
         const sBtn = el && el.querySelector('.rt-start'), eBtn = el && el.querySelector('.rt-end');
         if (sBtn) sBtn.onclick = () => { setRoutePoint('start', lat, lng); clickMarker.closePopup(); };
         if (eBtn) eBtn.onclick = () => { setRoutePoint('end', lat, lng); clickMarker.closePopup(); };
-      });
+      };
+      if (best && bd < 0.2) {
+        // 200m 이내 아파트 → 아파트 상세 팝업 즉시 표시
+        const naverUrl = `https://land.naver.com/search?query=${encodeURIComponent(best.name + ' ' + (best.gu || ''))}`;
+        clickMarker.setPopupContent(`<div style="min-width:210px;"><div style="font-weight:700;font-size:15px;">${esc(best.name)}</div><div style="font-size:12px;color:#8a9099;margin:2px 0 4px;">${esc(best.gu || '')} ${esc(best.dong || '')}</div><div style="font-size:15px;font-weight:700;color:#e8590c;">💰 ${best.priceEok == null ? '-' : best.priceEok + '억'}</div><div style="font-size:12px;margin-top:3px;">${esc(best.area || '?')}㎡ · ${esc(best.floor || '?')}층 · 거래 ${esc(best.ymd || '')}</div><div style="font-size:12px;margin-top:4px;"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(best.build)};margin-right:5px;"></span>🏗️ ${esc(best.build || '?')}년 건축</div><a href="${naverUrl}" target="_blank" rel="noopener" style="display:block;margin-top:8px;padding:7px;background:#03c75a;color:#fff;border-radius:7px;text-align:center;text-decoration:none;font-size:13px;font-weight:600;">🏠 네이버 부동산 보기</a>${rtBtns}</div>`).openPopup();
+        bindRtBtns();
+      } else {
+        // 200m 이상 → 역지오코딩 주소 + 근처 요약
+        let nearHtml = '';
+        if (best && bd < 1.5) nearHtml = `<div style="font-size:12px;margin-top:6px;border-top:1px solid #eee;padding-top:6px;">🏢 반경 700m 실거래 <b>${cnt}건</b><br>최근접: <b>${esc(best.name)}</b> ${best.priceEok == null ? '' : best.priceEok + '억'} · ${esc(best.build || '?')}년</div>`;
+        reverseGeocode(lat, lng, (addr) => {
+          if (!clickMarker) return;
+          clickMarker.setPopupContent(`<div style="min-width:190px;"><div style="font-weight:700;">📍 클릭 위치</div><div style="font-size:12px;color:#555;margin:3px 0;">${addr ? esc(addr) : '주소를 찾지 못했어요'}</div><div style="font-size:11px;color:#999;">${lat.toFixed(5)}, ${lng.toFixed(5)}</div>${nearHtml}${rtBtns}</div>`).openPopup();
+          bindRtBtns();
+        });
+      }
     });
 
     // 지도 우클릭 → 열린 팝업/클릭 마커 닫기
