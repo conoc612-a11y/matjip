@@ -165,11 +165,14 @@
       const a = loadRecent(), el = $('recent'); if (!el) return;
       if (!a.length) { el.style.display = 'none'; return; }
       el.style.display = '';
-      el.innerHTML = '🕘 최근 본 곳: ' + a.map((x, i) => `<a href="#" class="recent-chip" data-i="${i}">${esc(x.name)}</a>`).join('');
+      el.innerHTML = '🕘 최근 본 곳: ' + a.map((x, i) => `<span class="recent-chip" data-i="${i}" style="cursor:pointer;">${esc(x.name)} <b class="recent-del" data-i="${i}" title="삭제" style="cursor:pointer;color:#e03131;margin-left:1px;">✕</b></span>`).join('') + ` <a href="#" class="recent-clear" style="color:var(--muted);font-size:11px;">전체삭제</a>`;
       el.querySelectorAll('.recent-chip').forEach((c) => c.addEventListener('click', (e) => {
+        if (e.target.closest('.recent-del')) return;
         e.preventDefault(); const x = a[Number(c.dataset.i)];
         if (x && x.lat != null) { map.setCenter(latLng(x.lat, x.lng)); map.setZoom(16); if (markers[x.id]) openInfo(markers[x.id], restaurantCard(restaurants.find((r) => r.id == x.id) || x)); }
       }));
+      el.querySelectorAll('.recent-del').forEach((d) => d.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); const b = loadRecent(); b.splice(Number(d.dataset.i), 1); try { localStorage.setItem(RECENT_KEY, JSON.stringify(b)); } catch (er) {} renderRecent(); }));
+      const cl = el.querySelector('.recent-clear'); if (cl) cl.addEventListener('click', (e) => { e.preventDefault(); try { localStorage.removeItem(RECENT_KEY); } catch (er) {} renderRecent(); });
     }
 
     // 네이버 지도 인증 실패 시(도메인 미등록/키 오류) 조용히 죽지 않고 안내 ──
@@ -336,6 +339,8 @@
       if (mapMode === 'radius') return addRadiusPoint(e.coord);
       showAddress(e.coord, '📍 클릭한 위치');
     });
+    // 지도 우클릭 → 팝업(InfoWindow) 닫기
+    naver.maps.Event.addListener(map, 'rightclick', () => infoWindow.close());
     function addDistPoint(coord) {
       measurePts.push(coord);
       if (measureLine) measureLine.setMap(null);
