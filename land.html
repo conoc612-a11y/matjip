@@ -232,6 +232,12 @@
     // 기본(일반지도) 타일 실패 시 OSM 자동 대체
     if (VWORLD_KEY) { let fell = false; defaultBase.on('tileerror', () => { if (!fell) { fell = true; map.removeLayer(defaultBase); osmBase.addTo(map); } }); }
 
+    // 실거래가 2MB JSON은 딱 한 번만 받는다 (Promise 메모이즈). 이전엔 페이지 로드 + 레이어 켤 때 중복 다운로드됨.
+    let _rpPromise = null;
+    function loadRp() {
+      if (!_rpPromise) _rpPromise = fetch('realprice_seoul_gg.json').then((r) => r.json()).then((rows) => { rpRows = rows; return rows; }).catch(() => null);
+      return _rpPromise;
+    }
     let rpRows = null;  // 실거래가 원본 (실거래가 레이어 켜면 로드됨) — 지도 클릭 정보/근처 실거래에서 참조. VWORLD 블록보다 먼저 선언(TDZ 방지)
     let _jbRowsGlobal = null; // 정비사업 행 전역 참조 (VWORLD 블록 밖 클릭 핸들러에서 참조)
 
@@ -259,6 +265,19 @@
       // ── 아파트 실거래가·노후도 (서울+경기 9천여 단지) : 필터 + 범례 + 카드 팝업 ──
       const ageColor = (b) => { const y = parseInt(b) || 0; return !y ? '#868e96' : y >= 2015 ? '#2f9e44' : y >= 2005 ? '#94d82d' : y >= 1995 ? '#fab005' : y >= 1985 ? '#fd7e14' : '#e03131'; };
       const realpriceCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 60 });
+      // 팝업·툴팁은 마우스가 닿는 순간에만 생성 (9천개 미리 만들면 지도가 멈춘다)
+      realpriceCluster.on('mouseover', (e) => {
+        const m = e.layer, d = m && m._rp;
+        if (!d || m._ttDone) return;
+        m._ttDone = 1;
+        m.bindTooltip(d.priceEok == null ? esc(d.name) : d.priceEok + '억', { direction: 'top' }).openTooltip();
+      });
+      realpriceCluster.on('click', (e) => {
+        const m = e.layer;
+        if (!m || !m._rp) return;
+        if (!m.getPopup() && m._pop) m.bindPopup(m._pop());
+        m.openPopup();
+      });
       rpRows = null;
       const rpFilter = { price: 'all', age: 'all' };
       const inPrice = (p) => { if (rpFilter.price === 'all') return true; if (p == null) return false; const v = Number(p); return rpFilter.price === 'u10' ? v < 10 : rpFilter.price === '10_20' ? (v >= 10 && v < 20) : rpFilter.price === '20_30' ? (v >= 20 && v < 30) : v >= 30; };
@@ -269,8 +288,7 @@
         realpriceCluster.addLayers(rpRows.filter((d) => inPrice(d.priceEok) && inAge(d.build)).map((d) => {
           const m = L.circleMarker([d.lat, d.lng], { radius: 5, color: '#fff', weight: 1, fillColor: ageColor(d.build), fillOpacity: 0.9 });
           m._rp = d;
-          m.bindTooltip(d.priceEok == null ? esc(d.name) : d.priceEok + '억', { direction: 'top' });
-          m.bindPopup(`<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};flex-shrink:0;"></span>${esc(d.name)}</div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div><div style="font-size:15px;font-weight:700;color:var(--c-price);">💰 실거래가 ${d.priceEok == null ? '-' : d.priceEok + '억'}</div><div style="margin-top:3px;">평단가: ${d.area && d.priceEok ? Math.round(d.priceEok * 10000 / d.area).toLocaleString() + '만원/㎡' : '-'}</div><div style="margin-top:3px;">${esc(d.area)}㎡ · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="margin-top:3px;">🏗️ ${esc(d.build || '?')}년 건축${parseInt(d.build) <= 1994 ? '<span style="background:#e03131;color:#fff;font-size:10px;padding:2px 7px;border-radius:10px;margin-left:6px;">🔨 재건축연한초과</span>' : ''}</div><div class="rp-radius-stat" style="display:none;font-size:11px;color:var(--c-muted);margin-top:4px;"></div></div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline" style="border-color:var(--c-price) !important;color:var(--c-price);">☆ 저장</button><a href="https://map.naver.com/p/search/${encodeURIComponent(d.name + ' ' + (d.gu || ''))}" target="_blank" rel="noopener" class="pc-btn pc-btn-green">🏠 네이버 부동산</a><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline">🚩 출발</button><button class="rt-end pc-btn pc-btn-outline">🏁 도착</button></div><button class="sv-btn pc-btn pc-btn-outline">🛣️ 거리뷰</button></div></div>`);
+          m._pop = (() => `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};flex-shrink:0;"></span>${esc(d.name)}</div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div><div style="font-size:15px;font-weight:700;color:var(--c-price);">💰 실거래가 ${d.priceEok == null ? '-' : d.priceEok + '억'}</div><div style="margin-top:3px;">평단가: ${d.area && d.priceEok ? Math.round(d.priceEok * 10000 / d.area).toLocaleString() + '만원/㎡' : '-'}</div><div style="margin-top:3px;">${esc(d.area)}㎡ · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="margin-top:3px;">🏗️ ${esc(d.build || '?')}년 건축${parseInt(d.build) <= 1994 ? '<span style="background:#e03131;color:#fff;font-size:10px;padding:2px 7px;border-radius:10px;margin-left:6px;">🔨 재건축연한초과</span>' : ''}</div><div class="rp-radius-stat" style="display:none;font-size:11px;color:var(--c-muted);margin-top:4px;"></div></div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline" style="border-color:var(--c-price) !important;color:var(--c-price);">☆ 저장</button><a href="https://map.naver.com/p/search/${encodeURIComponent(d.name + ' ' + (d.gu || ''))}" target="_blank" rel="noopener" class="pc-btn pc-btn-green">🏠 네이버 부동산</a><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline">🚩 출발</button><button class="rt-end pc-btn pc-btn-outline">🏁 도착</button></div><button class="sv-btn pc-btn pc-btn-outline">🛣️ 거리뷰</button></div></div>`);
           return m;
         }));
       }
@@ -300,8 +318,8 @@
           if (ps && !ps._w) { ps._w = 1; ps.value = rpFilter.price; ps.addEventListener('change', () => { rpFilter.price = ps.value; rpBuild(); }); }
           if (ag && !ag._w) { ag._w = 1; ag.value = rpFilter.age; ag.addEventListener('change', () => { rpFilter.age = ag.value; rpBuild(); }); }
         }, 60);
-        if (rpRows) return;
-        fetch('realprice_seoul_gg.json').then((r) => r.json()).then((rows) => { rpRows = rows; rpBuild(); }).catch(() => {});
+        // 이미 받아둔 경우에도 반드시 rpBuild()를 호출해야 마커가 그려진다 (예전엔 early-return으로 빈 레이어가 됐음)
+        loadRp().then(() => rpBuild());
       });
       map.on('overlayremove', (e) => { if (e.layer === realpriceCluster) { map.removeControl(rpFilterCtrl); map.removeControl(rpLegend); } });
 
@@ -378,13 +396,13 @@
             const poly = L.polygon(jbPolys[d.rc].map((r) => [r]), { color: c, weight: 2.5, fillColor: c, fillOpacity: 0.35 });
             poly._jb = d;
             poly.bindTooltip(`<b>${esc(d.name)}</b><br><span style="font-size:11px;color:#555">${esc(d.stage || '')}</span>`, { sticky: true });
-            poly.bindPopup(jbPopupHtml(d));
+            poly.bindPopup(() => jbPopupHtml(d));  // 열 때 생성
             jbPolyLayer.addLayer(poly);
           } else {
             const m = L.circleMarker([d.lat, d.lng], { radius: 10, color: '#fff', weight: 2.5, fillColor: c, fillOpacity: 0.95 });
             m._jb = d;
             m.bindTooltip(`<b>${esc(d.name)}</b> · ${esc(d.stage || '')}`, { direction: 'top' });
-            m.bindPopup(jbPopupHtml(d));
+            m.bindPopup(() => jbPopupHtml(d));  // 열 때 생성
             dots.push(m);
           }
         });
@@ -505,8 +523,8 @@
       };
       satBtn.addTo(map);
     }
-    // 실거래가 데이터 백그라운드 미리 로드 (레이어 비활성 상태에서도 클릭 팝업에 사용)
-    fetch('realprice_seoul_gg.json').then((r) => r.json()).then((rows) => { if (!rpRows) rpRows = rows; }).catch(() => {});
+    // 실거래가 데이터는 초기 렌더를 막지 않도록 브라우저가 한가할 때 미리 로드 (클릭 팝업의 '근처 실거래'에 사용)
+    (window.requestIdleCallback || ((f) => setTimeout(f, 2500)))(() => loadRp());
 
     // ── [V-World 검색 API] 주소·지명 검색 → 지도 이동 (JSONP로 브라우저 CORS 회피) ──
     let vsMarker = null;
