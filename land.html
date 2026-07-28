@@ -292,7 +292,7 @@
         realpriceCluster.addLayers(rpRows.filter((d) => inPrice(d.priceEok) && inAge(d.build)).map((d) => {
           const m = L.circleMarker([d.lat, d.lng], { radius: 5, color: '#fff', weight: 1, fillColor: ageColor(d.build), fillOpacity: 0.9 });
           m._rp = d;
-          m._pop = (() => `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};flex-shrink:0;"></span>${esc(d.name)}</div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div><div style="font-size:15px;font-weight:700;color:var(--c-price);">💰 실거래가 ${d.priceEok == null ? '-' : d.priceEok + '억'}</div><div style="margin-top:3px;">평단가: ${d.area && d.priceEok ? Math.round(d.priceEok * 10000 / d.area).toLocaleString() + '만원/㎡' : '-'}</div><div style="margin-top:3px;">${esc(d.area)}㎡ · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="margin-top:3px;">🏗️ ${esc(d.build || '?')}년 건축${parseInt(d.build) <= 1994 ? '<span style="background:#e03131;color:#fff;font-size:10px;padding:2px 7px;border-radius:10px;margin-left:6px;">🔨 재건축연한초과</span>' : ''}</div><div class="rp-radius-stat" style="display:none;font-size:11px;color:var(--c-muted);margin-top:4px;"></div></div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline" style="border-color:var(--c-price) !important;color:var(--c-price);">☆ 저장</button><a href="https://map.naver.com/p/search/${encodeURIComponent(d.name + ' ' + (d.gu || ''))}" target="_blank" rel="noopener" class="pc-btn pc-btn-green">🏠 네이버 부동산</a><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline">🚩 출발</button><button class="rt-end pc-btn pc-btn-outline">🏁 도착</button></div><button class="sv-btn pc-btn pc-btn-outline">🛣️ 거리뷰</button></div></div>`);
+          m._pop = (() => `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};flex-shrink:0;"></span><span class="rp-name">${esc(d.name)}</span></div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div><div style="font-size:15px;font-weight:700;color:var(--c-price);">💰 실거래가 ${d.priceEok == null ? '-' : d.priceEok + '억'}</div><div style="margin-top:3px;">평단가: ${d.area && d.priceEok ? Math.round(d.priceEok * 10000 / d.area).toLocaleString() + '만원/㎡' : '-'}</div><div style="margin-top:3px;">${esc(d.area)}㎡ · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="margin-top:3px;">🏗️ ${esc(d.build || '?')}년 건축${parseInt(d.build) <= 1994 ? '<span style="background:#e03131;color:#fff;font-size:10px;padding:2px 7px;border-radius:10px;margin-left:6px;">🔨 재건축연한초과</span>' : ''}</div><div class="rp-radius-stat" style="display:none;font-size:11px;color:var(--c-muted);margin-top:4px;"></div></div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline" style="border-color:var(--c-price) !important;color:var(--c-price);">☆ 저장</button><a href="https://map.naver.com/p/search/${encodeURIComponent(d.name + ' ' + (d.dong || d.gu || ''))}?c=${d.lng},${d.lat},17,0,0,0,dh" target="_blank" rel="noopener" class="pc-btn pc-btn-green rp-naver">🏠 네이버 부동산</a><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline">🚩 출발</button><button class="rt-end pc-btn pc-btn-outline">🏁 도착</button></div><button class="sv-btn pc-btn pc-btn-outline">🛣️ 거리뷰</button></div></div>`);
           return m;
         }));
       }
@@ -349,6 +349,7 @@
         if (eBtn) eBtn.onclick = () => { setRoutePoint('end', d.lat, d.lng); m.closePopup(); };
         const svBtn = node.querySelector('.sv-btn');
         if (svBtn) svBtn.onclick = () => showStreetView(d.lat, d.lng);
+        enrichAptName(node, d.name, d.dong || d.gu, d.lat, d.lng);  // '두산' → '두산1단지아파트'
         // 반경 700m 실거래 통계
         if (rpRows && rpRows.length) {
           const kmD = (a,b,c,e) => { const dx=(a-c)*111, dy=(b-e)*88; return Math.sqrt(dx*dx+dy*dy); };
@@ -386,6 +387,26 @@
         const linkBtns = (d.rc || d.cafe) ? `<div class="pc-btn-row">${d.rc ? `<a href="https://urban.seoul.go.kr/view/map/mapPopup.html?recordCode=${encodeURIComponent(d.rc)}" target="_blank" rel="noopener" class="pc-btn pc-btn-outline" style="border-color:#7048e8 !important;color:#7048e8;">🗺️ 경계지도</a>` : ''}${d.cafe ? `<a href="https://cleanup.seoul.go.kr/cafe/mainIndx.do?cafeUrl=${encodeURIComponent(d.cafe)}" target="_blank" rel="noopener" class="pc-btn pc-btn-outline" style="border-color:var(--c-primary) !important;color:var(--c-primary);">📂 정보공개</a>` : ''}</div>` : '';
         return `<div class="pc"><div class="pc-head"><span style="display:inline-block;background:${c};color:#fff;font-size:11px;padding:2px 7px;border-radius:10px;">${g}</span>${stageBadge}</div><div class="pc-body"><div style="font-weight:700;font-size:14px;margin-bottom:2px;">${esc(d.name)}</div><div>${esc(d.gu)} ${esc(d.jibun)}${d.approx ? ' <span style="color:var(--c-price);">(동 근사위치)</span>' : ''}</div><div style="font-size:11px;color:#999;margin-top:3px;">사업구분: ${esc(d.gubun)}${d.method ? ' · ' + esc(d.method) : ''}</div><div style="margin:8px 0 4px;"><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--c-muted);margin-bottom:3px;"><span>진행단계</span><span>${stagePct(d.stage)}%</span></div><div style="height:5px;background:#e9ecef;border-radius:3px;overflow:hidden;"><div style="height:100%;width:${stagePct(d.stage)}%;background:${stageColor(d.stage)};border-radius:3px;transition:width .3s;"></div></div></div><div class="jb-rp-stat" style="display:none;font-size:11px;color:var(--c-muted);padding:5px 0;border-top:1px solid var(--c-border);"></div></div><div class="pc-actions">${linkBtns}<div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline" style="border-color:var(--c-success) !important;color:var(--c-success);">🚩 출발</button><button class="rt-end pc-btn pc-btn-outline" style="border-color:var(--c-danger) !important;color:var(--c-danger);">🏁 도착</button></div><button class="sv-btn pc-btn pc-btn-outline">🛣️ 거리뷰</button></div></div>`;
       }
+      // 원본 데이터 246개 레코드 중 91개에 "동일한 경계 링"이 2~4번 중복 저장돼 있다.
+      // 중복 링은 채움 상쇄의 원인이고 렌더 비용도 두 배라, 면적·정점수 서명으로 제거한다.
+      // (실측: 링 397 → 281개, 데이터 손실 0건)
+      const _ringCache = new Map();
+      const _ringArea = (r) => { let s = 0; for (let i = 0, n = r.length; i < n; i++) { const a = r[i], b = r[(i + 1) % n]; s += a[1] * b[0] - b[1] * a[0]; } return Math.abs(s / 2); };
+      function dedupeRings(key, rings) {
+        let out = _ringCache.get(key);
+        if (out) return out;
+        const seen = new Set();
+        out = [];
+        for (const r of rings) {
+          if (!r || r.length < 3) continue;  // 면이 될 수 없는 링 제외
+          const sig = r.length + '|' + _ringArea(r).toExponential(8);
+          if (seen.has(sig)) continue;
+          seen.add(sig);
+          out.push(r);
+        }
+        _ringCache.set(key, out);
+        return out;
+      }
       function jbBuild() {
         if (!jbRows) return;
         _jbRowsGlobal = jbRows;
@@ -397,7 +418,9 @@
           if (jbActiveStage !== 'all' && !(d.stage || '').includes(jbActiveStage)) return;
           const c = JB_COLOR[jbGroup(d.gubun)];
           if (d.rc && jbPolys && jbPolys[d.rc]) {
-            const poly = L.polygon(jbPolys[d.rc].map((r) => [r]), { color: c, weight: 2.5, fillColor: c, fillOpacity: 0.35, smoothFactor: 2 });  // smoothFactor: 정점 단순화(육안 차이 없음)
+            // fillRule 'nonzero': Leaflet 기본값은 'evenodd'인데, 그 규칙에서는 겹친 링이 서로를
+            // 상쇄해 채움이 사라지고 외곽선만 남는다 (= 폴리곤 색이 안 칠해지는 증상).
+            const poly = L.polygon(dedupeRings(d.rc, jbPolys[d.rc]).map((r) => [r]), { color: c, weight: 2.5, fillColor: c, fillOpacity: 0.35, fillRule: 'nonzero', smoothFactor: 2 });
             poly._jb = d;
             poly.bindTooltip(`<b>${esc(d.name)}</b><br><span style="font-size:11px;color:#555">${esc(d.stage || '')}</span>`, { sticky: true });
             poly.bindPopup(() => jbPopupHtml(d));  // 열 때 생성
@@ -577,6 +600,53 @@
     let clickMarker = null;
     const _gcCache = new Map(); // 좌표 캐시(50m 그리드) → {addr, bldName}
     const _gcKey = (lat, lng) => `${(lat * 200 | 0)},${(lng * 200 | 0)}`;
+
+    // ── 단지명 보정 ──────────────────────────────────────────────
+    // 국토부 실거래가 원본은 단지명이 축약돼 있다 (실측: 9,030건 중 1,594건 = 17.7%가 3글자 이하).
+    // 예를 들어 '두산1단지아파트'가 '두산'으로만 들어와서, 그대로 네이버에 검색하면
+    // 전혀 다른 단지가 나온다. 좌표를 역지오코딩해 실제 건물명을 받아 보정한다.
+    const _bldCache = new Map();
+    function naverBldName(lat, lng, cb) {
+      const key = _gcKey(lat, lng);
+      if (_bldCache.has(key)) { cb(_bldCache.get(key)); return; }
+      if (!(NAVER_KEY && window.naver && naver.maps && naver.maps.Service)) { cb(null); return; }
+      try {
+        naver.maps.Service.reverseGeocode({
+          coords: new naver.maps.LatLng(lat, lng),
+          orders: [naver.maps.Service.OrderType.ROAD_ADDR, naver.maps.Service.OrderType.ADDR],
+        }, (status, res) => {
+          let name = null;
+          try {
+            if (status === naver.maps.Service.Status.OK) {
+              for (const r of ((res.v2 && res.v2.results) || [])) {
+                const a0 = r.land && r.land.addition0;
+                if (a0 && a0.type === 'building' && a0.value) { name = a0.value; break; }
+              }
+            }
+          } catch (err) {}
+          _bldCache.set(key, name);
+          cb(name);
+        });
+      } catch (err) { cb(null); }
+    }
+    // 좌표를 함께 넘겨 네이버 지도가 그 지점으로 이동하게 한다 (동명이 단지 오검색 방지)
+    const naverSearchUrl = (q, lat, lng) => `https://map.naver.com/p/search/${encodeURIComponent(q)}?c=${lng},${lat},17,0,0,0,dh`;
+    // 팝업이 열린 뒤 제목·네이버 링크를 실제 건물명으로 교체.
+    // 원본명과 서로 포함 관계일 때만 반영한다 (엉뚱한 인접 건물명으로 바뀌는 것을 막기 위함).
+    function enrichAptName(el, rawName, area, lat, lng) {
+      if (!el) return;
+      naverBldName(lat, lng, (bld) => {
+        if (!bld || bld === rawName) return;
+        const related = bld.includes(rawName) || rawName.includes(bld);
+        if (!related) return;
+        const full = bld.length >= rawName.length ? bld : rawName;
+        const nameEl = el.querySelector('.rp-name');
+        if (nameEl) nameEl.textContent = full;
+        const a = el.querySelector('.rp-naver');
+        if (a) a.href = naverSearchUrl(full + ' ' + (area || ''), lat, lng);
+      });
+    }
+
     map.on('click', (e) => {
       const { lat, lng } = e.latlng;
       if (clickMarker) map.removeLayer(clickMarker);
@@ -605,9 +675,12 @@
       };
       if (best && bd < 0.2) {
         // 200m 이내 아파트 → 아파트 상세 팝업 즉시 표시
-        const naverUrl = `https://map.naver.com/p/search/${encodeURIComponent(best.name + ' ' + (best.gu || ''))}`;
-        clickMarker.setPopupContent(`<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(best.build)};flex-shrink:0;"></span>${esc(best.name)}</div><div class="pc-body"><div style="margin-bottom:4px;">${esc(best.gu || '')} ${esc(best.dong || '')}</div><div style="font-size:15px;font-weight:700;color:var(--c-price);">💰 ${best.priceEok == null ? '-' : best.priceEok + '억'}</div><div style="margin-top:3px;">${esc(best.area || '?')}㎡ · ${esc(best.floor || '?')}층 · 거래 ${esc(best.ymd || '')}</div><div style="margin-top:3px;">🏗️ ${esc(best.build || '?')}년 건축</div></div><div class="pc-actions"><a href="${naverUrl}" target="_blank" rel="noopener" class="pc-btn pc-btn-green">🏠 네이버 부동산 보기</a>${rtBtns}</div></div>`).openPopup();
+        const naverUrl = naverSearchUrl(best.name + ' ' + (best.dong || best.gu || ''), best.lat, best.lng);
+        const ppy = best.area && best.priceEok ? Math.round(best.priceEok * 10000 / best.area).toLocaleString() + '만원/㎡' : '-';
+        const oldBadge = parseInt(best.build) <= 1994 ? '<span style="background:#e03131;color:#fff;font-size:10px;padding:2px 7px;border-radius:10px;margin-left:6px;">🔨 재건축연한초과</span>' : '';
+        clickMarker.setPopupContent(`<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(best.build)};flex-shrink:0;"></span><span class="rp-name">${esc(best.name)}</span></div><div class="pc-body"><div style="margin-bottom:4px;">${esc(best.gu || '')} ${esc(best.dong || '')}</div><div style="font-size:15px;font-weight:700;color:var(--c-price);">💰 ${best.priceEok == null ? '-' : best.priceEok + '억'}</div><div style="margin-top:3px;">평단가: ${ppy}</div><div style="margin-top:3px;">${esc(best.area || '?')}㎡ · ${esc(best.floor || '?')}층 · 거래 ${esc(best.ymd || '')}</div><div style="margin-top:3px;">🏗️ ${esc(best.build || '?')}년 건축${oldBadge}</div></div><div class="pc-actions"><a href="${naverUrl}" target="_blank" rel="noopener" class="pc-btn pc-btn-green rp-naver">🏠 네이버 부동산 보기</a>${rtBtns}</div></div>`).openPopup();
         bindRtBtns();
+        enrichAptName(clickMarker.getPopup().getElement(), best.name, best.dong || best.gu, best.lat, best.lng);
       } else {
         // 200m 이상 → 단일 Naver geocoder 콜(주소+건물명 동시 반환) + 캐시
         let nearHtml = '';
@@ -626,7 +699,7 @@
         const buildClickPopup = (addr, bldName) => {
           if (!clickMarker) return;
           const bldHtml = bldName ? `<div style="font-weight:700;font-size:14px;margin-bottom:2px;">🏠 ${esc(bldName)}</div>` : '';
-          const naverLand = addr ? `<a href="https://map.naver.com/p/search/${encodeURIComponent(bldName || addr)}" target="_blank" rel="noopener" class="pc-btn pc-btn-green">🏠 네이버 부동산 검색</a>` : '';
+          const naverLand = addr ? `<a href="${naverSearchUrl(bldName || addr, lat, lng)}" target="_blank" rel="noopener" class="pc-btn pc-btn-green">🏠 네이버 부동산 검색</a>` : '';
           clickMarker.setPopupContent(`<div class="pc"><div class="pc-head">📍 위치 정보</div><div class="pc-body">${bldHtml}<div>📍 ${addr ? esc(addr) : '주소를 찾지 못했어요'}</div><div style="font-size:11px;color:var(--c-muted);margin-top:2px;">${lat.toFixed(5)}, ${lng.toFixed(5)}</div>${nearHtml}${jbNearHtml}</div><div class="pc-actions">${naverLand}${rtBtns}</div></div>`).openPopup();
           bindRtBtns();
         };
