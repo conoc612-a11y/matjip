@@ -11,7 +11,7 @@
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <style>
-    :root { --bg:#f4f5f7; --card:#fff; --line:#e6e8eb; --text:#1c1e21; --muted:#8a9099; --accent:#e8590c; --ok:#2f9e44; }
+    :root { --c-primary:#1971c2; --c-price:#e8590c; --c-success:#2f9e44; --c-danger:#e03131; --c-text:#212529; --c-muted:#868e96; --c-border:#dee2e6; --c-bg:#f8f9fa; --c-card:#ffffff; --bg:var(--c-bg); --card:var(--c-card); --line:var(--c-border); --text:var(--c-text); --muted:var(--c-muted); --accent:var(--c-price); --ok:var(--c-success); }
     :root.dark { --bg:#1a1b1e; --card:#25262b; --line:#373a40; --text:#e9ecef; --muted:#909296; }
     .recent-chip { display:inline-block; margin:2px 4px 2px 0; padding:3px 9px; border:1px solid var(--line); border-radius:12px; text-decoration:none; color:var(--text); background:var(--card); }
     .recent-chip:hover { border-color:var(--accent); color:var(--accent); }
@@ -80,6 +80,20 @@
     .footer-stats span:first-child { padding-left:0; }
     .footer-stats b { color:var(--accent); }
     .footer-contact { font-size:12px; color:var(--muted); }
+    /* ── Popup card system ── */
+    .pc { width:240px; padding:14px; box-sizing:border-box; }
+    .pc-head { font-weight:700; font-size:14px; margin-bottom:6px; display:flex; align-items:center; gap:6px; flex-wrap:wrap; line-height:1.35; }
+    .pc-body { font-size:12px; color:var(--c-muted); margin-bottom:10px; line-height:1.5; }
+    .pc-actions { display:flex; flex-direction:column; gap:6px; }
+    .pc-btn { display:block; width:100%; padding:8px; border-radius:8px; font-family:inherit; font-size:13px; cursor:pointer; text-align:center; text-decoration:none; border:none; font-weight:500; box-sizing:border-box; }
+    .pc-btn-green { background:var(--c-success); color:#fff; }
+    .pc-btn-outline { border:1px solid var(--c-border) !important; background:#fff; color:var(--c-text); }
+    .pc-btn-row { display:flex; gap:6px; }
+    .pc-btn-row .pc-btn { flex:1; }
+    /* ── Stage chip bar ── */
+    #jb-stage-bar { position:absolute; bottom:16px; left:50%; transform:translateX(-50%); display:flex; gap:6px; padding:6px 10px; background:rgba(255,255,255,.95); border-radius:20px; box-shadow:0 2px 12px rgba(0,0,0,.15); z-index:900; max-width:90vw; overflow-x:auto; white-space:nowrap; }
+    .jb-chip { padding:5px 12px; border-radius:14px; border:1.5px solid var(--c-border); background:#fff; font-size:12px; cursor:pointer; font-family:inherit; }
+    .jb-chip.active { border-color:var(--c-primary); background:var(--c-primary); color:#fff; }
     @media (max-width:640px) {
       .layout { display:block; flex:none; }
       #map { height:100vh; min-height:0; }
@@ -255,7 +269,7 @@
           const m = L.circleMarker([d.lat, d.lng], { radius: 5, color: '#fff', weight: 1, fillColor: ageColor(d.build), fillOpacity: 0.9 });
           m._rp = d;
           m.bindTooltip(d.priceEok == null ? esc(d.name) : d.priceEok + '억', { direction: 'top' });
-          m.bindPopup(`<div style="min-width:180px;"><div style="font-weight:700;font-size:14px;">${esc(d.name)}</div><div style="font-size:12px;color:#8a9099;margin:2px 0 6px;">${esc(d.gu)} ${esc(d.dong)}</div><div style="font-size:15px;font-weight:700;color:#e8590c;">💰 실거래가 ${d.priceEok == null ? '-' : d.priceEok + '억'}</div><div style="font-size:12px;margin-top:3px;">${esc(d.area)}㎡ · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="font-size:12px;margin-top:4px;"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};margin-right:5px;"></span>🏗️ ${esc(d.build || '?')}년 건축</div><button class="rp-save" style="margin-top:8px;width:100%;padding:7px;border:1px solid #e8590c;background:#fff;color:#e8590c;border-radius:7px;cursor:pointer;font:inherit;font-size:13px;">☆ 저장</button><a href="https://map.naver.com/p/search/${encodeURIComponent(d.name + ' ' + (d.gu || ''))}" target="_blank" rel="noopener" style="display:block;margin-top:6px;padding:7px;background:#03c75a;color:#fff;border-radius:7px;text-align:center;text-decoration:none;font-size:13px;font-weight:600;">🏠 네이버 부동산</a><div style="display:flex;gap:6px;margin-top:6px;"><button class="rt-start" style="flex:1;padding:6px;border:1px solid #e6e8eb;border-radius:6px;background:#fff;cursor:pointer;font:inherit;font-size:12px;">🚩 출발</button><button class="rt-end" style="flex:1;padding:6px;border:1px solid #e6e8eb;border-radius:6px;background:#fff;cursor:pointer;font:inherit;font-size:12px;">🏁 도착</button></div><button class="sv-btn" style="width:100%;margin-top:6px;padding:7px;border:1px solid #868e96;background:#fff;color:#495057;border-radius:7px;cursor:pointer;font:inherit;font-size:13px;">🛣️ 거리뷰</button></div>`);
+          m.bindPopup(`<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};flex-shrink:0;"></span>${esc(d.name)}</div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div><div style="font-size:15px;font-weight:700;color:var(--c-price);">💰 실거래가 ${d.priceEok == null ? '-' : d.priceEok + '억'}</div><div style="margin-top:3px;">${esc(d.area)}㎡ · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="margin-top:3px;">🏗️ ${esc(d.build || '?')}년 건축</div></div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline" style="border-color:var(--c-price) !important;color:var(--c-price);">☆ 저장</button><a href="https://map.naver.com/p/search/${encodeURIComponent(d.name + ' ' + (d.gu || ''))}" target="_blank" rel="noopener" class="pc-btn pc-btn-green">🏠 네이버 부동산</a><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline">🚩 출발</button><button class="rt-end pc-btn pc-btn-outline">🏁 도착</button></div><button class="sv-btn pc-btn pc-btn-outline">🛣️ 거리뷰</button></div></div>`);
           return m;
         }));
       }
@@ -329,7 +343,8 @@
       function jbPopupHtml(d) {
         const g = jbGroup(d.gubun), c = JB_COLOR[g];
         const stageBadge = d.stage ? `<span style="display:inline-block;background:${stageColor(d.stage)};color:#fff;font-size:11px;padding:2px 7px;border-radius:10px;margin-left:4px;">${esc(d.stage)}</span>` : '';
-        return `<div style="min-width:195px;"><span style="display:inline-block;background:${c};color:#fff;font-size:11px;padding:2px 7px;border-radius:10px;">${g}</span>${stageBadge}<div style="font-weight:700;font-size:14px;margin:4px 0 2px;">${esc(d.name)}</div><div style="font-size:12px;color:#8a9099;">${esc(d.gu)} ${esc(d.jibun)}${d.approx ? ' <span style="color:#e8590c;">(동 근사위치)</span>' : ''}</div><div style="font-size:11px;color:#999;margin-top:3px;">사업구분: ${esc(d.gubun)}${d.method ? ' · ' + esc(d.method) : ''}</div>${(d.rc || d.cafe) ? `<div style="display:flex;gap:6px;margin-top:7px;">${d.rc ? `<a href="https://urban.seoul.go.kr/view/map/mapPopup.html?recordCode=${encodeURIComponent(d.rc)}" target="_blank" rel="noopener" style="flex:1;text-align:center;padding:6px;border:1px solid #7048e8;color:#7048e8;border-radius:6px;text-decoration:none;font-size:12px;">🗺️ 경계지도</a>` : ''}${d.cafe ? `<a href="https://cleanup.seoul.go.kr/cafe/mainIndx.do?cafeUrl=${encodeURIComponent(d.cafe)}" target="_blank" rel="noopener" style="flex:1;text-align:center;padding:6px;border:1px solid #1c7ed6;color:#1c7ed6;border-radius:6px;text-decoration:none;font-size:12px;">📂 정보공개</a>` : ''}</div>` : ''}<div style="display:flex;gap:6px;margin-top:8px;"><button class="rt-start" style="flex:1;padding:6px;border:1px solid #2f9e44;color:#2f9e44;background:#fff;border-radius:6px;cursor:pointer;font:inherit;font-size:12px;">🚩 출발</button><button class="rt-end" style="flex:1;padding:6px;border:1px solid #e03131;color:#e03131;background:#fff;border-radius:6px;cursor:pointer;font:inherit;font-size:12px;">🏁 도착</button></div><button class="sv-btn" style="width:100%;margin-top:6px;padding:7px;border:1px solid #868e96;background:#fff;color:#495057;border-radius:7px;cursor:pointer;font:inherit;font-size:13px;">🛣️ 거리뷰</button></div>`;
+        const linkBtns = (d.rc || d.cafe) ? `<div class="pc-btn-row">${d.rc ? `<a href="https://urban.seoul.go.kr/view/map/mapPopup.html?recordCode=${encodeURIComponent(d.rc)}" target="_blank" rel="noopener" class="pc-btn pc-btn-outline" style="border-color:#7048e8 !important;color:#7048e8;">🗺️ 경계지도</a>` : ''}${d.cafe ? `<a href="https://cleanup.seoul.go.kr/cafe/mainIndx.do?cafeUrl=${encodeURIComponent(d.cafe)}" target="_blank" rel="noopener" class="pc-btn pc-btn-outline" style="border-color:var(--c-primary) !important;color:var(--c-primary);">📂 정보공개</a>` : ''}</div>` : '';
+        return `<div class="pc"><div class="pc-head"><span style="display:inline-block;background:${c};color:#fff;font-size:11px;padding:2px 7px;border-radius:10px;">${g}</span>${stageBadge}</div><div class="pc-body"><div style="font-weight:700;font-size:14px;margin-bottom:2px;">${esc(d.name)}</div><div>${esc(d.gu)} ${esc(d.jibun)}${d.approx ? ' <span style="color:var(--c-price);">(동 근사위치)</span>' : ''}</div><div style="font-size:11px;color:#999;margin-top:3px;">사업구분: ${esc(d.gubun)}${d.method ? ' · ' + esc(d.method) : ''}</div></div><div class="pc-actions">${linkBtns}<div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline" style="border-color:var(--c-success) !important;color:var(--c-success);">🚩 출발</button><button class="rt-end pc-btn pc-btn-outline" style="border-color:var(--c-danger) !important;color:var(--c-danger);">🏁 도착</button></div><button class="sv-btn pc-btn pc-btn-outline">🛣️ 거리뷰</button></div></div>`;
       }
       function jbBuild() {
         if (!jbRows) return;
@@ -369,9 +384,25 @@
         L.DomEvent.disableClickPropagation(div);
         return div;
       };
+      // ── Stage chip bar (bottom-center, shown when JB layer is active) ──
+      const jbStageBar = document.createElement('div');
+      jbStageBar.id = 'jb-stage-bar';
+      jbStageBar.style.display = 'none';
+      jbStageBar.innerHTML = ['전체','추진위','조합설립','사업시행','관리처분','착공','준공','대지선정'].map((s) => `<button class="jb-chip${s === '전체' ? ' active' : ''}" data-s="${s}">${s}</button>`).join('');
+      document.getElementById('map').appendChild(jbStageBar);
+      L.DomEvent.disableClickPropagation(jbStageBar);
+      L.DomEvent.disableScrollPropagation(jbStageBar);
+      jbStageBar.addEventListener('click', (e) => {
+        const chip = e.target.closest('.jb-chip');
+        if (!chip) return;
+        jbActiveStage = chip.dataset.s === '전체' ? 'all' : chip.dataset.s;
+        jbStageBar.querySelectorAll('.jb-chip').forEach((c) => c.classList.toggle('active', c === chip));
+        document.querySelectorAll('.jb-stage').forEach((b) => { const on = b.dataset.s === chip.dataset.s; b.style.background = on ? '#e8590c' : '#fff'; b.style.color = on ? '#fff' : '#555'; });
+        jbBuild();
+      });
       map.on('overlayadd', (e) => {
         if (e.layer !== jbCluster) return;
-        jbCtrl.addTo(map); jbPolyLayer.addTo(map);
+        jbCtrl.addTo(map); jbPolyLayer.addTo(map); jbStageBar.style.display = '';
         setTimeout(() => {
           document.querySelectorAll('.jb-f').forEach((cb) => { if (cb._w) return; cb._w = 1; cb.addEventListener('change', () => { jbFilter[cb.dataset.g] = cb.checked; jbBuild(); }); });
           document.querySelectorAll('.jb-stage').forEach((btn) => {
@@ -379,6 +410,7 @@
             btn.addEventListener('click', () => {
               jbActiveStage = btn.dataset.s === '전체' ? 'all' : btn.dataset.s;
               document.querySelectorAll('.jb-stage').forEach((b) => { b.style.background = b === btn ? '#e8590c' : '#fff'; b.style.color = b === btn ? '#fff' : '#555'; });
+              jbStageBar.querySelectorAll('.jb-chip').forEach((c) => c.classList.toggle('active', c.dataset.s === btn.dataset.s));
               jbBuild();
             });
           });
@@ -386,7 +418,7 @@
         if (jbRows) return;
         Promise.all([fetch('redevelop_seoul.json?v=3').then((r) => r.json()), fetch('redevelop_polygons.json?v=1').then((r) => r.json()).catch(() => ({}))]).then(([rows, polys]) => { jbRows = rows; jbPolys = polys; jbBuild(); }).catch(() => {});
       });
-      map.on('overlayremove', (e) => { if (e.layer === jbCluster) { map.removeControl(jbCtrl); map.removeLayer(jbPolyLayer); } });
+      map.on('overlayremove', (e) => { if (e.layer === jbCluster) { map.removeControl(jbCtrl); map.removeLayer(jbPolyLayer); jbStageBar.style.display = 'none'; } });
       // 정비구역 팝업의 출발/도착 → 길찾기
       map.on('popupopen', (e) => {
         const m = e.popup._source;
@@ -472,7 +504,7 @@
       if (rpRows && rpRows.length) {
         rpRows.forEach((r) => { if (r.lat == null) return; const dist = kmDist(lat, lng, r.lat, r.lng); if (dist < 0.7) cnt++; if (dist < bd) { bd = dist; best = r; } });
       }
-      const rtBtns = `<div style="display:flex;gap:6px;margin-top:8px;"><button class="rt-start" style="flex:1;padding:6px;border:1px solid #e6e8eb;border-radius:6px;background:#fff;cursor:pointer;font:inherit;font-size:12px;">🚩 출발</button><button class="rt-end" style="flex:1;padding:6px;border:1px solid #e6e8eb;border-radius:6px;background:#fff;cursor:pointer;font:inherit;font-size:12px;">🏁 도착</button></div><button class="sv-btn" style="width:100%;margin-top:6px;padding:7px;border:1px solid #868e96;background:#fff;color:#495057;border-radius:7px;cursor:pointer;font:inherit;font-size:13px;">🛣️ 거리뷰</button>`;
+      const rtBtns = `<div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline">🚩 출발</button><button class="rt-end pc-btn pc-btn-outline">🏁 도착</button></div><button class="sv-btn pc-btn pc-btn-outline">🛣️ 거리뷰</button>`;
       const bindRtBtns = () => {
         const el = clickMarker && clickMarker.getPopup() && clickMarker.getPopup().getElement();
         const sBtn = el && el.querySelector('.rt-start'), eBtn = el && el.querySelector('.rt-end');
@@ -484,7 +516,7 @@
       if (best && bd < 0.2) {
         // 200m 이내 아파트 → 아파트 상세 팝업 즉시 표시
         const naverUrl = `https://map.naver.com/p/search/${encodeURIComponent(best.name + ' ' + (best.gu || ''))}`;
-        clickMarker.setPopupContent(`<div style="min-width:210px;"><div style="font-weight:700;font-size:15px;">${esc(best.name)}</div><div style="font-size:12px;color:#8a9099;margin:2px 0 4px;">${esc(best.gu || '')} ${esc(best.dong || '')}</div><div style="font-size:15px;font-weight:700;color:#e8590c;">💰 ${best.priceEok == null ? '-' : best.priceEok + '억'}</div><div style="font-size:12px;margin-top:3px;">${esc(best.area || '?')}㎡ · ${esc(best.floor || '?')}층 · 거래 ${esc(best.ymd || '')}</div><div style="font-size:12px;margin-top:4px;"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(best.build)};margin-right:5px;"></span>🏗️ ${esc(best.build || '?')}년 건축</div><a href="${naverUrl}" target="_blank" rel="noopener" style="display:block;margin-top:8px;padding:7px;background:#03c75a;color:#fff;border-radius:7px;text-align:center;text-decoration:none;font-size:13px;font-weight:600;">🏠 네이버 부동산 보기</a>${rtBtns}</div>`).openPopup();
+        clickMarker.setPopupContent(`<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(best.build)};flex-shrink:0;"></span>${esc(best.name)}</div><div class="pc-body"><div style="margin-bottom:4px;">${esc(best.gu || '')} ${esc(best.dong || '')}</div><div style="font-size:15px;font-weight:700;color:var(--c-price);">💰 ${best.priceEok == null ? '-' : best.priceEok + '억'}</div><div style="margin-top:3px;">${esc(best.area || '?')}㎡ · ${esc(best.floor || '?')}층 · 거래 ${esc(best.ymd || '')}</div><div style="margin-top:3px;">🏗️ ${esc(best.build || '?')}년 건축</div></div><div class="pc-actions"><a href="${naverUrl}" target="_blank" rel="noopener" class="pc-btn pc-btn-green">🏠 네이버 부동산 보기</a>${rtBtns}</div></div>`).openPopup();
         bindRtBtns();
       } else {
         // 200m 이상 → 단일 Naver geocoder 콜(주소+건물명 동시 반환) + 캐시
@@ -492,9 +524,9 @@
         if (best && bd < 1.5) nearHtml = `<div style="font-size:12px;margin-top:6px;border-top:1px solid #eee;padding-top:6px;">🏢 반경 700m 실거래 <b>${cnt}건</b><br>최근접: <b>${esc(best.name)}</b> ${best.priceEok == null ? '' : best.priceEok + '억'} · ${esc(best.build || '?')}년</div>`;
         const buildClickPopup = (addr, bldName) => {
           if (!clickMarker) return;
-          const bldHtml = bldName ? `<div style="font-weight:700;font-size:15px;margin-bottom:4px;">🏠 ${esc(bldName)}</div>` : '';
-          const naverLand = addr ? `<a href="https://map.naver.com/p/search/${encodeURIComponent(bldName || addr)}" target="_blank" rel="noopener" style="display:block;margin-top:8px;padding:7px;background:#03c75a;color:#fff;border-radius:7px;text-align:center;text-decoration:none;font-size:13px;font-weight:600;">🏠 네이버 부동산 검색</a>` : '';
-          clickMarker.setPopupContent(`<div style="min-width:190px;">${bldHtml}<div style="font-size:12px;color:#555;">📍 ${addr ? esc(addr) : '주소를 찾지 못했어요'}</div><div style="font-size:11px;color:#999;margin-top:2px;">${lat.toFixed(5)}, ${lng.toFixed(5)}</div>${nearHtml}${naverLand}${rtBtns}</div>`).openPopup();
+          const bldHtml = bldName ? `<div style="font-weight:700;font-size:14px;margin-bottom:2px;">🏠 ${esc(bldName)}</div>` : '';
+          const naverLand = addr ? `<a href="https://map.naver.com/p/search/${encodeURIComponent(bldName || addr)}" target="_blank" rel="noopener" class="pc-btn pc-btn-green">🏠 네이버 부동산 검색</a>` : '';
+          clickMarker.setPopupContent(`<div class="pc"><div class="pc-head">📍 위치 정보</div><div class="pc-body">${bldHtml}<div>📍 ${addr ? esc(addr) : '주소를 찾지 못했어요'}</div><div style="font-size:11px;color:var(--c-muted);margin-top:2px;">${lat.toFixed(5)}, ${lng.toFixed(5)}</div>${nearHtml}</div><div class="pc-actions">${naverLand}${rtBtns}</div></div>`).openPopup();
           bindRtBtns();
         };
         const cacheKey = _gcKey(lat, lng);
