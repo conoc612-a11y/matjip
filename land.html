@@ -117,7 +117,7 @@
       <div class="sheet-handle" id="sheet-handle" title="위로 올려서 목록 보기"></div>
       <div style="display:flex;gap:6px;">
         <div class="ac-wrap" style="flex:9;">
-          <input type="text" id="search" class="search-inp" style="margin-bottom:0;" placeholder="🔍 주소·지명 검색 (Enter)" autocomplete="off" />
+          <input type="text" id="search" class="search-inp" style="margin-bottom:0;" placeholder="🔍 주소 · 지역명 · 정비구역명 검색 (Enter)" autocomplete="off" />
           <div id="ac" class="ac"></div>
         </div>
         <button id="geo-btn" class="gps-btn" title="내 위치" aria-label="내 위치"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="7"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"/></svg></button>
@@ -199,7 +199,7 @@
     }
 
     // ── 지도 초기화 (서울 중심) ──
-    const map = L.map('map').setView([37.5665, 126.9780], 12);
+    const map = L.map('map', { wheelPxPerZoomLevel: 120 }).setView([37.5665, 126.9780], 12);
     // V-World 다중 배경지도 (일반/항공영상/하이브리드) — S-Map 유사 룩.
     // Satellite는 jpeg, Base·Hybrid는 png (실측 확인). 우측 상단 레이어에서 전환.
     const vTile = (layer, ext) => L.tileLayer(
@@ -321,9 +321,13 @@
       const jbPolyLayer = L.featureGroup();
       let jbRows = null, jbPolys = null;
       const jbFilter = { '재개발': true, '재건축': true, '모아': true, '지역주택': true, '리모델링': true, '기타': true };
+      let jbActiveStage = 'all';
+      const STAGE_COLOR_MAP = { '착공': '#2f9e44', '준공': '#1c7ed6', '관리처분': '#7048e8', '사업시행': '#e8590c', '조합설립': '#f08c00', '추진위': '#aaa', '대지선정': '#f08c00' };
+      function stageColor(s) { s = s || ''; for (const [k, v] of Object.entries(STAGE_COLOR_MAP)) { if (s.includes(k)) return v; } return '#868e96'; }
       function jbPopupHtml(d) {
         const g = jbGroup(d.gubun), c = JB_COLOR[g];
-        return `<div style="min-width:195px;"><span style="display:inline-block;background:${c};color:#fff;font-size:11px;padding:2px 7px;border-radius:10px;">${g}</span> <b style="font-size:11px;color:#555;">${esc(d.stage || '')}</b><div style="font-weight:700;font-size:14px;margin:4px 0 2px;">${esc(d.name)}</div><div style="font-size:12px;color:#8a9099;">${esc(d.gu)} ${esc(d.jibun)}${d.approx ? ' <span style="color:#e8590c;">(동 근사위치)</span>' : ''}</div><div style="font-size:11px;color:#999;margin-top:3px;">사업구분: ${esc(d.gubun)}${d.method ? ' · ' + esc(d.method) : ''}</div>${(d.rc || d.cafe) ? `<div style="display:flex;gap:6px;margin-top:7px;">${d.rc ? `<a href="https://urban.seoul.go.kr/view/map/mapPopup.html?recordCode=${encodeURIComponent(d.rc)}" target="_blank" rel="noopener" style="flex:1;text-align:center;padding:6px;border:1px solid #7048e8;color:#7048e8;border-radius:6px;text-decoration:none;font-size:12px;">🗺️ 경계지도</a>` : ''}${d.cafe ? `<a href="https://cleanup.seoul.go.kr/cafe/mainIndx.do?cafeUrl=${encodeURIComponent(d.cafe)}" target="_blank" rel="noopener" style="flex:1;text-align:center;padding:6px;border:1px solid #1c7ed6;color:#1c7ed6;border-radius:6px;text-decoration:none;font-size:12px;">📂 정보공개</a>` : ''}</div>` : ''}<div style="display:flex;gap:6px;margin-top:8px;"><button class="rt-start" style="flex:1;padding:6px;border:1px solid #2f9e44;color:#2f9e44;background:#fff;border-radius:6px;cursor:pointer;font:inherit;font-size:12px;">🚩 출발</button><button class="rt-end" style="flex:1;padding:6px;border:1px solid #e03131;color:#e03131;background:#fff;border-radius:6px;cursor:pointer;font:inherit;font-size:12px;">🏁 도착</button></div></div>`;
+        const stageBadge = d.stage ? `<span style="display:inline-block;background:${stageColor(d.stage)};color:#fff;font-size:11px;padding:2px 7px;border-radius:10px;margin-left:4px;">${esc(d.stage)}</span>` : '';
+        return `<div style="min-width:195px;"><span style="display:inline-block;background:${c};color:#fff;font-size:11px;padding:2px 7px;border-radius:10px;">${g}</span>${stageBadge}<div style="font-weight:700;font-size:14px;margin:4px 0 2px;">${esc(d.name)}</div><div style="font-size:12px;color:#8a9099;">${esc(d.gu)} ${esc(d.jibun)}${d.approx ? ' <span style="color:#e8590c;">(동 근사위치)</span>' : ''}</div><div style="font-size:11px;color:#999;margin-top:3px;">사업구분: ${esc(d.gubun)}${d.method ? ' · ' + esc(d.method) : ''}</div>${(d.rc || d.cafe) ? `<div style="display:flex;gap:6px;margin-top:7px;">${d.rc ? `<a href="https://urban.seoul.go.kr/view/map/mapPopup.html?recordCode=${encodeURIComponent(d.rc)}" target="_blank" rel="noopener" style="flex:1;text-align:center;padding:6px;border:1px solid #7048e8;color:#7048e8;border-radius:6px;text-decoration:none;font-size:12px;">🗺️ 경계지도</a>` : ''}${d.cafe ? `<a href="https://cleanup.seoul.go.kr/cafe/mainIndx.do?cafeUrl=${encodeURIComponent(d.cafe)}" target="_blank" rel="noopener" style="flex:1;text-align:center;padding:6px;border:1px solid #1c7ed6;color:#1c7ed6;border-radius:6px;text-decoration:none;font-size:12px;">📂 정보공개</a>` : ''}</div>` : ''}<div style="display:flex;gap:6px;margin-top:8px;"><button class="rt-start" style="flex:1;padding:6px;border:1px solid #2f9e44;color:#2f9e44;background:#fff;border-radius:6px;cursor:pointer;font:inherit;font-size:12px;">🚩 출발</button><button class="rt-end" style="flex:1;padding:6px;border:1px solid #e03131;color:#e03131;background:#fff;border-radius:6px;cursor:pointer;font:inherit;font-size:12px;">🏁 도착</button></div></div>`;
       }
       function jbBuild() {
         if (!jbRows) return;
@@ -332,17 +336,18 @@
         const dots = [];
         jbRows.forEach((d) => {
           if (!jbFilter[jbGroup(d.gubun)]) return;
+          if (jbActiveStage !== 'all' && !(d.stage || '').includes(jbActiveStage)) return;
           const c = JB_COLOR[jbGroup(d.gubun)];
           if (d.rc && jbPolys && jbPolys[d.rc]) {
-            const poly = L.polygon(jbPolys[d.rc], { color: c, weight: 2, fillColor: c, fillOpacity: 0.28 });
+            const poly = L.polygon(jbPolys[d.rc], { color: c, weight: 2.5, fillColor: c, fillOpacity: 0.35 });
             poly._jb = d;
-            poly.bindTooltip(esc(d.name), { sticky: true });
+            poly.bindTooltip(`<b>${esc(d.name)}</b><br><span style="font-size:11px;color:#555">${esc(d.stage || '')}</span>`, { sticky: true });
             poly.bindPopup(jbPopupHtml(d));
             jbPolyLayer.addLayer(poly);
           } else {
-            const m = L.circleMarker([d.lat, d.lng], { radius: 10, color: '#fff', weight: 2, fillColor: c, fillOpacity: 0.95 });
+            const m = L.circleMarker([d.lat, d.lng], { radius: 10, color: '#fff', weight: 2.5, fillColor: c, fillOpacity: 0.95 });
             m._jb = d;
-            m.bindTooltip(esc(d.name), { direction: 'top' });
+            m.bindTooltip(`<b>${esc(d.name)}</b> · ${esc(d.stage || '')}`, { direction: 'top' });
             m.bindPopup(jbPopupHtml(d));
             dots.push(m);
           }
@@ -352,15 +357,30 @@
       const jbCtrl = L.control({ position: 'topleft' });
       jbCtrl.onAdd = () => {
         const div = L.DomUtil.create('div');
-        div.style.cssText = 'background:#fff;padding:8px 10px;border-radius:8px;box-shadow:0 1px 5px rgba(0,0,0,.2);font-size:12px;line-height:1.7;';
-        div.innerHTML = '<div style="font-weight:700;margin-bottom:4px;">🏗️ 정비사업 유형</div>' + Object.keys(JB_COLOR).map((g) => `<label style="display:block;cursor:pointer;"><input type="checkbox" class="jb-f" data-g="${g}" checked style="vertical-align:middle;"> <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${JB_COLOR[g]};"></span> ${g}</label>`).join('');
+        div.style.cssText = 'background:#fff;padding:8px 10px;border-radius:8px;box-shadow:0 1px 5px rgba(0,0,0,.2);font-size:12px;line-height:1.7;max-width:180px;';
+        div.innerHTML = '<div style="font-weight:700;margin-bottom:4px;">🏗️ 정비사업 유형</div>'
+          + Object.keys(JB_COLOR).map((g) => `<label style="display:block;cursor:pointer;"><input type="checkbox" class="jb-f" data-g="${g}" checked style="vertical-align:middle;"> <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${JB_COLOR[g]};"></span> ${g}</label>`).join('')
+          + '<div style="margin-top:8px;padding-top:7px;border-top:1px solid #eee;font-weight:700;margin-bottom:5px;">진행단계</div>'
+          + '<div style="display:flex;flex-wrap:wrap;gap:4px;">'
+          + ['전체','추진위','조합설립','사업시행','관리처분','착공','준공'].map((s) => `<button class="jb-stage" data-s="${s}" style="font:inherit;font-size:10px;padding:3px 7px;border:1px solid #e6e8eb;border-radius:12px;background:${s === '전체' ? '#e8590c' : '#fff'};color:${s === '전체' ? '#fff' : '#555'};cursor:pointer;">${s}</button>`).join('')
+          + '</div>';
         L.DomEvent.disableClickPropagation(div);
         return div;
       };
       map.on('overlayadd', (e) => {
         if (e.layer !== jbCluster) return;
         jbCtrl.addTo(map); jbPolyLayer.addTo(map);
-        setTimeout(() => { document.querySelectorAll('.jb-f').forEach((cb) => { if (cb._w) return; cb._w = 1; cb.addEventListener('change', () => { jbFilter[cb.dataset.g] = cb.checked; jbBuild(); }); }); }, 60);
+        setTimeout(() => {
+          document.querySelectorAll('.jb-f').forEach((cb) => { if (cb._w) return; cb._w = 1; cb.addEventListener('change', () => { jbFilter[cb.dataset.g] = cb.checked; jbBuild(); }); });
+          document.querySelectorAll('.jb-stage').forEach((btn) => {
+            if (btn._w) return; btn._w = 1;
+            btn.addEventListener('click', () => {
+              jbActiveStage = btn.dataset.s === '전체' ? 'all' : btn.dataset.s;
+              document.querySelectorAll('.jb-stage').forEach((b) => { b.style.background = b === btn ? '#e8590c' : '#fff'; b.style.color = b === btn ? '#fff' : '#555'; });
+              jbBuild();
+            });
+          });
+        }, 60);
         if (jbRows) return;
         Promise.all([fetch('redevelop_seoul.json?v=3').then((r) => r.json()), fetch('redevelop_polygons.json?v=1').then((r) => r.json()).catch(() => ({}))]).then(([rows, polys]) => { jbRows = rows; jbPolys = polys; jbBuild(); }).catch(() => {});
       });
