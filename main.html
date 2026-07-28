@@ -695,7 +695,7 @@
     // ── [정비사업] 서울 재개발·재건축 1,100여 구역 (정보몽땅 공식자료) — 토글 오버레이 ──
     const JB_COLOR = { '재개발': '#e03131', '재건축': '#7048e8', '가로주택': '#2f9e44', '지역주택': '#1c7ed6', '리모델링': '#f08c00', '기타': '#868e96' };
     function jbGroup(g) { g = g || ''; if (g.indexOf('재건축') >= 0) return '재건축'; if (g.indexOf('재개발') >= 0) return '재개발'; if (g.indexOf('가로') >= 0) return '가로주택'; if (g.indexOf('지역주택') >= 0) return '지역주택'; if (g.indexOf('리모델링') >= 0) return '리모델링'; return '기타'; }
-    function jbIcon(color) { return { content: `<div style="width:14px;height:14px;background:${color};border:2px solid #fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.45);"></div>`, anchor: new naver.maps.Point(9, 9) }; }
+    function jbIcon(color) { return { content: `<div style="width:22px;height:22px;background:${color};border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.5);"></div>`, anchor: new naver.maps.Point(11, 11) }; }
     const jbCIcon = (px) => ({ content: `<div style="cursor:pointer;width:${px}px;height:${px}px;line-height:${px - 4}px;background:#495057;border:2px solid #fff;border-radius:50%;color:#fff;text-align:center;font-weight:700;font-size:13px;box-shadow:0 1px 5px rgba(0,0,0,.4);"></div>`, size: new naver.maps.Size(px, px), anchor: new naver.maps.Point(px / 2, px / 2) });
     const jbClusterIcons = [jbCIcon(34), jbCIcon(42), jbCIcon(50), jbCIcon(58)];
     function jbCard(d) {
