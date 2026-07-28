@@ -122,6 +122,7 @@
     <div class="panel">
       <div class="sheet-handle" id="sheet-handle" title="위로 올려서 목록 보기"></div>
       <div class="toolbar">
+        <button id="tool-markers" class="tool-btn on" title="맛집 마커 표시/숨기기">🍜 맛집</button>
         <button id="tool-street" class="tool-btn">🧭 거리뷰</button>
         <button id="tool-dist" class="tool-btn">📏 거리</button>
         <button id="tool-radius" class="tool-btn">⭕ 반경</button>
@@ -331,6 +332,11 @@
       const hint = { street: '지도에서 거리뷰 볼 지점을 클릭하세요', dist: '클릭할 때마다 거리가 누적됩니다', radius: '중심 클릭 → 반경 끝점 클릭' };
       $('banner').textContent = mapMode ? ('🛠️ ' + hint[mapMode]) : '';
     }
+    $('tool-markers').addEventListener('click', () => {
+      markersOn = !markersOn;
+      $('tool-markers').classList.toggle('on', markersOn);
+      if (markerClustering) markerClustering.setMap(markersOn ? map : null);
+    });
     $('tool-street').addEventListener('click', () => setMode('street'));
     $('tool-dist').addEventListener('click', () => setMode('dist'));
     $('tool-radius').addEventListener('click', () => setMode('radius'));
@@ -411,6 +417,7 @@
 
     const markers = {}; // id -> naver.maps.Marker
     let markerClustering = null; // 마커 클러스터링 인스턴스
+    let markersOn = true; // 맛집 마커 표시 여부
     let restaurants = [];
     let taste = null;
     let user = null;
@@ -475,6 +482,7 @@
         indexGenerator: [10, 50, 200],
         stylingFunction: (cm, count) => { const d = cm.getElement().querySelector('div'); if (d) d.textContent = count; },
       });
+      if (!markersOn) markerClustering.setMap(null);
     }
 
     // Supabase는 요청당 1,000행 제한 → 페이지네이션으로 전체 로드
