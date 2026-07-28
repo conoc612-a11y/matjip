@@ -461,6 +461,8 @@
 
     // ── 지도 클릭 → 위치 정보(주소 + 근처 실거래가) 표시 ──
     let clickMarker = null;
+    const _gcCache = new Map(); // 좌표 캐시(50m 그리드) → {addr, bldName}
+    const _gcKey = (lat, lng) => `${(lat * 200 | 0)},${(lng * 200 | 0)}`;
     map.on('click', (e) => {
       const { lat, lng } = e.latlng;
       if (clickMarker) map.removeLayer(clickMarker);
@@ -485,31 +487,38 @@
         clickMarker.setPopupContent(`<div style="min-width:210px;"><div style="font-weight:700;font-size:15px;">${esc(best.name)}</div><div style="font-size:12px;color:#8a9099;margin:2px 0 4px;">${esc(best.gu || '')} ${esc(best.dong || '')}</div><div style="font-size:15px;font-weight:700;color:#e8590c;">💰 ${best.priceEok == null ? '-' : best.priceEok + '억'}</div><div style="font-size:12px;margin-top:3px;">${esc(best.area || '?')}㎡ · ${esc(best.floor || '?')}층 · 거래 ${esc(best.ymd || '')}</div><div style="font-size:12px;margin-top:4px;"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(best.build)};margin-right:5px;"></span>🏗️ ${esc(best.build || '?')}년 건축</div><a href="${naverUrl}" target="_blank" rel="noopener" style="display:block;margin-top:8px;padding:7px;background:#03c75a;color:#fff;border-radius:7px;text-align:center;text-decoration:none;font-size:13px;font-weight:600;">🏠 네이버 부동산 보기</a>${rtBtns}</div>`).openPopup();
         bindRtBtns();
       } else {
-        // 200m 이상 → 역지오코딩 주소 + 건물명(Naver geocoder) + 네이버 부동산 + 근처 요약
+        // 200m 이상 → 단일 Naver geocoder 콜(주소+건물명 동시 반환) + 캐시
         let nearHtml = '';
         if (best && bd < 1.5) nearHtml = `<div style="font-size:12px;margin-top:6px;border-top:1px solid #eee;padding-top:6px;">🏢 반경 700m 실거래 <b>${cnt}건</b><br>최근접: <b>${esc(best.name)}</b> ${best.priceEok == null ? '' : best.priceEok + '억'} · ${esc(best.build || '?')}년</div>`;
         const buildClickPopup = (addr, bldName) => {
           if (!clickMarker) return;
           const bldHtml = bldName ? `<div style="font-weight:700;font-size:15px;margin-bottom:4px;">🏠 ${esc(bldName)}</div>` : '';
-          const naverLand = addr ? `<a href="https://map.naver.com/p/search/${encodeURIComponent(addr)}" target="_blank" rel="noopener" style="display:block;margin-top:8px;padding:7px;background:#03c75a;color:#fff;border-radius:7px;text-align:center;text-decoration:none;font-size:13px;font-weight:600;">🏠 네이버 부동산 검색</a>` : '';
+          const naverLand = addr ? `<a href="https://map.naver.com/p/search/${encodeURIComponent(bldName || addr)}" target="_blank" rel="noopener" style="display:block;margin-top:8px;padding:7px;background:#03c75a;color:#fff;border-radius:7px;text-align:center;text-decoration:none;font-size:13px;font-weight:600;">🏠 네이버 부동산 검색</a>` : '';
           clickMarker.setPopupContent(`<div style="min-width:190px;">${bldHtml}<div style="font-size:12px;color:#555;">📍 ${addr ? esc(addr) : '주소를 찾지 못했어요'}</div><div style="font-size:11px;color:#999;margin-top:2px;">${lat.toFixed(5)}, ${lng.toFixed(5)}</div>${nearHtml}${naverLand}${rtBtns}</div>`).openPopup();
           bindRtBtns();
         };
-        reverseGeocode(lat, lng, (addr) => {
-          if (NAVER_KEY && window.naver && naver.maps && naver.maps.Service) {
-            naver.maps.Service.reverseGeocode({ coords: new naver.maps.LatLng(lat, lng), orders: [naver.maps.Service.OrderType.ADDR] }, (status, res) => {
-              let bldName = null;
-              if (status === naver.maps.Service.Status.OK) {
-                const land = res.v2 && res.v2.results && res.v2.results[0] && res.v2.results[0].land;
-                const add0 = land && land.addition0;
-                if (add0 && add0.type === 'building' && add0.value) bldName = add0.value;
+        const cacheKey = _gcKey(lat, lng);
+        if (_gcCache.has(cacheKey)) { buildClickPopup(...Object.values(_gcCache.get(cacheKey))); return; }
+        if (NAVER_KEY && window.naver && naver.maps && naver.maps.Service) {
+          naver.maps.Service.reverseGeocode({ coords: new naver.maps.LatLng(lat, lng), orders: [naver.maps.Service.OrderType.ADDR, naver.maps.Service.OrderType.ROAD_ADDR] }, (status, res) => {
+            let addr = '', bldName = null;
+            if (status === naver.maps.Service.Status.OK) {
+              const results = (res.v2 && res.v2.results) || [];
+              const r = results.find((x) => x.name === 'roadaddr') || results[0];
+              if (r) {
+                const rg = r.region, ld = r.land;
+                addr = [rg && rg.area1 && rg.area1.name, rg && rg.area2 && rg.area2.name, rg && rg.area3 && rg.area3.name, ld && ld.name, ld && (ld.number1 + (ld.number2 ? '-' + ld.number2 : ''))].filter(Boolean).join(' ');
               }
-              buildClickPopup(addr, bldName);
-            });
-          } else {
-            buildClickPopup(addr, null);
-          }
-        });
+              const j = results.find((x) => x.name === 'legalcode') || results[0];
+              const add0 = j && j.land && j.land.addition0;
+              if (add0 && add0.type === 'building' && add0.value) bldName = add0.value;
+            }
+            _gcCache.set(cacheKey, { addr, bldName });
+            buildClickPopup(addr, bldName);
+          });
+        } else {
+          reverseGeocode(lat, lng, (addr) => { _gcCache.set(cacheKey, { addr, bldName: null }); buildClickPopup(addr, null); });
+        }
       }
     });
 
