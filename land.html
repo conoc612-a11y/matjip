@@ -233,6 +233,7 @@
     if (VWORLD_KEY) { let fell = false; defaultBase.on('tileerror', () => { if (!fell) { fell = true; map.removeLayer(defaultBase); osmBase.addTo(map); } }); }
 
     let rpRows = null;  // 실거래가 원본 (실거래가 레이어 켜면 로드됨) — 지도 클릭 정보/근처 실거래에서 참조. VWORLD 블록보다 먼저 선언(TDZ 방지)
+    let _jbRowsGlobal = null; // 정비사업 행 전역 참조 (VWORLD 블록 밖 클릭 핸들러에서 참조)
 
     // ── [토지 레이어] V-World 국토·토지정보 오버레이 (토글) ─────────────────
     // 근거: V-World 공개 WMS(api.vworld.kr) / 서울 토지정보 land.seoul.go.kr.
@@ -269,7 +270,7 @@
           const m = L.circleMarker([d.lat, d.lng], { radius: 5, color: '#fff', weight: 1, fillColor: ageColor(d.build), fillOpacity: 0.9 });
           m._rp = d;
           m.bindTooltip(d.priceEok == null ? esc(d.name) : d.priceEok + '억', { direction: 'top' });
-          m.bindPopup(`<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};flex-shrink:0;"></span>${esc(d.name)}</div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div><div style="font-size:15px;font-weight:700;color:var(--c-price);">💰 실거래가 ${d.priceEok == null ? '-' : d.priceEok + '억'}</div><div style="margin-top:3px;">${esc(d.area)}㎡ · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="margin-top:3px;">🏗️ ${esc(d.build || '?')}년 건축</div></div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline" style="border-color:var(--c-price) !important;color:var(--c-price);">☆ 저장</button><a href="https://map.naver.com/p/search/${encodeURIComponent(d.name + ' ' + (d.gu || ''))}" target="_blank" rel="noopener" class="pc-btn pc-btn-green">🏠 네이버 부동산</a><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline">🚩 출발</button><button class="rt-end pc-btn pc-btn-outline">🏁 도착</button></div><button class="sv-btn pc-btn pc-btn-outline">🛣️ 거리뷰</button></div></div>`);
+          m.bindPopup(`<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};flex-shrink:0;"></span>${esc(d.name)}</div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div><div style="font-size:15px;font-weight:700;color:var(--c-price);">💰 실거래가 ${d.priceEok == null ? '-' : d.priceEok + '억'}</div><div style="margin-top:3px;">평단가: ${d.area && d.priceEok ? Math.round(d.priceEok * 10000 / d.area).toLocaleString() + '만원/㎡' : '-'}</div><div style="margin-top:3px;">${esc(d.area)}㎡ · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="margin-top:3px;">🏗️ ${esc(d.build || '?')}년 건축${parseInt(d.build) <= 1994 ? '<span style="background:#e03131;color:#fff;font-size:10px;padding:2px 7px;border-radius:10px;margin-left:6px;">🔨 재건축연한초과</span>' : ''}</div><div class="rp-radius-stat" style="display:none;font-size:11px;color:var(--c-muted);margin-top:4px;"></div></div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline" style="border-color:var(--c-price) !important;color:var(--c-price);">☆ 저장</button><a href="https://map.naver.com/p/search/${encodeURIComponent(d.name + ' ' + (d.gu || ''))}" target="_blank" rel="noopener" class="pc-btn pc-btn-green">🏠 네이버 부동산</a><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline">🚩 출발</button><button class="rt-end pc-btn pc-btn-outline">🏁 도착</button></div><button class="sv-btn pc-btn pc-btn-outline">🛣️ 거리뷰</button></div></div>`);
           return m;
         }));
       }
@@ -288,7 +289,7 @@
         const div = L.DomUtil.create('div');
         div.style.cssText = 'background:rgba(255,255,255,.94);padding:8px 10px;border-radius:8px;box-shadow:0 1px 5px rgba(0,0,0,.15);font-size:11px;line-height:1.6;';
         const row = (c, t) => `<div><span style="display:inline-block;width:10px;height:10px;background:${c};border-radius:50%;margin-right:5px;"></span>${t}</div>`;
-        div.innerHTML = '<div style="font-weight:700;margin-bottom:3px;">건축년도(노후도)</div>' + row('#2f9e44', '신축 2015~') + row('#94d82d', '2005~') + row('#fab005', '1995~') + row('#fd7e14', '1985~') + row('#e03131', '노후 ~1985');
+        div.innerHTML = '<div style="font-weight:700;margin-bottom:3px;">건축년도(노후도)</div>' + row('#2f9e44', '신축 2015~') + row('#94d82d', '2005~2014') + row('#fab005', '1995~2004') + row('#fd7e14', '1985~1994') + row('#e03131', '노후 ~1984') + row('#868e96', '미상');
         return div;
       };
       map.on('overlayadd', (e) => {
@@ -326,6 +327,21 @@
         if (eBtn) eBtn.onclick = () => { setRoutePoint('end', d.lat, d.lng); m.closePopup(); };
         const svBtn = node.querySelector('.sv-btn');
         if (svBtn) svBtn.onclick = () => showStreetView(d.lat, d.lng);
+        // 반경 700m 실거래 통계
+        if (rpRows && rpRows.length) {
+          const kmD = (a,b,c,e) => { const dx=(a-c)*111, dy=(b-e)*88; return Math.sqrt(dx*dx+dy*dy); };
+          let cnt700 = 0, sum = 0, sumCnt = 0;
+          rpRows.forEach((r) => {
+            if (r.lat == null) return;
+            const dist = kmD(d.lat, d.lng, r.lat, r.lng);
+            if (dist < 0.7) { cnt700++; if (r.priceEok != null) { sum += r.priceEok; sumCnt++; } }
+          });
+          const avgEl = node.querySelector('.rp-radius-stat');
+          if (avgEl && cnt700 > 0) {
+            avgEl.textContent = `반경 700m 실거래 ${cnt700}건 · 평균 ${sumCnt ? Math.round(sum/sumCnt*10)/10 : '-'}억`;
+            avgEl.style.display = 'block';
+          }
+        }
       });
 
       // ── [정비사업] 서울 재개발·재건축·가로주택·지역주택 등 1,100여 구역 (정보몽땅 공식자료) ──
@@ -340,14 +356,17 @@
       let jbActiveStage = 'all';
       const STAGE_COLOR_MAP = { '착공': '#2f9e44', '준공': '#1c7ed6', '관리처분': '#7048e8', '사업시행': '#e8590c', '조합설립': '#f08c00', '추진위': '#aaa', '대지선정': '#f08c00' };
       function stageColor(s) { s = s || ''; for (const [k, v] of Object.entries(STAGE_COLOR_MAP)) { if (s.includes(k)) return v; } return '#868e96'; }
+      const STAGE_PCT = { '대지선정':10,'추진위':20,'조합설립':35,'사업시행':50,'관리처분':65,'착공':80,'준공':95,'조합해산':100,'정비구역해제':0 };
+      function stagePct(s) { s=s||''; for(const [k,v] of Object.entries(STAGE_PCT)) { if(s.includes(k)) return v; } return 15; }
       function jbPopupHtml(d) {
         const g = jbGroup(d.gubun), c = JB_COLOR[g];
         const stageBadge = d.stage ? `<span style="display:inline-block;background:${stageColor(d.stage)};color:#fff;font-size:11px;padding:2px 7px;border-radius:10px;margin-left:4px;">${esc(d.stage)}</span>` : '';
         const linkBtns = (d.rc || d.cafe) ? `<div class="pc-btn-row">${d.rc ? `<a href="https://urban.seoul.go.kr/view/map/mapPopup.html?recordCode=${encodeURIComponent(d.rc)}" target="_blank" rel="noopener" class="pc-btn pc-btn-outline" style="border-color:#7048e8 !important;color:#7048e8;">🗺️ 경계지도</a>` : ''}${d.cafe ? `<a href="https://cleanup.seoul.go.kr/cafe/mainIndx.do?cafeUrl=${encodeURIComponent(d.cafe)}" target="_blank" rel="noopener" class="pc-btn pc-btn-outline" style="border-color:var(--c-primary) !important;color:var(--c-primary);">📂 정보공개</a>` : ''}</div>` : '';
-        return `<div class="pc"><div class="pc-head"><span style="display:inline-block;background:${c};color:#fff;font-size:11px;padding:2px 7px;border-radius:10px;">${g}</span>${stageBadge}</div><div class="pc-body"><div style="font-weight:700;font-size:14px;margin-bottom:2px;">${esc(d.name)}</div><div>${esc(d.gu)} ${esc(d.jibun)}${d.approx ? ' <span style="color:var(--c-price);">(동 근사위치)</span>' : ''}</div><div style="font-size:11px;color:#999;margin-top:3px;">사업구분: ${esc(d.gubun)}${d.method ? ' · ' + esc(d.method) : ''}</div></div><div class="pc-actions">${linkBtns}<div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline" style="border-color:var(--c-success) !important;color:var(--c-success);">🚩 출발</button><button class="rt-end pc-btn pc-btn-outline" style="border-color:var(--c-danger) !important;color:var(--c-danger);">🏁 도착</button></div><button class="sv-btn pc-btn pc-btn-outline">🛣️ 거리뷰</button></div></div>`;
+        return `<div class="pc"><div class="pc-head"><span style="display:inline-block;background:${c};color:#fff;font-size:11px;padding:2px 7px;border-radius:10px;">${g}</span>${stageBadge}</div><div class="pc-body"><div style="font-weight:700;font-size:14px;margin-bottom:2px;">${esc(d.name)}</div><div>${esc(d.gu)} ${esc(d.jibun)}${d.approx ? ' <span style="color:var(--c-price);">(동 근사위치)</span>' : ''}</div><div style="font-size:11px;color:#999;margin-top:3px;">사업구분: ${esc(d.gubun)}${d.method ? ' · ' + esc(d.method) : ''}</div><div style="margin:8px 0 4px;"><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--c-muted);margin-bottom:3px;"><span>진행단계</span><span>${stagePct(d.stage)}%</span></div><div style="height:5px;background:#e9ecef;border-radius:3px;overflow:hidden;"><div style="height:100%;width:${stagePct(d.stage)}%;background:${stageColor(d.stage)};border-radius:3px;transition:width .3s;"></div></div></div><div class="jb-rp-stat" style="display:none;font-size:11px;color:var(--c-muted);padding:5px 0;border-top:1px solid var(--c-border);"></div></div><div class="pc-actions">${linkBtns}<div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline" style="border-color:var(--c-success) !important;color:var(--c-success);">🚩 출발</button><button class="rt-end pc-btn pc-btn-outline" style="border-color:var(--c-danger) !important;color:var(--c-danger);">🏁 도착</button></div><button class="sv-btn pc-btn pc-btn-outline">🛣️ 거리뷰</button></div></div>`;
       }
       function jbBuild() {
         if (!jbRows) return;
+        _jbRowsGlobal = jbRows;
         jbCluster.clearLayers();
         jbPolyLayer.clearLayers();
         const dots = [];
@@ -431,6 +450,23 @@
         if (eBtn) eBtn.onclick = () => { setRoutePoint('end', d.lat, d.lng); m.closePopup(); };
         const svBtn = node.querySelector('.sv-btn');
         if (svBtn) svBtn.onclick = () => showStreetView(d.lat, d.lng);
+        // 인근 실거래 통계 (500m)
+        if (rpRows && rpRows.length) {
+          const kmD = (a,b,c,e) => { const dx=(a-c)*111, dy=(b-e)*88; return Math.sqrt(dx*dx+dy*dy); };
+          let cnt=0, sum=0, sumCnt=0, minP=Infinity, maxP=-Infinity;
+          rpRows.forEach((r) => {
+            if (r.lat==null) return;
+            if (kmD(d.lat, d.lng, r.lat, r.lng) < 0.5) {
+              cnt++;
+              if (r.priceEok!=null) { sum+=r.priceEok; sumCnt++; if(r.priceEok<minP)minP=r.priceEok; if(r.priceEok>maxP)maxP=r.priceEok; }
+            }
+          });
+          const statEl = node.querySelector('.jb-rp-stat');
+          if (statEl && cnt > 0) {
+            statEl.innerHTML = `🏢 500m 내 아파트 ${cnt}건 · 평균 <b>${sumCnt ? Math.round(sum/sumCnt*10)/10 : '-'}억</b>${sumCnt>=2 ? ` (${minP}~${maxP}억)` : ''}`;
+            statEl.style.display = 'block';
+          }
+        }
       });
 
       const landOverlays = {
@@ -444,6 +480,30 @@
         '📦 택지·사업지구': wms('lt_c_lhzone', 0.5),
       };
       L.control.layers(baseLayers, landOverlays, { collapsed: true, position: 'topright' }).addTo(map);
+      // 항공영상 퀵토글
+      const satBtn = L.control({ position: 'topleft' });
+      satBtn.onAdd = () => {
+        const b = L.DomUtil.create('button');
+        b.title = '항공영상/일반지도 전환';
+        b.style.cssText = 'padding:5px 10px;background:#fff;border:1px solid rgba(0,0,0,.2);border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;box-shadow:0 1px 4px rgba(0,0,0,.2);';
+        b.textContent = '🛩️ 항공';
+        let sat = false;
+        b.onclick = () => {
+          sat = !sat;
+          if (sat) {
+            Object.values(baseLayers).forEach(l => map.hasLayer(l) && map.removeLayer(l));
+            baseLayers['🏙️ 항공+라벨'] && baseLayers['🏙️ 항공+라벨'].addTo(map);
+            b.style.background = '#1971c2'; b.style.color = '#fff';
+          } else {
+            Object.values(baseLayers).forEach(l => map.hasLayer(l) && map.removeLayer(l));
+            defaultBase.addTo(map);
+            b.style.background = '#fff'; b.style.color = '#000';
+          }
+        };
+        L.DomEvent.disableClickPropagation(b);
+        return b;
+      };
+      satBtn.addTo(map);
     }
     // 실거래가 데이터 백그라운드 미리 로드 (레이어 비활성 상태에서도 클릭 팝업에 사용)
     fetch('realprice_seoul_gg.json').then((r) => r.json()).then((rows) => { if (!rpRows) rpRows = rows; }).catch(() => {});
@@ -522,11 +582,22 @@
         // 200m 이상 → 단일 Naver geocoder 콜(주소+건물명 동시 반환) + 캐시
         let nearHtml = '';
         if (best && bd < 1.5) nearHtml = `<div style="font-size:12px;margin-top:6px;border-top:1px solid #eee;padding-top:6px;">🏢 반경 700m 실거래 <b>${cnt}건</b><br>최근접: <b>${esc(best.name)}</b> ${best.priceEok == null ? '' : best.priceEok + '억'} · ${esc(best.build || '?')}년</div>`;
+        const _JB_COL = {'재개발':'#e03131','재건축':'#7048e8','모아':'#2f9e44','지역주택':'#1c7ed6','리모델링':'#f08c00','기타':'#868e96'};
+        const _jbGrp = (g) => { g=g||''; if(g.includes('가로')||g.includes('소규모'))return'모아'; if(g.includes('재건축'))return'재건축'; if(g.includes('재개발'))return'재개발'; if(g.includes('지역주택'))return'지역주택'; if(g.includes('리모델링'))return'리모델링'; return'기타'; };
+        let jbNearHtml = '';
+        if (_jbRowsGlobal && _jbRowsGlobal.length) {
+          const kmD = (a,b,c,e) => { const dx=(a-c)*111, dy=(b-e)*88; return Math.sqrt(dx*dx+dy*dy); };
+          const near = _jbRowsGlobal.filter(r => r.lat && kmD(lat, lng, r.lat, r.lng) < 0.5).slice(0, 3);
+          if (near.length) {
+            jbNearHtml = `<div style="font-size:11px;margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;"><b>🏗️ 500m 내 정비사업 ${near.length}건</b><br>`
+              + near.map(r => `<span style="color:${_JB_COL[_jbGrp(r.gubun)]||'#868e96'}">●</span> ${esc(r.name)} <span style="color:var(--c-muted)">${esc(r.stage||'')}</span>`).join('<br>') + '</div>';
+          }
+        }
         const buildClickPopup = (addr, bldName) => {
           if (!clickMarker) return;
           const bldHtml = bldName ? `<div style="font-weight:700;font-size:14px;margin-bottom:2px;">🏠 ${esc(bldName)}</div>` : '';
           const naverLand = addr ? `<a href="https://map.naver.com/p/search/${encodeURIComponent(bldName || addr)}" target="_blank" rel="noopener" class="pc-btn pc-btn-green">🏠 네이버 부동산 검색</a>` : '';
-          clickMarker.setPopupContent(`<div class="pc"><div class="pc-head">📍 위치 정보</div><div class="pc-body">${bldHtml}<div>📍 ${addr ? esc(addr) : '주소를 찾지 못했어요'}</div><div style="font-size:11px;color:var(--c-muted);margin-top:2px;">${lat.toFixed(5)}, ${lng.toFixed(5)}</div>${nearHtml}</div><div class="pc-actions">${naverLand}${rtBtns}</div></div>`).openPopup();
+          clickMarker.setPopupContent(`<div class="pc"><div class="pc-head">📍 위치 정보</div><div class="pc-body">${bldHtml}<div>📍 ${addr ? esc(addr) : '주소를 찾지 못했어요'}</div><div style="font-size:11px;color:var(--c-muted);margin-top:2px;">${lat.toFixed(5)}, ${lng.toFixed(5)}</div>${nearHtml}${jbNearHtml}</div><div class="pc-actions">${naverLand}${rtBtns}</div></div>`).openPopup();
           bindRtBtns();
         };
         const cacheKey = _gcKey(lat, lng);
