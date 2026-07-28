@@ -150,11 +150,14 @@
       const a = loadRecent(), el = $('recent'); if (!el) return;
       if (!a.length) { el.style.display = 'none'; return; }
       el.style.display = '';
-      el.innerHTML = '🕘 최근 본 곳: ' + a.map((x, i) => `<a href="#" class="recent-chip" data-i="${i}">${esc(x.name)}</a>`).join('');
+      el.innerHTML = '🕘 최근 본 곳: ' + a.map((x, i) => `<span class="recent-chip" data-i="${i}" style="cursor:pointer;">${esc(x.name)} <b class="recent-del" data-i="${i}" title="삭제" style="cursor:pointer;color:#e03131;margin-left:1px;">✕</b></span>`).join('') + ` <a href="#" class="recent-clear" style="color:var(--muted);font-size:11px;">전체삭제</a>`;
       el.querySelectorAll('.recent-chip').forEach((c) => c.addEventListener('click', (e) => {
+        if (e.target.closest('.recent-del')) return;
         e.preventDefault(); const x = a[Number(c.dataset.i)];
         if (x && x.lat != null) map.setView([x.lat, x.lng], 16);
       }));
+      el.querySelectorAll('.recent-del').forEach((d) => d.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); const b = loadRecent(); b.splice(Number(d.dataset.i), 1); try { localStorage.setItem(RECENT_KEY, JSON.stringify(b)); } catch (er) {} renderRecent(); }));
+      const cl = el.querySelector('.recent-clear'); if (cl) cl.addEventListener('click', (e) => { e.preventDefault(); try { localStorage.removeItem(RECENT_KEY); } catch (er) {} renderRecent(); });
     }
 
     // ── V-World 인증키: 발급받으면 아래에 넣으세요. 비어 있으면 OSM 지도로 자동 대체 ──
@@ -415,6 +418,9 @@
         if (eBtn) eBtn.onclick = () => { setRoutePoint('end', lat, lng); clickMarker.closePopup(); };
       });
     });
+
+    // 지도 우클릭 → 열린 팝업/클릭 마커 닫기
+    map.on('contextmenu', (e) => { map.closePopup(); if (clickMarker) { map.removeLayer(clickMarker); clickMarker = null; } if (e.originalEvent) e.originalEvent.preventDefault(); });
 
     // ── 길찾기: 출발/도착 + 도보(OSRM)·대중교통(ODsay)·자차(OSRM) ──
     const ODSAY_KEY = 'H4Vo/z04g/E+AUShnTQIiQ';
