@@ -173,7 +173,7 @@
     </div>
     <div class="footer-contact">호룡리싱앤리얼리티 &nbsp;·&nbsp; 오재호 010.4353.6501 &nbsp;·&nbsp; conoc@naver.com
       <!-- 빌드 태그: 브라우저가 옛 파일을 캐시하고 있는지 한눈에 확인하는 용도. 배포마다 올린다. -->
-      &nbsp;·&nbsp; <span style="opacity:.6;">build 2026-07-29-b10</span></div>
+      &nbsp;·&nbsp; <span style="opacity:.6;">build 2026-07-29-b11</span></div>
   </footer>
 
   <script>
@@ -725,64 +725,168 @@
     //  LT_C_UQ111        용도지역   → 용적률·건폐율을 결정. 재개발 가치 판단의 출발점.
     //  LP_PA_CBND_BUBUN  지적       → 개별공시지가, 지번, 지목, PNU
     //  LT_C_BLDGINFO     건물       → 용도 계열, 층수, 연면적, 사용승인일
-    function landInfo(lat, lng, cb) {
-      const box = {};
-      let left = 3;
-      const one = (id, slot) => vworldFeature(id, lat, lng, (ps) => {
-        box[slot] = ps && ps.length ? ps : null;
-        if (--left === 0) cb(box);
-      });
-      one('LT_C_UQ111', 'zone');
-      one('LP_PA_CBND_BUBUN', 'parcel');
-      one('LT_C_BLDGINFO', 'bld');
+
+    // ── 국토교통부 건축HUB 건축물대장 (data.go.kr) ──────────────
+    // 실측 확인: Access-Control-Allow-Origin: * 라서 브라우저에서 fetch 로 직접 호출된다.
+    // 주의 1) 구버전 BldRgstService_v2 는 응답이 비어 있다. BldRgstHubService 를 써야 한다.
+    // 주의 2) platGbCd 를 빠뜨리면 조회되지 않는다.
+    // 주의 3) 이 키는 공개 HTML에 노출된다(V-World·네이버·카카오 키와 동일한 상황).
+    //         일일 호출 한도가 있어 남용되면 소진될 수 있다.
+    const MOLIT_KEY = '716d7a26e9743cf52ecda06537934dd5845ebafbc7322c4e32536652a5209030';
+    // PNU(19자리) = 시군구5 + 법정동5 + 산여부1 + 본번4 + 부번4
+    // V-World 지적 레이어가 주는 PNU 를 그대로 건축물대장 파라미터로 분해할 수 있다.
+    function pnuParts(pnu) {
+      if (!pnu || String(pnu).length !== 19) return null;
+      const s = String(pnu);
+      return { sigunguCd: s.slice(0, 5), bjdongCd: s.slice(5, 10), platGbCd: s[10] === '2' ? '1' : '0', bun: s.slice(11, 15), ji: s.slice(15, 19) };
     }
+    const _brCache = new Map();
+    function buildingRegister(pnu, cb) {
+      const p = pnuParts(pnu);
+      if (!p) { cb(null); return; }
+      if (_brCache.has(pnu)) { cb(_brCache.get(pnu)); return; }
+      const q = `serviceKey=${MOLIT_KEY}&sigunguCd=${p.sigunguCd}&bjdongCd=${p.bjdongCd}`
+        + `&platGbCd=${p.platGbCd}&bun=${p.bun}&ji=${p.ji}&numOfRows=10&pageNo=1&_type=json`;
+      fetch(`https://apis.data.go.kr/1613000/BldRgstHubService/getBrTitleInfo?${q}`)
+        .then((r) => r.json())
+        .then((j) => {
+          let it = null;
+          try {
+            const items = j.response.body.items;
+            const arr = (!items ? [] : Array.isArray(items.item) ? items.item : [items.item]).filter(Boolean);
+            // 한 필지에 동이 여러 개일 수 있다. 연면적이 가장 큰 주건축물을 대표로 삼는다.
+            it = arr.sort((a, b) => (Number(b.totArea) || 0) - (Number(a.totArea) || 0))[0] || null;
+          } catch (e) {}
+          _brCache.set(pnu, it);
+          cb(it);
+        })
+        .catch(() => { _brCache.set(pnu, null); cb(null); });
+    }
+    // 서울시 도시계획조례 기준 용적률 상한. 지구단위계획·정비계획으로 달라질 수 있어 참고용이다.
+    const FAR_LIMIT = {
+      '제1종전용주거지역': 100, '제2종전용주거지역': 150,
+      '제1종일반주거지역': 200, '제2종일반주거지역': 250, '제3종일반주거지역': 300,
+      '준주거지역': 400, '근린상업지역': 600, '유통상업지역': 600,
+      '일반상업지역': 800, '중심상업지역': 1000, '준공업지역': 400,
+    };
 
     const M2_PER_PY = 3.305785;
-    function landInfoHtml(box) {
-      if (!box) return '';
+    // 토지·건물 정보 렌더. 건물 부분은 출처가 둘인데 겹치므로 하나만 쓴다.
+    //  br  = 건축물대장 (정확한 주용도·용적률·건폐율) — 있으면 이것만 쓴다
+    //  bld = V-World LT_C_BLDGINFO (용도 '계열'까지만) — 대장에 기록이 없을 때만 폴백
+    // 둘 다 그리면 '단독주택 계열'과 '주용도 단독주택'이 나란히 나와 중복이다.
+    function landInfoHtml(st) {
+      if (!st) return '';
       const rows = [];
+      let badge = '';
 
       // 용도지역 — 투자 판단에서 가장 먼저 보는 항목
-      const z = box.zone && box.zone.find((x) => x.uname);
-      if (z) rows.push(`<b style="color:var(--c-primary);">${esc(z.uname)}</b>`);
+      if (st.zone) rows.push(`<b style="color:var(--c-primary);">${esc(st.zone)}</b>`);
 
       // 개별공시지가 + 평당 환산
-      const pc = box.parcel && box.parcel[0];
+      const pc = st.parcel;
       if (pc) {
         const jg = Number(pc.jiga) || 0;
         if (jg > 0) {
-          const py = Math.round(jg * M2_PER_PY);
           const when = pc.gosi_year ? `${esc(pc.gosi_year)}.${esc(pc.gosi_month || '')}` : '';
-          rows.push(`공시지가 <b>${jg.toLocaleString()}원/㎡</b> <span style="color:var(--c-muted);">(평당 ${py.toLocaleString()}원${when ? ' · ' + when + ' 기준' : ''})</span>`);
+          rows.push(`공시지가 <b>${jg.toLocaleString()}원/㎡</b> <span style="color:var(--c-muted);">(평당 ${Math.round(jg * M2_PER_PY).toLocaleString()}원${when ? ' · ' + when + ' 기준' : ''})</span>`);
         }
         if (pc.jibun) rows.push(`지번 ${esc(pc.jibun)}`);
       }
 
-      // 건물
-      const b = box.bld && box.bld.find((x) => x.usability) || (box.bld && box.bld[0]);
-      let oldBadge = '';
-      if (b) {
-        const use = BLD_USE[b.usability] || (b.usability ? '용도코드 ' + esc(b.usability) : '');
-        const flr = b.grnd_flr && b.grnd_flr !== '0'
-          ? `지상 ${esc(b.grnd_flr)}층` + (b.ugrnd_flr && b.ugrnd_flr !== '0' ? `·지하 ${esc(b.ugrnd_flr)}층` : '') : '';
-        const ar = b.totalarea && b.totalarea !== '0' ? `연면적 ${Number(b.totalarea).toLocaleString()}㎡` : '';
-        const ok8 = /^\d{8}$/.test(b.useapr_day || '');
-        const yr = ok8 ? b.useapr_day.slice(0, 4) : '';
-        const day = ok8 ? `${yr}.${b.useapr_day.slice(4, 6)} 사용승인` : '';
-        if (yr) {
-          oldBadge = parseInt(yr) <= 1994
-            ? '<span style="background:#e03131;color:#fff;font-size:10px;padding:1px 6px;border-radius:9px;margin-left:5px;">🔨 30년↑</span>' : '';
+      const oldTag = (yr) => (yr && parseInt(yr) <= 1994)
+        ? '<span style="background:#e03131;color:#fff;font-size:10px;padding:1px 6px;border-radius:9px;margin-left:5px;">🔨 30년↑</span>' : '';
+      const ageDot = (yr) => yr ? `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${ageColor(yr)};margin-right:5px;"></span>` : '';
+
+      if (st.br) {
+        // ── 건축물대장 (우선) ──
+        const it = st.br;
+        const yr = /^\d{8}$/.test(it.useAprDay || '') ? String(it.useAprDay).slice(0, 4) : '';
+        badge = oldTag(yr);
+        const fam = Number(it.fmlyCnt) || Number(it.hhldCnt) || 0;
+        const purps = it.mainPurpsCdNm || it.etcPurps || '';
+        if (purps) rows.push(ageDot(yr) + `주용도 <b style="color:var(--c-primary);">${esc(purps)}</b>` + (fam ? ` · ${fam}세대` : ''));
+        const vl = Number(it.vlRat) || 0, bc = Number(it.bcRat) || 0;
+        if (vl || bc) {
+          let s = (vl ? `용적률 <b>${vl}%</b>` : '') + (bc ? `${vl ? ' · ' : ''}건폐율 ${bc}%` : '');
+          const lim = FAR_LIMIT[st.zone];
+          if (lim && vl) {
+            // 상한 대비 낮을수록 증축·재건축 여력이 있다는 뜻. 판단은 사용자 몫이라 수치만 보여준다.
+            const pct = Math.round(vl / lim * 100);
+            const col = pct < 70 ? 'var(--c-success)' : pct < 95 ? 'var(--c-price)' : 'var(--c-muted)';
+            s += `<br><span style="color:${col};font-size:11px;">조례 상한 ${lim}% 대비 <b>${pct}%</b></span>`;
+          }
+          rows.push(s);
         }
-        const dot = yr ? `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${ageColor(yr)};margin-right:5px;"></span>` : '';
-        const line = [flr, ar].filter(Boolean).join(' · ');
-        if (use) rows.push(dot + use);
+        const ar = [];
+        if (Number(it.platArea)) ar.push(`대지 ${Number(it.platArea).toLocaleString()}㎡`);
+        if (Number(it.totArea)) ar.push(`연면적 ${Number(it.totArea).toLocaleString()}㎡`);
+        if (ar.length) rows.push(ar.join(' · '));
+        const stx = [];
+        if (it.strctCdNm) stx.push(esc(it.strctCdNm));
+        if (Number(it.grndFlrCnt)) stx.push(`지상 ${it.grndFlrCnt}층` + (Number(it.ugrndFlrCnt) ? `·지하 ${it.ugrndFlrCnt}층` : ''));
+        if (stx.length) rows.push(stx.join(' · '));
+        if (yr) rows.push(`${yr}.${String(it.useAprDay).slice(4, 6)} 사용승인`);
+        if (String(it.rserthqkDsgnApplyYn) === '1') {
+          rows.push(`<span style="color:var(--c-success);">✓ 내진설계 적용</span>${it.rserthqkAblty ? ' <span style="color:var(--c-muted);font-size:11px;">' + esc(it.rserthqkAblty) + '</span>' : ''}`);
+        }
+      } else if (st.bld) {
+        // ── V-World 폴백 (대장에 기록이 없는 건물) ──
+        const b = st.bld;
+        const yr = /^\d{8}$/.test(b.useapr_day || '') ? b.useapr_day.slice(0, 4) : '';
+        badge = oldTag(yr);
+        const use = BLD_USE[b.usability] || (b.usability ? '용도코드 ' + esc(b.usability) : '');
+        if (use) rows.push(ageDot(yr) + use);
+        const line = [
+          b.grnd_flr && b.grnd_flr !== '0' ? `지상 ${esc(b.grnd_flr)}층` + (b.ugrnd_flr && b.ugrnd_flr !== '0' ? `·지하 ${esc(b.ugrnd_flr)}층` : '') : '',
+          b.totalarea && b.totalarea !== '0' ? `연면적 ${Number(b.totalarea).toLocaleString()}㎡` : '',
+        ].filter(Boolean).join(' · ');
         if (line) rows.push(line);
-        if (day) rows.push(day);
+        if (yr) rows.push(`${yr}.${b.useapr_day.slice(4, 6)} 사용승인`);
       }
 
       if (!rows.length) return '';
       return `<div style="font-size:12px;margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">`
-        + `<b>🏢 토지·건물 정보</b>${oldBadge}<br>${rows.join('<br>')}</div>`;
+        + `<b>🏢 토지·건물 정보</b>${badge}<br>${rows.join('<br>')}</div>`;
+    }
+
+    // 팝업의 토지·건물 정보를 채운다. 호출 순서를 이렇게 잡은 이유:
+    //  1) 용도지역 + 지적만 먼저 받아 즉시 그린다 (공시지가·지번은 이 둘로 끝난다)
+    //  2) 지적이 준 PNU 로 건축물대장을 조회한다 (정확한 주용도·용적률)
+    //  3) 대장에 기록이 없을 때에 한해 V-World 건물정보를 폴백으로 부른다
+    // 예전엔 V-World 3종을 무조건 받았는데, 대장이 나오면 LT_C_BLDGINFO 는 쓰이지도
+    // 않고 화면에 중복만 만들었다. 일반적인 경우 호출이 3회 → 2회로 줄었다.
+    function fillLandInfo(popupEl, getPopup, lat, lng) {
+      const slot = popupEl && popupEl.querySelector('.bld-info');
+      if (!slot) return;
+      const st = { zone: '', parcel: null, br: null, bld: null };
+      const render = () => {
+        slot.innerHTML = landInfoHtml(st);
+        const p = getPopup();
+        if (p && p.isOpen()) p.update();  // 내용이 늘어났으니 팝업 크기 재계산
+      };
+      let left = 2;
+      const afterBase = () => {
+        if (--left > 0) return;
+        render();
+        const pnu = st.parcel && st.parcel.pnu;
+        if (!pnu) return;
+        buildingRegister(pnu, (it) => {
+          if (it) { st.br = it; render(); return; }
+          vworldFeature('LT_C_BLDGINFO', lat, lng, (ps) => {
+            st.bld = (ps || []).find((x) => x.usability) || null;
+            if (st.bld) render();
+          });
+        });
+      };
+      vworldFeature('LT_C_UQ111', lat, lng, (ps) => {
+        st.zone = ((ps || []).find((x) => x.uname) || {}).uname || '';
+        afterBase();
+      });
+      vworldFeature('LP_PA_CBND_BUBUN', lat, lng, (ps) => {
+        st.parcel = (ps || [])[0] || null;
+        afterBase();
+      });
     }
 
     // ── 이 지점의 상호(POI) ──────────────────────────────────────
@@ -879,14 +983,7 @@
         bindRtBtns();
         enrichAptName(clickMarker.getPopup().getElement(), best.name, best.dong || best.gu, best.lat, best.lng);
         // 아파트에도 용도지역·공시지가를 붙인다 (재건축 가능성 판단의 기초 자료)
-        const _apel = clickMarker.getPopup().getElement();
-        landInfo(lat, lng, (box) => {
-          const h = _apel && _apel.querySelector('.bld-info');
-          if (!h) return;
-          h.innerHTML = landInfoHtml(box);
-          const pp = clickMarker && clickMarker.getPopup();
-          if (pp && pp.isOpen()) pp.update();
-        });
+        fillLandInfo(clickMarker.getPopup().getElement(), () => clickMarker && clickMarker.getPopup(), lat, lng);
       } else {
         // 200m 이상 → 단일 Naver geocoder 콜(주소+건물명 동시 반환) + 캐시
         let nearHtml = '';
@@ -907,13 +1004,7 @@
           bindRtBtns();
           // 건축물 용도·층수·연면적·사용승인일을 비동기로 채운다 (아파트가 아닌 건물의 정체를 알려주는 핵심 정보)
           const _pel = clickMarker.getPopup().getElement();
-          landInfo(lat, lng, (box) => {
-            const holder = _pel && _pel.querySelector('.bld-info');
-            if (!holder) return;
-            holder.innerHTML = landInfoHtml(box);
-            const pp = clickMarker && clickMarker.getPopup();
-            if (pp && pp.isOpen()) pp.update();  // 내용이 늘어났으니 팝업 크기 재계산
-          });
+          fillLandInfo(_pel, () => clickMarker && clickMarker.getPopup(), lat, lng);
           // 상호 조회는 카카오를 8번 부르므로 버튼을 눌렀을 때만 실행한다
           const poiBtn = _pel && _pel.querySelector('.poi-btn');
           if (poiBtn) poiBtn.onclick = () => {
