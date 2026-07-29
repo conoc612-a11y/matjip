@@ -173,7 +173,7 @@
     </div>
     <div class="footer-contact">호룡리싱앤리얼리티 &nbsp;·&nbsp; 오재호 010.4353.6501 &nbsp;·&nbsp; conoc@naver.com
       <!-- 빌드 태그: 브라우저가 옛 파일을 캐시하고 있는지 한눈에 확인하는 용도. 배포마다 올린다. -->
-      &nbsp;·&nbsp; <span style="opacity:.6;">build 2026-07-29-b6</span></div>
+      &nbsp;·&nbsp; <span style="opacity:.6;">build 2026-07-29-b7</span></div>
   </footer>
 
   <script>
@@ -249,9 +249,29 @@
     }
     let rpRows = null;  // 실거래가 원본 (실거래가 레이어 켜면 로드됨) — 지도 클릭 정보/근처 실거래에서 참조. VWORLD 블록보다 먼저 선언(TDZ 방지)
     let _jbRowsGlobal = null; // 정비사업 행 전역 참조 (VWORLD 블록 밖 클릭 핸들러에서 참조)
-    // 노후도 색상. VWORLD 블록 안에 두면 블록 밖 지도 클릭 핸들러에서 ReferenceError가 나서
-    // 팝업이 '정보 불러오는 중…'에서 멈춘다. 반드시 최상위 스코프에 유지할 것.
+    // ── 공용 헬퍼 ────────────────────────────────────────────────
+    // 아래 3개는 반드시 최상위 스코프에 둔다.
+    // 과거에 이 함수들을 `if (VWORLD_KEY) { }` 블록 안에 두었다가 두 가지 사고가 났다:
+    //  (1) 블록 밖 지도 클릭 핸들러에서 ageColor 호출 → ReferenceError →
+    //      팝업이 '정보 불러오는 중…'에서 영구 정지
+    //  (2) 밖에서 쓰려고 같은 로직을 복사해 둔 사본이 생겨 4벌/2벌로 늘어남
+    // 새 헬퍼를 추가할 때도 블록 안이 아니라 여기에 둘 것.
+
+    // 노후도(건축년도) 색상
     const ageColor = (b) => { const y = parseInt(b) || 0; return !y ? '#868e96' : y >= 2015 ? '#2f9e44' : y >= 2005 ? '#94d82d' : y >= 1995 ? '#fab005' : y >= 1985 ? '#fd7e14' : '#e03131'; };
+    // 두 좌표 사이 대략 거리(km). 서울권 한정 근사식(위도 1도≈111km, 경도 1도≈88km).
+    const kmDist = (lat1, lng1, lat2, lng2) => { const dy = (lat1 - lat2) * 111, dx = (lng1 - lng2) * 88; return Math.sqrt(dx * dx + dy * dy); };
+    // 정비사업 유형 분류 + 색상
+    const JB_COLOR = { '재개발': '#e03131', '재건축': '#7048e8', '모아': '#2f9e44', '지역주택': '#1c7ed6', '리모델링': '#f08c00', '기타': '#868e96' };
+    function jbGroup(g) {
+      g = g || '';
+      if (g.indexOf('가로') >= 0 || g.indexOf('소규모') >= 0) return '모아';
+      if (g.indexOf('재건축') >= 0) return '재건축';
+      if (g.indexOf('재개발') >= 0) return '재개발';
+      if (g.indexOf('지역주택') >= 0) return '지역주택';
+      if (g.indexOf('리모델링') >= 0) return '리모델링';
+      return '기타';
+    }
 
     // ── [토지 레이어] V-World 국토·토지정보 오버레이 (토글) ─────────────────
     // 근거: V-World 공개 WMS(api.vworld.kr) / 서울 토지정보 land.seoul.go.kr.
@@ -359,11 +379,10 @@
         enrichAptName(node, d.name, d.dong || d.gu, d.lat, d.lng);  // '두산' → '두산1단지아파트'
         // 반경 700m 실거래 통계
         if (rpRows && rpRows.length) {
-          const kmD = (a,b,c,e) => { const dx=(a-c)*111, dy=(b-e)*88; return Math.sqrt(dx*dx+dy*dy); };
           let cnt700 = 0, sum = 0, sumCnt = 0;
           rpRows.forEach((r) => {
             if (r.lat == null) return;
-            const dist = kmD(d.lat, d.lng, r.lat, r.lng);
+            const dist = kmDist(d.lat, d.lng, r.lat, r.lng);
             if (dist < 0.7) { cnt700++; if (r.priceEok != null) { sum += r.priceEok; sumCnt++; } }
           });
           const avgEl = node.querySelector('.rp-radius-stat');
@@ -377,8 +396,6 @@
       // ── [정비사업] 서울 재개발·재건축·가로주택·지역주택 등 1,100여 구역 (정보몽땅 공식자료) ──
       // 사업구분 → 표시 그룹/색상. jaegebal 처럼 유형별로 색 구분 + 진행단계 표시.
       // 모아 = 소규모주택정비(가로주택정비·소규모재건축·소규모재개발) → 모아타운/모아주택 계열
-      const JB_COLOR = { '재개발': '#e03131', '재건축': '#7048e8', '모아': '#2f9e44', '지역주택': '#1c7ed6', '리모델링': '#f08c00', '기타': '#868e96' };
-      function jbGroup(g) { g = g || ''; if (g.indexOf('가로') >= 0 || g.indexOf('소규모') >= 0) return '모아'; if (g.indexOf('재건축') >= 0) return '재건축'; if (g.indexOf('재개발') >= 0) return '재개발'; if (g.indexOf('지역주택') >= 0) return '지역주택'; if (g.indexOf('리모델링') >= 0) return '리모델링'; return '기타'; }
       const jbCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 50 });
       const jbPolyLayer = L.featureGroup();
       let jbRows = null, jbPolys = null;
@@ -504,11 +521,10 @@
         if (svBtn) svBtn.onclick = () => showStreetView(d.lat, d.lng);
         // 인근 실거래 통계 (500m)
         if (rpRows && rpRows.length) {
-          const kmD = (a,b,c,e) => { const dx=(a-c)*111, dy=(b-e)*88; return Math.sqrt(dx*dx+dy*dy); };
           let cnt=0, sum=0, sumCnt=0, minP=Infinity, maxP=-Infinity;
           rpRows.forEach((r) => {
             if (r.lat==null) return;
-            if (kmD(d.lat, d.lng, r.lat, r.lng) < 0.5) {
+            if (kmDist(d.lat, d.lng, r.lat, r.lng) < 0.5) {
               cnt++;
               if (r.priceEok!=null) { sum+=r.priceEok; sumCnt++; if(r.priceEok<minP)minP=r.priceEok; if(r.priceEok>maxP)maxP=r.priceEok; }
             }
@@ -727,7 +743,6 @@
         clickMarker.setPopupContent(`<div class="pc"><div class="pc-head">📍 위치 정보</div><div class="pc-body"><div>주소를 가져오지 못했어요</div><div style="font-size:11px;color:var(--c-muted);margin-top:2px;">${lat.toFixed(5)}, ${lng.toFixed(5)}</div></div><div class="pc-actions">${rtBtns}</div></div>`);
         bindRtBtns();
       }, 6000);
-      const kmDist = (a, b, c, d) => { const dx = (a - c) * 111, dy = (b - d) * 88; return Math.sqrt(dx * dx + dy * dy); };
       let best = null, bd = 1e9, cnt = 0;
       if (rpRows && rpRows.length) {
         rpRows.forEach((r) => { if (r.lat == null) return; const dist = kmDist(lat, lng, r.lat, r.lng); if (dist < 0.7) cnt++; if (dist < bd) { bd = dist; best = r; } });
@@ -754,15 +769,12 @@
         // 200m 이상 → 단일 Naver geocoder 콜(주소+건물명 동시 반환) + 캐시
         let nearHtml = '';
         if (best && bd < 1.5) nearHtml = `<div style="font-size:12px;margin-top:6px;border-top:1px solid #eee;padding-top:6px;">🏢 반경 700m 실거래 <b>${cnt}건</b><br>최근접: <b>${esc(best.name)}</b> ${best.priceEok == null ? '' : best.priceEok + '억'} · ${esc(best.build || '?')}년</div>`;
-        const _JB_COL = {'재개발':'#e03131','재건축':'#7048e8','모아':'#2f9e44','지역주택':'#1c7ed6','리모델링':'#f08c00','기타':'#868e96'};
-        const _jbGrp = (g) => { g=g||''; if(g.includes('가로')||g.includes('소규모'))return'모아'; if(g.includes('재건축'))return'재건축'; if(g.includes('재개발'))return'재개발'; if(g.includes('지역주택'))return'지역주택'; if(g.includes('리모델링'))return'리모델링'; return'기타'; };
         let jbNearHtml = '';
         if (_jbRowsGlobal && _jbRowsGlobal.length) {
-          const kmD = (a,b,c,e) => { const dx=(a-c)*111, dy=(b-e)*88; return Math.sqrt(dx*dx+dy*dy); };
-          const near = _jbRowsGlobal.filter(r => r.lat && kmD(lat, lng, r.lat, r.lng) < 0.5).slice(0, 3);
+          const near = _jbRowsGlobal.filter(r => r.lat && kmDist(lat, lng, r.lat, r.lng) < 0.5).slice(0, 3);
           if (near.length) {
             jbNearHtml = `<div style="font-size:11px;margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;"><b>🏗️ 500m 내 정비사업 ${near.length}건</b><br>`
-              + near.map(r => `<span style="color:${_JB_COL[_jbGrp(r.gubun)]||'#868e96'}">●</span> ${esc(r.name)} <span style="color:var(--c-muted)">${esc(r.stage||'')}</span>`).join('<br>') + '</div>';
+              + near.map(r => `<span style="color:${JB_COLOR[jbGroup(r.gubun)]||'#868e96'}">●</span> ${esc(r.name)} <span style="color:var(--c-muted)">${esc(r.stage||'')}</span>`).join('<br>') + '</div>';
           }
         }
         const buildClickPopup = (addr, bldName) => {
