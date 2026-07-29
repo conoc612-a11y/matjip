@@ -173,7 +173,7 @@
     </div>
     <div class="footer-contact">호룡리싱앤리얼리티 &nbsp;·&nbsp; 오재호 010.4353.6501 &nbsp;·&nbsp; conoc@naver.com
       <!-- 빌드 태그: 브라우저가 옛 파일을 캐시하고 있는지 한눈에 확인하는 용도. 배포마다 올린다. -->
-      &nbsp;·&nbsp; <span style="opacity:.6;">build 2026-07-29-b8</span></div>
+      &nbsp;·&nbsp; <span style="opacity:.6;">build 2026-07-29-b9</span></div>
   </footer>
 
   <script>
@@ -737,6 +737,48 @@
       return `<div style="font-size:12px;margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;"><b>🏢 건물 정보</b>${old}<br>${dot}${lines.join('<br>')}</div>`;
     }
 
+    // ── 이 지점의 상호(POI) ──────────────────────────────────────
+    // '뜰안애' 같은 가게 이름은 건물명이 아니라 장소(POI) 데이터다.
+    // 역지오코딩은 건축물대장상 건물명까지만 주므로 상호는 원리상 나올 수 없다.
+    // 그래서 카카오 장소 검색(인근 공인중개사 찾기에 쓰는 것과 같은 API)으로 좌표 주변을 훑는다.
+    // 카카오는 카테고리 단위로만 주변 조회가 되어 카테고리 수만큼 호출해야 한다.
+    // → 지도 클릭마다 8회씩 부르면 낭비라, 팝업의 버튼을 눌렀을 때만 실행한다.
+    const POI_CATS = [
+      ['FD6', '음식점'], ['CE7', '카페'], ['HP8', '병원'], ['PM9', '약국'],
+      ['CS2', '편의점'], ['BK9', '은행'], ['AC5', '학원'], ['AG2', '중개업소'],
+    ];
+    function findPois(lat, lng, radius, cb) {
+      if (!(window.kakao && kakao.maps && kakao.maps.services)) { cb(null); return; }
+      const svc = new kakao.maps.services.Places();
+      const loc = new kakao.maps.LatLng(lat, lng);
+      const found = [];
+      let left = POI_CATS.length;
+      const done = () => {
+        if (--left > 0) return;
+        const seen = new Set();
+        const uniq = [];
+        for (const p of found.sort((a, b) => a.dist - b.dist)) {
+          if (seen.has(p.id)) continue;
+          seen.add(p.id);
+          uniq.push(p);
+        }
+        cb(uniq.slice(0, 5));
+      };
+      POI_CATS.forEach(([code, label]) => {
+        svc.categorySearch(code, (data, status) => {
+          try {
+            if (status === kakao.maps.services.Status.OK) {
+              for (const p of data) {
+                const d = Number(p.distance);
+                if (d <= radius) found.push({ id: p.id, name: p.place_name, label, dist: d });
+              }
+            }
+          } catch (e) {}
+          done();
+        }, { location: loc, radius, sort: kakao.maps.services.SortBy.DISTANCE });
+      });
+    }
+
     // 좌표를 함께 넘겨 네이버 지도가 그 지점으로 이동하게 한다 (동명이 단지 오검색 방지)
     const naverSearchUrl = (q, lat, lng) => `https://map.naver.com/p/search/${encodeURIComponent(q)}?c=${lng},${lat},17,0,0,0,dh`;
     // 팝업이 열린 뒤 제목·네이버 링크를 실제 건물명으로 교체.
@@ -804,7 +846,7 @@
           if (!clickMarker) return;
           const bldHtml = bldName ? `<div style="font-weight:700;font-size:14px;margin-bottom:2px;">🏠 ${esc(bldName)}</div>` : '';
           const naverLand = addr ? `<a href="${naverSearchUrl(bldName || addr, lat, lng)}" target="_blank" rel="noopener" class="pc-btn pc-btn-green">🏠 네이버 부동산 검색</a>` : '';
-          clickMarker.setPopupContent(`<div class="pc"><div class="pc-head">📍 위치 정보</div><div class="pc-body">${bldHtml}<div>📍 ${addr ? esc(addr) : '주소를 찾지 못했어요'}</div><div style="font-size:11px;color:var(--c-muted);margin-top:2px;">${lat.toFixed(5)}, ${lng.toFixed(5)}</div><div class="bld-info"></div>${nearHtml}${jbNearHtml}</div><div class="pc-actions">${naverLand}${rtBtns}</div></div>`).openPopup();
+          clickMarker.setPopupContent(`<div class="pc"><div class="pc-head">📍 위치 정보</div><div class="pc-body">${bldHtml}<div>📍 ${addr ? esc(addr) : '주소를 찾지 못했어요'}</div><div style="font-size:11px;color:var(--c-muted);margin-top:2px;">${lat.toFixed(5)}, ${lng.toFixed(5)}</div><div class="bld-info"></div><div class="poi-box" style="margin-top:6px;"><button class="poi-btn pc-btn pc-btn-outline" style="font-size:11px;padding:4px 8px;">🏪 이 부근 상호 보기</button></div>${nearHtml}${jbNearHtml}</div><div class="pc-actions">${naverLand}${rtBtns}</div></div>`).openPopup();
           bindRtBtns();
           // 건축물 용도·층수·연면적·사용승인일을 비동기로 채운다 (아파트가 아닌 건물의 정체를 알려주는 핵심 정보)
           const _pel = clickMarker.getPopup().getElement();
@@ -815,6 +857,22 @@
             const pp = clickMarker && clickMarker.getPopup();
             if (pp && pp.isOpen()) pp.update();  // 내용이 늘어났으니 팝업 크기 재계산
           });
+          // 상호 조회는 카카오를 8번 부르므로 버튼을 눌렀을 때만 실행한다
+          const poiBtn = _pel && _pel.querySelector('.poi-btn');
+          if (poiBtn) poiBtn.onclick = () => {
+            poiBtn.textContent = '찾는 중…';
+            poiBtn.disabled = true;
+            findPois(lat, lng, 50, (list) => {
+              const box = _pel.querySelector('.poi-box');
+              if (!box) return;
+              box.innerHTML = (!list || !list.length)
+                ? '<div style="font-size:11px;color:var(--c-muted);">반경 50m에 등록된 상호가 없어요</div>'
+                : `<div style="font-size:12px;border-top:1px solid var(--c-border);padding-top:5px;"><b>🏪 이 부근 상호</b><br>`
+                  + list.map((p) => `${esc(p.name)} <span style="color:var(--c-muted);font-size:10px;">${esc(p.label)} · ${p.dist}m</span>`).join('<br>') + '</div>';
+              const pp2 = clickMarker && clickMarker.getPopup();
+              if (pp2 && pp2.isOpen()) pp2.update();
+            });
+          };
         };
         const cacheKey = _gcKey(lat, lng);
         if (_gcCache.has(cacheKey)) { buildClickPopup(...Object.values(_gcCache.get(cacheKey))); return; }
