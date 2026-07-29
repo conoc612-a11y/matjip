@@ -173,7 +173,7 @@
     </div>
     <div class="footer-contact">호룡리싱앤리얼리티 &nbsp;·&nbsp; 오재호 010.4353.6501 &nbsp;·&nbsp; conoc@naver.com
       <!-- 빌드 태그: 브라우저가 옛 파일을 캐시하고 있는지 한눈에 확인하는 용도. 배포마다 올린다. -->
-      &nbsp;·&nbsp; <span style="opacity:.6;">build 2026-07-29-b7</span></div>
+      &nbsp;·&nbsp; <span style="opacity:.6;">build 2026-07-29-b8</span></div>
   </footer>
 
   <script>
@@ -411,20 +411,39 @@
         const linkBtns = (d.rc || d.cafe) ? `<div class="pc-btn-row">${d.rc ? `<a href="https://urban.seoul.go.kr/view/map/mapPopup.html?recordCode=${encodeURIComponent(d.rc)}" target="_blank" rel="noopener" class="pc-btn pc-btn-outline" style="border-color:#7048e8 !important;color:#7048e8;">🗺️ 경계지도</a>` : ''}${d.cafe ? `<a href="https://cleanup.seoul.go.kr/cafe/mainIndx.do?cafeUrl=${encodeURIComponent(d.cafe)}" target="_blank" rel="noopener" class="pc-btn pc-btn-outline" style="border-color:var(--c-primary) !important;color:var(--c-primary);">📂 정보공개</a>` : ''}</div>` : '';
         return `<div class="pc"><div class="pc-head"><span style="display:inline-block;background:${c};color:#fff;font-size:11px;padding:2px 7px;border-radius:10px;">${g}</span>${stageBadge}</div><div class="pc-body"><div style="font-weight:700;font-size:14px;margin-bottom:2px;">${esc(d.name)}</div><div>${esc(d.gu)} ${esc(d.jibun)}${d.approx ? ' <span style="color:var(--c-price);">(동 근사위치)</span>' : ''}</div><div style="font-size:11px;color:#999;margin-top:3px;">사업구분: ${esc(d.gubun)}${d.method ? ' · ' + esc(d.method) : ''}</div><div style="margin:8px 0 4px;"><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--c-muted);margin-bottom:3px;"><span>진행단계</span><span>${stagePct(d.stage)}%</span></div><div style="height:5px;background:#e9ecef;border-radius:3px;overflow:hidden;"><div style="height:100%;width:${stagePct(d.stage)}%;background:${stageColor(d.stage)};border-radius:3px;transition:width .3s;"></div></div></div><div class="jb-rp-stat" style="display:none;font-size:11px;color:var(--c-muted);padding:5px 0;border-top:1px solid var(--c-border);"></div></div><div class="pc-actions">${linkBtns}<div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline" style="border-color:var(--c-success) !important;color:var(--c-success);">🚩 출발</button><button class="rt-end pc-btn pc-btn-outline" style="border-color:var(--c-danger) !important;color:var(--c-danger);">🏁 도착</button></div><button class="sv-btn pc-btn pc-btn-outline">🛣️ 거리뷰</button></div></div>`;
       }
-      // 원본 데이터 246개 레코드 중 91개에 "동일한 경계 링"이 2~4번 중복 저장돼 있다.
-      // 중복 링은 채움 상쇄의 원인이고 렌더 비용도 두 배라, 면적·정점수 서명으로 제거한다.
-      // (실측: 링 397 → 281개, 데이터 손실 0건)
+      // ── 폴리곤 링 정제 ──────────────────────────────────────────
+      // 원본 데이터에 두 종류의 쓰레기가 섞여 있다. 둘 다 "선만 보이는 폴리곤"의 원인이다.
+      //  (1) 중복 링: 246개 레코드 중 91개에 동일한 경계가 2~4번 저장돼 있다.
+      //      Leaflet 기본 fill-rule(evenodd)에서 같은 링이 두 번 겹치면 채움이 상쇄돼 사라진다.
+      //      → 면적·정점수 서명으로 제거 (실측 397 → 281개, 데이터 손실 0)
+      //  (2) 퇴화 링: 면적이 수십 ㎡에 불과한 실 조각. 정비구역일 수 없는 값이다.
+      //      채워도 2.5px 선에 덮여 별 모양 선 뭉치로만 보인다.
+      //      실측 면적 분포에 절벽이 있다 — 5% 지점 87㎡ / 10% 지점 6,590㎡.
+      //      그 사이인 1,000㎡를 기준으로 자르면 진짜 구역은 하나도 안 잘린다.
+      //      (레코드 11000AGZ201311228317 은 링 20개가 전부 87㎡ 이하라 통째로 탈락 →
+      //       폴리곤 대신 마커로 표시된다. jbBuild 의 rings.length 검사가 그 처리를 한다.)
+      const MIN_RING_M2 = 1000;
       const _ringCache = new Map();
-      const _ringArea = (r) => { let s = 0; for (let i = 0, n = r.length; i < n; i++) { const a = r[i], b = r[(i + 1) % n]; s += a[1] * b[0] - b[1] * a[0]; } return Math.abs(s / 2); };
-      function dedupeRings(key, rings) {
+      // 위경도 → ㎡ 근사 (서울권: 위도 1도≈111km, 경도 1도≈88km)
+      const _ringArea = (r) => {
+        let s = 0;
+        for (let i = 0, n = r.length; i < n; i++) {
+          const a = r[i], b = r[(i + 1) % n];
+          s += (a[1] * 88000) * (b[0] * 111000) - (b[1] * 88000) * (a[0] * 111000);
+        }
+        return Math.abs(s / 2);
+      };
+      function usableRings(key, rings) {
         let out = _ringCache.get(key);
         if (out) return out;
         const seen = new Set();
         out = [];
         for (const r of rings) {
-          if (!r || r.length < 3) continue;  // 면이 될 수 없는 링 제외
-          const sig = r.length + '|' + _ringArea(r).toExponential(8);
-          if (seen.has(sig)) continue;
+          if (!r || r.length < 3) continue;          // 면이 될 수 없음
+          const a = _ringArea(r);
+          if (a < MIN_RING_M2) continue;             // 퇴화 링(실 조각) 제외
+          const sig = r.length + '|' + a.toExponential(8);
+          if (seen.has(sig)) continue;               // 중복 링 제외
           seen.add(sig);
           out.push(r);
         }
@@ -441,10 +460,14 @@
           if (!jbFilter[jbGroup(d.gubun)]) return;
           if (jbActiveStage !== 'all' && !(d.stage || '').includes(jbActiveStage)) return;
           const c = JB_COLOR[jbGroup(d.gubun)];
-          if (d.rc && jbPolys && jbPolys[d.rc]) {
+          // 쓸 수 있는 링이 하나도 안 남으면 폴리곤을 그리지 않고 마커로 떨어뜨린다.
+          // (예전엔 빈 배열로 L.polygon 을 만들어 아무것도 안 보이는 유령 도형이 됐다.)
+          const rings = (d.rc && jbPolys && jbPolys[d.rc]) ? usableRings(d.rc, jbPolys[d.rc]) : null;
+          if (rings && rings.length) {
             // fillRule 'nonzero': Leaflet 기본값은 'evenodd'인데, 그 규칙에서는 겹친 링이 서로를
             // 상쇄해 채움이 사라지고 외곽선만 남는다 (= 폴리곤 색이 안 칠해지는 증상).
-            const poly = L.polygon(dedupeRings(d.rc, jbPolys[d.rc]).map((r) => [r]), { color: c, weight: 2.5, fillColor: c, fillOpacity: 0.35, fillRule: 'nonzero', smoothFactor: 2 });
+            // weight 를 얇게: 서울 전체 줌에서는 구역이 20px 남짓이라 굵은 선이 채움을 덮어버린다.
+            const poly = L.polygon(rings.map((r) => [r]), { color: c, weight: 1.5, fillColor: c, fillOpacity: 0.45, fillRule: 'nonzero', smoothFactor: 2 });
             poly._jb = d;
             poly.bindTooltip(`<b>${esc(d.name)}</b><br><span style="font-size:11px;color:#555">${esc(d.stage || '')}</span>`, { sticky: true });
             poly.bindPopup(() => jbPopupHtml(d));  // 열 때 생성
