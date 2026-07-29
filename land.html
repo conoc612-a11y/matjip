@@ -172,7 +172,7 @@
     </div>
     <div class="footer-contact">호룡리싱앤리얼리티 &nbsp;·&nbsp; 오재호 010.4353.6501 &nbsp;·&nbsp; conoc@naver.com
       <!-- 빌드 태그: 브라우저가 옛 파일을 캐시하고 있는지 한눈에 확인하는 용도. 배포마다 올린다. -->
-      &nbsp;·&nbsp; <span style="opacity:.6;">build 2026-07-29-b15</span></div>
+      &nbsp;·&nbsp; <span style="opacity:.6;">build 2026-07-29-b16</span></div>
   </footer>
 
   <script>
@@ -240,10 +240,37 @@
     // 기본(일반지도) 타일 실패 시 OSM 자동 대체
     if (VWORLD_KEY) { let fell = false; defaultBase.on('tileerror', () => { if (!fell) { fell = true; map.removeLayer(defaultBase); osmBase.addTo(map); } }); }
 
-    // 실거래가 2MB JSON은 딱 한 번만 받는다 (Promise 메모이즈). 이전엔 페이지 로드 + 레이어 켤 때 중복 다운로드됨.
+    // 실거래가 JSON은 딱 한 번만 받는다 (Promise 메모이즈). 이전엔 페이지 로드 + 레이어 켤 때 중복 다운로드됨.
+    //
+    // 파일이 두 종류다. 새 파일을 먼저 시도하고 없으면 옛 파일로 물러선다.
+    //  realprice_apt.json      (신) 압축 포맷. 지번을 지오코딩한 정확한 좌표 + 전세가율·거래유형.
+    //  realprice_seoul_gg.json (구) 객체 배열. 좌표 출처가 불명확해 클릭 지점과 건물이 어긋났다.
+    // 두 포맷을 같은 객체 모양으로 되살려서, 이후 코드(마커·팝업·근처 통계)는 차이를 모르게 한다.
     let _rpPromise = null;
+    let rpSource = '';        // 어느 파일을 썼는지 (팝업 표시 판단에 사용)
+    function decodeCompactRp(j) {
+      const F = {};
+      j.fields.forEach((f, i) => { F[f] = i; });
+      const pick = (r, k) => (F[k] === undefined ? undefined : r[F[k]]);
+      return j.rows.map((r) => ({
+        name: r[F.name], gu: j.gus[r[F.gu]], dong: j.dongs[r[F.dong]],
+        lat: r[F.lat], lng: r[F.lng], priceEok: r[F.price], area: r[F.area],
+        floor: r[F.floor], build: r[F.build], ymd: r[F.ymd],
+        cnt: pick(r, 'cnt'), pmin: pick(r, 'pmin'), pmax: pick(r, 'pmax'),
+        jeonse: pick(r, 'jeonse') || 0, jrate: pick(r, 'jrate') || 0,
+        gbn: j.gbns && F.gbn !== undefined ? j.gbns[r[F.gbn]] : '',
+        cancel: pick(r, 'cancel') ? 1 : 0, lease: pick(r, 'lease') ? 1 : 0,
+      }));
+    }
     function loadRp() {
-      if (!_rpPromise) _rpPromise = fetch('realprice_seoul_gg.json').then((r) => r.json()).then((rows) => { rpRows = rows; return rows; }).catch(() => null);
+      if (_rpPromise) return _rpPromise;
+      _rpPromise = fetch('realprice_apt.json')
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error('no apt file'))))
+        .then((j) => { rpSource = 'apt'; rpRows = decodeCompactRp(j); return rpRows; })
+        .catch(() => fetch('realprice_seoul_gg.json')
+          .then((r) => r.json())
+          .then((rows) => { rpSource = 'legacy'; rpRows = rows; return rows; })
+          .catch(() => null));
       return _rpPromise;
     }
     let rpRows = null;  // 실거래가 원본 (실거래가 레이어 켜면 로드됨) — 지도 클릭 정보/근처 실거래에서 참조. VWORLD 블록보다 먼저 선언(TDZ 방지)
@@ -318,7 +345,7 @@
         realpriceCluster.addLayers(rpRows.filter((d) => inPrice(d.priceEok) && inAge(d.build)).map((d) => {
           const m = L.circleMarker([d.lat, d.lng], { radius: 5, color: '#fff', weight: 1, fillColor: ageColor(d.build), fillOpacity: 0.9 });
           m._rp = d;
-          m._pop = (() => `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};flex-shrink:0;"></span><span class="rp-name">${esc(d.name)}</span></div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div><div style="font-size:15px;font-weight:700;color:var(--c-price);">💰 <span style="font-size:11px;background:var(--c-price);color:#fff;padding:1px 6px;border-radius:9px;vertical-align:2px;">매매</span> ${d.priceEok == null ? '-' : d.priceEok + '억'}</div><div style="margin-top:3px;">평단가: ${d.area && d.priceEok ? Math.round(d.priceEok * 10000 / d.area).toLocaleString() + '만원/㎡' : '-'}</div><div style="margin-top:3px;">${esc(d.area)}㎡ · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="margin-top:3px;">🏗️ ${esc(d.build || '?')}년 건축${parseInt(d.build) <= 1994 ? '<span style="background:#e03131;color:#fff;font-size:10px;padding:2px 7px;border-radius:10px;margin-left:6px;">🔨 재건축연한초과</span>' : ''}</div><div class="rp-radius-stat" style="display:none;font-size:11px;color:var(--c-muted);margin-top:4px;"></div></div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline" style="border-color:var(--c-price) !important;color:var(--c-price);">☆ 저장</button><a href="https://map.naver.com/p/search/${encodeURIComponent(d.name + ' ' + (d.dong || d.gu || ''))}?c=${d.lng},${d.lat},17,0,0,0,dh" target="_blank" rel="noopener" class="pc-btn pc-btn-green rp-naver">🏠 네이버 부동산</a><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline">🚩 출발</button><button class="rt-end pc-btn pc-btn-outline">🏁 도착</button></div><button class="sv-btn pc-btn pc-btn-outline">🛣️ 거리뷰</button></div></div>`);
+          m._pop = (() => `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};flex-shrink:0;"></span><span class="rp-name">${esc(d.name)}</span></div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div><div style="font-size:15px;font-weight:700;color:var(--c-price);">💰 <span style="font-size:11px;background:var(--c-price);color:#fff;padding:1px 6px;border-radius:9px;vertical-align:2px;">매매</span> ${d.priceEok == null ? '-' : d.priceEok + '억'}</div><div style="margin-top:3px;">평단가: ${d.area && d.priceEok ? Math.round(d.priceEok * 10000 / d.area).toLocaleString() + '만원/㎡' : '-'}</div><div style="margin-top:3px;">${esc(d.area)}㎡ · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="margin-top:3px;">🏗️ ${esc(d.build || '?')}년 건축${parseInt(d.build) <= 1994 ? '<span style="background:#e03131;color:#fff;font-size:10px;padding:2px 7px;border-radius:10px;margin-left:6px;">🔨 재건축연한초과</span>' : ''}</div>${jeonseHtml(d, '평형 기준')}${rpFlagsHtml(d)}<div class="rp-radius-stat" style="display:none;font-size:11px;color:var(--c-muted);margin-top:4px;"></div></div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline" style="border-color:var(--c-price) !important;color:var(--c-price);">☆ 저장</button><a href="https://map.naver.com/p/search/${encodeURIComponent(d.name + ' ' + (d.dong || d.gu || ''))}?c=${d.lng},${d.lat},17,0,0,0,dh" target="_blank" rel="noopener" class="pc-btn pc-btn-green rp-naver">🏠 네이버 부동산</a><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline">🚩 출발</button><button class="rt-end pc-btn pc-btn-outline">🏁 도착</button></div><button class="sv-btn pc-btn pc-btn-outline">🛣️ 거리뷰</button></div></div>`);
           return m;
         }));
       }
@@ -387,11 +414,24 @@
       // 짝지어진다. 같은 건물이라도 평형이 다르면 짝이 어긋나 값이 튈 수 있다.
       // 실측: 9,891건 중 90건(0.9%)이 20~130% 밖으로 벗어났다(571% 같은 값).
       // 신뢰 구간을 벗어난 값은 숨긴다 — 틀린 숫자를 보여주는 것보다 안 보여주는 편이 낫다.
-      function jeonseHtml(d) {
+      // note: 짝짓는 단위를 사용자에게 알려준다. 아파트는 평형까지 맞춰서 더 정확하고,
+      // 연립·다세대는 건물 단위라 평형이 다르면 값이 어긋날 수 있다.
+      function jeonseHtml(d, note) {
         if (!(d.jeonse > 0) || !(d.jrate >= 20 && d.jrate <= 130)) return '';
         const col = d.jrate >= 80 ? 'var(--c-danger)' : d.jrate >= 65 ? 'var(--c-price)' : 'var(--c-success)';
         return `<div style="margin-top:3px;">🔑 전세 ${d.jeonse}억 · 전세가율 <b style="color:${col};">${d.jrate}%</b>`
-          + ` <span style="font-size:10px;color:var(--c-muted);">건물 기준 참고</span></div>`;
+          + (note ? ` <span style="font-size:10px;color:var(--c-muted);">${note}</span>` : '') + `</div>`;
+      }
+
+      // 시세를 왜곡시키는 거래는 표시해서 걸러 볼 수 있게 한다.
+      // 직거래는 중개 시장가와 어긋나기 쉽고, 계약 해제 건은 실제로 성사되지 않은 거래다.
+      // 구 데이터 파일에는 이 필드가 없으므로 값이 있을 때만 그린다.
+      function rpFlagsHtml(d) {
+        const f = [];
+        if (d.cancel) f.push('<span style="background:var(--c-danger);color:#fff;font-size:10px;padding:1px 6px;border-radius:9px;">계약해제</span>');
+        if (d.gbn && d.gbn.indexOf('직거래') >= 0) f.push('<span style="background:#f08c00;color:#fff;font-size:10px;padding:1px 6px;border-radius:9px;">직거래</span>');
+        if (d.lease) f.push('<span style="background:#7048e8;color:#fff;font-size:10px;padding:1px 6px;border-radius:9px;">토지임대부</span>');
+        return f.length ? `<div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap;">${f.join('')}</div>` : '';
       }
 
       function villaPopupHtml(d) {
@@ -402,7 +442,7 @@
         const range = d.cnt > 1 && d.pmax > d.pmin
           ? `<div style="margin-top:3px;font-size:11px;color:var(--c-muted);">📊 12개월 ${d.cnt}건 · ${d.pmin}~${d.pmax}억</div>`
           : `<div style="margin-top:3px;font-size:11px;color:var(--c-muted);">📊 12개월 ${d.cnt}건</div>`;
-        return `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};flex-shrink:0;"></span><span class="rp-name">${esc(d.name)}</span><span style="font-size:10px;background:var(--c-primary);color:#fff;padding:1px 6px;border-radius:9px;">${esc(d.type)}</span></div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div><div style="font-size:15px;font-weight:700;color:var(--c-price);">💰 <span style="font-size:11px;background:var(--c-price);color:#fff;padding:1px 6px;border-radius:9px;vertical-align:2px;">매매</span> ${d.priceEok}억</div><div style="margin-top:3px;">평단가: ${ppm}</div><div style="margin-top:3px;">${esc(d.area)}㎡ · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="margin-top:3px;">🏗️ ${esc(d.build)}년 건축${oldTag}</div>${jeonseHtml(d)}${range}<div class="rp-radius-stat" style="display:none;"></div></div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline" style="border-color:var(--c-price) !important;color:var(--c-price);">☆ 저장</button><a href="${naverSearchUrl(d.name + ' ' + (d.dong || d.gu || ''), d.lat, d.lng)}" target="_blank" rel="noopener" class="pc-btn pc-btn-green rp-naver">🏠 네이버 부동산</a><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline">🚩 출발</button><button class="rt-end pc-btn pc-btn-outline">🏁 도착</button></div><button class="sv-btn pc-btn pc-btn-outline">🛣️ 거리뷰</button></div></div>`;
+        return `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};flex-shrink:0;"></span><span class="rp-name">${esc(d.name)}</span><span style="font-size:10px;background:var(--c-primary);color:#fff;padding:1px 6px;border-radius:9px;">${esc(d.type)}</span></div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div><div style="font-size:15px;font-weight:700;color:var(--c-price);">💰 <span style="font-size:11px;background:var(--c-price);color:#fff;padding:1px 6px;border-radius:9px;vertical-align:2px;">매매</span> ${d.priceEok}억</div><div style="margin-top:3px;">평단가: ${ppm}</div><div style="margin-top:3px;">${esc(d.area)}㎡ · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="margin-top:3px;">🏗️ ${esc(d.build)}년 건축${oldTag}</div>${jeonseHtml(d, '건물 기준 참고')}${range}<div class="rp-radius-stat" style="display:none;"></div></div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline" style="border-color:var(--c-price) !important;color:var(--c-price);">☆ 저장</button><a href="${naverSearchUrl(d.name + ' ' + (d.dong || d.gu || ''), d.lat, d.lng)}" target="_blank" rel="noopener" class="pc-btn pc-btn-green rp-naver">🏠 네이버 부동산</a><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline">🚩 출발</button><button class="rt-end pc-btn pc-btn-outline">🏁 도착</button></div><button class="sv-btn pc-btn pc-btn-outline">🛣️ 거리뷰</button></div></div>`;
       }
 
       let villaRows = null, _villaPromise = null;
