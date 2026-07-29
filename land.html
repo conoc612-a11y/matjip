@@ -173,7 +173,7 @@
     </div>
     <div class="footer-contact">호룡리싱앤리얼리티 &nbsp;·&nbsp; 오재호 010.4353.6501 &nbsp;·&nbsp; conoc@naver.com
       <!-- 빌드 태그: 브라우저가 옛 파일을 캐시하고 있는지 한눈에 확인하는 용도. 배포마다 올린다. -->
-      &nbsp;·&nbsp; <span style="opacity:.6;">build 2026-07-29-b9</span></div>
+      &nbsp;·&nbsp; <span style="opacity:.6;">build 2026-07-29-b10</span></div>
   </footer>
 
   <script>
@@ -691,50 +691,98 @@
       '17000': '공장', '18000': '창고시설', '19000': '위험물 저장·처리시설',
       '20000': '자동차 관련시설', '21000': '동물·식물 관련시설', '22000': '자원순환 관련시설',
     };
-    const _bldInfoCache = new Map();
-    function vworldBuilding(lat, lng, cb) {
-      const key = _gcKey(lat, lng);
-      if (_bldInfoCache.has(key)) { cb(_bldInfoCache.get(key)); return; }
-      const cbName = '__vwb_' + key.replace(/[^0-9]/g, '_');
+    // V-World 데이터 API 범용 조회 (JSONP — 브라우저에서 CORS 없이 호출 가능함을 실측 확인)
+    // 레이어별로 캐시한다. 좌표는 50m 그리드로 뭉쳐서 같은 건물 반복 조회를 막는다.
+    const _vwCache = new Map();
+    let _vwSeq = 0;
+    function vworldFeature(dataId, lat, lng, cb) {
+      const key = dataId + '@' + _gcKey(lat, lng);
+      if (_vwCache.has(key)) { cb(_vwCache.get(key)); return; }
+      const cbName = '__vw' + (++_vwSeq) + '_' + Math.abs(lat * 1e5 | 0);
       let done = false;
       const finish = (val) => {
         if (done) return;
         done = true;
         try { delete window[cbName]; } catch (e) {}
-        _bldInfoCache.set(key, val);
+        _vwCache.set(key, val);
         cb(val);
       };
       window[cbName] = (data) => {
-        let p = null;
-        try {
-          const fs = (data.response.result.featureCollection.features) || [];
-          // 한 좌표에 건물 피처가 여러 개 겹칠 수 있다. 용도코드가 있는 것을 채택.
-          p = fs.map((f) => f.properties).find((x) => x && x.usability) || null;
-        } catch (e) {}
-        finish(p);
+        let props = [];
+        try { props = ((data.response.result.featureCollection.features) || []).map((f) => f.properties).filter(Boolean); } catch (e) {}
+        finish(props);
       };
       const s = document.createElement('script');
       s.src = `https://api.vworld.kr/req/data?service=data&version=2.0&request=GetFeature&format=json&size=5`
-        + `&crs=EPSG:4326&geomFilter=POINT(${lng}%20${lat})&data=LT_C_BLDGINFO&key=${VWORLD_KEY}`
+        + `&crs=EPSG:4326&geomFilter=POINT(${lng}%20${lat})&data=${dataId}&key=${VWORLD_KEY}`
         + `&domain=${encodeURIComponent(location.origin)}&callback=${cbName}`;
-      s.onerror = () => finish(null);
+      s.onerror = () => finish([]);
       document.head.appendChild(s);
-      setTimeout(() => finish(null), 7000);
+      setTimeout(() => finish([]), 7000);
     }
-    function bldInfoHtml(p) {
-      if (!p) return '';
-      const use = BLD_USE[p.usability] || (p.usability ? '용도코드 ' + esc(p.usability) : '');
-      const flr = p.grnd_flr && p.grnd_flr !== '0'
-        ? `지상 ${esc(p.grnd_flr)}층` + (p.ugrnd_flr && p.ugrnd_flr !== '0' ? ` · 지하 ${esc(p.ugrnd_flr)}층` : '') : '';
-      const area = p.totalarea && p.totalarea !== '0' ? `연면적 ${Number(p.totalarea).toLocaleString()}㎡` : '';
-      const ok8 = /^\d{8}$/.test(p.useapr_day || '');
-      const day = ok8 ? `${p.useapr_day.slice(0, 4)}.${p.useapr_day.slice(4, 6)} 사용승인` : '';
-      const lines = [use, [flr, area].filter(Boolean).join(' · '), day].filter(Boolean);
-      if (!lines.length) return '';
-      const yr = ok8 ? p.useapr_day.slice(0, 4) : '';
-      const dot = yr ? `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${ageColor(yr)};margin-right:5px;"></span>` : '';
-      const old = yr && parseInt(yr) <= 1994 ? '<span style="background:#e03131;color:#fff;font-size:10px;padding:1px 6px;border-radius:9px;margin-left:5px;">🔨 30년↑</span>' : '';
-      return `<div style="font-size:12px;margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;"><b>🏢 건물 정보</b>${old}<br>${dot}${lines.join('<br>')}</div>`;
+
+    // 토지·건물 정보를 한 번에 모은다.
+    //  LT_C_UQ111        용도지역   → 용적률·건폐율을 결정. 재개발 가치 판단의 출발점.
+    //  LP_PA_CBND_BUBUN  지적       → 개별공시지가, 지번, 지목, PNU
+    //  LT_C_BLDGINFO     건물       → 용도 계열, 층수, 연면적, 사용승인일
+    function landInfo(lat, lng, cb) {
+      const box = {};
+      let left = 3;
+      const one = (id, slot) => vworldFeature(id, lat, lng, (ps) => {
+        box[slot] = ps && ps.length ? ps : null;
+        if (--left === 0) cb(box);
+      });
+      one('LT_C_UQ111', 'zone');
+      one('LP_PA_CBND_BUBUN', 'parcel');
+      one('LT_C_BLDGINFO', 'bld');
+    }
+
+    const M2_PER_PY = 3.305785;
+    function landInfoHtml(box) {
+      if (!box) return '';
+      const rows = [];
+
+      // 용도지역 — 투자 판단에서 가장 먼저 보는 항목
+      const z = box.zone && box.zone.find((x) => x.uname);
+      if (z) rows.push(`<b style="color:var(--c-primary);">${esc(z.uname)}</b>`);
+
+      // 개별공시지가 + 평당 환산
+      const pc = box.parcel && box.parcel[0];
+      if (pc) {
+        const jg = Number(pc.jiga) || 0;
+        if (jg > 0) {
+          const py = Math.round(jg * M2_PER_PY);
+          const when = pc.gosi_year ? `${esc(pc.gosi_year)}.${esc(pc.gosi_month || '')}` : '';
+          rows.push(`공시지가 <b>${jg.toLocaleString()}원/㎡</b> <span style="color:var(--c-muted);">(평당 ${py.toLocaleString()}원${when ? ' · ' + when + ' 기준' : ''})</span>`);
+        }
+        if (pc.jibun) rows.push(`지번 ${esc(pc.jibun)}`);
+      }
+
+      // 건물
+      const b = box.bld && box.bld.find((x) => x.usability) || (box.bld && box.bld[0]);
+      let oldBadge = '';
+      if (b) {
+        const use = BLD_USE[b.usability] || (b.usability ? '용도코드 ' + esc(b.usability) : '');
+        const flr = b.grnd_flr && b.grnd_flr !== '0'
+          ? `지상 ${esc(b.grnd_flr)}층` + (b.ugrnd_flr && b.ugrnd_flr !== '0' ? `·지하 ${esc(b.ugrnd_flr)}층` : '') : '';
+        const ar = b.totalarea && b.totalarea !== '0' ? `연면적 ${Number(b.totalarea).toLocaleString()}㎡` : '';
+        const ok8 = /^\d{8}$/.test(b.useapr_day || '');
+        const yr = ok8 ? b.useapr_day.slice(0, 4) : '';
+        const day = ok8 ? `${yr}.${b.useapr_day.slice(4, 6)} 사용승인` : '';
+        if (yr) {
+          oldBadge = parseInt(yr) <= 1994
+            ? '<span style="background:#e03131;color:#fff;font-size:10px;padding:1px 6px;border-radius:9px;margin-left:5px;">🔨 30년↑</span>' : '';
+        }
+        const dot = yr ? `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${ageColor(yr)};margin-right:5px;"></span>` : '';
+        const line = [flr, ar].filter(Boolean).join(' · ');
+        if (use) rows.push(dot + use);
+        if (line) rows.push(line);
+        if (day) rows.push(day);
+      }
+
+      if (!rows.length) return '';
+      return `<div style="font-size:12px;margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">`
+        + `<b>🏢 토지·건물 정보</b>${oldBadge}<br>${rows.join('<br>')}</div>`;
     }
 
     // ── 이 지점의 상호(POI) ──────────────────────────────────────
@@ -827,9 +875,18 @@
         const naverUrl = naverSearchUrl(best.name + ' ' + (best.dong || best.gu || ''), best.lat, best.lng);
         const ppy = best.area && best.priceEok ? Math.round(best.priceEok * 10000 / best.area).toLocaleString() + '만원/㎡' : '-';
         const oldBadge = parseInt(best.build) <= 1994 ? '<span style="background:#e03131;color:#fff;font-size:10px;padding:2px 7px;border-radius:10px;margin-left:6px;">🔨 재건축연한초과</span>' : '';
-        clickMarker.setPopupContent(`<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(best.build)};flex-shrink:0;"></span><span class="rp-name">${esc(best.name)}</span></div><div class="pc-body"><div style="margin-bottom:4px;">${esc(best.gu || '')} ${esc(best.dong || '')}</div><div style="font-size:15px;font-weight:700;color:var(--c-price);">💰 ${best.priceEok == null ? '-' : best.priceEok + '억'}</div><div style="margin-top:3px;">평단가: ${ppy}</div><div style="margin-top:3px;">${esc(best.area || '?')}㎡ · ${esc(best.floor || '?')}층 · 거래 ${esc(best.ymd || '')}</div><div style="margin-top:3px;">🏗️ ${esc(best.build || '?')}년 건축${oldBadge}</div></div><div class="pc-actions"><a href="${naverUrl}" target="_blank" rel="noopener" class="pc-btn pc-btn-green rp-naver">🏠 네이버 부동산 보기</a>${rtBtns}</div></div>`).openPopup();
+        clickMarker.setPopupContent(`<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(best.build)};flex-shrink:0;"></span><span class="rp-name">${esc(best.name)}</span></div><div class="pc-body"><div style="margin-bottom:4px;">${esc(best.gu || '')} ${esc(best.dong || '')}</div><div style="font-size:15px;font-weight:700;color:var(--c-price);">💰 ${best.priceEok == null ? '-' : best.priceEok + '억'}</div><div style="margin-top:3px;">평단가: ${ppy}</div><div style="margin-top:3px;">${esc(best.area || '?')}㎡ · ${esc(best.floor || '?')}층 · 거래 ${esc(best.ymd || '')}</div><div style="margin-top:3px;">🏗️ ${esc(best.build || '?')}년 건축${oldBadge}</div><div class="bld-info"></div></div><div class="pc-actions"><a href="${naverUrl}" target="_blank" rel="noopener" class="pc-btn pc-btn-green rp-naver">🏠 네이버 부동산 보기</a>${rtBtns}</div></div>`).openPopup();
         bindRtBtns();
         enrichAptName(clickMarker.getPopup().getElement(), best.name, best.dong || best.gu, best.lat, best.lng);
+        // 아파트에도 용도지역·공시지가를 붙인다 (재건축 가능성 판단의 기초 자료)
+        const _apel = clickMarker.getPopup().getElement();
+        landInfo(lat, lng, (box) => {
+          const h = _apel && _apel.querySelector('.bld-info');
+          if (!h) return;
+          h.innerHTML = landInfoHtml(box);
+          const pp = clickMarker && clickMarker.getPopup();
+          if (pp && pp.isOpen()) pp.update();
+        });
       } else {
         // 200m 이상 → 단일 Naver geocoder 콜(주소+건물명 동시 반환) + 캐시
         let nearHtml = '';
@@ -850,10 +907,10 @@
           bindRtBtns();
           // 건축물 용도·층수·연면적·사용승인일을 비동기로 채운다 (아파트가 아닌 건물의 정체를 알려주는 핵심 정보)
           const _pel = clickMarker.getPopup().getElement();
-          vworldBuilding(lat, lng, (p) => {
+          landInfo(lat, lng, (box) => {
             const holder = _pel && _pel.querySelector('.bld-info');
             if (!holder) return;
-            holder.innerHTML = bldInfoHtml(p);
+            holder.innerHTML = landInfoHtml(box);
             const pp = clickMarker && clickMarker.getPopup();
             if (pp && pp.isOpen()) pp.update();  // 내용이 늘어났으니 팝업 크기 재계산
           });
