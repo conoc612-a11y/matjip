@@ -51,26 +51,60 @@ const SUFFIX = process.env.SUFFIX || '';
 // keepAlive 필수. 수천 건을 연달아 요청하면 Windows 에서 임시 포트가 고갈돼
 // 조용히 실패한다. 실측: 에이전트 없이 돌렸을 때 지오코딩 성공률이 91.7% -> 81.0% 로
 // 떨어졌는데, 같은 주소를 순차로 부르면 205/205 로 전부 성공했다.
-const agent = new https.Agent({ keepAlive: true, keepAliveMsecs: 3000, maxSockets: 8 });
+// 호스트별로 에이전트를 분리한다. 한 에이전트를 공유하면 한쪽(data.go.kr)에서 막힌
+// 소켓이 다른 쪽(vworld.kr) 요청까지 큐에 세울 수 있다.
+const agents = new Map();
+function agentFor(url) {
+  const host = (url.match(/^https:\/\/([^/]+)/) || [, 'x'])[1];
+  let a = agents.get(host);
+  if (!a) { a = new https.Agent({ keepAlive: true, keepAliveMsecs: 3000, maxSockets: 8 }); agents.set(host, a); }
+  return a;
+}
+
+const REQ_TIMEOUT_MS = 15000;
 
 function httpGet(url, tries = 3) {
   return new Promise((resolve) => {
     const attempt = (n) => {
-      const retryOrGiveUp = () => (n < tries ? setTimeout(() => attempt(n + 1), 400 * n) : resolve(''));
-      https.get(url, { agent, headers: { 'User-Agent': UA, Accept: '*/*' } }, (res) => {
+      // 한 번의 시도는 한 번만 마무리된다. req.destroy() 가 error 핸들러도 깨우므로
+      // 이 가드가 없으면 타임아웃 때 재시도가 두 번 걸려 요청이 배로 늘어난다.
+      let settled = false;
+      let req = null;
+      const settle = (retry, value) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(deadline);
+        try { if (req) req.destroy(); } catch (e) {}
+        if (!retry) return resolve(value);
+        if (n < tries) setTimeout(() => attempt(n + 1), 400 * n);
+        else resolve('');
+      };
+      const finish = (v) => settle(false, v);
+      const retryOrGiveUp = () => settle(true);
+
+      // 하드 데드라인. req.setTimeout 만으로는 부족하다 — 그건 소켓이 배정된 뒤에야 시작되므로,
+      // 에이전트 풀이 막혀 큐에서 대기하는 요청은 영구히 끊기지 않는다.
+      // 실측(소켓 상한 2에 요청 4개): 앞 2개는 1.5초에 끊겼지만 큐의 2개는 3.1초에야 끊겼다.
+      // 실제 수집에서 이 때문에 같은 지점에서 두 번 멈췄다(40분, 그리고 4시간).
+      // 아래 setTimeout 은 소켓 상태와 무관하게 발동하므로 어떤 경우에도 워커가 풀린다.
+      const deadline = setTimeout(retryOrGiveUp, REQ_TIMEOUT_MS);
+
+      req = https.get(url, { agent: agentFor(url), headers: { 'User-Agent': UA, Accept: '*/*' } }, (res) => {
         // setEncoding 이 없으면 한글이 깨진다. 응답은 Buffer 로 쪼개져 오는데,
         // 청크마다 문자열로 이어붙이면 3바이트 한글이 청크 경계에 걸릴 때 손상된다.
         // 실측: 이것 없이 수집했을 때 23,726건 중 40건(0.17%)에 U+FFFD 가 섞였고
-        //       '다세대'가 '다세��' 처럼 갈라져 유형 사전이 3개에서 8개로 늘었다.
+        //       '다세대'가 '다세__' 처럼 갈라져 유형 사전이 3개에서 8개로 늘었다.
         res.setEncoding('utf8');
         let d = '';
         res.on('data', (c) => d += c);
         res.on('end', () => {
           // data.go.kr 은 간헐적으로 500 을 뱉는다. 빈 본문도 실패로 보고 재시도한다.
           if (res.statusCode !== 200 || !d) return retryOrGiveUp();
-          resolve(d);
+          finish(d);
         });
-      }).on('error', retryOrGiveUp);
+        res.on('error', retryOrGiveUp);
+      });
+      req.on('error', retryOrGiveUp);
     };
     attempt(1);
   });
@@ -101,6 +135,37 @@ function recentMonths(n) {
 }
 
 const eok = (amt) => Math.round(Number(String(amt).replace(/[,\s]/g, '')) / 10000 * 10) / 10;
+const median = (a) => { if (!a.length) return 0; const s = [...a].sort((x, y) => x - y); return Math.round(s[s.length >> 1] * 10) / 10; };
+
+// ── 전세 시세 수집 ───────────────────────────────────────────
+// 전세가율(전세보증금 / 매매가)은 갭투자 판단의 핵심 지표다.
+// 전월세 API 에서 monthlyRent 가 0 인 건이 전세이고, deposit 이 보증금(만원)이다.
+// 매매 쪽과 똑같은 키로 묶어야 짝이 맞는다. 그런데 묶는 단위가 유형별로 다르다.
+//   아파트      : 주소|단지명|전용면적  (같은 단지도 평형별 전세가율이 크게 다름)
+//   연립다세대  : 주소|건물명           (건물 단위로 묶었으므로 면적을 넣으면 짝이 안 맞음)
+// withArea 로 이 차이를 흡수한다.
+async function fetchJeonse(pathSeg, label, nameField, withArea) {
+  const rows = await fetchAll(pathSeg, label);
+  const byKey = new Map();
+  let jeonseCnt = 0;
+  for (const r of rows) {
+    if (String(r.monthlyRent || '').replace(/[,\s]/g, '') !== '0') continue;  // 월세 제외
+    if (!r.jibun || /\*/.test(r.jibun)) continue;
+    const dep = eok(r.deposit);
+    if (!(dep > 0)) continue;
+    jeonseCnt++;
+    const area = Math.round((Number(r.excluUseAr) || 0) * 10) / 10;
+    const base = `서울특별시 ${r._gu} ${r.umdNm} ${r.jibun}|${r[nameField] || ''}`;
+    const key = withArea ? `${base}|${area}` : base;
+    let arr = byKey.get(key);
+    if (!arr) { arr = []; byKey.set(key, arr); }
+    arr.push(dep);
+  }
+  console.log(`  [${label}] 전세 ${jeonseCnt.toLocaleString()}건 · 단지·평형 조합 ${byKey.size.toLocaleString()}개`);
+  const out = new Map();
+  for (const [k, deps] of byKey) out.set(k, median(deps));
+  return out;
+}
 
 // ── 1) 국토부 수집 ───────────────────────────────────────────
 async function fetchAll(pathSeg, label) {
@@ -169,7 +234,9 @@ function saveCheckpoint(force) {
 async function geocode(addr) {
   // 캐시 히트도 호출부와 같은 모양으로 돌려줘야 한다. 좌표 배열을 그대로 반환하면
   // 호출부의 { pt, blocked } 구조분해가 깨져서, 이어받기 실행이 '성공 0%' 로 잘못 보고된다.
-  if (geoCache.has(addr)) return { pt: geoCache.get(addr), blocked: false };
+  // cached 플래그가 필요한 이유: 캐시 히트는 네트워크를 쓰지 않으므로 속도 제한 대기를
+  // 걸 필요가 없다. 안 그러면 재실행 때 2.4만건 × 150ms = 약 1시간을 헛되게 기다린다.
+  if (geoCache.has(addr)) return { pt: geoCache.get(addr), blocked: false, cached: true };
   const url = `https://api.vworld.kr/req/address?service=address&request=getcoord&version=2.0`
     + `&crs=EPSG:4326&type=PARCEL&format=json&key=${VWORLD_KEY}&address=${encodeURIComponent(addr)}`;
   let pt = null, blocked = false;
@@ -203,16 +270,17 @@ async function geocodeAll(addrs) {
   await Promise.all(Array.from({ length: GEO_CONC }, async () => {
     while (i < list.length) {
       const a = list[i++];
-      const { pt, blocked } = await geocode(a);
+      const { pt, blocked, cached } = await geocode(a);
       if (pt) hit++;
       if (blocked) blockedCnt++;
       done++;
-      if (done % 1000 === 0) {
+      if (done % 500 === 0) {
         const sec = (Date.now() - t0) / 1000;
         const eta = Math.round((list.length - done) / (done / sec) / 60);
         console.log(`  [지오코딩] ${done}/${list.length} · 성공 ${hit} (${(hit / done * 100).toFixed(1)}%) · 차단잔여 ${blockedCnt} · 남은시간 약 ${eta}분`);
       }
-      if (GEO_GAP_MS) await sleep(GEO_GAP_MS);
+      // 캐시 히트는 네트워크를 안 썼으므로 속도 제한 대기를 건너뛴다
+      if (!cached && GEO_GAP_MS) await sleep(GEO_GAP_MS);
     }
   }));
   saveCheckpoint(true);
@@ -246,7 +314,11 @@ async function geocodeAll(addrs) {
   // 압축 포맷 3단 적용 — 3만건 규모라 바이트가 그대로 초기 로딩 시간이 된다.
   //  (1) 키 이름을 한 번만 적고 값은 배열로  (2) 반복되는 문자열은 사전 인덱스로
   //  (3) 좌표는 소수 5자리(약 1m)로 자른다 — 지도 표시에는 6자리가 불필요
-  const F = ['name', 'gu', 'dong', 'type', 'lat', 'lng', 'price', 'area', 'floor', 'build', 'ymd', 'cnt', 'pmin', 'pmax'];
+  // 연립다세대 전세 시세 (건물 단위 — 매매를 건물 단위로 묶었으므로 면적은 키에 넣지 않는다)
+  console.log('\n[전세] 연립다세대');
+  const rhJeonse = await fetchJeonse('RTMSDataSvcRHRent/getRTMSDataSvcRHRent', '연립다세대 전월세', 'mhouseNm', false);
+
+  const F = ['name', 'gu', 'dong', 'type', 'lat', 'lng', 'price', 'area', 'floor', 'build', 'ymd', 'cnt', 'pmin', 'pmax', 'jeonse', 'jrate'];
   const gus = [], dongs = [], types = [];
   const idx = (arr, v) => { let i = arr.indexOf(v); if (i < 0) { i = arr.length; arr.push(v); } return i; };
   const villa = [];
@@ -256,15 +328,76 @@ async function geocodeAll(addrs) {
     b.deals.sort((x, y) => (y.ym > x.ym ? 1 : -1));
     const latest = b.deals[0];
     const ps = b.deals.map((d) => d.p).filter((p) => p > 0);
+    const jeonse = rhJeonse.get(`${b.addr}|${b.name === b.dong ? '' : b.name}`) || rhJeonse.get(`${b.addr}|${b.name}`) || 0;
     villa.push([
       b.name, idx(gus, b.gu), idx(dongs, b.dong), idx(types, b.type),
       Number(pt[0].toFixed(5)), Number(pt[1].toFixed(5)),
       latest.p, Math.round(latest.a * 10) / 10, latest.f, latest.y, latest.ym,
       b.deals.length, ps.length ? Math.min(...ps) : 0, ps.length ? Math.max(...ps) : 0,
+      jeonse, jeonse && latest.p ? Math.round(jeonse / latest.p * 100) : 0,
     ]);
   }
   fs.writeFileSync(path.join(OUT_DIR, `realprice_villa${SUFFIX}.json`), JSON.stringify({ fields: F, gus, dongs, types, rows: villa }));
   console.log(`  realprice_villa.json 저장 — ${villa.length.toLocaleString()}건 / ${(fs.statSync(path.join(OUT_DIR, `realprice_villa${SUFFIX}.json`)).size / 1048576).toFixed(2)}MB`);
+
+  // ── 아파트 ──────────────────────────────────────────────────
+  // 기존 realprice_seoul_gg.json 은 좌표 출처가 불명확해서 클릭 지점과 건물이 어긋났다.
+  // Dev 엔드포인트가 지번(jibun)을 주므로 연립다세대와 같은 방식으로 정확히 찍는다.
+  // 묶는 단위는 '단지 + 전용면적' 이다. 아파트는 같은 단지라도 평형별 시세가 크게 다르므로
+  // 건물 단위로 뭉치면 정보가 뭉개진다.
+  if (process.env.WITH_APT === '1') {
+    console.log('\n[추가] 아파트 매매 수집 (Dev — 지번 포함)');
+    const ap = await fetchAll('RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev', '아파트');
+    const unit = new Map();
+    for (const r of ap) {
+      const jibun = r.jibun || (r.bonbun ? String(Number(r.bonbun)) + (Number(r.bubun) ? '-' + Number(r.bubun) : '') : '');
+      if (!jibun || /\*/.test(jibun)) continue;
+      const addr = `서울특별시 ${r._gu} ${r.umdNm} ${jibun}`;
+      const area = Math.round((Number(r.excluUseAr) || 0) * 10) / 10;
+      const key = `${addr}|${r.aptNm}|${area}`;
+      let u = unit.get(key);
+      if (!u) { u = { addr, name: r.aptNm, gu: r._gu, dong: r.umdNm, area, deals: [] }; unit.set(key, u); }
+      u.deals.push({
+        p: eok(r.dealAmount), f: Number(r.floor) || 0, y: Number(r.buildYear) || 0,
+        ym: `${r.dealYear}.${r.dealMonth}`,
+        // 투자 판단에 쓰이는 부가 정보 (Dev 엔드포인트만 제공)
+        gbn: r.dealingGbn || '', buyer: r.buyerGbn || '', seller: r.slerGbn || '',
+        cancel: (r.cdealType || '').trim(), lease: (r.landLeaseholdGbn || '').trim(),
+      });
+    }
+    console.log(`  단지·평형 조합 ${unit.size.toLocaleString()}개 · 고유 주소 ${new Set([...unit.values()].map((u) => u.addr)).size.toLocaleString()}개`);
+
+    console.log('  지오코딩');
+    await geocodeAll(new Set([...unit.values()].map((u) => u.addr)));
+
+    // 아파트 전세 시세 (평형까지 맞춰 묶는다 — 같은 단지도 평형별 전세가율 차이가 크다)
+    console.log('  [전세] 아파트');
+    const aptJeonse = await fetchJeonse('RTMSDataSvcAptRent/getRTMSDataSvcAptRent', '아파트 전월세', 'aptNm', true);
+
+    const AF = ['name', 'gu', 'dong', 'lat', 'lng', 'price', 'area', 'floor', 'build', 'ymd', 'cnt', 'pmin', 'pmax', 'gbn', 'cancel', 'lease', 'jeonse', 'jrate'];
+    const agus = [], adongs = [], agbns = [];
+    const aidx = (arr, v) => { let i = arr.indexOf(v); if (i < 0) { i = arr.length; arr.push(v); } return i; };
+    const apt = [];
+    for (const u of unit.values()) {
+      const pt = geoCache.get(u.addr);
+      if (!pt) continue;
+      u.deals.sort((x, y) => (y.ym > x.ym ? 1 : -1));
+      const latest = u.deals[0];
+      const ps = u.deals.map((d) => d.p).filter((p) => p > 0);
+      const jeonse = aptJeonse.get(`${u.addr}|${u.name}|${u.area}`) || 0;
+      apt.push([
+        u.name, aidx(agus, u.gu), aidx(adongs, u.dong),
+        Number(pt[0].toFixed(5)), Number(pt[1].toFixed(5)),
+        latest.p, u.area, latest.f, latest.y, latest.ym,
+        u.deals.length, ps.length ? Math.min(...ps) : 0, ps.length ? Math.max(...ps) : 0,
+        aidx(agbns, latest.gbn), latest.cancel ? 1 : 0, latest.lease === 'Y' ? 1 : 0,
+        jeonse, jeonse && latest.p ? Math.round(jeonse / latest.p * 100) : 0,
+      ]);
+    }
+    fs.writeFileSync(path.join(OUT_DIR, `realprice_apt${SUFFIX}.json`),
+      JSON.stringify({ fields: AF, gus: agus, dongs: adongs, gbns: agbns, rows: apt }));
+    console.log(`  realprice_apt.json 저장 — ${apt.length.toLocaleString()}건 / ${(fs.statSync(path.join(OUT_DIR, `realprice_apt${SUFFIX}.json`)).size / 1048576).toFixed(2)}MB`);
+  }
 
   // 단독다가구 — 지번이 마스킹돼 개별 좌표 불가. 동 단위 집계만.
   console.log('\n[3/3] 단독다가구 매매 수집 (동 단위 집계)');
@@ -280,13 +413,12 @@ async function geocodeAll(addrs) {
     if (Number(r.totalFloorAr)) d.areas.push(Number(r.totalFloorAr));
     if (Number(r.buildYear)) d.years.push(Number(r.buildYear));
   }
-  const med = (a) => { if (!a.length) return 0; const s = [...a].sort((x, y) => x - y); return Math.round(s[s.length >> 1] * 10) / 10; };
   const house = {};
   for (const d of dong.values()) {
     house[`${d.gu} ${d.dong}`] = {
-      cnt: d.prices.length, med: med(d.prices),
+      cnt: d.prices.length, med: median(d.prices),
       min: d.prices.length ? Math.min(...d.prices) : 0, max: d.prices.length ? Math.max(...d.prices) : 0,
-      plot: med(d.plots), area: med(d.areas), build: med(d.years),
+      plot: median(d.plots), area: median(d.areas), build: median(d.years),
     };
   }
   fs.writeFileSync(path.join(OUT_DIR, `realprice_house${SUFFIX}.json`), JSON.stringify(house));
