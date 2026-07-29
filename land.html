@@ -149,8 +149,7 @@
         <button class="fav-cat active" data-cat="전체">전체</button>
         <button class="fav-cat" data-cat="아파트">아파트</button>
         <button class="fav-cat" data-cat="다세대">다세대</button>
-        <button class="fav-cat" data-cat="다가구">다가구</button>
-        <button class="fav-cat" data-cat="단독주택">단독주택</button>
+        <button class="fav-cat" data-cat="연립">연립</button>
       </div>
       <div class="banner" id="banner"></div>
       <div id="recent" style="display:none;font-size:12px;margin-bottom:10px;color:var(--muted);"></div>
@@ -173,7 +172,7 @@
     </div>
     <div class="footer-contact">호룡리싱앤리얼리티 &nbsp;·&nbsp; 오재호 010.4353.6501 &nbsp;·&nbsp; conoc@naver.com
       <!-- 빌드 태그: 브라우저가 옛 파일을 캐시하고 있는지 한눈에 확인하는 용도. 배포마다 올린다. -->
-      &nbsp;·&nbsp; <span style="opacity:.6;">build 2026-07-29-b13</span></div>
+      &nbsp;·&nbsp; <span style="opacity:.6;">build 2026-07-29-b14</span></div>
   </footer>
 
   <script>
@@ -341,18 +340,100 @@
         div.innerHTML = '<div style="font-weight:700;margin-bottom:3px;">건축년도(노후도)</div>' + row('#2f9e44', '신축 2015~') + row('#94d82d', '2005~2014') + row('#fab005', '1995~2004') + row('#fd7e14', '1985~1994') + row('#e03131', '노후 ~1984') + row('#868e96', '미상');
         return div;
       };
-      map.on('overlayadd', (e) => {
-        if (e.layer !== realpriceCluster) return;
-        rpFilterCtrl.addTo(map); rpLegend.addTo(map);
+      // 가격·건축년도 필터와 노후도 범례는 아파트/연립다세대 두 레이어가 공용으로 쓴다.
+      // 레이어별로 배선 코드를 복사하면 또 갈라지므로 한 곳에 모아둔다.
+      function showPriceFilter() {
+        rpFilterCtrl.addTo(map);
+        rpLegend.addTo(map);
         setTimeout(() => {
           const ps = document.getElementById('rp-price'), ag = document.getElementById('rp-age');
-          if (ps && !ps._w) { ps._w = 1; ps.value = rpFilter.price; ps.addEventListener('change', () => { rpFilter.price = ps.value; rpBuild(); }); }
-          if (ag && !ag._w) { ag._w = 1; ag.value = rpFilter.age; ag.addEventListener('change', () => { rpFilter.age = ag.value; rpBuild(); }); }
+          if (ps && !ps._w) { ps._w = 1; ps.value = rpFilter.price; ps.addEventListener('change', () => { rpFilter.price = ps.value; rpBuild(); villaBuild(); }); }
+          if (ag && !ag._w) { ag._w = 1; ag.value = rpFilter.age; ag.addEventListener('change', () => { rpFilter.age = ag.value; rpBuild(); villaBuild(); }); }
         }, 60);
+      }
+      map.on('overlayadd', (e) => {
+        if (e.layer !== realpriceCluster) return;
+        showPriceFilter();
         // 이미 받아둔 경우에도 반드시 rpBuild()를 호출해야 마커가 그려진다 (예전엔 early-return으로 빈 레이어가 됐음)
         loadRp().then(() => rpBuild());
       });
-      map.on('overlayremove', (e) => { if (e.layer === realpriceCluster) { map.removeControl(rpFilterCtrl); map.removeControl(rpLegend); } });
+      map.on('overlayremove', (e) => {
+        // 연립·다세대 레이어가 아직 켜져 있으면 공용 컨트롤을 지우지 않는다
+        if (e.layer !== realpriceCluster || map.hasLayer(villaCluster)) return;
+        map.removeControl(rpFilterCtrl);
+        map.removeControl(rpLegend);
+      });
+
+      // ── 연립·다세대 실거래가 (서울 23,708개 건물) ──────────────────
+      // 국토부 '연립다세대 매매' 12개월치를 건물(지번) 단위로 묶은 것. tools/collect_realprice.js 산출물.
+      // 파일이 1.86MB 라 레이어를 켤 때만 받는다. 아파트 파일과 같은 지연 로딩 방식.
+      // 저장 포맷이 압축돼 있다(키 이름 1회 + 값 배열 + 구·동·유형 사전 인덱스).
+      // 같은 정보를 아파트 파일 포맷으로 담으면 6MB 라 초기 로딩을 망친다.
+      const villaCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 60 });
+      villaCluster.on('mouseover', (e) => {
+        const m = e.layer, d = m && m._rp;
+        if (!d || m._ttDone) return;
+        m._ttDone = 1;
+        m.bindTooltip(d.priceEok == null ? esc(d.name) : d.priceEok + '억', { direction: 'top' }).openTooltip();
+      });
+      villaCluster.on('click', (e) => {
+        const m = e.layer;
+        if (!m || !m._rp) return;
+        if (!m.getPopup() && m._pop) m.bindPopup(m._pop());
+        m.openPopup();
+      });
+
+      function villaPopupHtml(d) {
+        const ppm = d.area && d.priceEok ? Math.round(d.priceEok * 10000 / d.area).toLocaleString() + '만원/㎡' : '-';
+        const oldTag = parseInt(d.build) <= 1994
+          ? '<span style="background:#e03131;color:#fff;font-size:10px;padding:2px 7px;border-radius:10px;margin-left:6px;">🔨 재건축연한초과</span>' : '';
+        // 12개월 거래가 여러 건이면 가격 범위를 함께 보여준다 (한 건물의 시세 폭을 알 수 있다)
+        const range = d.cnt > 1 && d.pmax > d.pmin
+          ? `<div style="margin-top:3px;font-size:11px;color:var(--c-muted);">📊 12개월 ${d.cnt}건 · ${d.pmin}~${d.pmax}억</div>`
+          : `<div style="margin-top:3px;font-size:11px;color:var(--c-muted);">📊 12개월 ${d.cnt}건</div>`;
+        return `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};flex-shrink:0;"></span><span class="rp-name">${esc(d.name)}</span><span style="font-size:10px;background:var(--c-primary);color:#fff;padding:1px 6px;border-radius:9px;">${esc(d.type)}</span></div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div><div style="font-size:15px;font-weight:700;color:var(--c-price);">💰 <span style="font-size:11px;background:var(--c-price);color:#fff;padding:1px 6px;border-radius:9px;vertical-align:2px;">매매</span> ${d.priceEok}억</div><div style="margin-top:3px;">평단가: ${ppm}</div><div style="margin-top:3px;">${esc(d.area)}㎡ · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="margin-top:3px;">🏗️ ${esc(d.build)}년 건축${oldTag}</div>${range}<div class="rp-radius-stat" style="display:none;"></div></div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline" style="border-color:var(--c-price) !important;color:var(--c-price);">☆ 저장</button><a href="${naverSearchUrl(d.name + ' ' + (d.dong || d.gu || ''), d.lat, d.lng)}" target="_blank" rel="noopener" class="pc-btn pc-btn-green rp-naver">🏠 네이버 부동산</a><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline">🚩 출발</button><button class="rt-end pc-btn pc-btn-outline">🏁 도착</button></div><button class="sv-btn pc-btn pc-btn-outline">🛣️ 거리뷰</button></div></div>`;
+      }
+
+      let villaRows = null, _villaPromise = null;
+      function loadVilla() {
+        if (!_villaPromise) {
+          _villaPromise = fetch('realprice_villa.json').then((r) => r.json()).then((j) => {
+            // 압축 포맷 → 아파트 마커와 같은 객체 모양으로 되살린다.
+            // 이후 코드(팝업·저장·근처 통계)가 아파트와 동일하게 동작하도록 필드명을 맞춘다.
+            const F = {};
+            j.fields.forEach((f, i) => { F[f] = i; });
+            villaRows = j.rows.map((r) => ({
+              name: r[F.name], gu: j.gus[r[F.gu]], dong: j.dongs[r[F.dong]], type: j.types[r[F.type]],
+              lat: r[F.lat], lng: r[F.lng], priceEok: r[F.price], area: r[F.area], floor: r[F.floor],
+              build: r[F.build], ymd: r[F.ymd], cnt: r[F.cnt], pmin: r[F.pmin], pmax: r[F.pmax],
+            }));
+            return villaRows;
+          }).catch(() => null);
+        }
+        return _villaPromise;
+      }
+
+      function villaBuild() {
+        if (!villaRows) return;
+        villaCluster.clearLayers();
+        villaCluster.addLayers(villaRows.filter((d) => inPrice(d.priceEok) && inAge(d.build)).map((d) => {
+          const m = L.circleMarker([d.lat, d.lng], { radius: 4, color: '#fff', weight: 1, fillColor: ageColor(d.build), fillOpacity: 0.9 });
+          m._rp = d;                       // 아파트 마커와 같은 키를 쓴다 → 저장·길찾기·거리뷰 핸들러 공용
+          m._pop = (() => villaPopupHtml(d));
+          return m;
+        }));
+      }
+      map.on('overlayadd', (e) => {
+        if (e.layer !== villaCluster) return;
+        showPriceFilter();
+        loadVilla().then(() => villaBuild());
+      });
+      map.on('overlayremove', (e) => {
+        // 두 레이어가 공용이므로, 다른 하나가 아직 켜져 있으면 컨트롤을 남겨둔다
+        if (e.layer !== villaCluster || map.hasLayer(realpriceCluster)) return;
+        map.removeControl(rpFilterCtrl);
+        map.removeControl(rpLegend);
+      });
 
       // 실거래가 마커 팝업의 ☆저장 버튼 → localStorage 즐겨찾기 토글
       map.on('popupopen', (e) => {
@@ -563,6 +644,7 @@
       const landOverlays = {
         '🏗️ 정비사업(재개발·재건축)': jbCluster,
         '🏢 아파트 실거래가·노후도': realpriceCluster,
+        '🏘️ 연립·다세대 실거래가': villaCluster,
         '🚫 토지거래허가구역': tojiLayer,
         '🗺️ 용도지역': wms('lt_c_uq111', 0.55),
         '📐 지적도(필지 경계)': wms('lp_pa_cbnd_bubun', 0.6),
@@ -779,6 +861,36 @@
       '일반상업지역': 800, '중심상업지역': 1000, '준공업지역': 400,
     };
 
+    // ── 단독·다가구 동 단위 시세 ─────────────────────────────────
+    // 국토부가 단독/다가구 실거래의 지번을 '1***' 로 마스킹해서(표본 428건 전부) 개별
+    // 좌표를 찍을 수 없다. 그래서 마커가 아니라 동 단위 집계로만 제공한다.
+    // 파일이 30KB 라 부담이 없어 처음 필요할 때 한 번 받는다.
+    let houseStats = null, _housePromise = null;
+    function loadHouse() {
+      if (!_housePromise) {
+        _housePromise = fetch('realprice_house.json').then((r) => r.json())
+          .then((j) => { houseStats = j; return j; }).catch(() => null);
+      }
+      return _housePromise;
+    }
+    // V-World 지적의 addr('서울특별시 관악구 봉천동 459-8')에서 '관악구 봉천동' 을 뽑는다.
+    // 집계 파일의 키가 이 형식이다.
+    function guDongKey(addr) {
+      const m = String(addr || '').match(/(\S+구)\s+(\S+?[동가])(?:\s|$)/);
+      return m ? `${m[1]} ${m[2]}` : null;
+    }
+    function houseStatHtml(st) {
+      if (!st) return '';
+      const rows = [`거래 <b>${st.cnt}건</b> · 중앙값 <b>${st.med}억</b>` + (st.max > st.min ? ` <span style="color:var(--c-muted);">(${st.min}~${st.max}억)</span>` : '')];
+      const ar = [];
+      if (st.plot) ar.push(`대지 ${st.plot}㎡`);
+      if (st.area) ar.push(`연면적 ${st.area}㎡`);
+      if (ar.length) rows.push(`<span style="color:var(--c-muted);">중앙값 ${ar.join(' · ')}</span>`);
+      if (st.build) rows.push(`<span style="color:var(--c-muted);">건축년도 중앙값 ${st.build}년</span>`);
+      return `<div style="margin-top:5px;padding-top:5px;border-top:1px dashed var(--c-border);">`
+        + `<b>🏠 이 동 단독·다가구 시세</b> <span style="font-size:10px;color:var(--c-muted);">최근 12개월</span><br>${rows.join('<br>')}</div>`;
+    }
+
     // Leaflet 의 popup.update() 는 저장된 _content 문자열로 innerHTML 을 다시 그린다.
     // 우리가 DOM 에 직접 꽂아 넣은 내용(토지·건물 정보, 상호 목록)이 그 순간 통째로 지워지고,
     // 붙잡아 둔 노드도 분리돼 이후 렌더가 화면에 영영 반영되지 않는다.
@@ -863,9 +975,11 @@
         if (yr) rows.push(`${yr}.${b.useapr_day.slice(4, 6)} 사용승인`);
       }
 
-      if (!rows.length) return '';
+      const houseHtml = houseStatHtml(st.house);
+      if (!rows.length && !houseHtml) return '';
       return `<div style="font-size:12px;margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">`
-        + `<b>🏢 토지·건물 정보</b>${badge}<br>${rows.join('<br>')}</div>`;
+        + (rows.length ? `<b>🏢 토지·건물 정보</b>${badge}<br>${rows.join('<br>')}` : '')
+        + houseHtml + '</div>';
     }
 
     // 팝업의 토지·건물 정보를 채운다. 호출 순서를 이렇게 잡은 이유:
@@ -877,7 +991,7 @@
     function fillLandInfo(popupEl, getPopup, lat, lng) {
       const slot = popupEl && popupEl.querySelector('.bld-info');
       if (!slot) return;
-      const st = { zone: '', parcel: null, br: null, bld: null };
+      const st = { zone: '', parcel: null, br: null, bld: null, house: null };
       const render = () => {
         slot.innerHTML = landInfoHtml(st);
         const p = getPopup();
@@ -887,6 +1001,13 @@
       const afterBase = () => {
         if (--left > 0) return;
         render();
+        // 이 동의 단독·다가구 시세 (지번 마스킹 때문에 개별 마커가 불가능한 대신 제공)
+        const key = guDongKey(st.parcel && st.parcel.addr);
+        if (key) {
+          loadHouse().then(() => {
+            if (houseStats && houseStats[key]) { st.house = houseStats[key]; render(); }
+          });
+        }
         const pnu = st.parcel && st.parcel.pnu;
         if (!pnu) return;
         buildingRegister(pnu, (it) => {

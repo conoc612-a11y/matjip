@@ -58,6 +58,11 @@ function httpGet(url, tries = 3) {
     const attempt = (n) => {
       const retryOrGiveUp = () => (n < tries ? setTimeout(() => attempt(n + 1), 400 * n) : resolve(''));
       https.get(url, { agent, headers: { 'User-Agent': UA, Accept: '*/*' } }, (res) => {
+        // setEncoding 이 없으면 한글이 깨진다. 응답은 Buffer 로 쪼개져 오는데,
+        // 청크마다 문자열로 이어붙이면 3바이트 한글이 청크 경계에 걸릴 때 손상된다.
+        // 실측: 이것 없이 수집했을 때 23,726건 중 40건(0.17%)에 U+FFFD 가 섞였고
+        //       '다세대'가 '다세��' 처럼 갈라져 유형 사전이 3개에서 8개로 늘었다.
+        res.setEncoding('utf8');
         let d = '';
         res.on('data', (c) => d += c);
         res.on('end', () => {
@@ -141,9 +146,30 @@ const GEO_CONC = 2;
 const GEO_GAP_MS = 150;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// 체크포인트. 23,710건을 8.8건/s 로 처리하면 45분이 걸리는데, 중간에 프로세스가
+// 죽으면 통째로 날아간다(실제로 3,000건 지점에서 세션 재시작에 한 번 잃었다).
+// 좌표는 변하지 않는 값이므로 파일에 쌓아두고 다음 실행에서 그대로 이어받는다.
+const CKPT = path.join(__dirname, '.geocache.json');
 const geoCache = new Map();
+try {
+  if (fs.existsSync(CKPT)) {
+    const saved = JSON.parse(fs.readFileSync(CKPT, 'utf8'));
+    for (const [k, v] of Object.entries(saved)) geoCache.set(k, v);
+    console.log(`체크포인트에서 좌표 ${geoCache.size.toLocaleString()}건 복원\n`);
+  }
+} catch (e) { console.log('체크포인트 읽기 실패 — 처음부터 시작합니다'); }
+
+let ckptDirty = 0;
+function saveCheckpoint(force) {
+  if (!force && ++ckptDirty < 500) return;
+  ckptDirty = 0;
+  try { fs.writeFileSync(CKPT, JSON.stringify(Object.fromEntries(geoCache))); } catch (e) {}
+}
+
 async function geocode(addr) {
-  if (geoCache.has(addr)) return geoCache.get(addr);
+  // 캐시 히트도 호출부와 같은 모양으로 돌려줘야 한다. 좌표 배열을 그대로 반환하면
+  // 호출부의 { pt, blocked } 구조분해가 깨져서, 이어받기 실행이 '성공 0%' 로 잘못 보고된다.
+  if (geoCache.has(addr)) return { pt: geoCache.get(addr), blocked: false };
   const url = `https://api.vworld.kr/req/address?service=address&request=getcoord&version=2.0`
     + `&crs=EPSG:4326&type=PARCEL&format=json&key=${VWORLD_KEY}&address=${encodeURIComponent(addr)}`;
   let pt = null, blocked = false;
@@ -165,6 +191,7 @@ async function geocode(addr) {
     await sleep(400 * attempt * attempt);  // 차단이면 점점 크게 물러선다
   }
   geoCache.set(addr, pt);
+  saveCheckpoint();
   return { pt, blocked };
 }
 
@@ -188,6 +215,7 @@ async function geocodeAll(addrs) {
       if (GEO_GAP_MS) await sleep(GEO_GAP_MS);
     }
   }));
+  saveCheckpoint(true);
   console.log(`  [지오코딩] 완료 ${done}건 중 성공 ${hit}건 (${(hit / done * 100).toFixed(1)}%) · 끝내 차단 ${blockedCnt}건`);
 }
 
