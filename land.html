@@ -454,7 +454,12 @@
       // 레이어 코드는 V-World 공식 WMS 가이드에서 확인함(추측 아님).
       // 일부(그린벨트·진흥지구)는 도심 중앙엔 데이터가 없어 외곽에서 보임 — 정상.
       // 토지거래허가구역(동 단위 근사) — 지정 동 경계 GeoJSON 색칠. 정확·최신은 land.seoul.go.kr.
+      // 렌더러는 캔버스 대신 SVG를 강제: 캔버스는 팬/줌 후 이전 transform(scale/translate)이
+      // 남아 폴리곤이 지도와 어긋나 보이는 스테일 버그가 있었음. SVG는 moveend마다 좌표를
+      // 다시 투영해 항상 타일·마커와 일치한다. (32개 폴리곤·정점 4.2만개는 단일 레이어로
+      // 손으로 켜는 오버레이라 SVG 비용이 허용 범위 — 무거운 9천 마커 계열은 캔버스 유지)
       const tojiLayer = L.geoJSON(null, {
+        renderer: L.svg(),
         style: { color: '#c92a2a', weight: 1, fillColor: '#e8590c', fillOpacity: 0.28 },
         onEachFeature: (f, layer) => layer.bindTooltip(`토지거래허가구역 · ${f.properties.name}`, { sticky: true }),
       });
