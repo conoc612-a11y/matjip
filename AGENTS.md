@@ -21,9 +21,10 @@ Static HTML/JS Seoul restaurant finder. No build tools, no bundler, no framework
 ## main.html 성능/구조 요점
 
 - **클러스터링은 커스텀(뷰포트 기반)** — 네이버 MarkerClustering 대신 `js/main.js`의 `buildClusters()`가 현재 화면 범위(+1셀 여유)의 식당만 격자 버킷으로 묶어 마커를 만든다. 팬/줌 idle 시에만 갱신. 정비사업은 MarkerClustering 유지.
-- **render() 캐시** — 쿼리·탭·카테고리·지도중심·취향·즐겨찾기가 모두 같으면 재렌더 생략. `savedIds` 변경 시 `savedRev++`.
+- **render() 캐시** — 쿼리·탭·카테고리·지도중심·취향·즐겨찾기가 모두 같으면 재렌더 생략. `savedIds` 변경 시 `savedRev++`. 점수는 전체 계산(Set 캐시)하되 **거리 hav()는 표시할 상위 50곳만** 계산.
 - **검색 인덱스** — `buildRestIndex()`가 소문자 검색 문자열을 1회 생성. 입력 시 1,300건 join/소문자 변환 반복 제거.
 - **지도 점프 방지** — 검색어 입력 중엔 지도를 움직이지 않음. 이동은 Enter/자동완성 선택/카드 클릭/GPS에서만.
+- **데이터 로드 병렬화** — 식당 페이지네이션(2페이지씩), 사용자 취향·즐겨찾기, 푸터 통계 3종을 Promise.all(Settled)로 동시 조회. 검색결과 저장 시 전체 재조회 대신 새 행만 append.
 
 ## Key gotchas
 

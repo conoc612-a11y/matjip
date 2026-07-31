@@ -327,13 +327,14 @@ async function saveNaverPlace(p, btn) {
     const { data: ins, error } = await sb.from('mj_restaurants').insert({
       name, address: p.roadAddress || p.address || null,
       lat, lng, category: (p.category || '').split('>').pop().trim() || null, tags: [],
-    }).select('id').single();
+    }).select('*').single();
     if (error) { btn.disabled = false; btn.textContent = '실패'; return; }
     rid = ins.id;
+    restaurants.push(ins); buildRestIndex(); // 전체 재조회 대신 새 행만 추가
   }
   const { error: se } = await sb.from('saved_restaurants').upsert({ user_id: user.id, restaurant_id: rid }, { onConflict: 'user_id,restaurant_id' });
   btn.textContent = se ? '실패' : '저장됨 ✓';
-  if (!se) { btn.style.background = 'var(--ok)'; const { data: rs } = await sb.from('mj_restaurants').select('*'); if (rs) { restaurants = rs; buildRestIndex(); } }
+  if (!se) { btn.style.background = 'var(--ok)'; savedIds.add(rid); savedRev++; } // 검색 결과 화면 유지, 다음 render에 반영
 }
 
 // ── 카카오 검색 (kakao.maps.services.Places 직접 호출) ──
@@ -399,13 +400,14 @@ async function saveKakaoPlace(p, btn) {
       name: p.place_name, address: p.road_address_name || p.address_name || null,
       lat: Number(p.y), lng: Number(p.x),
       category: (p.category_name || '').split('>').pop().trim() || null, tags: [],
-    }).select('id').single();
+    }).select('*').single();
     if (error) { btn.disabled = false; btn.textContent = '실패'; return; }
     rid = ins.id;
+    restaurants.push(ins); buildRestIndex(); // 전체 재조회 대신 새 행만 추가
   }
   var { error: se } = await sb.from('saved_restaurants').upsert({ user_id: user.id, restaurant_id: rid }, { onConflict: 'user_id,restaurant_id' });
   btn.textContent = se ? '실패' : '저장됨 ✓';
-  if (!se) { btn.style.background = 'var(--ok)'; var { data: rs } = await sb.from('mj_restaurants').select('*'); if (rs) { restaurants = rs; buildRestIndex(); } }
+  if (!se) { btn.style.background = 'var(--ok)'; savedIds.add(rid); savedRev++; } // 검색 결과 화면 유지, 다음 render에 반영
 }
 
 // ── ⑨ 추천·목록 렌더 ──────────────────────────────────────────────────────
@@ -432,14 +434,17 @@ function render() {
 
   let base = q ? matchRestaurants(q) : restaurants;
   if (panelMode === 'favorites') { base = base.filter((r) => savedIds.has(Number(r.id))); if (favCat !== '전체') base = base.filter((r) => (r.category || '').includes(favCat)); }
-  // 거리 + 점수 한 번에 계산 (render마다 map.getCenter() N회 호출 제거)
+  // 점수는 전체 계산(Set 캐시로 저렴). 거리 hav()는 정렬 비교 시 메모이제이션으로 필요한 만큼만 계산.
+  const distMemo = new Map();
+  const distOf = (r) => { if (r.lat == null) return Infinity; let v = distMemo.get(r); if (v === undefined) { v = hav(center, latLng(r.lat, r.lng)); distMemo.set(r, v); } return v; };
   const scored = base.map((r) => {
     const { score: s, hits } = window.score(r, taste);
-    const dist = r.lat != null ? hav(center, latLng(r.lat, r.lng)) : null;
-    return { r, score: s, hits, dist };
+    return { r, score: s, hits };
   });
-  if (panelMode === 'recommend') scored.sort((a, b) => b.score - a.score || (a.dist != null && b.dist != null ? a.dist - b.dist : a.r.name.localeCompare(b.r.name)));
-  else scored.sort((a, b) => a.r.name.localeCompare(b.r.name));
+  if (panelMode === 'recommend') {
+    if (!taste) scored.sort((a, b) => distOf(a.r) - distOf(b.r)); // 취향 없으면 지도 중심 가까운 순
+    else scored.sort((a, b) => b.score - a.score || distOf(a.r) - distOf(b.r));
+  } else scored.sort((a, b) => a.r.name.localeCompare(b.r.name));
 
   // 배너
   if (panelMode === 'favorites') {
@@ -453,7 +458,10 @@ function render() {
   }
 
   // 리스트 — 상위 LIST_MAX개만 렌더. 지도 이동은 입력 중 하지 않고 Enter/자동완성/카드 클릭 시에만.
-  const shown = scored.slice(0, LIST_MAX);
+  const shown = scored.slice(0, LIST_MAX).map((x) => {
+    const dist = x.r.lat != null ? distOf(x.r) : null;
+    return { r: x.r, score: x.score, hits: x.hits, dist };
+  });
   $('rec-list').innerHTML = shown.map(({ r, score: s, hits, dist }) => {
     const tagsHtml = (r.tags || []).map((t) =>
       `<span class="tag${hits.includes(t) ? ' hit' : ''}">${esc(t)}</span>`).join('');
@@ -585,30 +593,34 @@ function initJbCats() {
 }
 
 // ── ⑫ 데이터 로드 (병렬) ──────────────────────────────────────────────────
-// Supabase는 요청당 1,000행 제한 → 페이지네이션으로 전체 로드
+// Supabase는 요청당 1,000행 제한 → 페이지네이션. 2페이지씩 병렬로 로드(왕복 절반).
 async function loadAllRestaurants() {
   const all = [], size = 1000; let from = 0;
   for (;;) {
-    const { data, error } = await sb.from('mj_restaurants').select('*').range(from, from + size - 1);
-    if (error) throw error;
-    all.push(...(data || []));
-    if (!data || data.length < size) break;
-    from += size;
+    const [a, b] = await Promise.all([
+      sb.from('mj_restaurants').select('*').range(from, from + size - 1),
+      sb.from('mj_restaurants').select('*').range(from + size, from + 2 * size - 1),
+    ]);
+    if (a.error) throw a.error;
+    if (b.error) throw b.error;
+    all.push(...(a.data || []), ...(b.data || []));
+    if (!a.data || a.data.length < size) break;
+    if (!b.data || b.data.length < size) break;
+    from += 2 * size;
   }
   return all;
 }
+// 푸터 통계 3종(head count) — 한 번에 병렬 조회 후 요소에 반영
 async function loadFooterStats() {
-  try {
-    const { count: m } = await sb.from('taste_profiles').select('*', { count: 'exact', head: true });
-    const el = document.getElementById('f-members'); if (el && m != null) el.textContent = m.toLocaleString();
-  } catch(e) {}
-  try {
-    const today = new Date().toISOString().slice(0, 10);
-    const { count: t } = await sb.from('feedbacks').select('*', { count: 'exact', head: true }).gte('created_at', today);
-    const { count: tot } = await sb.from('feedbacks').select('*', { count: 'exact', head: true });
-    const et = document.getElementById('f-today'); if (et && t != null) et.textContent = t.toLocaleString();
-    const etot = document.getElementById('f-total'); if (etot && tot != null) etot.textContent = tot.toLocaleString();
-  } catch(e) {}
+  const today = new Date().toISOString().slice(0, 10);
+  const [mRes, tRes, totRes] = await Promise.allSettled([
+    sb.from('taste_profiles').select('*', { count: 'exact', head: true }),
+    sb.from('feedbacks').select('*', { count: 'exact', head: true }).gte('created_at', today),
+    sb.from('feedbacks').select('*', { count: 'exact', head: true }),
+  ]);
+  const el = document.getElementById('f-members'); if (el && mRes.status === 'fulfilled' && mRes.value.count != null) el.textContent = mRes.value.count.toLocaleString();
+  const et = document.getElementById('f-today'); if (et && tRes.status === 'fulfilled' && tRes.value.count != null) et.textContent = tRes.value.count.toLocaleString();
+  const etot = document.getElementById('f-total'); if (etot && totRes.status === 'fulfilled' && totRes.value.count != null) etot.textContent = totRes.value.count.toLocaleString();
 }
 async function loadAll() {
   $('rec-list').innerHTML = Array(4).fill('<div class="skel-card"><div class="skel skel-h"></div><div class="skel skel-m"></div><div class="skel skel-s"></div></div>').join('');
