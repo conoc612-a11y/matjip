@@ -491,12 +491,26 @@ async function handleSave(btn) {
   const id = Number(btn.dataset.id);
   if (!user) { alert('로그인 후 저장할 수 있어요.'); location.href = 'onboarding.html'; return; }
   if (btn.disabled) return;
+  const isSaved = savedIds.has(id);
   btn.disabled = true;
-  const { error } = await sb.from('saved_restaurants')
-    .upsert({ user_id: user.id, restaurant_id: id }, { onConflict: 'user_id,restaurant_id' });
-  btn.textContent = error ? '실패' : '저장됨 ✓';
-  if (!error) { btn.style.background = 'var(--ok)'; btn.style.borderColor = 'var(--ok)'; btn.style.color = '#fff'; savedIds.add(id); savedRev++; }
-  btn.disabled = !!error;
+  let ok = false;
+  if (isSaved) { // 취소: 저장 삭제
+    const { error } = await sb.from('saved_restaurants').delete().eq('user_id', user.id).eq('restaurant_id', id);
+    ok = !error;
+    if (ok) { savedIds.delete(id); savedRev++; }
+  } else { // 저장
+    const { error } = await sb.from('saved_restaurants').upsert({ user_id: user.id, restaurant_id: id }, { onConflict: 'user_id,restaurant_id' });
+    ok = !error;
+    if (ok) { savedIds.add(id); savedRev++; }
+  }
+  btn.disabled = false;
+  if (!ok) { btn.textContent = '실패'; return; }
+  // 지도 팝업 버튼 즉시 갱신 (목록은 render()가 savedRev로 다시 그림)
+  btn.textContent = isSaved ? '☆ 즐겨찾기 저장' : '★ 저장됨';
+  btn.style.background = isSaved ? '#fff' : 'var(--ok)';
+  btn.style.border = isSaved ? '1px solid #2f9e44' : '1px solid var(--ok)';
+  btn.style.color = isSaved ? '#2f9e44' : '#fff';
+  render();
 }
 window.handleSave = handleSave; // 지도 팝업/정보창의 인라인 onclick에서 사용
 
