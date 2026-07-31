@@ -97,6 +97,18 @@ drop policy if exists "own feedback insert" on feedbacks;
 create policy "own feedback read"   on feedbacks for select to authenticated using (auth.uid() = user_id);
 create policy "own feedback insert" on feedbacks for insert to authenticated with check (auth.uid() = user_id);
 
+-- ── 방문자 기록 (페이지 로드마다 1건씩. 로그인 없이도 집계되도록 anon 허용) ──
+create table if not exists visits (
+  id bigint generated always as identity primary key,
+  created_at timestamptz not null default now(),
+  page text not null default 'land'
+);
+alter table visits enable row level security;
+drop policy if exists "visits anon insert" on visits;
+drop policy if exists "visits anon select" on visits;
+create policy "visits anon insert" on visits for insert with check (true);
+create policy "visits anon select" on visits for select using (true);
+
 -- ── 시드 (mj_restaurants 비었을 때만) ──
 insert into mj_restaurants (name, address, lat, lng, category, tags)
 select v.name, v.address, v.lat, v.lng, v.category, v.tags
