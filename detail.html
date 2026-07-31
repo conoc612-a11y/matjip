@@ -73,21 +73,34 @@
     }
 
     // GPS로 현재 위치 확보 (재사용). 실패 시 null
+    const meIcon = L.divIcon({
+      className: '',
+      html: '<div style="width:16px;height:16px;background:#1a73e8;border:3px solid #fff;border-radius:50%;box-shadow:0 0 0 2px #1a73e8,0 2px 6px rgba(0,0,0,.35);"></div>',
+      iconSize: [22, 22],
+      iconAnchor: [11, 11],
+      popupAnchor: [0, -14],
+    });
     function getPos() {
       return new Promise((resolve) => {
-        if (me) { resolve(me); return; }
+        if (me) {
+          if (!userMarker) showMeMarker();
+          resolve(me); return;
+        }
         if (!navigator.geolocation) { $('dist').textContent = '이 브라우저는 위치를 지원하지 않아요.'; resolve(null); return; }
         $('dist').textContent = '위치 확인 중…';
         navigator.geolocation.getCurrentPosition(
           (pos) => {
             me = [pos.coords.latitude, pos.coords.longitude];
-            if (userMarker) map.removeLayer(userMarker);
-            userMarker = L.marker(me).addTo(map).bindPopup('현재 위치').openPopup();
+            showMeMarker();
             resolve(me);
           },
           () => { $('dist').textContent = '위치 권한이 거부되었어요. (브라우저 주소창 위치 허용 필요)'; resolve(null); }
         );
       });
+    }
+    function showMeMarker() {
+      if (userMarker) map.removeLayer(userMarker);
+      userMarker = L.marker(me, { icon: meIcon }).addTo(map).bindPopup('현재 위치').openPopup();
     }
 
     // ODsay 대중교통 상세 경로 (현재위치 → 맛집). origin=[lat,lng]
