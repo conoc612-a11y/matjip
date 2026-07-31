@@ -4,14 +4,19 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>맛집 탐방 — 부동산 지도</title>
+  <link rel="preconnect" href="https://unpkg.com" crossorigin />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="preconnect" href="https://api.vworld.kr" crossorigin />
+  <link rel="preconnect" href="https://openapi.map.naver.com" crossorigin />
+  <link rel="preconnect" href="https://dapi.kakao.com" crossorigin />
+  <link rel="preconnect" href="https://bhgijvaxxjnocgfnaaeu.supabase.co" crossorigin />
+  <link rel="dns-prefetch" href="https://tile.openstreetmap.org" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/recommend.js"></script>
   <style>
     :root {
       --c-primary:#1971c2; --c-primary-soft:#e7f0fb; --c-price:#d9480f;
@@ -132,6 +137,10 @@
     .pc-btn:hover { border-color:var(--c-primary); color:var(--c-primary); }
     .pc-btn-primary { background:var(--c-primary); color:#fff; border:1px solid var(--c-primary); }
     .pc-btn-primary:hover { background:#1a63a8; color:#fff; }
+    /* Leaflet 이 .leaflet-container a { color:#0078A8 } 를 깔아 두어 흰 글씨 버튼이 파란 배경에
+       묻힌다(실측 대비 1.02:1). a + 클래스로 상세도를 높여 흰 글씨를 지킨다. */
+    a.pc-btn-primary { color:#fff; }
+    a.pc-btn-primary:hover { color:#fff; }
     .pc-btn-outline { background:var(--card); border:1px solid var(--line) !important; color:var(--c-text); }
     .pc-btn-row { display:flex; gap:7px; }
     .pc-btn-row .pc-btn { flex:1; }
@@ -143,6 +152,15 @@
     .leaflet-container a.leaflet-popup-close-button { color:var(--muted); }
     /* 네이버 부동산 링크는 방문 후 색이 갈리면 안 보이므로 유지한다 */
     a.pc-btn-primary:visited { color:#fff; }
+    /* Leaflet 기본 컨트롤은 배경이 흰색으로 고정돼 있어 다크모드에서 메뉴 글씨가 사라진다(실측 1.19:1).
+       테마 변수로 따라가게 만든다. */
+    .leaflet-control-layers, .leaflet-control-layers-expanded { background:var(--card); color:var(--text); }
+    .leaflet-control-layers-separator { border-top-color:var(--line); }
+    .leaflet-control-layers-toggle { background-color:var(--card); }
+    .leaflet-control-zoom a { background-color:var(--card); color:var(--text); border-color:var(--line); }
+    .leaflet-control-zoom a:hover { background-color:var(--c-hover); }
+    .leaflet-control-attribution { color:var(--muted); }
+    :root.dark .leaflet-control-attribution { background:rgba(27,30,37,.85); }
     /* ── Stage chip bar ── */
     #jb-stage-bar { position:absolute; bottom:18px; left:50%; transform:translateX(-50%); display:flex; gap:6px; padding:6px 10px; background:var(--card); border-radius:999px; box-shadow:var(--c-shadow-lg); z-index:900; max-width:90vw; overflow-x:auto; white-space:nowrap; }
     .jb-chip { padding:5px 13px; border-radius:999px; border:1.5px solid var(--c-border); background:var(--card); font-size:12px; cursor:pointer; font-family:inherit; color:var(--text); }
@@ -241,13 +259,28 @@
     </div>
     <div class="footer-contact">호룡리싱앤리얼리티 &nbsp;·&nbsp; 오재호 010.4353.6501 &nbsp;·&nbsp; conoc@naver.com
       <!-- 빌드 태그: 브라우저가 옛 파일을 캐시하고 있는지 한눈에 확인하는 용도. 배포마다 올린다. -->
-      &nbsp;·&nbsp; <span class="build-tag">build 2026-07-31-b21</span></div>
+      &nbsp;·&nbsp; <span class="build-tag">build 2026-07-31-b25</span></div>
   </footer>
 
   <script>
     const SUPABASE_URL = 'https://bhgijvaxxjnocgfnaaeu.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_rYaGd3kk5UuFBe3TSpFA8g_uGHWwkqM';
-    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    // supabase SDK는 무겁고 초기 지도 렌더와 무관하므로(푸터 통계·로그아웃 전용) 첫 필요 시 로드한다.
+    let sb = null;
+    let _sbPromise = null;
+    function ensureSb() {
+      if (_sbPromise) return _sbPromise;
+      if (window.supabase) { sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY); _sbPromise = Promise.resolve(sb); return _sbPromise; }
+      _sbPromise = new Promise((resolve) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
+        s.async = true;
+        s.onload = () => { try { sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY); } catch (e) { sb = null; } resolve(sb); };
+        s.onerror = () => resolve(null);
+        document.head.appendChild(s);
+      });
+      return _sbPromise;
+    }
     const $ = (id) => document.getElementById(id);
 
     // ── 다크모드 (localStorage 저장, 맛집 지도와 동일 키) ──
@@ -852,7 +885,7 @@
       satBtn.addTo(map);
     }
     // 실거래가 데이터는 초기 렌더를 막지 않도록 브라우저가 한가할 때 미리 로드 (클릭 팝업의 '근처 실거래'에 사용)
-    (window.requestIdleCallback || ((f) => setTimeout(f, 2500)))(() => loadRp());
+    (window.requestIdleCallback || ((f) => setTimeout(f, 2500)))(() => { loadRp(); ensureNaver(); });
 
     // ── [V-World 검색 API] 주소·지명 검색 → 지도 이동 (JSONP로 브라우저 CORS 회피) ──
     let vsMarker = null;
@@ -910,27 +943,29 @@
     function naverBldName(lat, lng, cb) {
       const key = _gcKey(lat, lng);
       if (_bldCache.has(key)) { cb(_bldCache.get(key)); return; }
-      if (!(NAVER_KEY && window.naver && naver.maps && naver.maps.Service)) { cb(null); return; }
-      try {
-        naver.maps.Service.reverseGeocode({
-          coords: new naver.maps.LatLng(lat, lng),
-          // orders 는 배열이 아니라 콤마로 이은 문자열이어야 한다.
-          // 배열로 넘기면 콘솔에 '"orders" type does not match' 경고가 뜨고 무시된다.
-          orders: [naver.maps.Service.OrderType.ROAD_ADDR, naver.maps.Service.OrderType.ADDR].join(','),
-        }, (status, res) => {
-          let name = null;
-          try {
-            if (status === naver.maps.Service.Status.OK) {
-              for (const r of ((res.v2 && res.v2.results) || [])) {
-                const a0 = r.land && r.land.addition0;
-                if (a0 && a0.type === 'building' && a0.value) { name = a0.value; break; }
+      ensureNaver().then((nv) => {
+        if (!(nv && nv.maps && nv.maps.Service)) { cb(null); return; }
+        try {
+          nv.maps.Service.reverseGeocode({
+            coords: new nv.maps.LatLng(lat, lng),
+            // orders 는 배열이 아니라 콤마로 이은 문자열이어야 한다.
+            // 배열로 넘기면 콘솔에 '"orders" type does not match' 경고가 뜨고 무시된다.
+            orders: [nv.maps.Service.OrderType.ROAD_ADDR, nv.maps.Service.OrderType.ADDR].join(','),
+          }, (status, res) => {
+            let name = null;
+            try {
+              if (status === nv.maps.Service.Status.OK) {
+                for (const r of ((res.v2 && res.v2.results) || [])) {
+                  const a0 = r.land && r.land.addition0;
+                  if (a0 && a0.type === 'building' && a0.value) { name = a0.value; break; }
+                }
               }
-            }
-          } catch (err) {}
-          _bldCache.set(key, name);
-          cb(name);
-        });
-      } catch (err) { cb(null); }
+            } catch (err) {}
+            _bldCache.set(key, name);
+            cb(name);
+          });
+        } catch (err) { cb(null); }
+      });
     }
     // ── 건물 정보 (V-World 건물정보 LT_C_BLDGINFO, JSONP) ────────────
     // 아파트가 아닌 건물(단독·다세대·근린생활 등)의 용도·층수·연면적·사용승인일을 제공한다.
@@ -998,23 +1033,26 @@
       return { sigunguCd: s.slice(0, 5), bjdongCd: s.slice(5, 10), platGbCd: s[10] === '2' ? '1' : '0', bun: s.slice(11, 15), ji: s.slice(15, 19) };
     }
     const _brCache = new Map();
-    // data.go.kr 은 간헐적으로 500 을 뱉는다(실측: 같은 요청이 6회 연속 200 이다가도 한 번씩 실패).
-    // 그래서 두 가지를 지킨다.
-    //  1) 일시적 실패는 한 번 재시도한다.
+    // data.go.kr 은 간헐적으로 500·404 를 뱉는다(실측: 같은 요청이 연속 200 이다가도 한 번씩 실패,
+    // 몰아치면 몇 초간 전부 실패). 그래서 세 가지를 지킨다.
+    //  1) 일시적 실패는 최대 3회(600ms·1.8s 간격) 재시도한다.
     //  2) 일시적 실패를 캐시하지 않는다. 캐시하면 그 필지는 영영 조회를 안 하게 된다.
     //     '정상 응답인데 기록이 없음'(빈 배열)만 캐시한다.
+    //  3) 병렬로 한꺼번에 쏘지 않는다 — 동시 요청이 몰리면 상위 게이트웨이가 통째로 막는다(loadLedgerDetail).
     // 건축HUB 의 조회는 전부 같은 지번 파라미터(sigunguCd·bjdongCd·platGbCd·bun·ji)를
     // 쓰므로(명세 공통 입력) op 이름만 바꿔 하나의 함수로 호출한다.
     // 표제부는 대표 동 1건(건물대장), 상세 조회는 배열 전체를 돌려준다.
-    function ledgerOp(op, pnu, cb, _retry) {
+    function ledgerOp(op, pnu, cb, _attempt) {
       const p = pnuParts(pnu);
       if (!p) { cb(null); return; }
       const key = op + '|' + pnu;
       if (_brCache.has(key)) { cb(_brCache.get(key)); return; }
       const q = `serviceKey=${MOLIT_KEY}&sigunguCd=${p.sigunguCd}&bjdongCd=${p.bjdongCd}`
         + `&platGbCd=${p.platGbCd}&bun=${p.bun}&ji=${p.ji}&numOfRows=${op === 'getBrTitleInfo' ? 10 : 100}&pageNo=1&_type=json`;
+      const attempt = _attempt || 0;
       const fail = () => {
-        if (!_retry) { setTimeout(() => ledgerOp(op, pnu, cb, 1), 600); return; }
+        const wait = [600, 1800, 0][attempt];
+        if (wait) { setTimeout(() => ledgerOp(op, pnu, cb, attempt + 1), wait); return; }
         cb(null);  // 캐시하지 않는다 — 다음 클릭 때 다시 시도할 수 있도록
       };
       fetch(`https://apis.data.go.kr/1613000/BldRgstHubService/${op}?${q}`)
@@ -1200,25 +1238,41 @@
       st.detail = { loading: true };
       render();
       let left = ops.length;
+      const finish = () => {
+        st.detail.loading = false;
+        st._ldBusy = false;
+        render();
+      };
       const done = () => {
         if (--left > 0) return;
         if (isComplex && !(st.detail.exposPub || []).some((x) => String(x.exposPubuseGbCd) === '1')) {
           // 전유공용면적이 비면 전유부로 동·호 목록을 보충한다. 이때만 1회 더 호출.
           ledgerOp('getBrExposInfo', pnu, (arr) => {
             st.detail.expos = arr || [];
-            st.detail.loading = false;
-            st._ldBusy = false;
-            render();
+            if (arr === null) st.detail.fail = (st.detail.fail || 0) + 1;
+            finish();
           });
           return;
         }
-        st.detail.loading = false;
-        st._ldBusy = false;
-        render();
+        finish();
       };
-      ops.forEach(([k, op]) => {
-        ledgerOp(op, pnu, (arr) => { st.detail[k] = arr || []; done(); });
-      });
+      // data.go.kr 은 동시 요청이 몰리면 통째로 막힌다(실측). 8개를 한꺼번에 쏘지 말고
+      // 동시 2개씩, 완료마다 150ms 간격으로 흘려보내 실패율을 낮춘다.
+      let idx = 0, active = 0;
+      const pump = () => {
+        while (active < 2 && idx < ops.length) {
+          const [k, op] = ops[idx++];
+          active++;
+          ledgerOp(op, pnu, (arr) => {
+            active--;
+            st.detail[k] = arr || [];
+            if (arr === null) st.detail.fail = (st.detail.fail || 0) + 1;
+            done();
+            if (active < 2 && idx < ops.length) setTimeout(pump, 150);
+          });
+        }
+      };
+      pump();
     }
     function ledgerDetailHtml(st) {
       const d = st.detail;
@@ -1296,11 +1350,20 @@
         rows.push(`<b>공시가격</b> ${(min / 1e8).toFixed(min >= 1e9 ? 1 : 2)}~${(max / 1e8).toFixed(max >= 1e9 ? 1 : 2)}억 <span style="color:var(--c-muted);font-size:10px;">${day ? day + ' 기준 · ' : ''}세대별 ${hp.length}건</span>`);
       }
       if (!rows.length) {
-        return `<div style="margin-top:5px;padding-top:5px;border-top:1px dashed var(--c-border);font-size:11px;color:var(--c-muted);">상세 조회 결과가 없어요</div>`;
+        const msg = d.fail
+          ? `<div style="font-size:11px;color:var(--c-price);">상세 조회를 불러오지 못했어요</div>`
+          : `<div style="font-size:11px;color:var(--c-muted);">상세 조회 결과가 없어요</div>`;
+        return `<div style="margin-top:5px;padding-top:5px;border-top:1px dashed var(--c-border);">`
+          + msg + retryHtml(d) + '</div>';
       }
       return `<div style="margin-top:5px;padding-top:5px;border-top:1px dashed var(--c-border);">`
         + `<div style="font-size:11px;color:var(--c-muted);margin-bottom:2px;">건축물대장 상세 <span style="font-size:10px;">국토교통부 건축HUB</span></div>`
-        + rows.join('<br>') + '</div>';
+        + rows.join('<br>') + retryHtml(d) + '</div>';
+    }
+    function retryHtml(d) {
+      if (!d || !d.fail) return '';
+      return `<div style="margin-top:5px;"><span style="color:var(--c-price);font-size:11px;">${d.fail}개 항목을 불러오지 못했어요</span>`
+        + ` <button type="button" class="ld-retry" style="font-size:11px;color:var(--c-primary);background:none;border:1px solid var(--c-border);border-radius:6px;padding:2px 9px;cursor:pointer;">다시 시도</button></div>`;
     }
 
     // 팝업의 토지·건물 정보를 채운다. 호출 순서를 이렇게 잡은 이유:
@@ -1317,6 +1380,12 @@
         slot.innerHTML = landInfoHtml(st);
         const btn = slot.querySelector('.ld-more');
         if (btn) btn.onclick = () => loadLedgerDetail(st, render);
+        const rb = slot.querySelector('.ld-retry');
+        if (rb) rb.onclick = () => {
+          st.detail = null;
+          st._ldBusy = false;
+          loadLedgerDetail(st, render);
+        };
         if (onInfo) onInfo(st);
         const p = getPopup();
         repanPopup(p);  // update() 를 쓰면 방금 꽂은 내용이 지워진다
@@ -1572,13 +1641,26 @@
     // ── 길찾기: 출발/도착 + 도보(OSRM)·대중교통(ODsay)·자차(OSRM) ──
     const ODSAY_KEY = 'H4Vo/z04g/E+AUShnTQIiQ';
     const NAVER_KEY = 'kw4t9xfkhz';
-    if (NAVER_KEY) {
-      const ns = document.createElement('script');
-      ns.src = `https://openapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${NAVER_KEY}&submodules=panorama,geocoder`;
-      document.head.appendChild(ns);
+    // 네이버 지도 SDK는 무겁고(panorama+geocoder) 초기 렌더에 필요 없다.
+    // 단지명 보정·거리뷰 같은 사용자 동작 시점에 로드하고, 한가할 때 미리 받아 둔다.
+    let _naverPromise = null;
+    function ensureNaver() {
+      if (_naverPromise) return _naverPromise;
+      if (!NAVER_KEY) { _naverPromise = Promise.resolve(null); return _naverPromise; }
+      if (window.naver && naver.maps) { _naverPromise = Promise.resolve(window.naver); return _naverPromise; }
+      _naverPromise = new Promise((resolve) => {
+        const ns = document.createElement('script');
+        ns.src = `https://openapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${NAVER_KEY}&submodules=panorama,geocoder`;
+        ns.async = true;
+        ns.onload = () => resolve(window.naver || null);
+        ns.onerror = () => resolve(null);
+        document.head.appendChild(ns);
+      });
+      return _naverPromise;
     }
     function showStreetView(lat, lng) {
-      if (NAVER_KEY && window.naver && naver.maps && naver.maps.Panorama) {
+      ensureNaver().then((nv) => {
+        if (!(nv && nv.maps && nv.maps.Panorama)) { window.open(`https://map.naver.com/p/street-view?c=${lng},${lat},15,0,0,0,dh`, '_blank', 'noopener'); return; }
         const oldBd = document.getElementById('sv-backdrop'), oldOv = document.getElementById('sv-overlay');
         if (oldBd) oldBd.remove();
         if (oldOv) oldOv.remove();
@@ -1650,9 +1732,7 @@
             _rt = setTimeout(() => { try { miniMap.refresh(true); } catch (e) {} }, 80);
           }).observe(mmEl);
         }
-      } else {
-        window.open(`https://map.naver.com/p/street-view?c=${lng},${lat},15,0,0,0,dh`, '_blank', 'noopener');
-      }
+      });
     }
     let routeOrigin = null, routeDest = null, routeLine = null, routeMode = 'car', originMarker = null, destMarker = null, routeCtrl = null;
     function ensureRouteCtrl() {
@@ -1734,8 +1814,7 @@
       } catch (e) { if (info) info.textContent = '경로 계산 실패(네트워크).'; }
     }
 
-    // ── 규칙기반 추천 점수 (js/recommend.js의 window.score 사용) ──
-
+    // ── 공통 이스케이프 ──
     function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
     // 외부 URL은 http/https만 허용(javascript:·data: 스킴 차단)
     function safeUrl(u) { u = String(u || ''); return /^https?:\/\//i.test(u) ? esc(u) : '#'; }
@@ -1922,16 +2001,18 @@
     // visits 테이블이 아직 없으면(스키마 미실행) 조용히 넘어가고 '—'로 남는다.
     async function loadFooterStats() {
       const set = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.textContent = v.toLocaleString(); };
+      const s = await ensureSb();
+      if (!s) return;
       try {
-        const { count: m } = await sb.from('taste_profiles').select('*', { count: 'exact', head: true });
+        const { count: m } = await s.from('taste_profiles').select('*', { count: 'exact', head: true });
         set('f-members', m);
       } catch (e) {}
       try {
-        await sb.from('visits').insert({ page: 'land' });
+        await s.from('visits').insert({ page: 'land' });
         const today = new Date().toISOString().slice(0, 10);
         const [tRes, totRes] = await Promise.allSettled([
-          sb.from('visits').select('*', { count: 'exact', head: true }).gte('created_at', today),
-          sb.from('visits').select('*', { count: 'exact', head: true }),
+          s.from('visits').select('*', { count: 'exact', head: true }).gte('created_at', today),
+          s.from('visits').select('*', { count: 'exact', head: true }),
         ]);
         set('f-today', tRes.status === 'fulfilled' ? tRes.value.count : null);
         set('f-total', totRes.status === 'fulfilled' ? totRes.value.count : null);
@@ -1940,7 +2021,9 @@
 
     // ── 데이터 로드 ──
     async function loadAll() {
-      const { data: { session } } = await sb.auth.getSession();
+      const s = await ensureSb();
+      let session = null;
+      if (s) { try { const r = await s.auth.getSession(); session = r.data.session; } catch (e) {} }
       user = session ? session.user : null;
       if (user) {
         $('who').textContent = user.email;
@@ -1952,7 +2035,7 @@
     }
 
     (function initSheet() { const h = $('sheet-handle'), p = document.querySelector('.panel'); if (h && p) h.addEventListener('click', () => p.classList.toggle('sheet-open')); })();
-    $('logout').addEventListener('click', async () => { await sb.auth.signOut(); location.href = 'index.html'; });
+    $('logout').addEventListener('click', async () => { const s = await ensureSb(); if (s) { try { await s.auth.signOut(); } catch (e) {} } location.href = 'index.html'; });
     $('profile-btn').addEventListener('click', (e) => { e.stopPropagation(); $('profile-menu').classList.toggle('on'); });
     document.addEventListener('click', () => $('profile-menu').classList.remove('on'));
     // ── 통합 검색 (검색엔진 선택에 따라 분기) ──
