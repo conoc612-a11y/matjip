@@ -111,6 +111,7 @@ function restaurantCard(r) {
   const tags = (r.tags || []).slice(0, 4).map((t) =>
     `<span style="font-size:11px;background:#f1f3f5;border-radius:10px;padding:2px 8px;margin:3px 3px 0 0;display:inline-block;">${esc(t)}</span>`).join('');
   const nq = encodeURIComponent(r.name);
+  const saved = savedIds.has(Number(r.id));
   return `<div style="min-width:210px;max-width:250px;">
     <div style="font-weight:700;font-size:15px;">${esc(r.name)}</div>
     <div style="font-size:12px;color:#8a9099;margin:3px 0 2px;">${esc(r.category || '')}${r.address ? ' · ' + esc(r.address) : ''}</div>
@@ -123,6 +124,7 @@ function restaurantCard(r) {
       <button onclick="setRoutePt('s',${r.lat},${r.lng})" style="flex:1;font:inherit;font-size:12px;padding:6px 0;border:1px solid #2f9e44;color:#2f9e44;background:#fff;border-radius:6px;cursor:pointer;">🚩 출발</button>
       <button onclick="setRoutePt('e',${r.lat},${r.lng})" style="flex:1;font:inherit;font-size:12px;padding:6px 0;border:1px solid #e03131;color:#e03131;background:#fff;border-radius:6px;cursor:pointer;">🏁 도착</button>
     </div>` : ''}
+    <button onclick="handleSave(this)" data-id="${r.id}" style="width:100%;margin-top:6px;font:inherit;font-size:12px;font-weight:700;padding:7px 0;border-radius:6px;cursor:pointer;${saved ? 'background:#2f9e44;border:1px solid #2f9e44;color:#fff;' : 'background:#fff;border:1px solid #2f9e44;color:#2f9e44;'}">${saved ? '★ 저장됨' : '☆ 즐겨찾기 저장'}</button>
   </div>`;
 }
 
@@ -496,6 +498,7 @@ async function handleSave(btn) {
   if (!error) { btn.style.background = 'var(--ok)'; savedIds.add(id); savedRev++; }
   btn.disabled = !!error;
 }
+window.handleSave = handleSave; // 지도 팝업/정보창의 인라인 onclick에서 사용
 
 // ── ⑩ 마커 클러스터링 (뷰포트 기반 커스텀) ────────────────────────────────
 // 네이버 MarkerClustering은 마커 1,300개를 전부 생성+재계산해 느리다.
@@ -506,9 +509,9 @@ let clusterReady = false;     // 데이터 로드 완료 전에는 그리지 않
 let markersOn = true;         // 맛집 마커 표시 여부
 
 function gridCellSize(zoom) { return 0.015 * Math.pow(2, 14 - zoom); } // 줌 12≈6.6km, 줌 17≈208m
-function clusterCountIcon(px) {
+function clusterCountIcon(px, count) {
   return {
-    content: `<div style="width:${px}px;height:${px}px;line-height:${px - 4}px;background:#2f9e44;border:2px solid #fff;border-radius:50%;color:#fff;text-align:center;font-weight:700;font-size:${px > 40 ? 15 : 12}px;box-shadow:0 1px 5px rgba(0,0,0,.4);"></div>`,
+    content: `<div style="width:${px}px;height:${px}px;line-height:${px - 4}px;background:#2f9e44;border:2px solid #fff;border-radius:50%;color:#fff;text-align:center;font-weight:700;font-size:${px > 40 ? 15 : 12}px;box-shadow:0 1px 5px rgba(0,0,0,.4);">${count}</div>`,
     size: new naver.maps.Size(px, px),
     anchor: new naver.maps.Point(px / 2, px / 2),
   };
@@ -544,7 +547,7 @@ function buildClusters() {
       const la = group.reduce((s, x) => s + x.lat, 0) / group.length;
       const lo = group.reduce((s, x) => s + x.lng, 0) / group.length;
       const px = Math.min(60, 30 + Math.round(Math.log2(group.length) * 6));
-      m = new naver.maps.Marker({ position: latLng(la, lo), map, title: group.length + '곳', icon: clusterCountIcon(px) });
+      m = new naver.maps.Marker({ position: latLng(la, lo), map, title: group.length + '곳', icon: clusterCountIcon(px, group.length) });
       naver.maps.Event.addListener(m, 'click', () => { map.setCenter(latLng(la, lo)); map.setZoom(map.getZoom() + 1); openClusterList(group, la, lo); });
     }
     m.__g = g;
