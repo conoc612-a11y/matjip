@@ -3,25 +3,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-
-const BASE = process.env.SUPABASE_URL || 'https://bhgijvaxxjnocgfnaaeu.supabase.co';
-const KEY = process.env.SUPABASE_ANON_KEY || 'sb_publishable_rYaGd3kk5UuFBe3TSpFA8g_uGHWwkqM';
-
-async function fetchRestaurants() {
-  const r = await fetch(`${BASE}/rest/v1/mj_restaurants?select=*`,
-    { headers: { apikey: KEY, Authorization: 'Bearer ' + KEY } });
-  if (!r.ok) throw new Error('Supabase ' + r.status);
-  return r.json();
-}
-function score(r, t) {
-  const want = new Set([...(t.flavor_tags || []), ...(t.situation_tags || [])]);
-  const hits = []; let s = 0;
-  (r.tags || []).forEach((x) => { if (want.has(x)) { s += 2; hits.push(x); } });
-  const sp = t.spicy_level ?? 2;
-  if (sp >= 3 && (r.tags || []).includes('매콤') && !hits.includes('매콤')) { s += 2; hits.push('매콤'); }
-  if (sp <= 1 && (r.tags || []).includes('담백') && !hits.includes('담백')) { s += 2; hits.push('담백'); }
-  return { score: s, hits };
-}
+import { fetchRestaurants, score } from "../tools/recommend.js";
 
 const server = new McpServer({ name: "matjip", version: "1.0.0" });
 

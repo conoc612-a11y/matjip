@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/recommend.js"></script>
   <style>
     :root { --c-primary:#1971c2; --c-price:#e8590c; --c-success:#2f9e44; --c-danger:#e03131; --c-text:#212529; --c-muted:#868e96; --c-border:#dee2e6; --c-bg:#f8f9fa; --c-card:#ffffff; --bg:var(--c-bg); --card:var(--c-card); --line:var(--c-border); --text:var(--c-text); --muted:var(--c-muted); --accent:var(--c-price); --ok:var(--c-success); }
     :root.dark { --bg:#1a1b1e; --card:#25262b; --line:#373a40; --text:#e9ecef; --muted:#909296; }
@@ -58,7 +59,10 @@
     .banner a { color:var(--accent); font-weight:600; }
     .search-inp { width:100%; font:inherit; padding:10px 12px; border:1px solid var(--line); border-radius:8px; margin-bottom:12px; }
     .search-inp:focus { outline:2px solid var(--accent); border-color:var(--accent); }
-
+    .tool-btn { font:inherit; font-size:12px; padding:6px 9px; border:1px solid var(--line); background:#fff; color:var(--text); border-radius:7px; cursor:pointer; }
+    .tool-btn:hover { border-color:var(--accent); color:var(--accent); }
+    .tool-btn.on { background:var(--accent); color:#fff; border-color:var(--accent); }
+    .kakao-back { background:none; border:none; color:var(--accent); cursor:pointer; font:inherit; padding:2px 0 10px; }
     .rec { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:10px; cursor:pointer; }
     .rec:hover { border-color:var(--accent); }
     .rec h3 { margin:0 0 4px; font-size:16px; }
@@ -134,6 +138,11 @@
     <div id="map"></div>
     <div class="panel">
       <div class="sheet-handle" id="sheet-handle" title="위로 올려서 목록 보기"></div>
+      <div id="engine-bar" style="display:flex;gap:4px;margin-bottom:6px;">
+        <button class="tool-btn on" data-engine="vworld">V-World</button>
+        <button class="tool-btn" data-engine="kakao">카카오</button>
+        <button class="tool-btn" data-engine="google">구글</button>
+      </div>
       <div style="display:flex;gap:6px;">
         <div class="ac-wrap" style="flex:9;">
           <input type="text" id="search" class="search-inp" style="margin-bottom:0;" placeholder="🔍 주소 · 지역명 · 정비구역명 검색 (Enter)" autocomplete="off" />
@@ -210,13 +219,30 @@
 
     // ── 카카오 실시간 장소검색 (REST API, 도메인 등록 불필요) ──
     const KAKAO_JS_KEY = '725e7ddf965a3ffff3da1f2ac771cc57'; // developers.kakao.com 앱 > 앱키 > JavaScript 키 (Web 도메인 등록 필요). 비우면 버튼 숨김.
-    let kakaoReady = false;
+    let kakaoReady = false, kakaoMarkers = [];
+    function clearKakaoMarkers() { kakaoMarkers.forEach((m) => map.removeLayer(m)); kakaoMarkers = []; }
     if (KAKAO_JS_KEY) {
       const ks = document.createElement('script');
       ks.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_JS_KEY}&libraries=services&autoload=false`;
       ks.onload = () => window.kakao && kakao.maps.load(() => { kakaoReady = true; });
       document.head.appendChild(ks);
     }
+
+    const GOOGLE_PLACES_KEY = ''; // Google Places API 키 (설정 시 구글 검색 활성화)
+    let searchEngine = 'vworld';
+    // ── 검색엔진 선택 ──
+    (function initEngineBar() {
+      if (!GOOGLE_PLACES_KEY) {
+        var gBtn = document.querySelector('#engine-bar .tool-btn[data-engine="google"]');
+        if (gBtn) gBtn.style.display = 'none';
+      }
+      document.querySelectorAll('#engine-bar .tool-btn').forEach(function (b) {
+        b.addEventListener('click', function () {
+          document.querySelectorAll('#engine-bar .tool-btn').forEach(function (x) { x.classList.remove('on'); });
+          b.classList.add('on'); searchEngine = b.dataset.engine;
+        });
+      });
+    })();
 
     // ── 지도 초기화 (서울 중심) ──
     // preferCanvas: 벡터(마커 9천개 + 폴리곤 정점 4.2만개)를 SVG DOM 대신 캔버스 1장에 그린다.
@@ -1419,6 +1445,8 @@
       } catch (e) { if (info) info.textContent = '경로 계산 실패(네트워크).'; }
     }
 
+    // ── 규칙기반 추천 점수 (js/recommend.js의 window.score 사용) ──
+
     function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
     // 외부 URL은 http/https만 허용(javascript:·data: 스킴 차단)
     function safeUrl(u) { u = String(u || ''); return /^https?:\/\//i.test(u) ? esc(u) : '#'; }
@@ -1597,8 +1625,18 @@
     $('logout').addEventListener('click', async () => { await sb.auth.signOut(); location.href = 'index.html'; });
     $('profile-btn').addEventListener('click', (e) => { e.stopPropagation(); $('profile-menu').classList.toggle('on'); });
     document.addEventListener('click', () => $('profile-menu').classList.remove('on'));
+    // ── 통합 검색 (검색엔진 선택에 따라 분기) ──
+    function runSearch() {
+      var q = $('search').value.trim();
+      if (!q) { alert('검색어를 입력해 주세요.'); return; }
+      $('ac').className = 'ac';
+      if (searchEngine === 'vworld') vworldSearch(q, 'place');
+      else if (searchEngine === 'kakao') runKakaoSearch(q);
+      else runGoogleSearch(q);
+    }
+
     $('search').addEventListener('input', () => { renderAC(); });
-    $('search').addEventListener('keydown', (e) => { if (e.key === 'Enter') { $('ac').className = 'ac'; vworldSearch($('search').value.trim(), 'place'); } });
+    $('search').addEventListener('keydown', (e) => { if (e.key === 'Enter') runSearch(); });
     $('search').addEventListener('blur', () => setTimeout(() => { $('ac').className = 'ac'; }, 150));
     function renderAC() {
       const raw = $('search').value.trim(), ac = $('ac');
@@ -1606,8 +1644,88 @@
       ac.innerHTML = `<div class="ac-item" data-place="1"><span>📍</span>'${esc(raw)}' 위치로 이동<span class="t">지명</span></div>`;
       ac.className = 'ac on';
       ac.querySelector('.ac-item').addEventListener('mousedown', (ev) => {
-        ev.preventDefault(); vworldSearch(raw, 'place'); ac.className = 'ac';
+        ev.preventDefault(); runSearch(); ac.className = 'ac';
       });
+    }
+
+    // ── 카카오 장소검색 ──
+    function runKakaoSearch(q) {
+      if (!kakaoReady) { alert('카카오 SDK가 로딩 중이에요. 잠시 후 다시 시도해 주세요.'); return; }
+      $('banner').textContent = '🔎 카카오 검색 중…';
+      var ps = new kakao.maps.services.Places();
+      ps.keywordSearch(q, function (data, status) {
+        if (status !== kakao.maps.services.Status.OK || !data.length) {
+          $('rec-list').innerHTML = '<button class="kakao-back" id="s-back">← 뒤로</button><div style="text-align:center;color:var(--muted);padding:24px 0;">카카오 검색 결과가 없어요.</div>';
+          var sbe = document.getElementById('s-back'); if (sbe) sbe.addEventListener('click', render);
+          return;
+        }
+        renderKakao(data);
+      });
+    }
+
+    function renderKakao(data) {
+      Object.values(markers).forEach((m) => map.removeLayer(m));
+      clearKakaoMarkers();
+      var back = '<button class="kakao-back" id="s-back">← 뒤로</button>';
+      $('rec-list').innerHTML = back + data.map(function (p, i) {
+        return '<div class="rec" data-i="' + i + '">' +
+          '<h3>' + esc(p.place_name) + '</h3>' +
+          '<div class="meta">' + esc((p.category_name || '').split('>').pop().trim()) + ' · ' + esc(p.road_address_name || p.address_name || '') + '</div>' +
+          '<div class="actions">' +
+          (p.place_url ? '<a href="' + safeUrl(p.place_url) + '" target="_blank" rel="noopener">카카오맵</a>' : '') +
+          '</div></div>';
+      }).join('');
+      var pts = [];
+      data.forEach(function (p) {
+        var m = L.marker([Number(p.y), Number(p.x)]).addTo(map).bindPopup('<b>' + esc(p.place_name) + '</b>');
+        kakaoMarkers.push(m); pts.push([Number(p.y), Number(p.x)]);
+      });
+      if (pts.length) map.fitBounds(pts, { padding: [40, 40], maxZoom: 16 });
+      var sbe = document.getElementById('s-back'); if (sbe) sbe.addEventListener('click', render);
+    }
+
+    // ── Google Places 검색 ──
+    async function runGoogleSearch(q) {
+      if (!GOOGLE_PLACES_KEY) { alert('Google Places API 키(GOOGLE_PLACES_KEY)를 설정해 주세요.'); return; }
+      $('banner').textContent = '🔎 Google 검색 중…';
+      try {
+        var r = await fetch('https://places.googleapis.com/v1/places:searchText', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': GOOGLE_PLACES_KEY, 'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.googleMapsUri' },
+          body: JSON.stringify({ textQuery: q, languageCode: 'ko' }),
+        });
+        var j = await r.json();
+        renderGoogle(j.places || []);
+      } catch (e) { alert('Google 검색에 실패했어요: ' + e); }
+    }
+
+    function renderGoogle(places) {
+      Object.values(markers).forEach((m) => map.removeLayer(m));
+      clearKakaoMarkers();
+      var back = '<button class="kakao-back" id="s-back">← 뒤로</button>';
+      if (!places.length) {
+        $('rec-list').innerHTML = back + '<div style="text-align:center;color:var(--muted);padding:24px 0;">Google 검색 결과가 없어요.</div>';
+        var sbe = document.getElementById('s-back'); if (sbe) sbe.addEventListener('click', render); return;
+      }
+      $('rec-list').innerHTML = back + places.map(function (p, i) {
+        var name = p.displayName && p.displayName.text || '';
+        var addr = p.formattedAddress || '';
+        return '<div class="rec" data-i="' + i + '">' +
+          '<h3>' + esc(name) + '</h3>' +
+          '<div class="meta">' + esc(addr) + '</div>' +
+          '<div class="actions">' +
+          (p.googleMapsUri ? '<a href="' + esc(p.googleMapsUri) + '" target="_blank" rel="noopener">Google Maps</a>' : '') +
+          '</div></div>';
+      }).join('');
+      var pts = [];
+      places.forEach(function (p) {
+        if (!p.location) return;
+        var lat = p.location.latitude, lng = p.location.longitude;
+        var m = L.marker([lat, lng]).addTo(map).bindPopup('<b>' + esc(p.displayName && p.displayName.text || '') + '</b>');
+        kakaoMarkers.push(m); pts.push([lat, lng]);
+      });
+      if (pts.length) map.fitBounds(pts, { padding: [40, 40], maxZoom: 16 });
+      var sbe = document.getElementById('s-back'); if (sbe) sbe.addEventListener('click', render);
     }
 
     loadAll();
