@@ -545,11 +545,25 @@ function buildClusters() {
       const lo = group.reduce((s, x) => s + x.lng, 0) / group.length;
       const px = Math.min(60, 30 + Math.round(Math.log2(group.length) * 6));
       m = new naver.maps.Marker({ position: latLng(la, lo), map, title: group.length + '곳', icon: clusterCountIcon(px) });
-      naver.maps.Event.addListener(m, 'click', () => { map.setCenter(latLng(la, lo)); map.setZoom(map.getZoom() + 1); });
+      naver.maps.Event.addListener(m, 'click', () => { map.setCenter(latLng(la, lo)); map.setZoom(map.getZoom() + 1); openClusterList(group, la, lo); });
     }
     m.__g = g;
     clusterPool.set(k, m);
   });
+}
+// 클러스터 팝업: 내부 식당 목록 표시 (동일 좌표 식당은 아무리 확대해도 분리되지 않으므로,
+// 줌인과 함께 목록을 열어 개별 식당 정보에 접근할 수 있게 한다)
+function openClusterList(group, la, lo) {
+  const rows = group.slice(0, 10).map((r) =>
+    `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid #f1f3f5;">
+      <div style="min-width:0;">
+        <div style="font-weight:700;font-size:13px;">${esc(r.name)}</div>
+        <div style="font-size:11px;color:#8a9099;">${esc(r.category || '')}${r.address ? ' · ' + esc(r.address) : ''}</div>
+      </div>
+      <a href="detail.html?id=${r.id}" style="white-space:nowrap;font-size:11px;color:#e8590c;text-decoration:none;">상세→</a>
+    </div>`).join('');
+  openInfo(latLng(la, lo),
+    `<div style="font-weight:700;font-size:13px;margin-bottom:3px;">이 근처 ${group.length}곳</div>${rows}${group.length > 10 ? `<div style="font-size:11px;color:#8a9099;padding:5px 0;">+ ${group.length - 10}곳 더 (확대해서 보세요)</div>` : ''}`);
 }
 function setClusterVisible(v) { clusterPool.forEach((m) => m.setMap(v ? map : null)); }
 
