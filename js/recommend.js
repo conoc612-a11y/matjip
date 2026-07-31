@@ -1,7 +1,10 @@
 // browser 전용 — <script src="js/recommend.js"> 로 포함
+// taste 객체별로 Set을 1회만 생성 (1,300곳 스코어링 반복 시 성능)
+const _tasteCache = new WeakMap();
 window.score = function score(r, taste) {
   if (!taste) return { score: 0, hits: [] };
-  const want = new Set([...(taste.flavor_tags || []), ...(taste.situation_tags || [])]);
+  let want = _tasteCache.get(taste);
+  if (!want) { want = new Set([...(taste.flavor_tags || []), ...(taste.situation_tags || [])]); _tasteCache.set(taste, want); }
   const hits = [];
   let s = 0;
   (r.tags || []).forEach(function (t) { if (want.has(t)) { s += 2; hits.push(t); } });
