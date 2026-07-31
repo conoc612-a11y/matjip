@@ -24,6 +24,7 @@
     :root.dark {
       --bg:#101216; --card:#1b1e25; --line:#2a2e37; --text:#e8ecf2; --muted:#8b93a3;
       --c-primary-soft:#1b2a40; --c-hover:#242a34; --c-border:#2a2e37; --c-bg:#101216;
+      --c-text:#e8ecf2; --c-muted:#8b93a3;
       --c-shadow:0 1px 3px rgba(0,0,0,.4); --c-shadow-lg:0 10px 30px rgba(0,0,0,.5);
     }
     * { box-sizing:border-box; }
@@ -122,7 +123,7 @@
     .sat-btn.on { background:var(--c-primary); color:#fff; border-color:var(--c-primary); }
     .rp-stat { font-size:11px; color:var(--muted); margin-top:5px; }
     /* ── Popup card system ── */
-    .pc { width:264px; padding:16px; box-sizing:border-box; }
+    .pc { width:min(264px, calc(100vw - 56px)); padding:16px; box-sizing:border-box; }
     .pc-head { font-weight:700; font-size:14px; margin-bottom:8px; display:flex; align-items:center; gap:6px; flex-wrap:wrap; line-height:1.35; color:var(--text); }
     .pc-body { font-size:12px; color:var(--muted); margin-bottom:12px; line-height:1.6; }
     .pc-body b { color:var(--text); }
@@ -135,9 +136,16 @@
     .pc-btn-row { display:flex; gap:7px; }
     .pc-btn-row .pc-btn { flex:1; }
     .pc-price { font-size:15px; font-weight:700; color:var(--c-price); margin-top:2px; }
+    /* ── Leaflet 팝업 (다크모드 배경 + 화면 크기에 맞는 크기) ── */
+    .leaflet-popup-content-wrapper { background:var(--card); color:var(--text); border-radius:12px; box-shadow:var(--c-shadow-lg); }
+    .leaflet-popup-content { max-height:min(62vh, 520px); overflow-y:auto; max-width:min(340px, calc(100vw - 40px)); }
+    .leaflet-popup-tip { background:var(--card); }
+    .leaflet-container a.leaflet-popup-close-button { color:var(--muted); }
+    /* 네이버 부동산 링크는 방문 후 색이 갈리면 안 보이므로 유지한다 */
+    a.pc-btn-primary:visited { color:#fff; }
     /* ── Stage chip bar ── */
-    #jb-stage-bar { position:absolute; bottom:18px; left:50%; transform:translateX(-50%); display:flex; gap:6px; padding:6px 10px; background:rgba(255,255,255,.96); border-radius:999px; box-shadow:var(--c-shadow-lg); z-index:900; max-width:90vw; overflow-x:auto; white-space:nowrap; }
-    .jb-chip { padding:5px 13px; border-radius:999px; border:1.5px solid var(--c-border); background:#fff; font-size:12px; cursor:pointer; font-family:inherit; color:var(--text); }
+    #jb-stage-bar { position:absolute; bottom:18px; left:50%; transform:translateX(-50%); display:flex; gap:6px; padding:6px 10px; background:var(--card); border-radius:999px; box-shadow:var(--c-shadow-lg); z-index:900; max-width:90vw; overflow-x:auto; white-space:nowrap; }
+    .jb-chip { padding:5px 13px; border-radius:999px; border:1.5px solid var(--c-border); background:var(--card); font-size:12px; cursor:pointer; font-family:inherit; color:var(--text); }
     .jb-chip.active { border-color:var(--c-primary); background:var(--c-primary); color:#fff; }
     /* ── Footer ── */
     .site-footer { flex:0.6; flex-shrink:0; background:var(--card); border-top:1px solid var(--line);
@@ -147,6 +155,8 @@
     .footer-links a:hover { color:var(--c-primary); }
     .footer-contact { font-size:11.5px; color:var(--muted); }
     .build-tag { opacity:.55; }
+    .footer-stats { display:flex; gap:14px; flex-wrap:wrap; font-size:11.5px; color:var(--muted); }
+    .footer-stats b { font-weight:600; color:var(--text); }
     @media (max-width:640px) {
       .layout { display:block; flex:none; }
       #map { height:100vh; min-height:0; }
@@ -207,6 +217,8 @@
         <button class="fav-cat" data-cat="아파트">아파트</button>
         <button class="fav-cat" data-cat="다세대">다세대</button>
         <button class="fav-cat" data-cat="연립">연립</button>
+        <button class="fav-cat" data-cat="단독·다가구">단독·다가구</button>
+        <button class="fav-cat" data-cat="기타">기타</button>
       </div>
       <div class="banner" id="banner"></div>
       <div id="recent" style="display:none;"></div>
@@ -222,9 +234,14 @@
       <a href="#">이용안내</a>
       <a href="#">이용방법 및 장애문의</a>
     </div>
+    <div class="footer-stats">
+      <span>회원수 <b id="f-members">—</b></span>
+      <span>오늘방문자 <b id="f-today">—</b></span>
+      <span>누적방문자 <b id="f-total">—</b></span>
+    </div>
     <div class="footer-contact">호룡리싱앤리얼리티 &nbsp;·&nbsp; 오재호 010.4353.6501 &nbsp;·&nbsp; conoc@naver.com
       <!-- 빌드 태그: 브라우저가 옛 파일을 캐시하고 있는지 한눈에 확인하는 용도. 배포마다 올린다. -->
-      &nbsp;·&nbsp; <span class="build-tag">build 2026-07-31-b17</span></div>
+      &nbsp;·&nbsp; <span class="build-tag">build 2026-07-31-b20</span></div>
   </footer>
 
   <script>
@@ -328,15 +345,39 @@
         cancel: pick(r, 'cancel') ? 1 : 0, lease: pick(r, 'lease') ? 1 : 0,
       }));
     }
+    // realprice_apt.json 이 없는 동안 매 로드마다 404 를 헛으로 쏘지 않도록,
+    // 404 (파일 진짜 부재)를 세션 동안 기억한다. 배포로 파일이 생기면 6시간 안에
+    // 그 사실만으로 못 보게 되는 건 막고 싶어 TTL 을 준다. 네트워크 오류는 404 가
+    // 아니므로 캐시하지 않는다 — 일시 장애가 '파일 없음'으로 고착되는 것을 방지.
+    const APT_MISS_KEY = 'rp_apt_missing', APT_MISS_TTL = 6 * 3600 * 1000;
+    function aptMissingCached() {
+      try {
+        const v = sessionStorage.getItem(APT_MISS_KEY);
+        const t = Number(v);
+        return Boolean(v) && Number.isFinite(t) && Date.now() - t < APT_MISS_TTL;
+      } catch (e) { return false; }
+    }
     function loadRp() {
       if (_rpPromise) return _rpPromise;
-      _rpPromise = fetch('realprice_apt.json')
-        .then((r) => (r.ok ? r.json() : Promise.reject(new Error('no apt file'))))
-        .then((j) => { rpSource = 'apt'; rpRows = decodeCompactRp(j); return rpRows; })
-        .catch(() => fetch('realprice_seoul_gg.json')
-          .then((r) => r.json())
-          .then((rows) => { rpSource = 'legacy'; rpRows = rows; return rows; })
-          .catch(() => null));
+      const tryApt = !aptMissingCached();
+      _rpPromise = (tryApt
+        ? fetch('realprice_apt.json')
+        : Promise.reject({ _missing: true }))
+        .then((r) => {
+          if (r.ok) return r.json();
+          const e = new Error('no apt file'); e._missing = true; throw e;
+        })
+        .then((j) => {
+          try { sessionStorage.removeItem(APT_MISS_KEY); } catch (e) {}
+          rpSource = 'apt'; rpRows = decodeCompactRp(j); return rpRows;
+        })
+        .catch((err) => {
+          if (err && err._missing) { try { sessionStorage.setItem(APT_MISS_KEY, String(Date.now())); } catch (e) {} }
+          return fetch('realprice_seoul_gg.json')
+            .then((r) => r.json())
+            .then((rows) => { rpSource = 'legacy'; rpRows = rows; return rows; })
+            .catch(() => null);
+        });
       return _rpPromise;
     }
     let rpRows = null;  // 실거래가 원본 (실거래가 레이어 켜면 로드됨) — 지도 클릭 정보/근처 실거래에서 참조. VWORLD 블록보다 먼저 선언(TDZ 방지)
@@ -537,6 +578,7 @@
         villaCluster.addLayers(villaRows.filter((d) => inPrice(d.priceEok) && inAge(d.build)).map((d) => {
           const m = L.circleMarker([d.lat, d.lng], { radius: 4, color: '#fff', weight: 1, fillColor: ageColor(d.build), fillOpacity: 0.9 });
           m._rp = d;                       // 아파트 마커와 같은 키를 쓴다 → 저장·길찾기·거리뷰 핸들러 공용
+          m._isVilla = 1;                  // 팝업의 '구 데이터' 배지를 아파트(구폴백)에만 붙이기 위한 표시
           m._pop = (() => villaPopupHtml(d));
           return m;
         }));
@@ -565,7 +607,7 @@
         const paint = () => {
           const on = isPropSaved(d);
           btn.textContent = on ? '저장됨 · 해제' : '저장';
-          btn.style.background = on ? 'var(--c-primary)' : '#fff';
+          btn.style.background = on ? 'var(--c-primary)' : 'var(--card)';
           btn.style.color = on ? '#fff' : 'var(--c-primary)';
           btn.style.borderColor = 'var(--c-primary)';
         };
@@ -577,6 +619,18 @@
         const svBtn = node.querySelector('.sv-btn');
         if (svBtn) svBtn.onclick = () => showStreetView(d.lat, d.lng);
         enrichAptName(node, d.name, d.dong || d.gu, d.lat, d.lng);  // '두산' → '두산1단지아파트'
+        // 아파트가 구 폴백 파일(realprice_seoul_gg.json)로 뜨는 동안엔 투자 판단에 중요한 한계를 알린다.
+        // 좌표가 근사값이라 실제 건물과 어긋날 수 있고, 전세가율·거래유형 필드가 없어 보이지 않는다.
+        // realprice_apt.json 이 배포되면 rpSource='apt' 가 되어 이 배지는 자동으로 사라진다.
+        if (rpSource === 'legacy' && !m._isVilla) {
+          const body = node.querySelector('.pc-body');
+          if (body) {
+            const n = document.createElement('div');
+            n.style.cssText = 'margin-top:4px;font-size:10px;color:var(--c-price);';
+            n.textContent = '구 데이터 — 좌표 근사 · 전세가율/거래유형 미제공';
+            body.appendChild(n);
+          }
+        }
         // 반경 700m 실거래 통계
         if (rpRows && rpRows.length) {
           let cnt700 = 0, sum = 0, sumCnt = 0;
@@ -609,7 +663,7 @@
         const g = jbGroup(d.gubun), c = JB_COLOR[g];
         const stageBadge = d.stage ? `<span style="display:inline-block;background:${stageColor(d.stage)};color:#fff;font-size:11px;padding:2px 8px;border-radius:999px;margin-left:4px;">${esc(d.stage)}</span>` : '';
         const linkBtns = (d.rc || d.cafe) ? `<div class="pc-btn-row">${d.rc ? `<a href="https://urban.seoul.go.kr/view/map/mapPopup.html?recordCode=${encodeURIComponent(d.rc)}" target="_blank" rel="noopener" class="pc-btn pc-btn-outline" style="border-color:#7048e8 !important;color:#7048e8;">경계지도</a>` : ''}${d.cafe ? `<a href="https://cleanup.seoul.go.kr/cafe/mainIndx.do?cafeUrl=${encodeURIComponent(d.cafe)}" target="_blank" rel="noopener" class="pc-btn pc-btn-outline" style="border-color:var(--c-primary) !important;color:var(--c-primary);">정보공개</a>` : ''}</div>` : '';
-        return `<div class="pc"><div class="pc-head"><span style="display:inline-block;background:${c};color:#fff;font-size:11px;padding:2px 8px;border-radius:999px;">${g}</span>${stageBadge}</div><div class="pc-body"><div style="font-weight:700;font-size:14px;margin-bottom:2px;color:var(--c-text);">${esc(d.name)}</div><div>${esc(d.gu)} ${esc(d.jibun)}${d.approx ? ' <span style="color:var(--c-price);">(동 근사위치)</span>' : ''}</div><div style="font-size:11px;color:var(--c-muted);margin-top:3px;">사업구분: ${esc(d.gubun)}${d.method ? ' · ' + esc(d.method) : ''}</div><div style="margin:8px 0 4px;"><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--c-muted);margin-bottom:3px;"><span>진행단계</span><span>${stagePct(d.stage)}%</span></div><div style="height:5px;background:#e9ecef;border-radius:3px;overflow:hidden;"><div style="height:100%;width:${stagePct(d.stage)}%;background:${stageColor(d.stage)};border-radius:3px;transition:width .3s;"></div></div></div><div class="jb-rp-stat rp-stat" style="display:none;padding:5px 0;border-top:1px solid var(--c-border);"></div></div><div class="pc-actions">${linkBtns}<div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline" style="border-color:var(--c-success) !important;color:var(--c-success);">출발</button><button class="rt-end pc-btn pc-btn-outline" style="border-color:var(--c-danger) !important;color:var(--c-danger);">도착</button></div><button class="sv-btn pc-btn pc-btn-outline">거리뷰</button></div></div>`;
+        return `<div class="pc"><div class="pc-head"><span style="display:inline-block;background:${c};color:#fff;font-size:11px;padding:2px 8px;border-radius:999px;">${g}</span>${stageBadge}</div><div class="pc-body"><div style="font-weight:700;font-size:14px;margin-bottom:2px;color:var(--c-text);">${esc(d.name)}</div><div>${esc(d.gu)} ${esc(d.jibun)}${d.approx ? ' <span style="color:var(--c-price);">(동 근사위치)</span>' : ''}</div><div style="font-size:11px;color:var(--c-muted);margin-top:3px;">사업구분: ${esc(d.gubun)}${d.method ? ' · ' + esc(d.method) : ''}</div><div style="margin:8px 0 4px;"><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--c-muted);margin-bottom:3px;"><span>진행단계</span><span>${stagePct(d.stage)}%</span></div><div style="height:5px;background:var(--line);border-radius:3px;overflow:hidden;"><div style="height:100%;width:${stagePct(d.stage)}%;background:${stageColor(d.stage)};border-radius:3px;transition:width .3s;"></div></div></div><div class="jb-rp-stat rp-stat" style="display:none;padding:5px 0;border-top:1px solid var(--c-border);"></div></div><div class="pc-actions">${linkBtns}<div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline" style="border-color:var(--c-success) !important;color:var(--c-success);">출발</button><button class="rt-end pc-btn pc-btn-outline" style="border-color:var(--c-danger) !important;color:var(--c-danger);">도착</button></div><button class="sv-btn pc-btn pc-btn-outline">거리뷰</button></div></div>`;
       }
       // ── 폴리곤 링 정제 ──────────────────────────────────────────
       // 원본 데이터에 두 종류의 쓰레기가 섞여 있다. 둘 다 "선만 보이는 폴리곤"의 원인이다.
@@ -995,8 +1049,12 @@
     // V-World 지적의 addr('서울특별시 관악구 봉천동 459-8')에서 '관악구 봉천동' 을 뽑는다.
     // 집계 파일의 키가 이 형식이다.
     function guDongKey(addr) {
+      const g = addrGuDong(addr);
+      return g.gu && g.dong ? `${g.gu} ${g.dong}` : null;
+    }
+    function addrGuDong(addr) {
       const m = String(addr || '').match(/(\S+구)\s+(\S+?[동가])(?:\s|$)/);
-      return m ? `${m[1]} ${m[2]}` : null;
+      return m ? { gu: m[1], dong: m[2] } : { gu: '', dong: '' };
     }
     function houseStatHtml(st) {
       if (!st) return '';
@@ -1107,12 +1165,13 @@
     //  3) 대장에 기록이 없을 때에 한해 V-World 건물정보를 폴백으로 부른다
     // 예전엔 V-World 3종을 무조건 받았는데, 대장이 나오면 LT_C_BLDGINFO 는 쓰이지도
     // 않고 화면에 중복만 만들었다. 일반적인 경우 호출이 3회 → 2회로 줄었다.
-    function fillLandInfo(popupEl, getPopup, lat, lng) {
+    function fillLandInfo(popupEl, getPopup, lat, lng, onInfo) {
       const slot = popupEl && popupEl.querySelector('.bld-info');
       if (!slot) return;
       const st = { zone: '', parcel: null, br: null, bld: null, house: null };
       const render = () => {
         slot.innerHTML = landInfoHtml(st);
+        if (onInfo) onInfo(st);
         const p = getPopup();
         repanPopup(p);  // update() 를 쓰면 방금 꽂은 내용이 지워진다
       };
@@ -1267,11 +1326,52 @@
           if (!clickMarker) return;
           const bldHtml = bldName ? `<div style="font-weight:700;font-size:14px;margin-bottom:2px;">${esc(bldName)}</div>` : '';
           const naverLand = addr ? `<a href="${naverSearchUrl(bldName || addr, lat, lng)}" target="_blank" rel="noopener" class="pc-btn pc-btn-primary">네이버 부동산 검색</a>` : '';
-          clickMarker.setPopupContent(`<div class="pc"><div class="pc-head">위치 정보</div><div class="pc-body">${bldHtml}<div>${addr ? esc(addr) : '주소를 찾지 못했어요'}</div><div style="font-size:11px;color:var(--c-muted);margin-top:2px;">${lat.toFixed(5)}, ${lng.toFixed(5)}</div><div class="bld-info"></div><div class="poi-box" style="margin-top:6px;"><button class="poi-btn pc-btn pc-btn-outline" style="font-size:11px;padding:4px 8px;">이 부근 상호 보기</button></div>${nearHtml}${jbNearHtml}</div><div class="pc-actions">${naverLand}${rtBtns}</div></div>`).openPopup();
+          clickMarker.setPopupContent(`<div class="pc"><div class="pc-head">위치 정보</div><div class="pc-body">${bldHtml}<div>${addr ? esc(addr) : '주소를 찾지 못했어요'}</div><div style="font-size:11px;color:var(--c-muted);margin-top:2px;">${lat.toFixed(5)}, ${lng.toFixed(5)}</div><div class="bld-info"></div><div class="poi-box" style="margin-top:6px;"><button class="poi-btn pc-btn pc-btn-outline" style="font-size:11px;padding:4px 8px;">이 부근 상호 보기</button></div>${nearHtml}${jbNearHtml}</div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline">저장</button>${naverLand}${rtBtns}</div></div>`).openPopup();
           bindRtBtns();
           // 건축물 용도·층수·연면적·사용승인일을 비동기로 채운다 (아파트가 아닌 건물의 정체를 알려주는 핵심 정보)
           const _pel = clickMarker.getPopup().getElement();
-          fillLandInfo(_pel, () => clickMarker && clickMarker.getPopup(), lat, lng);
+          // ── 클릭 지점 즐겨찾기 저장/취소 ──
+          // 아파트 기록은 name|동|거래일|면적|층 기반 id 를 쓰지만, 클릭 저장은 시세 정보가 없어
+          // 같은 지번에 여러 번 눌러도 하나로 묶이도록 좌표 기반 id 를 쓴다.
+          // 건축물 정보가 뒤늦게 오면 유형·층수·연면적·건축년도를 이미 저장된 항목에 갱신한다.
+          let clickPropInfo = null;
+          const clickPropRec = () => {
+            const st = clickPropInfo || {};
+            const br = st.br, bld = st.bld;
+            const yr = br ? (String(br.useAprDay || '').slice(0, 4) || null)
+                      : (bld ? (String(bld.useapr_day || '').slice(0, 4) || null) : null);
+            const area = br ? (Number(br.totArea) || null) : (bld ? (Number(bld.totalarea) || null) : null);
+            const floor = br ? (Number(br.grndFlrCnt) || null) : (bld ? (Number(bld.grnd_flr) || null) : null);
+            const gd = addrGuDong(addr);
+            return {
+              id: 'c' + lat.toFixed(5) + '|' + lng.toFixed(5),
+              name: bldName || (st.parcel && st.parcel.jibun) || '클릭한 위치',
+              gu: gd.gu, dong: gd.dong, lat, lng,
+              area, floor, build: yr || null, type: propType(st),
+            };
+          };
+          const refreshSaveBtn = () => {
+            const btn = saveBtn;
+            if (!btn) return;
+            const d = clickPropRec();
+            const a = loadSavedProps();
+            const ex = a.find((x) => x.id === propId(d));
+            if (ex) {
+              let changed = false;
+              ['type', 'build', 'area', 'floor', 'name'].forEach((k) => { if (d[k] != null && ex[k] !== d[k]) { ex[k] = d[k]; changed = true; } });
+              if (changed) saveSavedProps(a);
+            }
+            btn.textContent = ex ? '저장 해제' : '저장';
+            btn.style.background = ex ? 'var(--c-primary)' : 'var(--card)';
+            btn.style.color = ex ? '#fff' : 'var(--c-primary)';
+            btn.style.borderColor = 'var(--c-primary)';
+          };
+          const saveBtn = _pel && _pel.querySelector('.rp-save');
+          if (saveBtn) {
+            refreshSaveBtn();
+            saveBtn.onclick = () => { togglePropSave(clickPropRec()); refreshSaveBtn(); if (landMode === 'favorites') render(); };
+          }
+          fillLandInfo(_pel, () => clickMarker && clickMarker.getPopup(), lat, lng, (s) => { clickPropInfo = s; refreshSaveBtn(); });
           // 상호 조회는 카카오를 8번 부르므로 버튼을 눌렀을 때만 실행한다
           const poiBtn = _pel && _pel.querySelector('.poi-btn');
           if (poiBtn) poiBtn.onclick = () => {
@@ -1320,6 +1420,8 @@
 
     // 지도 우클릭 → 열린 팝업/클릭 마커 닫기
     map.on('contextmenu', (e) => { map.closePopup(); if (clickMarker) { map.removeLayer(clickMarker); clickMarker = null; } if (e.originalEvent) e.originalEvent.preventDefault(); });
+    // 확대/축소 후 열린 팝업이 화면 밖으로 밀려나지 않도록 위치를 다시 잡는다 (Leaflet은 zoomend 때 자동으로 안 함)
+    map.on('zoomend', () => { const p = map._popup; if (p) repanPopup(p); });
 
     // ── 길찾기: 출발/도착 + 도보(OSRM)·대중교통(ODsay)·자차(OSRM) ──
     const ODSAY_KEY = 'H4Vo/z04g/E+AUShnTQIiQ';
@@ -1499,7 +1601,36 @@
     const PROP_KEY = 'mj_saved_props';
     function loadSavedProps() { try { return JSON.parse(localStorage.getItem(PROP_KEY) || '[]'); } catch (e) { return []; } }
     function saveSavedProps(a) { try { localStorage.setItem(PROP_KEY, JSON.stringify(a)); } catch (e) {} }
-    function propId(d) { return `${d.name}|${d.dong}|${d.ymd}|${d.area}|${d.floor}`; }
+    function propId(d) { return d.id || `${d.name}|${d.dong}|${d.ymd}|${d.area}|${d.floor}`; }
+    // 즐겨찾기 유형 필터(아파트/연립/다세대/단독·다가구/기타)로 묶는다.
+    // 저장된 유형은 출처마다 표기가 제각각이라 정규화 없이는 필터가 동작하지 않는다.
+    function propGroup(t) {
+      t = t || '아파트';
+      if (t.includes('아파트')) return '아파트';
+      if (t.includes('연립')) return '연립';
+      if (t.includes('다세대')) return '다세대';
+      if (t.includes('단독') || t.includes('다가구') || t.includes('다중')) return '단독·다가구';
+      return '기타';
+    }
+    // 클릭 저장용 유형 추정. 건축물대장의 주용도(정확)를 우선하고,
+    // 대장에 기록이 없으면 V-World 건물정보의 용도 코드 계열로만 구분한다.
+    function propType(st) {
+      const br = st && st.br, bld = st && st.bld;
+      const purps = br && (br.mainPurpsCdNm || br.etcPurps || '');
+      if (purps) {
+        if (/아파트/.test(purps)) return '아파트';
+        if (/연립/.test(purps)) return '연립';
+        if (/다세대/.test(purps)) return '다세대';
+        if (/단독|다중|다가구/.test(purps)) return '단독·다가구';
+        return '기타';
+      }
+      if (bld && bld.usability) {
+        if (bld.usability === '01000') return '단독·다가구';
+        if (bld.usability === '02000') return '공동주택';
+        return '기타';
+      }
+      return '기타';
+    }
     function isPropSaved(d) { const id = propId(d); return loadSavedProps().some((x) => x.id === id); }
     function togglePropSave(d) {
       let a = loadSavedProps();
@@ -1548,29 +1679,34 @@
       Object.values(markers).forEach((m) => map.removeLayer(m));
       agentMarkers.forEach((m) => map.removeLayer(m)); agentMarkers = [];
       let list = loadSavedProps();
-      if (propCat !== '전체') list = list.filter((x) => (x.type || '아파트') === propCat);
-      $('banner').textContent = '저장한 부동산 목록이에요. (이 기기에 보관 · 실거래가 마커의 저장 버튼으로 추가)';
+      if (propCat !== '전체') list = list.filter((x) => propGroup(x.type) === propCat);
+      $('banner').textContent = '저장한 부동산 목록이에요. (이 기기에 보관 · 지도 클릭 팝업이나 실거래가 마커의 「저장」 버튼으로 추가)';
 
       const ctr = map.getCenter();
       const distLabel = (d) => { if (d.lat == null) return ''; const m = map.distance([d.lat, d.lng], [ctr.lat, ctr.lng]); const min = Math.max(1, Math.round(m / 1000 / 4.5 * 60)); return `${m >= 1000 ? (m / 1000).toFixed(1) + 'km' : Math.round(m) + 'm'} · 도보 ${min}분`; };
-      $('rec-list').innerHTML = list.length ? list.map((d, i) => `
+      $('rec-list').innerHTML = list.length ? list.map((d, i) => {
+        const spec = [d.area ? esc(d.area) + '㎡' : '', d.floor ? esc(d.floor) + '층' : ''].filter(Boolean).join(' · ');
+        const tags = [esc(d.type || '아파트'), '건축 ' + (d.build ? esc(d.build) + '년' : '연도 미상')];
+        if (d.ymd) tags.push('거래 ' + esc(d.ymd));
+        return `
         <div class="rec" data-i="${i}">
           <label class="cmp-check"><input type="checkbox" class="cmp" data-i="${i}" ${cmpSel.has(d.id) ? 'checked' : ''} /> 비교</label>
           <span class="score">${d.priceEok == null ? '' : d.priceEok + '억'}</span>
           <h3>${esc(d.name)}</h3>
-          <div class="meta">${esc(d.gu || '')} ${esc(d.dong || '')} · ${esc(d.area || '?')}㎡ · ${esc(d.floor || '?')}층</div>
+          <div class="meta">${esc(d.gu || '')} ${esc(d.dong || '')}${spec ? ' · ' + spec : ''}</div>
           <div class="meta" style="color:var(--muted);margin-top:2px;">${distLabel(d)}</div>
-          <div class="tags"><span class="tag">${esc(d.type || '아파트')}</span><span class="tag">건축 ${esc(d.build || '?')}년</span><span class="tag">거래 ${esc(d.ymd || '')}</span></div>
+          <div class="tags">${tags.map((t) => `<span class="tag">${t}</span>`).join('')}</div>
           <div class="actions">
             <button class="unsave" data-i="${i}">저장 해제</button>
           </div>
-        </div>`).join('')
-        : '<div style="text-align:center;color:var(--muted);padding:24px 0;">저장한 부동산이 없어요.<br>지도의 「아파트 실거래가」 마커를 클릭해 저장을 눌러보세요.</div>';
+        </div>`;
+      }).join('')
+        : '<div style="text-align:center;color:var(--muted);padding:24px 0;">저장한 부동산이 없어요.<br>지도를 클릭해 「저장」을 누르거나 실거래가 마커의 저장 버튼을 이용해보세요.</div>';
 
       list.forEach((d) => {
         if (d.lat == null || d.lng == null) return;
         const m = L.circleMarker([d.lat, d.lng], { radius: 7, color: '#fff', weight: 2, fillColor: '#e8590c', fillOpacity: 0.95 }).addTo(map)
-          .bindPopup(`<b>${esc(d.name)}</b><br>${esc(d.gu || '')} ${esc(d.dong || '')}<br>${d.priceEok == null ? '-' : d.priceEok + '억'}`);
+          .bindPopup(`<b>${esc(d.name)}</b><br>${esc(d.gu || '')} ${esc(d.dong || '')}<br>${d.priceEok == null ? '-' : d.priceEok + '억'}${d.type && d.type !== '아파트' ? '<br>' + esc(d.type) : ''}`);
         markers[d.id] = m;
       });
       const pts = list.map((d) => (d.lat != null ? [d.lat, d.lng] : null)).filter(Boolean);
@@ -1635,6 +1771,27 @@
       navigator.geolocation.getCurrentPosition((pos) => { $('geo-btn').style.opacity = ''; map.setView([pos.coords.latitude, pos.coords.longitude], 15); if (landMode === 'agents') renderAgents(); }, () => { $('geo-btn').style.opacity = ''; alert('위치 권한이 필요해요.'); });
     });
 
+    // ── 푸터 통계 ──
+    // 회원수 = taste_profiles, 방문자 = visits 테이블(페이지 로드마다 1건씩 기록).
+    // visits 테이블이 아직 없으면(스키마 미실행) 조용히 넘어가고 '—'로 남는다.
+    async function loadFooterStats() {
+      const set = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.textContent = v.toLocaleString(); };
+      try {
+        const { count: m } = await sb.from('taste_profiles').select('*', { count: 'exact', head: true });
+        set('f-members', m);
+      } catch (e) {}
+      try {
+        await sb.from('visits').insert({ page: 'land' });
+        const today = new Date().toISOString().slice(0, 10);
+        const [tRes, totRes] = await Promise.allSettled([
+          sb.from('visits').select('*', { count: 'exact', head: true }).gte('created_at', today),
+          sb.from('visits').select('*', { count: 'exact', head: true }),
+        ]);
+        set('f-today', tRes.status === 'fulfilled' ? tRes.value.count : null);
+        set('f-total', totRes.status === 'fulfilled' ? totRes.value.count : null);
+      } catch (e) {}
+    }
+
     // ── 데이터 로드 ──
     async function loadAll() {
       const { data: { session } } = await sb.auth.getSession();
@@ -1643,6 +1800,7 @@
         $('who').textContent = user.email;
         $('logout').style.display = '';
       }
+      loadFooterStats();
       render();
       renderRecent();
     }
