@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>맛집 탐방 — 부동산 지도</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
@@ -12,123 +13,171 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="js/recommend.js"></script>
   <style>
-    :root { --c-primary:#1971c2; --c-price:#e8590c; --c-success:#2f9e44; --c-danger:#e03131; --c-text:#212529; --c-muted:#868e96; --c-border:#dee2e6; --c-bg:#f8f9fa; --c-card:#ffffff; --bg:var(--c-bg); --card:var(--c-card); --line:var(--c-border); --text:var(--c-text); --muted:var(--c-muted); --accent:var(--c-price); --ok:var(--c-success); }
-    :root.dark { --bg:#1a1b1e; --card:#25262b; --line:#373a40; --text:#e9ecef; --muted:#909296; }
-    .recent-chip { display:inline-block; margin:2px 4px 2px 0; padding:3px 9px; border:1px solid var(--line); border-radius:12px; text-decoration:none; color:var(--text); background:var(--card); }
-    .recent-chip:hover { border-color:var(--accent); color:var(--accent); }
+    :root {
+      --c-primary:#1971c2; --c-primary-soft:#e7f0fb; --c-price:#d9480f;
+      --c-success:#2f9e44; --c-danger:#e03131; --c-text:#1f2937; --c-muted:#6b7280;
+      --c-border:#e5e7eb; --c-bg:#f3f5f8; --c-card:#ffffff; --c-hover:#f5f7fa;
+      --c-shadow:0 1px 3px rgba(16,24,40,.06); --c-shadow-lg:0 10px 30px rgba(16,24,40,.14);
+      --bg:var(--c-bg); --card:var(--c-card); --line:var(--c-border);
+      --text:var(--c-text); --muted:var(--c-muted); --accent:var(--c-primary); --ok:var(--c-success);
+    }
+    :root.dark {
+      --bg:#101216; --card:#1b1e25; --line:#2a2e37; --text:#e8ecf2; --muted:#8b93a3;
+      --c-primary-soft:#1b2a40; --c-hover:#242a34; --c-border:#2a2e37; --c-bg:#101216;
+      --c-shadow:0 1px 3px rgba(0,0,0,.4); --c-shadow-lg:0 10px 30px rgba(0,0,0,.5);
+    }
     * { box-sizing:border-box; }
-    html { height:100%; }
+    html, body { height:100%; }
     body { margin:0; background:var(--bg); color:var(--text);
-      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic",sans-serif;
-      height:100%; display:flex; flex-direction:column; }
-    header { display:flex; justify-content:space-between; align-items:center; padding:12px 16px;
+      font-family:"Pretendard",-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR","Malgun Gothic",sans-serif;
+      font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased;
+      display:flex; flex-direction:column; }
+    /* ── Header ── */
+    header { display:flex; justify-content:space-between; align-items:center; height:58px; padding:0 18px;
       background:var(--card); border-bottom:1px solid var(--line); position:sticky; top:0; z-index:1000; flex-shrink:0; }
-    header h1 { font-size:18px; margin:0; }
-    header .right { font-size:13px; color:var(--muted); display:flex; gap:10px; align-items:center; }
-    header a, header button { color:var(--accent); background:none; border:none; cursor:pointer; font:inherit; text-decoration:none; }
-    .nav-tab { color:var(--muted); padding:6px 10px; border-radius:7px; text-decoration:none; }
-    .nav-tab:hover { background:#f1f3f5; }
-    .nav-tab.active { background:var(--accent); color:#fff; }
+    .brand { display:flex; align-items:center; gap:9px; text-decoration:none; color:var(--text); }
+    .brand-mark { width:30px; height:30px; border-radius:8px; background:var(--c-primary); color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .brand-mark svg { width:17px; height:17px; }
+    .brand-title { font-size:16px; font-weight:700; margin:0; letter-spacing:-.2px; }
+    header .right { display:flex; gap:6px; align-items:center; font-size:13px; }
+    header a, header button { cursor:pointer; font:inherit; text-decoration:none; }
+    .nav-tab { color:var(--muted); padding:7px 12px; border-radius:8px; text-decoration:none; font-weight:500; border:none; background:none; transition:background .15s,color .15s; }
+    .nav-tab:hover { background:var(--c-hover); color:var(--text); }
+    .nav-tab.active { background:var(--c-primary); color:#fff; }
+    .icon-btn { width:34px; height:34px; border:none; background:var(--c-hover); color:var(--text); border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+    .icon-btn:hover { background:var(--line); }
     .profile { position:relative; }
-    .profile-menu { position:absolute; right:0; top:calc(100% + 6px); background:#fff; border:1px solid var(--line); border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,.12); min-width:170px; display:none; z-index:2000; overflow:hidden; }
+    .profile-tab { display:flex; align-items:center; gap:3px; }
+    .profile-menu { position:absolute; right:0; top:calc(100% + 8px); background:var(--card); border:1px solid var(--line); border-radius:12px; box-shadow:var(--c-shadow-lg); min-width:170px; display:none; z-index:2000; overflow:hidden; }
     .profile-menu.on { display:block; }
-    .profile-menu a, .profile-menu button { display:block; width:100%; text-align:left; padding:9px 12px; font:inherit; font-size:13px; color:var(--text); background:none; border:none; border-bottom:1px solid #f1f3f5; cursor:pointer; text-decoration:none; }
-    .profile-menu a:hover, .profile-menu button:hover { background:#f1f3f5; }
-    .ac-wrap { position:relative; }
-    .ac { position:absolute; left:0; right:0; top:100%; background:#fff; border:1px solid var(--accent); border-top:none; border-radius:0 0 8px 8px; z-index:1500; max-height:240px; overflow-y:auto; display:none; box-shadow:0 4px 10px rgba(0,0,0,.08); }
+    .profile-menu a, .profile-menu button { display:block; width:100%; text-align:left; padding:10px 14px; font:inherit; font-size:13px; color:var(--text); background:none; border:none; border-bottom:1px solid var(--line); cursor:pointer; text-decoration:none; }
+    .profile-menu a:hover, .profile-menu button:hover { background:var(--c-hover); }
+    /* ── Autocomplete ── */
+    .ac-wrap { position:relative; flex:1; }
+    .ac { position:absolute; left:0; right:0; top:calc(100% + 4px); background:var(--card); border:1px solid var(--line); border-radius:10px; z-index:1500; max-height:240px; overflow-y:auto; display:none; box-shadow:var(--c-shadow-lg); }
     .ac.on { display:block; }
-    .ac-item { padding:8px 12px; font-size:13px; cursor:pointer; display:flex; gap:8px; align-items:center; }
-    .ac-item:hover { background:#f1f3f5; }
+    .ac-item { padding:10px 14px; font-size:13px; cursor:pointer; display:flex; gap:8px; align-items:center; }
+    .ac-item:hover { background:var(--c-hover); }
     .ac-item .t { margin-left:auto; color:var(--muted); font-size:11px; }
     /* 지도를 최대한 크게. 세로 9.4:0.6(푸터), 가로 9:1(우측 패널).
        basis를 0으로 둬야 flex 비율이 그대로 화면 비율이 된다(basis가 남아 있으면 비율이 왜곡됨).
-       패널은 min-width로 하한만 둔다 — 9:1을 그대로 두면 넓은 화면에서 190px까지 줄어 카드가 깨진다. */
+       패널은 min-width로 하한만 둔다 — 9:1을 그대로 두면 넓은 화면에서 카드가 깨진다. */
     .layout { display:flex; flex-wrap:wrap; flex:9.4; min-height:0; overflow:hidden; }
     #map { flex:9 1 0; min-height:300px; }
-    .panel { flex:1 1 0; min-width:240px; overflow-y:auto; padding:10px 12px; }
-    .gps-btn { flex:1; min-width:42px; border:1px solid var(--line); background:#fff; color:var(--accent); border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
-    .gps-btn:hover { border-color:var(--accent); background:#fff4e6; }
-    .list-tabs { display:flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; margin:12px 0; }
-    .list-tab { flex:1; font:inherit; font-size:12px; padding:8px; border:none; background:#fff; color:var(--muted); cursor:pointer; }
-    .list-tab.active { background:var(--accent); color:#fff; }
-    .fav-cats { display:none; gap:6px; flex-wrap:wrap; margin:-4px 0 12px; }
+    .panel { flex:1 1 0; min-width:280px; overflow-y:auto; padding:14px 16px; }
+    /* ── Panel widgets ── */
+    .engine-bar { display:flex; gap:4px; margin-bottom:10px; background:var(--c-hover); padding:4px; border-radius:10px; }
+    .tool-btn { flex:1; font:inherit; font-size:12px; font-weight:600; padding:7px 10px; border:none; background:transparent; color:var(--muted); border-radius:7px; cursor:pointer; transition:all .15s; }
+    .tool-btn:hover { color:var(--text); }
+    .tool-btn.on { background:var(--card); color:var(--c-primary); box-shadow:var(--c-shadow); }
+    .search-row { display:flex; gap:8px; margin-bottom:12px; }
+    .search-inp { width:100%; font:inherit; font-size:13px; padding:11px 14px; border:1px solid var(--line); border-radius:10px; background:var(--card); color:var(--text); }
+    .search-inp::placeholder { color:var(--muted); }
+    .search-inp:focus { outline:2px solid var(--c-primary); outline-offset:-1px; border-color:var(--c-primary); }
+    .gps-btn { width:44px; flex-shrink:0; border:1px solid var(--line); background:var(--card); color:var(--c-primary); border-radius:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+    .gps-btn:hover { border-color:var(--c-primary); background:var(--c-primary-soft); }
+    .list-tabs { display:flex; background:var(--c-hover); border-radius:10px; padding:4px; margin:4px 0 14px; }
+    .list-tab { flex:1; font:inherit; font-size:12px; font-weight:600; padding:8px 6px; border:none; background:transparent; color:var(--muted); border-radius:7px; cursor:pointer; transition:all .15s; }
+    .list-tab.active { background:var(--card); color:var(--c-primary); box-shadow:var(--c-shadow); }
+    .fav-cats { display:none; gap:6px; flex-wrap:wrap; margin:-4px 0 14px; }
     .fav-cats.on { display:flex; }
-    .fav-cat { font:inherit; font-size:12px; padding:5px 12px; border:1px solid var(--line); background:#fff; color:var(--muted); border-radius:16px; cursor:pointer; }
-    .fav-cat.active { background:var(--accent); color:#fff; border-color:var(--accent); }
-    .banner { background:#fff4e6; border:1px solid #ffd8a8; color:#a85; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:12px; }
-    .banner a { color:var(--accent); font-weight:600; }
-    .search-inp { width:100%; font:inherit; padding:10px 12px; border:1px solid var(--line); border-radius:8px; margin-bottom:12px; }
-    .search-inp:focus { outline:2px solid var(--accent); border-color:var(--accent); }
-    .tool-btn { font:inherit; font-size:12px; padding:6px 9px; border:1px solid var(--line); background:#fff; color:var(--text); border-radius:7px; cursor:pointer; }
-    .tool-btn:hover { border-color:var(--accent); color:var(--accent); }
-    .tool-btn.on { background:var(--accent); color:#fff; border-color:var(--accent); }
-    .kakao-back { background:none; border:none; color:var(--accent); cursor:pointer; font:inherit; padding:2px 0 10px; }
-    .rec { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:10px; cursor:pointer; }
-    .rec:hover { border-color:var(--accent); }
-    .rec h3 { margin:0 0 4px; font-size:16px; }
+    .fav-cat { font:inherit; font-size:12px; padding:6px 14px; border:1px solid var(--line); background:var(--card); color:var(--muted); border-radius:999px; cursor:pointer; transition:all .15s; }
+    .fav-cat:hover { border-color:var(--c-primary); color:var(--c-primary); }
+    .fav-cat.active { background:var(--c-primary); color:#fff; border-color:var(--c-primary); }
+    .banner { background:var(--c-primary-soft); color:var(--text); padding:11px 14px; border-radius:10px; font-size:12.5px; margin-bottom:12px; line-height:1.55; }
+    .banner a { color:var(--c-primary); font-weight:600; }
+    #recent { font-size:12px; margin-bottom:12px; color:var(--muted); line-height:2; }
+    .recent-chip { display:inline-block; margin:2px 4px 2px 0; padding:3px 10px; border:1px solid var(--line); border-radius:999px; text-decoration:none; color:var(--text); background:var(--card); font-size:12px; }
+    .recent-chip:hover { border-color:var(--c-primary); color:var(--c-primary); }
+    #cmp-bar { background:var(--card); border:1px solid var(--line); border-left:3px solid var(--c-primary); border-radius:10px; padding:10px 14px; font-size:13px; margin-bottom:12px; box-shadow:var(--c-shadow); }
+    .kakao-back { background:none; border:none; color:var(--c-primary); cursor:pointer; font:inherit; padding:2px 0 10px; }
+    /* ── Result cards ── */
+    .rec { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin-bottom:10px; cursor:pointer; box-shadow:var(--c-shadow); transition:box-shadow .15s,border-color .15s,transform .15s; }
+    .rec:hover { border-color:var(--c-primary); box-shadow:var(--c-shadow-lg); transform:translateY(-1px); }
+    .rec h3 { margin:0 0 5px; font-size:15px; font-weight:600; letter-spacing:-.2px; }
     .rec .meta { font-size:12px; color:var(--muted); }
-    .rec .tags { margin:8px 0; display:flex; flex-wrap:wrap; gap:6px; }
-    .tag { font-size:11px; background:#f1f3f5; border-radius:12px; padding:3px 9px; }
-    .tag.hit { background:var(--accent); color:#fff; }
+    .rec .tags { margin:9px 0; display:flex; flex-wrap:wrap; gap:6px; }
+    .tag { font-size:11px; background:var(--c-hover); color:var(--muted); border-radius:999px; padding:3px 10px; font-weight:500; }
+    .tag.hit { background:var(--c-primary); color:#fff; }
     .rec .why { font-size:12px; color:var(--ok); margin:6px 0; min-height:15px; }
-    .rec .actions { display:flex; gap:8px; margin-top:8px; }
-    .rec .actions a, .rec .actions button { font-size:13px; padding:6px 10px; border-radius:7px; border:1px solid var(--line); cursor:pointer; background:#fff; color:var(--text); text-decoration:none; }
-    .rec .actions .save { background:var(--accent); color:#fff; border:none; }
-    .score { float:right; font-size:12px; color:var(--accent); font-weight:700; }
-    .cmp-check { float:right; font-size:11px; color:var(--muted); cursor:pointer; user-select:none; }
+    .rec .actions { display:flex; gap:8px; margin-top:10px; }
+    .rec .actions a, .rec .actions button { font-size:12px; font-weight:500; padding:7px 12px; border-radius:8px; border:1px solid var(--line); cursor:pointer; background:var(--card); color:var(--text); text-decoration:none; }
+    .rec .actions a:hover, .rec .actions button:hover { border-color:var(--c-primary); color:var(--c-primary); }
+    .rec .actions .save { background:var(--c-primary); color:#fff; border:none; }
+    .rec .actions .save:hover { color:#fff; }
+    .score { float:right; font-size:14px; color:var(--c-price); font-weight:700; margin-left:8px; }
+    .cmp-check { float:right; font-size:11px; color:var(--muted); cursor:pointer; user-select:none; margin-left:8px; }
     .sheet-handle { display:none; }
-    /* 푸터는 지도 공간을 최대한 양보. 3줄을 1줄로 합쳐 높이를 최소화한다. */
-    .site-footer { flex:0.6; flex-shrink:0; background:var(--card); border-top:1px solid var(--line);
-      padding:5px 16px; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:4px 14px; }
-    .footer-links { display:flex; gap:12px; flex-wrap:wrap; }
-    .footer-links a { font-size:11px; color:var(--muted); text-decoration:none; }
-    .footer-links a:hover { color:var(--accent); }
-    .footer-stats { display:flex; font-size:11px; color:var(--text); }
-    .footer-contact { font-size:11px; color:var(--muted); }
-    .footer-stats span { padding:0 10px; border-right:1px solid var(--line); }
-    .footer-stats span:first-child { padding-left:0; }
-    .footer-stats b { color:var(--accent); }
-    .footer-contact { font-size:12px; color:var(--muted); }
+    /* ── Leaflet custom controls ── */
+    .lc { background:var(--card); border:1px solid var(--line); border-radius:10px; box-shadow:var(--c-shadow); font-size:12px; color:var(--text); padding:11px 13px; line-height:1.7; max-width:215px; }
+    .lc-title { font-weight:700; font-size:12px; margin-bottom:7px; color:var(--text); letter-spacing:-.1px; }
+    .lc-check { display:block; cursor:pointer; font-size:12px; }
+    .lc-check input { vertical-align:middle; margin-right:5px; accent-color:var(--c-primary); }
+    .lc-sep { margin:9px 0 6px; padding-top:8px; border-top:1px solid var(--line); }
+    .lc-sub { font-weight:700; font-size:12px; margin-bottom:6px; }
+    .lc-dot { display:inline-block; width:9px; height:9px; border-radius:50%; vertical-align:middle; margin-right:5px; }
+    .jb-stage { font:inherit; font-size:10.5px; padding:3px 9px; border:1px solid var(--line); border-radius:999px; background:var(--card); color:var(--muted); cursor:pointer; }
+    .jb-stage.active { background:var(--c-primary); border-color:var(--c-primary); color:#fff; }
+    .sat-btn { padding:7px 10px; background:var(--card); border:1px solid var(--line); border-radius:8px; cursor:pointer; font-size:12px; font-weight:600; box-shadow:var(--c-shadow); color:var(--text); }
+    .sat-btn.on { background:var(--c-primary); color:#fff; border-color:var(--c-primary); }
+    .rp-stat { font-size:11px; color:var(--muted); margin-top:5px; }
     /* ── Popup card system ── */
-    .pc { width:240px; padding:14px; box-sizing:border-box; }
-    .pc-head { font-weight:700; font-size:14px; margin-bottom:6px; display:flex; align-items:center; gap:6px; flex-wrap:wrap; line-height:1.35; }
-    .pc-body { font-size:12px; color:var(--c-muted); margin-bottom:10px; line-height:1.5; }
-    .pc-actions { display:flex; flex-direction:column; gap:6px; }
-    .pc-btn { display:block; width:100%; padding:8px; border-radius:8px; font-family:inherit; font-size:13px; cursor:pointer; text-align:center; text-decoration:none; border:none; font-weight:500; box-sizing:border-box; }
-    .pc-btn-green { background:var(--c-success); color:#fff; }
-    .pc-btn-outline { border:1px solid var(--c-border) !important; background:#fff; color:var(--c-text); }
-    .pc-btn-row { display:flex; gap:6px; }
+    .pc { width:264px; padding:16px; box-sizing:border-box; }
+    .pc-head { font-weight:700; font-size:14px; margin-bottom:8px; display:flex; align-items:center; gap:6px; flex-wrap:wrap; line-height:1.35; color:var(--text); }
+    .pc-body { font-size:12px; color:var(--muted); margin-bottom:12px; line-height:1.6; }
+    .pc-body b { color:var(--text); }
+    .pc-actions { display:flex; flex-direction:column; gap:7px; }
+    .pc-btn { display:block; width:100%; padding:9px 10px; border-radius:8px; font-family:inherit; font-size:13px; font-weight:500; cursor:pointer; text-align:center; text-decoration:none; box-sizing:border-box; background:var(--card); border:1px solid var(--line); color:var(--text); transition:all .15s; }
+    .pc-btn:hover { border-color:var(--c-primary); color:var(--c-primary); }
+    .pc-btn-primary { background:var(--c-primary); color:#fff; border:1px solid var(--c-primary); }
+    .pc-btn-primary:hover { background:#1a63a8; color:#fff; }
+    .pc-btn-outline { background:var(--card); border:1px solid var(--line) !important; color:var(--c-text); }
+    .pc-btn-row { display:flex; gap:7px; }
     .pc-btn-row .pc-btn { flex:1; }
+    .pc-price { font-size:15px; font-weight:700; color:var(--c-price); margin-top:2px; }
     /* ── Stage chip bar ── */
-    #jb-stage-bar { position:absolute; bottom:16px; left:50%; transform:translateX(-50%); display:flex; gap:6px; padding:6px 10px; background:rgba(255,255,255,.95); border-radius:20px; box-shadow:0 2px 12px rgba(0,0,0,.15); z-index:900; max-width:90vw; overflow-x:auto; white-space:nowrap; }
-    .jb-chip { padding:5px 12px; border-radius:14px; border:1.5px solid var(--c-border); background:#fff; font-size:12px; cursor:pointer; font-family:inherit; }
+    #jb-stage-bar { position:absolute; bottom:18px; left:50%; transform:translateX(-50%); display:flex; gap:6px; padding:6px 10px; background:rgba(255,255,255,.96); border-radius:999px; box-shadow:var(--c-shadow-lg); z-index:900; max-width:90vw; overflow-x:auto; white-space:nowrap; }
+    .jb-chip { padding:5px 13px; border-radius:999px; border:1.5px solid var(--c-border); background:#fff; font-size:12px; cursor:pointer; font-family:inherit; color:var(--text); }
     .jb-chip.active { border-color:var(--c-primary); background:var(--c-primary); color:#fff; }
+    /* ── Footer ── */
+    .site-footer { flex:0.6; flex-shrink:0; background:var(--card); border-top:1px solid var(--line);
+      padding:7px 18px; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:4px 14px; }
+    .footer-links { display:flex; gap:14px; flex-wrap:wrap; }
+    .footer-links a { font-size:11.5px; color:var(--muted); text-decoration:none; }
+    .footer-links a:hover { color:var(--c-primary); }
+    .footer-contact { font-size:11.5px; color:var(--muted); }
+    .build-tag { opacity:.55; }
     @media (max-width:640px) {
       .layout { display:block; flex:none; }
       #map { height:100vh; min-height:0; }
-      .panel { position:fixed; left:0; right:0; bottom:0; max-height:82vh; height:auto; z-index:1200;
-        background:var(--card); border-radius:16px 16px 0 0; box-shadow:0 -4px 20px rgba(0,0,0,.18);
+      .panel { position:fixed; left:0; right:0; bottom:0; max-height:84vh; height:auto; z-index:1200;
+        background:var(--card); border-radius:18px 18px 0 0; box-shadow:0 -6px 24px rgba(0,0,0,.18);
         transform:translateY(calc(100% - 138px)); transition:transform .28s ease; }
       .panel.sheet-open { transform:translateY(0); }
-      .sheet-handle { display:block; text-align:center; padding:8px 0 6px; position:sticky; top:0; background:var(--card); border-radius:16px 16px 0 0; cursor:pointer; z-index:2; }
+      .sheet-handle { display:block; text-align:center; padding:8px 0 6px; position:sticky; top:0; background:var(--card); border-radius:18px 18px 0 0; cursor:pointer; z-index:2; }
       .sheet-handle::before { content:''; display:inline-block; width:42px; height:5px; border-radius:3px; background:#c1c4c9; }
       .site-footer { display:none; }
+      header { padding:0 12px; }
+      .brand-title { font-size:15px; }
     }
   </style>
 </head>
 <body>
   <header>
-    <a href="land.html" style="text-decoration:none;color:inherit;"><h1 style="cursor:pointer;">부동산 지도 🏙️</h1></a>
+    <a href="land.html" class="brand">
+      <span class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l7-4v18"/><path d="M19 21V11l-7-4"/></svg></span>
+      <span class="brand-title">부동산 지도</span>
+    </a>
     <div class="right">
-      <a href="main.html" class="nav-tab">🍜 맛집</a>
-      <a href="land.html" class="nav-tab active">🏙️ 부동산</a>
-      <button id="theme-btn" class="nav-tab" title="다크모드" aria-label="다크모드">🌙</button>
+      <a href="main.html" class="nav-tab">맛집</a>
+      <a href="land.html" class="nav-tab active">부동산</a>
+      <button id="theme-btn" class="icon-btn" title="다크모드" aria-label="다크모드"></button>
       <div class="profile">
-        <button id="profile-btn" class="nav-tab">👤 내 정보 ▾</button>
+        <button id="profile-btn" class="nav-tab profile-tab">내 정보 <span style="opacity:.6;">▾</span></button>
         <div id="profile-menu" class="profile-menu">
           <a href="#" id="who" style="color:var(--muted);font-size:11px;pointer-events:none;">로그인 안 됨</a>
-          <a href="onboarding.html">⚙️ 취향 설정</a>
-          <button id="logout" style="display:none;">🚪 로그아웃</button>
+          <a href="onboarding.html">취향 설정</a>
+          <button id="logout" style="display:none;">로그아웃</button>
         </div>
       </div>
     </div>
@@ -138,20 +187,20 @@
     <div id="map"></div>
     <div class="panel">
       <div class="sheet-handle" id="sheet-handle" title="위로 올려서 목록 보기"></div>
-      <div id="engine-bar" style="display:flex;gap:4px;margin-bottom:6px;">
+      <div id="engine-bar" class="engine-bar">
         <button class="tool-btn on" data-engine="vworld">V-World</button>
         <button class="tool-btn" data-engine="kakao">카카오</button>
       </div>
-      <div style="display:flex;gap:6px;">
-        <div class="ac-wrap" style="flex:9;">
-          <input type="text" id="search" class="search-inp" style="margin-bottom:0;" placeholder="🔍 주소 · 지역명 · 정비구역명 검색 (Enter)" autocomplete="off" />
+      <div class="search-row">
+        <div class="ac-wrap">
+          <input type="text" id="search" class="search-inp" placeholder="주소 · 지역명 · 정비구역명 검색 (Enter)" autocomplete="off" />
           <div id="ac" class="ac"></div>
         </div>
         <button id="geo-btn" class="gps-btn" title="내 위치" aria-label="내 위치"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="7"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"/></svg></button>
       </div>
       <div class="list-tabs">
-        <button class="list-tab" data-mode="favorites">⭐ 즐겨찾기</button>
-        <button class="list-tab active" data-mode="agents">🏢 인근 공인중개사 정보</button>
+        <button class="list-tab" data-mode="favorites">즐겨찾기</button>
+        <button class="list-tab active" data-mode="agents">인근 공인중개사</button>
       </div>
       <div class="fav-cats" id="fav-cats">
         <button class="fav-cat active" data-cat="전체">전체</button>
@@ -160,8 +209,8 @@
         <button class="fav-cat" data-cat="연립">연립</button>
       </div>
       <div class="banner" id="banner"></div>
-      <div id="recent" style="display:none;font-size:12px;margin-bottom:10px;color:var(--muted);"></div>
-      <div id="cmp-bar" style="display:none;background:#fff4e6;border:1px solid #ffd8a8;border-radius:8px;padding:8px 12px;font-size:13px;margin-bottom:10px;"></div>
+      <div id="recent" style="display:none;"></div>
+      <div id="cmp-bar" style="display:none;"></div>
       <div id="rec-list"></div>
     </div>
   </div>
@@ -173,14 +222,9 @@
       <a href="#">이용안내</a>
       <a href="#">이용방법 및 장애문의</a>
     </div>
-    <div class="footer-stats">
-      <span>회원수 <b id="f-members">—</b></span>
-      <span>오늘방문자 <b id="f-today">—</b></span>
-      <span>누적방문자 <b id="f-total">—</b></span>
-    </div>
     <div class="footer-contact">호룡리싱앤리얼리티 &nbsp;·&nbsp; 오재호 010.4353.6501 &nbsp;·&nbsp; conoc@naver.com
       <!-- 빌드 태그: 브라우저가 옛 파일을 캐시하고 있는지 한눈에 확인하는 용도. 배포마다 올린다. -->
-      &nbsp;·&nbsp; <span style="opacity:.6;">build 2026-07-29-b16</span></div>
+      &nbsp;·&nbsp; <span class="build-tag">build 2026-07-31-b17</span></div>
   </footer>
 
   <script>
@@ -190,7 +234,9 @@
     const $ = (id) => document.getElementById(id);
 
     // ── 다크모드 (localStorage 저장, 맛집 지도와 동일 키) ──
-    function applyTheme(dark) { document.documentElement.classList.toggle('dark', dark); const b = $('theme-btn'); if (b) b.textContent = dark ? '☀️' : '🌙'; }
+    const ICON_SUN = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>';
+    const ICON_MOON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+    function applyTheme(dark) { document.documentElement.classList.toggle('dark', dark); const b = $('theme-btn'); if (b) b.innerHTML = dark ? ICON_SUN : ICON_MOON; }
     applyTheme(localStorage.getItem('mj_theme') === 'dark');
     function initThemeBtn() { const b = $('theme-btn'); if (b) b.addEventListener('click', () => { const dark = !document.documentElement.classList.contains('dark'); localStorage.setItem('mj_theme', dark ? 'dark' : 'light'); applyTheme(dark); }); }
     initThemeBtn();
@@ -203,7 +249,7 @@
       const a = loadRecent(), el = $('recent'); if (!el) return;
       if (!a.length) { el.style.display = 'none'; return; }
       el.style.display = '';
-      el.innerHTML = '🕘 최근 본 곳: ' + a.map((x, i) => `<span class="recent-chip" data-i="${i}" style="cursor:pointer;">${esc(x.name)} <b class="recent-del" data-i="${i}" title="삭제" style="cursor:pointer;color:#e03131;margin-left:1px;">✕</b></span>`).join('') + ` <a href="#" class="recent-clear" style="color:var(--muted);font-size:11px;">전체삭제</a>`;
+      el.innerHTML = '최근 본 곳: ' + a.map((x, i) => `<span class="recent-chip" data-i="${i}" style="cursor:pointer;">${esc(x.name)} <b class="recent-del" data-i="${i}" title="삭제" style="cursor:pointer;color:#e03131;margin-left:1px;">✕</b></span>`).join('') + ` <a href="#" class="recent-clear" style="color:var(--muted);font-size:11px;">전체삭제</a>`;
       el.querySelectorAll('.recent-chip').forEach((c) => c.addEventListener('click', (e) => {
         if (e.target.closest('.recent-del')) return;
         e.preventDefault(); const x = a[Number(c.dataset.i)];
@@ -250,12 +296,12 @@
     const osmBase = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
       { maxZoom: 19, attribution: '© OpenStreetMap' });
     const baseLayers = VWORLD_KEY ? {
-      '🗺️ 일반지도': vTile('Base', 'png'),
-      '🛰️ 항공영상': vTile('Satellite', 'jpeg'),
-      '🏙️ 항공+라벨': L.layerGroup([vTile('Satellite', 'jpeg'), vTile('Hybrid', 'png')]),
-      'OSM(대체)': osmBase,
+      '일반지도': vTile('Base', 'png'),
+      '항공영상': vTile('Satellite', 'jpeg'),
+      '항공+라벨': L.layerGroup([vTile('Satellite', 'jpeg'), vTile('Hybrid', 'png')]),
+      'OSM (대체)': osmBase,
     } : { 'OSM': osmBase };
-    const defaultBase = baseLayers['🗺️ 일반지도'] || baseLayers['OSM'];
+    const defaultBase = baseLayers['일반지도'] || baseLayers['OSM'];
     defaultBase.addTo(map);
     // 기본(일반지도) 타일 실패 시 OSM 자동 대체
     if (VWORLD_KEY) { let fell = false; defaultBase.on('tileerror', () => { if (!fell) { fell = true; map.removeLayer(defaultBase); osmBase.addTo(map); } }); }
@@ -336,7 +382,7 @@
       // 토지거래허가구역(동 단위 근사) — 지정 동 경계 GeoJSON 색칠. 정확·최신은 land.seoul.go.kr.
       const tojiLayer = L.geoJSON(null, {
         style: { color: '#c92a2a', weight: 1, fillColor: '#e8590c', fillOpacity: 0.28 },
-        onEachFeature: (f, layer) => layer.bindTooltip(`🚫 토지거래허가구역 · ${f.properties.name}`, { sticky: true }),
+        onEachFeature: (f, layer) => layer.bindTooltip(`토지거래허가구역 · ${f.properties.name}`, { sticky: true }),
       });
       fetch('toji_heoga.geojson').then((r) => r.json()).then((gj) => tojiLayer.addData(gj)).catch(() => {});
 
@@ -365,16 +411,16 @@
         realpriceCluster.addLayers(rpRows.filter((d) => inPrice(d.priceEok) && inAge(d.build)).map((d) => {
           const m = L.circleMarker([d.lat, d.lng], { radius: 5, color: '#fff', weight: 1, fillColor: ageColor(d.build), fillOpacity: 0.9 });
           m._rp = d;
-          m._pop = (() => `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};flex-shrink:0;"></span><span class="rp-name">${esc(d.name)}</span></div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div><div style="font-size:15px;font-weight:700;color:var(--c-price);">💰 <span style="font-size:11px;background:var(--c-price);color:#fff;padding:1px 6px;border-radius:9px;vertical-align:2px;">매매</span> ${d.priceEok == null ? '-' : d.priceEok + '억'}</div><div style="margin-top:3px;">평단가: ${d.area && d.priceEok ? Math.round(d.priceEok * 10000 / d.area).toLocaleString() + '만원/㎡' : '-'}</div><div style="margin-top:3px;">${esc(d.area)}㎡ · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="margin-top:3px;">🏗️ ${esc(d.build || '?')}년 건축${parseInt(d.build) <= 1994 ? '<span style="background:#e03131;color:#fff;font-size:10px;padding:2px 7px;border-radius:10px;margin-left:6px;">🔨 재건축연한초과</span>' : ''}</div>${jeonseHtml(d, '평형 기준')}${rpFlagsHtml(d)}<div class="rp-radius-stat" style="display:none;font-size:11px;color:var(--c-muted);margin-top:4px;"></div></div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline" style="border-color:var(--c-price) !important;color:var(--c-price);">☆ 저장</button><a href="https://map.naver.com/p/search/${encodeURIComponent(d.name + ' ' + (d.dong || d.gu || ''))}?c=${d.lng},${d.lat},17,0,0,0,dh" target="_blank" rel="noopener" class="pc-btn pc-btn-green rp-naver">🏠 네이버 부동산</a><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline">🚩 출발</button><button class="rt-end pc-btn pc-btn-outline">🏁 도착</button></div><button class="sv-btn pc-btn pc-btn-outline">🛣️ 거리뷰</button></div></div>`);
+          m._pop = (() => `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};flex-shrink:0;"></span><span class="rp-name">${esc(d.name)}</span></div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div><div class="pc-price">매매 ${d.priceEok == null ? '-' : d.priceEok + '억'}</div><div style="margin-top:3px;">평단가: ${d.area && d.priceEok ? Math.round(d.priceEok * 10000 / d.area).toLocaleString() + '만원/㎡' : '-'}</div><div style="margin-top:3px;">${esc(d.area)}㎡ · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="margin-top:3px;">${esc(d.build || '?')}년 건축${parseInt(d.build) <= 1994 ? '<span style="background:#e03131;color:#fff;font-size:10px;padding:2px 8px;border-radius:999px;margin-left:6px;">재건축연한 초과</span>' : ''}</div>${jeonseHtml(d, '평형 기준')}${rpFlagsHtml(d)}<div class="rp-radius-stat rp-stat" style="display:none;"></div></div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline" style="border-color:var(--c-price) !important;color:var(--c-price);">저장</button><a href="https://map.naver.com/p/search/${encodeURIComponent(d.name + ' ' + (d.dong || d.gu || ''))}?c=${d.lng},${d.lat},17,0,0,0,dh" target="_blank" rel="noopener" class="pc-btn pc-btn-primary rp-naver">네이버 부동산</a><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline">출발</button><button class="rt-end pc-btn pc-btn-outline">도착</button></div><button class="sv-btn pc-btn pc-btn-outline">거리뷰</button></div></div>`);
           return m;
         }));
       }
       const rpFilterCtrl = L.control({ position: 'topleft' });
       rpFilterCtrl.onAdd = () => {
         const div = L.DomUtil.create('div');
-        div.style.cssText = 'background:#fff;padding:8px 10px;border-radius:8px;box-shadow:0 1px 5px rgba(0,0,0,.2);font-size:12px;';
-        div.innerHTML = '<div style="font-weight:700;margin-bottom:5px;">🏢 실거래가 필터</div>'
-          + '<label style="display:block;margin-bottom:4px;">실거래가 <select id="rp-price" style="font:inherit;font-size:12px;"><option value="all">전체</option><option value="u10">10억 이하</option><option value="10_20">10~20억</option><option value="20_30">20~30억</option><option value="o30">30억+</option></select></label>'
+        div.className = 'lc';
+        div.innerHTML = '<div class="lc-title">실거래가 필터</div>'
+          + '<label style="display:block;margin-bottom:6px;">실거래가 <select id="rp-price" style="font:inherit;font-size:12px;"><option value="all">전체</option><option value="u10">10억 이하</option><option value="10_20">10~20억</option><option value="20_30">20~30억</option><option value="o30">30억+</option></select></label>'
           + '<label style="display:block;">건축년도 <select id="rp-age" style="font:inherit;font-size:12px;"><option value="all">전체</option><option value="new">2015~ 신축</option><option value="mid">2000~2014</option><option value="old">2000 이전</option></select></label>';
         L.DomEvent.disableClickPropagation(div);
         return div;
@@ -382,9 +428,9 @@
       const rpLegend = L.control({ position: 'bottomright' });
       rpLegend.onAdd = () => {
         const div = L.DomUtil.create('div');
-        div.style.cssText = 'background:rgba(255,255,255,.94);padding:8px 10px;border-radius:8px;box-shadow:0 1px 5px rgba(0,0,0,.15);font-size:11px;line-height:1.6;';
-        const row = (c, t) => `<div><span style="display:inline-block;width:10px;height:10px;background:${c};border-radius:50%;margin-right:5px;"></span>${t}</div>`;
-        div.innerHTML = '<div style="font-weight:700;margin-bottom:3px;">건축년도(노후도)</div>' + row('#2f9e44', '신축 2015~') + row('#94d82d', '2005~2014') + row('#fab005', '1995~2004') + row('#fd7e14', '1985~1994') + row('#e03131', '노후 ~1984') + row('#868e96', '미상');
+        div.className = 'lc';
+        const row = (c, t) => `<div><span class="lc-dot" style="background:${c};"></span>${t}</div>`;
+        div.innerHTML = '<div class="lc-title">건축년도 (노후도)</div>' + row('#2f9e44', '신축 2015~') + row('#94d82d', '2005~2014') + row('#fab005', '1995~2004') + row('#fd7e14', '1985~1994') + row('#e03131', '노후 ~1984') + row('#868e96', '미상');
         return div;
       };
       // 가격·건축년도 필터와 노후도 범례는 아파트/연립다세대 두 레이어가 공용으로 쓴다.
@@ -439,7 +485,7 @@
       function jeonseHtml(d, note) {
         if (!(d.jeonse > 0) || !(d.jrate >= 20 && d.jrate <= 130)) return '';
         const col = d.jrate >= 80 ? 'var(--c-danger)' : d.jrate >= 65 ? 'var(--c-price)' : 'var(--c-success)';
-        return `<div style="margin-top:3px;">🔑 전세 ${d.jeonse}억 · 전세가율 <b style="color:${col};">${d.jrate}%</b>`
+        return `<div style="margin-top:3px;">전세 ${d.jeonse}억 · 전세가율 <b style="color:${col};">${d.jrate}%</b>`
           + (note ? ` <span style="font-size:10px;color:var(--c-muted);">${note}</span>` : '') + `</div>`;
       }
 
@@ -457,12 +503,12 @@
       function villaPopupHtml(d) {
         const ppm = d.area && d.priceEok ? Math.round(d.priceEok * 10000 / d.area).toLocaleString() + '만원/㎡' : '-';
         const oldTag = parseInt(d.build) <= 1994
-          ? '<span style="background:#e03131;color:#fff;font-size:10px;padding:2px 7px;border-radius:10px;margin-left:6px;">🔨 재건축연한초과</span>' : '';
+          ? '<span style="background:#e03131;color:#fff;font-size:10px;padding:2px 8px;border-radius:999px;margin-left:6px;">재건축연한 초과</span>' : '';
         // 12개월 거래가 여러 건이면 가격 범위를 함께 보여준다 (한 건물의 시세 폭을 알 수 있다)
         const range = d.cnt > 1 && d.pmax > d.pmin
-          ? `<div style="margin-top:3px;font-size:11px;color:var(--c-muted);">📊 12개월 ${d.cnt}건 · ${d.pmin}~${d.pmax}억</div>`
-          : `<div style="margin-top:3px;font-size:11px;color:var(--c-muted);">📊 12개월 ${d.cnt}건</div>`;
-        return `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};flex-shrink:0;"></span><span class="rp-name">${esc(d.name)}</span><span style="font-size:10px;background:var(--c-primary);color:#fff;padding:1px 6px;border-radius:9px;">${esc(d.type)}</span></div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div><div style="font-size:15px;font-weight:700;color:var(--c-price);">💰 <span style="font-size:11px;background:var(--c-price);color:#fff;padding:1px 6px;border-radius:9px;vertical-align:2px;">매매</span> ${d.priceEok}억</div><div style="margin-top:3px;">평단가: ${ppm}</div><div style="margin-top:3px;">${esc(d.area)}㎡ · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="margin-top:3px;">🏗️ ${esc(d.build)}년 건축${oldTag}</div>${jeonseHtml(d, '건물 기준 참고')}${range}<div class="rp-radius-stat" style="display:none;"></div></div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline" style="border-color:var(--c-price) !important;color:var(--c-price);">☆ 저장</button><a href="${naverSearchUrl(d.name + ' ' + (d.dong || d.gu || ''), d.lat, d.lng)}" target="_blank" rel="noopener" class="pc-btn pc-btn-green rp-naver">🏠 네이버 부동산</a><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline">🚩 출발</button><button class="rt-end pc-btn pc-btn-outline">🏁 도착</button></div><button class="sv-btn pc-btn pc-btn-outline">🛣️ 거리뷰</button></div></div>`;
+          ? `<div style="margin-top:3px;font-size:11px;color:var(--c-muted);">12개월 ${d.cnt}건 · ${d.pmin}~${d.pmax}억</div>`
+          : `<div style="margin-top:3px;font-size:11px;color:var(--c-muted);">12개월 ${d.cnt}건</div>`;
+        return `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};flex-shrink:0;"></span><span class="rp-name">${esc(d.name)}</span><span style="font-size:10px;background:var(--c-primary);color:#fff;padding:1px 8px;border-radius:999px;">${esc(d.type)}</span></div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div><div class="pc-price">매매 ${d.priceEok}억</div><div style="margin-top:3px;">평단가: ${ppm}</div><div style="margin-top:3px;">${esc(d.area)}㎡ · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="margin-top:3px;">${esc(d.build)}년 건축${oldTag}</div>${jeonseHtml(d, '건물 기준 참고')}${range}<div class="rp-radius-stat" style="display:none;"></div></div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline" style="border-color:var(--c-price) !important;color:var(--c-price);">저장</button><a href="${naverSearchUrl(d.name + ' ' + (d.dong || d.gu || ''), d.lat, d.lng)}" target="_blank" rel="noopener" class="pc-btn pc-btn-primary rp-naver">네이버 부동산</a><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline">출발</button><button class="rt-end pc-btn pc-btn-outline">도착</button></div><button class="sv-btn pc-btn pc-btn-outline">거리뷰</button></div></div>`;
       }
 
       let villaRows = null, _villaPromise = null;
@@ -518,9 +564,10 @@
         pushRecent({ key: propId(d), name: d.name, lat: d.lat, lng: d.lng });
         const paint = () => {
           const on = isPropSaved(d);
-          btn.textContent = on ? '⭐ 저장됨 (해제)' : '☆ 저장';
-          btn.style.background = on ? '#e8590c' : '#fff';
-          btn.style.color = on ? '#fff' : '#e8590c';
+          btn.textContent = on ? '저장됨 · 해제' : '저장';
+          btn.style.background = on ? 'var(--c-primary)' : '#fff';
+          btn.style.color = on ? '#fff' : 'var(--c-primary)';
+          btn.style.borderColor = 'var(--c-primary)';
         };
         paint();
         btn.onclick = () => { togglePropSave(d); paint(); if (landMode === 'favorites') render(); };
@@ -560,9 +607,9 @@
       function stagePct(s) { s=s||''; for(const [k,v] of Object.entries(STAGE_PCT)) { if(s.includes(k)) return v; } return 15; }
       function jbPopupHtml(d) {
         const g = jbGroup(d.gubun), c = JB_COLOR[g];
-        const stageBadge = d.stage ? `<span style="display:inline-block;background:${stageColor(d.stage)};color:#fff;font-size:11px;padding:2px 7px;border-radius:10px;margin-left:4px;">${esc(d.stage)}</span>` : '';
-        const linkBtns = (d.rc || d.cafe) ? `<div class="pc-btn-row">${d.rc ? `<a href="https://urban.seoul.go.kr/view/map/mapPopup.html?recordCode=${encodeURIComponent(d.rc)}" target="_blank" rel="noopener" class="pc-btn pc-btn-outline" style="border-color:#7048e8 !important;color:#7048e8;">🗺️ 경계지도</a>` : ''}${d.cafe ? `<a href="https://cleanup.seoul.go.kr/cafe/mainIndx.do?cafeUrl=${encodeURIComponent(d.cafe)}" target="_blank" rel="noopener" class="pc-btn pc-btn-outline" style="border-color:var(--c-primary) !important;color:var(--c-primary);">📂 정보공개</a>` : ''}</div>` : '';
-        return `<div class="pc"><div class="pc-head"><span style="display:inline-block;background:${c};color:#fff;font-size:11px;padding:2px 7px;border-radius:10px;">${g}</span>${stageBadge}</div><div class="pc-body"><div style="font-weight:700;font-size:14px;margin-bottom:2px;">${esc(d.name)}</div><div>${esc(d.gu)} ${esc(d.jibun)}${d.approx ? ' <span style="color:var(--c-price);">(동 근사위치)</span>' : ''}</div><div style="font-size:11px;color:#999;margin-top:3px;">사업구분: ${esc(d.gubun)}${d.method ? ' · ' + esc(d.method) : ''}</div><div style="margin:8px 0 4px;"><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--c-muted);margin-bottom:3px;"><span>진행단계</span><span>${stagePct(d.stage)}%</span></div><div style="height:5px;background:#e9ecef;border-radius:3px;overflow:hidden;"><div style="height:100%;width:${stagePct(d.stage)}%;background:${stageColor(d.stage)};border-radius:3px;transition:width .3s;"></div></div></div><div class="jb-rp-stat" style="display:none;font-size:11px;color:var(--c-muted);padding:5px 0;border-top:1px solid var(--c-border);"></div></div><div class="pc-actions">${linkBtns}<div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline" style="border-color:var(--c-success) !important;color:var(--c-success);">🚩 출발</button><button class="rt-end pc-btn pc-btn-outline" style="border-color:var(--c-danger) !important;color:var(--c-danger);">🏁 도착</button></div><button class="sv-btn pc-btn pc-btn-outline">🛣️ 거리뷰</button></div></div>`;
+        const stageBadge = d.stage ? `<span style="display:inline-block;background:${stageColor(d.stage)};color:#fff;font-size:11px;padding:2px 8px;border-radius:999px;margin-left:4px;">${esc(d.stage)}</span>` : '';
+        const linkBtns = (d.rc || d.cafe) ? `<div class="pc-btn-row">${d.rc ? `<a href="https://urban.seoul.go.kr/view/map/mapPopup.html?recordCode=${encodeURIComponent(d.rc)}" target="_blank" rel="noopener" class="pc-btn pc-btn-outline" style="border-color:#7048e8 !important;color:#7048e8;">경계지도</a>` : ''}${d.cafe ? `<a href="https://cleanup.seoul.go.kr/cafe/mainIndx.do?cafeUrl=${encodeURIComponent(d.cafe)}" target="_blank" rel="noopener" class="pc-btn pc-btn-outline" style="border-color:var(--c-primary) !important;color:var(--c-primary);">정보공개</a>` : ''}</div>` : '';
+        return `<div class="pc"><div class="pc-head"><span style="display:inline-block;background:${c};color:#fff;font-size:11px;padding:2px 8px;border-radius:999px;">${g}</span>${stageBadge}</div><div class="pc-body"><div style="font-weight:700;font-size:14px;margin-bottom:2px;color:var(--c-text);">${esc(d.name)}</div><div>${esc(d.gu)} ${esc(d.jibun)}${d.approx ? ' <span style="color:var(--c-price);">(동 근사위치)</span>' : ''}</div><div style="font-size:11px;color:var(--c-muted);margin-top:3px;">사업구분: ${esc(d.gubun)}${d.method ? ' · ' + esc(d.method) : ''}</div><div style="margin:8px 0 4px;"><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--c-muted);margin-bottom:3px;"><span>진행단계</span><span>${stagePct(d.stage)}%</span></div><div style="height:5px;background:#e9ecef;border-radius:3px;overflow:hidden;"><div style="height:100%;width:${stagePct(d.stage)}%;background:${stageColor(d.stage)};border-radius:3px;transition:width .3s;"></div></div></div><div class="jb-rp-stat rp-stat" style="display:none;padding:5px 0;border-top:1px solid var(--c-border);"></div></div><div class="pc-actions">${linkBtns}<div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline" style="border-color:var(--c-success) !important;color:var(--c-success);">출발</button><button class="rt-end pc-btn pc-btn-outline" style="border-color:var(--c-danger) !important;color:var(--c-danger);">도착</button></div><button class="sv-btn pc-btn pc-btn-outline">거리뷰</button></div></div>`;
       }
       // ── 폴리곤 링 정제 ──────────────────────────────────────────
       // 원본 데이터에 두 종류의 쓰레기가 섞여 있다. 둘 다 "선만 보이는 폴리곤"의 원인이다.
@@ -638,12 +685,12 @@
       const jbCtrl = L.control({ position: 'topleft' });
       jbCtrl.onAdd = () => {
         const div = L.DomUtil.create('div');
-        div.style.cssText = 'background:#fff;padding:8px 10px;border-radius:8px;box-shadow:0 1px 5px rgba(0,0,0,.2);font-size:12px;line-height:1.7;max-width:180px;';
-        div.innerHTML = '<div style="font-weight:700;margin-bottom:4px;">🏗️ 정비사업 유형</div>'
-          + Object.keys(JB_COLOR).map((g) => `<label style="display:block;cursor:pointer;"><input type="checkbox" class="jb-f" data-g="${g}" checked style="vertical-align:middle;"> <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${JB_COLOR[g]};"></span> ${g}</label>`).join('')
-          + '<div style="margin-top:8px;padding-top:7px;border-top:1px solid #eee;font-weight:700;margin-bottom:5px;">진행단계</div>'
+        div.className = 'lc';
+        div.innerHTML = '<div class="lc-title">정비사업 유형</div>'
+          + Object.keys(JB_COLOR).map((g) => `<label class="lc-check"><input type="checkbox" class="jb-f" data-g="${g}" checked> <span class="lc-dot" style="background:${JB_COLOR[g]};"></span> ${g}</label>`).join('')
+          + '<div class="lc-sep lc-sub">진행단계</div>'
           + '<div style="display:flex;flex-wrap:wrap;gap:4px;">'
-          + ['전체','추진위','조합설립','사업시행','관리처분','착공','준공'].map((s) => `<button class="jb-stage" data-s="${s}" style="font:inherit;font-size:10px;padding:3px 7px;border:1px solid #e6e8eb;border-radius:12px;background:${s === '전체' ? '#e8590c' : '#fff'};color:${s === '전체' ? '#fff' : '#555'};cursor:pointer;">${s}</button>`).join('')
+          + ['전체','추진위','조합설립','사업시행','관리처분','착공','준공'].map((s) => `<button class="jb-stage${s === '전체' ? ' active' : ''}" data-s="${s}">${s}</button>`).join('')
           + '</div>';
         L.DomEvent.disableClickPropagation(div);
         return div;
@@ -661,7 +708,7 @@
         if (!chip) return;
         jbActiveStage = chip.dataset.s === '전체' ? 'all' : chip.dataset.s;
         jbStageBar.querySelectorAll('.jb-chip').forEach((c) => c.classList.toggle('active', c === chip));
-        document.querySelectorAll('.jb-stage').forEach((b) => { const on = b.dataset.s === chip.dataset.s; b.style.background = on ? '#e8590c' : '#fff'; b.style.color = on ? '#fff' : '#555'; });
+        document.querySelectorAll('.jb-stage').forEach((b) => b.classList.toggle('active', b.dataset.s === chip.dataset.s));
         jbBuild();
       });
       map.on('overlayadd', (e) => {
@@ -673,7 +720,7 @@
             if (btn._w) return; btn._w = 1;
             btn.addEventListener('click', () => {
               jbActiveStage = btn.dataset.s === '전체' ? 'all' : btn.dataset.s;
-              document.querySelectorAll('.jb-stage').forEach((b) => { b.style.background = b === btn ? '#e8590c' : '#fff'; b.style.color = b === btn ? '#fff' : '#555'; });
+              document.querySelectorAll('.jb-stage').forEach((b) => b.classList.toggle('active', b === btn));
               jbStageBar.querySelectorAll('.jb-chip').forEach((c) => c.classList.toggle('active', c.dataset.s === btn.dataset.s));
               jbBuild();
             });
@@ -707,22 +754,22 @@
           });
           const statEl = node.querySelector('.jb-rp-stat');
           if (statEl && cnt > 0) {
-            statEl.innerHTML = `🏢 500m 내 아파트 ${cnt}건 · 평균 <b>${sumCnt ? Math.round(sum/sumCnt*10)/10 : '-'}억</b>${sumCnt>=2 ? ` (${minP}~${maxP}억)` : ''}`;
+            statEl.innerHTML = `500m 내 아파트 ${cnt}건 · 평균 <b>${sumCnt ? Math.round(sum/sumCnt*10)/10 : '-'}억</b>${sumCnt>=2 ? ` (${minP}~${maxP}억)` : ''}`;
             statEl.style.display = 'block';
           }
         }
       });
 
       const landOverlays = {
-        '🏗️ 정비사업(재개발·재건축)': jbCluster,
-        '🏢 아파트 실거래가·노후도': realpriceCluster,
-        '🏘️ 연립·다세대 실거래가': villaCluster,
-        '🚫 토지거래허가구역': tojiLayer,
-        '🗺️ 용도지역': wms('lt_c_uq111', 0.55),
-        '📐 지적도(필지 경계)': wms('lp_pa_cbnd_bubun', 0.6),
-        '🌳 개발제한구역(그린벨트)': wms('lt_c_ud801', 0.5),
-        '🏗️ 개발진흥지구': wms('lt_c_uq129', 0.5),
-        '📦 택지·사업지구': wms('lt_c_lhzone', 0.5),
+        '정비사업 (재개발·재건축)': jbCluster,
+        '아파트 실거래가·노후도': realpriceCluster,
+        '연립·다세대 실거래가': villaCluster,
+        '토지거래허가구역': tojiLayer,
+        '용도지역': wms('lt_c_uq111', 0.55),
+        '지적도 (필지 경계)': wms('lp_pa_cbnd_bubun', 0.6),
+        '개발제한구역 (그린벨트)': wms('lt_c_ud801', 0.5),
+        '개발진흥지구': wms('lt_c_uq129', 0.5),
+        '택지·사업지구': wms('lt_c_lhzone', 0.5),
       };
       L.control.layers(baseLayers, landOverlays, { collapsed: true, position: 'topright' }).addTo(map);
       // 항공영상 퀵토글
@@ -730,19 +777,19 @@
       satBtn.onAdd = () => {
         const b = L.DomUtil.create('button');
         b.title = '항공영상/일반지도 전환';
-        b.style.cssText = 'padding:5px 10px;background:#fff;border:1px solid rgba(0,0,0,.2);border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;box-shadow:0 1px 4px rgba(0,0,0,.2);';
-        b.textContent = '🛩️ 항공';
+        b.className = 'sat-btn';
+        b.textContent = '항공';
         let sat = false;
         b.onclick = () => {
           sat = !sat;
           if (sat) {
             Object.values(baseLayers).forEach(l => map.hasLayer(l) && map.removeLayer(l));
-            baseLayers['🏙️ 항공+라벨'] && baseLayers['🏙️ 항공+라벨'].addTo(map);
-            b.style.background = '#1971c2'; b.style.color = '#fff';
+            baseLayers['항공+라벨'] && baseLayers['항공+라벨'].addTo(map);
+            b.classList.add('on');
           } else {
             Object.values(baseLayers).forEach(l => map.hasLayer(l) && map.removeLayer(l));
             defaultBase.addTo(map);
-            b.style.background = '#fff'; b.style.color = '#000';
+            b.classList.remove('on');
           }
         };
         L.DomEvent.disableClickPropagation(b);
@@ -960,7 +1007,7 @@
       if (ar.length) rows.push(`<span style="color:var(--c-muted);">중앙값 ${ar.join(' · ')}</span>`);
       if (st.build) rows.push(`<span style="color:var(--c-muted);">건축년도 중앙값 ${st.build}년</span>`);
       return `<div style="margin-top:5px;padding-top:5px;border-top:1px dashed var(--c-border);">`
-        + `<b>🏠 이 동 단독·다가구 시세</b> <span style="font-size:10px;color:var(--c-muted);">최근 12개월</span><br>${rows.join('<br>')}</div>`;
+        + `<b>이 동 단독·다가구 시세</b> <span style="font-size:10px;color:var(--c-muted);">최근 12개월</span><br>${rows.join('<br>')}</div>`;
     }
 
     // Leaflet 의 popup.update() 는 저장된 _content 문자열로 innerHTML 을 다시 그린다.
@@ -997,7 +1044,7 @@
       }
 
       const oldTag = (yr) => (yr && parseInt(yr) <= 1994)
-        ? '<span style="background:#e03131;color:#fff;font-size:10px;padding:1px 6px;border-radius:9px;margin-left:5px;">🔨 30년↑</span>' : '';
+        ? '<span style="background:#e03131;color:#fff;font-size:10px;padding:1px 6px;border-radius:999px;margin-left:5px;">30년↑</span>' : '';
       const ageDot = (yr) => yr ? `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${ageColor(yr)};margin-right:5px;"></span>` : '';
 
       if (st.br) {
@@ -1050,7 +1097,7 @@
       const houseHtml = houseStatHtml(st.house);
       if (!rows.length && !houseHtml) return '';
       return `<div style="font-size:12px;margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">`
-        + (rows.length ? `<b>🏢 토지·건물 정보</b>${badge}<br>${rows.join('<br>')}` : '')
+        + (rows.length ? `<b>토지·건물 정보</b>${badge}<br>${rows.join('<br>')}` : '')
         + houseHtml + '</div>';
     }
 
@@ -1163,19 +1210,19 @@
     map.on('click', (e) => {
       const { lat, lng } = e.latlng;
       if (clickMarker) map.removeLayer(clickMarker);
-      clickMarker = L.marker([lat, lng]).addTo(map).bindPopup('📍 정보 불러오는 중…').openPopup();
+      clickMarker = L.marker([lat, lng]).addTo(map).bindPopup('정보 불러오는 중…').openPopup();
       // 안전장치: 예외나 응답 지연으로 팝업이 '불러오는 중…'에 갇히면 6초 뒤 최소 정보라도 보여준다.
       const _stuckGuard = setTimeout(() => {
         const pel = clickMarker && clickMarker.getPopup() && clickMarker.getPopup().getElement();
         if (!pel || !/불러오는 중/.test(pel.textContent)) return;
-        clickMarker.setPopupContent(`<div class="pc"><div class="pc-head">📍 위치 정보</div><div class="pc-body"><div>주소를 가져오지 못했어요</div><div style="font-size:11px;color:var(--c-muted);margin-top:2px;">${lat.toFixed(5)}, ${lng.toFixed(5)}</div></div><div class="pc-actions">${rtBtns}</div></div>`);
+        clickMarker.setPopupContent(`<div class="pc"><div class="pc-head">위치 정보</div><div class="pc-body"><div>주소를 가져오지 못했어요</div><div style="font-size:11px;color:var(--c-muted);margin-top:2px;">${lat.toFixed(5)}, ${lng.toFixed(5)}</div></div><div class="pc-actions">${rtBtns}</div></div>`);
         bindRtBtns();
       }, 6000);
       let best = null, bd = 1e9, cnt = 0;
       if (rpRows && rpRows.length) {
         rpRows.forEach((r) => { if (r.lat == null) return; const dist = kmDist(lat, lng, r.lat, r.lng); if (dist < 0.7) cnt++; if (dist < bd) { bd = dist; best = r; } });
       }
-      const rtBtns = `<div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline">🚩 출발</button><button class="rt-end pc-btn pc-btn-outline">🏁 도착</button></div><button class="sv-btn pc-btn pc-btn-outline">🛣️ 거리뷰</button>`;
+      const rtBtns = `<div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline">출발</button><button class="rt-end pc-btn pc-btn-outline">도착</button></div><button class="sv-btn pc-btn pc-btn-outline">거리뷰</button>`;
       const bindRtBtns = () => {
         clearTimeout(_stuckGuard);  // 실제 내용이 들어왔으니 안전장치 해제 (양쪽 성공 경로가 모두 여기를 지난다)
         const el = clickMarker && clickMarker.getPopup() && clickMarker.getPopup().getElement();
@@ -1197,30 +1244,30 @@
         if (best && bd < 1.5) {
           const npy = best.area && best.priceEok ? Math.round(best.priceEok * 10000 / best.area).toLocaleString() + '만원/㎡' : '';
           const nOld = parseInt(best.build) <= 1994
-            ? '<span style="background:#e03131;color:#fff;font-size:9px;padding:1px 5px;border-radius:8px;margin-left:4px;">🔨30년↑</span>' : '';
+            ? '<span style="background:#e03131;color:#fff;font-size:9px;padding:1px 5px;border-radius:8px;margin-left:4px;">30년↑</span>' : '';
           nearHtml = `<div style="font-size:12px;margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">`
-            + `<b>🏢 근처 아파트 실거래</b> <span style="font-size:10px;color:var(--c-muted);">참고 · 반경 700m ${cnt}건</span><br>`
+            + `<b>근처 아파트 실거래</b> <span style="font-size:10px;color:var(--c-muted);">참고 · 반경 700m ${cnt}건</span><br>`
             + `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${ageColor(best.build)};margin-right:5px;"></span>`
             + `<b>${esc(best.name)}</b> <span style="color:var(--c-muted);font-size:11px;">여기서 ${Math.round(bd * 1000)}m</span><br>`
             + `<span style="color:var(--c-price);font-weight:700;">매매 ${best.priceEok == null ? '-' : best.priceEok + '억'}</span>`
             + `${npy ? ` <span style="color:var(--c-muted);">· ${npy}</span>` : ''}<br>`
             + `${esc(best.area || '?')}㎡ · ${esc(best.floor || '?')}층 · ${esc(best.build || '?')}년${nOld}`
-            + ` <a href="${naverSearchUrl(best.name + ' ' + (best.dong || best.gu || ''), best.lat, best.lng)}" target="_blank" rel="noopener" style="color:var(--c-success);font-size:11px;">네이버↗</a>`
+            + ` <a href="${naverSearchUrl(best.name + ' ' + (best.dong || best.gu || ''), best.lat, best.lng)}" target="_blank" rel="noopener" style="color:var(--c-primary);font-size:11px;">네이버 ↗</a>`
             + `</div>`;
         }
         let jbNearHtml = '';
         if (_jbRowsGlobal && _jbRowsGlobal.length) {
           const near = _jbRowsGlobal.filter(r => r.lat && kmDist(lat, lng, r.lat, r.lng) < 0.5).slice(0, 3);
           if (near.length) {
-            jbNearHtml = `<div style="font-size:11px;margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;"><b>🏗️ 500m 내 정비사업 ${near.length}건</b><br>`
+            jbNearHtml = `<div style="font-size:11px;margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;"><b>500m 내 정비사업 ${near.length}건</b><br>`
               + near.map(r => `<span style="color:${JB_COLOR[jbGroup(r.gubun)]||'#868e96'}">●</span> ${esc(r.name)} <span style="color:var(--c-muted)">${esc(r.stage||'')}</span>`).join('<br>') + '</div>';
           }
         }
         const buildClickPopup = (addr, bldName) => {
           if (!clickMarker) return;
-          const bldHtml = bldName ? `<div style="font-weight:700;font-size:14px;margin-bottom:2px;">🏠 ${esc(bldName)}</div>` : '';
-          const naverLand = addr ? `<a href="${naverSearchUrl(bldName || addr, lat, lng)}" target="_blank" rel="noopener" class="pc-btn pc-btn-green">🏠 네이버 부동산 검색</a>` : '';
-          clickMarker.setPopupContent(`<div class="pc"><div class="pc-head">📍 위치 정보</div><div class="pc-body">${bldHtml}<div>📍 ${addr ? esc(addr) : '주소를 찾지 못했어요'}</div><div style="font-size:11px;color:var(--c-muted);margin-top:2px;">${lat.toFixed(5)}, ${lng.toFixed(5)}</div><div class="bld-info"></div><div class="poi-box" style="margin-top:6px;"><button class="poi-btn pc-btn pc-btn-outline" style="font-size:11px;padding:4px 8px;">🏪 이 부근 상호 보기</button></div>${nearHtml}${jbNearHtml}</div><div class="pc-actions">${naverLand}${rtBtns}</div></div>`).openPopup();
+          const bldHtml = bldName ? `<div style="font-weight:700;font-size:14px;margin-bottom:2px;">${esc(bldName)}</div>` : '';
+          const naverLand = addr ? `<a href="${naverSearchUrl(bldName || addr, lat, lng)}" target="_blank" rel="noopener" class="pc-btn pc-btn-primary">네이버 부동산 검색</a>` : '';
+          clickMarker.setPopupContent(`<div class="pc"><div class="pc-head">위치 정보</div><div class="pc-body">${bldHtml}<div>${addr ? esc(addr) : '주소를 찾지 못했어요'}</div><div style="font-size:11px;color:var(--c-muted);margin-top:2px;">${lat.toFixed(5)}, ${lng.toFixed(5)}</div><div class="bld-info"></div><div class="poi-box" style="margin-top:6px;"><button class="poi-btn pc-btn pc-btn-outline" style="font-size:11px;padding:4px 8px;">이 부근 상호 보기</button></div>${nearHtml}${jbNearHtml}</div><div class="pc-actions">${naverLand}${rtBtns}</div></div>`).openPopup();
           bindRtBtns();
           // 건축물 용도·층수·연면적·사용승인일을 비동기로 채운다 (아파트가 아닌 건물의 정체를 알려주는 핵심 정보)
           const _pel = clickMarker.getPopup().getElement();
@@ -1235,7 +1282,7 @@
               if (!box) return;
               box.innerHTML = (!list || !list.length)
                 ? '<div style="font-size:11px;color:var(--c-muted);">반경 50m에 등록된 상호가 없어요</div>'
-                : `<div style="font-size:12px;border-top:1px solid var(--c-border);padding-top:5px;"><b>🏪 이 부근 상호</b><br>`
+                : `<div style="font-size:12px;border-top:1px solid var(--c-border);padding-top:5px;"><b>이 부근 상호</b><br>`
                   + list.map((p) => `${esc(p.name)} <span style="color:var(--c-muted);font-size:10px;">${esc(p.label)} · ${p.dist}m</span>`).join('<br>') + '</div>';
               const pp2 = clickMarker && clickMarker.getPopup();
               repanPopup(pp2);
@@ -1365,13 +1412,14 @@
       routeCtrl = L.control({ position: 'topleft' });
       routeCtrl.onAdd = () => {
         const div = L.DomUtil.create('div');
-        div.style.cssText = 'background:#fff;padding:8px 10px;border-radius:8px;box-shadow:0 1px 5px rgba(0,0,0,.2);font-size:12px;min-width:160px;';
-        const mbtn = (m, t) => `<button class="rt-mode" data-m="${m}" style="flex:1;font:inherit;font-size:11px;padding:4px 2px;border:1px solid #e6e8eb;border-radius:6px;background:#fff;cursor:pointer;">${t}</button>`;
-        div.innerHTML = '<div style="font-weight:700;margin-bottom:5px;">🧭 길찾기</div>'
-          + '<div id="rt-pts" style="font-size:11px;color:#555;margin-bottom:5px;"></div>'
-          + `<div style="display:flex;gap:4px;margin-bottom:5px;">${mbtn('walk', '🚶도보')}${mbtn('transit', '🚌대중교통')}${mbtn('car', '🚗자차')}</div>`
-          + '<div id="rt-info" style="font-size:11px;color:#333;min-height:16px;"></div>'
-          + '<button id="rt-clear" style="margin-top:5px;width:100%;font:inherit;font-size:11px;padding:4px;border:1px solid #e6e8eb;border-radius:6px;background:#fff;cursor:pointer;">초기화</button>';
+        div.className = 'lc';
+        div.style.minWidth = '170px';
+        const mbtn = (m, t) => `<button class="rt-mode" data-m="${m}" style="flex:1;font:inherit;font-size:11px;font-weight:600;padding:5px 2px;border:1px solid var(--line);border-radius:6px;background:var(--card);cursor:pointer;color:var(--text);">${t}</button>`;
+        div.innerHTML = '<div class="lc-title">길찾기</div>'
+          + '<div id="rt-pts" style="font-size:11px;color:var(--muted);margin-bottom:6px;"></div>'
+          + `<div style="display:flex;gap:4px;margin-bottom:6px;">${mbtn('walk', '도보')}${mbtn('transit', '대중교통')}${mbtn('car', '자차')}</div>`
+          + '<div id="rt-info" style="font-size:11px;color:var(--text);min-height:16px;"></div>'
+          + '<button id="rt-clear" style="margin-top:5px;width:100%;font:inherit;font-size:11px;font-weight:600;padding:5px;border:1px solid var(--line);border-radius:6px;background:var(--card);cursor:pointer;color:var(--text);">초기화</button>';
         L.DomEvent.disableClickPropagation(div);
         return div;
       };
@@ -1382,12 +1430,12 @@
         highlightMode(); updatePts();
       }, 50);
     }
-    function highlightMode() { document.querySelectorAll('.rt-mode').forEach((b) => { const on = b.dataset.m === routeMode; b.style.background = on ? '#e8590c' : '#fff'; b.style.color = on ? '#fff' : '#333'; }); }
-    function updatePts() { const el = document.getElementById('rt-pts'); if (el) el.innerHTML = `🚩 ${routeOrigin ? '출발✓' : '출발 미지정'} · 🏁 ${routeDest ? '도착✓' : '도착 미지정'}`; }
+    function highlightMode() { document.querySelectorAll('.rt-mode').forEach((b) => { const on = b.dataset.m === routeMode; b.style.background = on ? 'var(--c-primary)' : 'var(--card)'; b.style.color = on ? '#fff' : 'var(--text)'; b.style.borderColor = on ? 'var(--c-primary)' : 'var(--line)'; }); }
+    function updatePts() { const el = document.getElementById('rt-pts'); if (el) el.innerHTML = `출발 ${routeOrigin ? '✓' : '미지정'} · 도착 ${routeDest ? '✓' : '미지정'}`; }
     function setRoutePoint(kind, lat, lng) {
       ensureRouteCtrl();
-      if (kind === 'start') { routeOrigin = { lat, lng }; if (originMarker) map.removeLayer(originMarker); originMarker = L.marker([lat, lng]).addTo(map).bindTooltip('🚩 출발', { permanent: true, direction: 'top' }); }
-      else { routeDest = { lat, lng }; if (destMarker) map.removeLayer(destMarker); destMarker = L.marker([lat, lng]).addTo(map).bindTooltip('🏁 도착', { permanent: true, direction: 'top' }); }
+      if (kind === 'start') { routeOrigin = { lat, lng }; if (originMarker) map.removeLayer(originMarker); originMarker = L.marker([lat, lng]).addTo(map).bindTooltip('출발', { permanent: true, direction: 'top' }); }
+      else { routeDest = { lat, lng }; if (destMarker) map.removeLayer(destMarker); destMarker = L.marker([lat, lng]).addTo(map).bindTooltip('도착', { permanent: true, direction: 'top' }); }
       updatePts();
       if (routeOrigin && routeDest) drawRoute();
     }
@@ -1411,14 +1459,13 @@
           const i = p.info;
           routeLine = L.polyline([[o.lat, o.lng], [d.lat, d.lng]], { color: '#1c7ed6', weight: 4, dashArray: '6,8' }).addTo(map);
           map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
-          const ICON = { 1: '🚇', 2: '🚌', 3: '🚶' };
           const steps = (p.subPath || []).filter((s) => s.trafficType !== 3 || s.sectionTime > 0).map((s) => {
-            if (s.trafficType === 3) return `🚶 도보 ${s.sectionTime}분`;
+            if (s.trafficType === 3) return `도보 ${s.sectionTime}분`;
             const lane = (s.lane && s.lane[0]) || {};
             const name = s.trafficType === 1 ? (lane.name || '지하철') : (lane.busNo ? lane.busNo + '번 버스' : '버스');
-            return `${ICON[s.trafficType]} <b>${esc(name)}</b> · ${esc(s.startName)}→${esc(s.endName)} (${s.stationCount}정거장)`;
+            return `${s.trafficType === 1 ? '지하철' : '버스'} <b>${esc(name)}</b> · ${esc(s.startName)}→${esc(s.endName)} (${s.stationCount}정거장)`;
           });
-          if (info) info.innerHTML = `<div style="font-weight:700;margin-bottom:4px;">🚌 ${i.totalTime}분 · 환승 ${i.busTransitCount + i.subwayTransitCount}회 · ${i.payment.toLocaleString()}원</div><ol style="margin:0 0 2px;padding-left:16px;line-height:1.55;max-width:240px;word-break:keep-all;">${steps.map((x) => `<li>${x}</li>`).join('')}</ol>`;
+          if (info) info.innerHTML = `<div style="font-weight:700;margin-bottom:4px;">총 ${i.totalTime}분 · 환승 ${i.busTransitCount + i.subwayTransitCount}회 · ${i.payment.toLocaleString()}원</div><ol style="margin:0 0 2px;padding-left:16px;line-height:1.55;max-width:240px;word-break:keep-all;">${steps.map((x) => `<li>${x}</li>`).join('')}</ol>`;
         } else {
           const url = `https://router.project-osrm.org/route/v1/driving/${o.lng},${o.lat};${d.lng},${d.lat}?overview=full&geometries=geojson`;
           const j = await (await fetch(url)).json();
@@ -1430,10 +1477,10 @@
           map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
           const km = rt.distance / 1000;
           if (routeMode === 'walk') {
-            if (info) info.innerHTML = `🚶 도보 약 <b>${Math.round(km / 4.5 * 60)}분</b> · ${km.toFixed(1)}km <span style="color:#999;">(4.5km/h 추정)</span>`;
+            if (info) info.innerHTML = `도보 약 <b>${Math.round(km / 4.5 * 60)}분</b> · ${km.toFixed(1)}km <span style="color:var(--c-muted);">(4.5km/h 추정)</span>`;
           } else {
             const taxi = Math.round((4800 + Math.max(0, km - 1.6) * 770) / 100) * 100; // 서울 중형 거리 기준 추정(시간요금 제외)
-            if (info) info.innerHTML = `🚗 자차 약 <b>${Math.round(rt.duration / 60)}분</b> · ${km.toFixed(1)}km<br>🚕 예상 택시요금 ≈ <b>${taxi.toLocaleString()}원</b> <span style="color:#999;">(거리 기준 추정)</span>`;
+            if (info) info.innerHTML = `자차 약 <b>${Math.round(rt.duration / 60)}분</b> · ${km.toFixed(1)}km<br>예상 택시요금 ≈ <b>${taxi.toLocaleString()}원</b> <span style="color:var(--c-muted);">(거리 기준 추정)</span>`;
           }
         }
       } catch (e) { if (info) info.textContent = '경로 계산 실패(네트워크).'; }
@@ -1468,9 +1515,9 @@
       const bar = $('cmp-bar'); if (!bar) return;
       if (landMode === 'favorites' && cmpSel.size >= 1) {
         bar.style.display = '';
-        bar.innerHTML = `⚖️ 비교 선택 <b>${cmpSel.size}</b>개 `
-          + `<button id="cmp-go" style="font:inherit;font-size:12px;padding:4px 10px;border:none;background:var(--accent);color:#fff;border-radius:6px;cursor:pointer;margin-left:6px;">비교표 보기</button> `
-          + `<button id="cmp-clear" style="font:inherit;font-size:12px;padding:4px 10px;border:1px solid var(--line);background:#fff;border-radius:6px;cursor:pointer;">해제</button>`;
+        bar.innerHTML = `비교 선택 <b>${cmpSel.size}</b>개 `
+          + `<button id="cmp-go" style="font:inherit;font-size:12px;padding:4px 10px;border:none;background:var(--c-primary);color:#fff;border-radius:6px;cursor:pointer;margin-left:6px;">비교표 보기</button> `
+          + `<button id="cmp-clear" style="font:inherit;font-size:12px;padding:4px 10px;border:1px solid var(--line);background:var(--card);border-radius:6px;cursor:pointer;">해제</button>`;
         $('cmp-go').onclick = openCompare;
         $('cmp-clear').onclick = () => { cmpSel.clear(); render(); };
       } else { bar.style.display = 'none'; bar.innerHTML = ''; }
@@ -1483,9 +1530,9 @@
       const rows = [['실거래가', (d) => d.priceEok == null ? '-' : d.priceEok + '억'], ['전용면적', (d) => (d.area || '?') + '㎡'], ['평단가', perPyeong], ['건축년도', (d) => (d.build || '?') + '년'], ['층', (d) => (d.floor || '?') + '층'], ['거래일', (d) => d.ymd || '-'], ['위치', (d) => `${d.gu || ''} ${d.dong || ''}`]];
       let modal = $('cmp-modal');
       if (!modal) { modal = document.createElement('div'); modal.id = 'cmp-modal'; modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px;'; document.body.appendChild(modal); modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; }); }
-      const th = items.map((d) => `<th style="padding:8px;border-bottom:2px solid #e8590c;font-size:13px;">${esc(d.name)}</th>`).join('');
-      const trs = rows.map(([label, fn]) => `<tr><td style="padding:7px 8px;color:#8a9099;font-size:12px;white-space:nowrap;border-bottom:1px solid #eee;">${label}</td>${items.map((d) => `<td style="padding:7px 8px;font-size:13px;border-bottom:1px solid #eee;text-align:center;">${esc(fn(d))}</td>`).join('')}</tr>`).join('');
-      modal.innerHTML = `<div style="background:#fff;color:#1c1e21;border-radius:12px;max-width:600px;width:100%;max-height:82vh;overflow:auto;padding:16px;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><b style="font-size:16px;">⚖️ 부동산 비교</b><button id="cmp-close" style="border:1px solid #ddd;background:#fff;border-radius:7px;padding:6px 10px;cursor:pointer;font:inherit;">✖ 닫기</button></div><table style="width:100%;border-collapse:collapse;"><thead><tr><th></th>${th}</tr></thead><tbody>${trs}</tbody></table></div>`;
+      const th = items.map((d) => `<th style="padding:8px;border-bottom:2px solid var(--c-primary);font-size:13px;">${esc(d.name)}</th>`).join('');
+      const trs = rows.map(([label, fn]) => `<tr><td style="padding:7px 8px;color:var(--muted);font-size:12px;white-space:nowrap;border-bottom:1px solid var(--line);">${label}</td>${items.map((d) => `<td style="padding:7px 8px;font-size:13px;border-bottom:1px solid var(--line);text-align:center;">${esc(fn(d))}</td>`).join('')}</tr>`).join('');
+      modal.innerHTML = `<div style="background:var(--card);color:var(--text);border-radius:14px;max-width:600px;width:100%;max-height:82vh;overflow:auto;padding:18px;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><b style="font-size:16px;">부동산 비교</b><button id="cmp-close" style="border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:7px;padding:6px 10px;cursor:pointer;font:inherit;">닫기</button></div><table style="width:100%;border-collapse:collapse;"><thead><tr><th></th>${th}</tr></thead><tbody>${trs}</tbody></table></div>`;
       modal.style.display = 'flex';
       $('cmp-close').onclick = () => { modal.style.display = 'none'; };
     }
@@ -1502,28 +1549,28 @@
       agentMarkers.forEach((m) => map.removeLayer(m)); agentMarkers = [];
       let list = loadSavedProps();
       if (propCat !== '전체') list = list.filter((x) => (x.type || '아파트') === propCat);
-      $('banner').textContent = '⭐ 저장한 부동산 목록이에요. (이 기기에 보관 · 실거래가 마커의 ☆저장 버튼으로 추가)';
+      $('banner').textContent = '저장한 부동산 목록이에요. (이 기기에 보관 · 실거래가 마커의 저장 버튼으로 추가)';
 
       const ctr = map.getCenter();
-      const distLabel = (d) => { if (d.lat == null) return ''; const m = map.distance([d.lat, d.lng], [ctr.lat, ctr.lng]); const min = Math.max(1, Math.round(m / 1000 / 4.5 * 60)); return `📍 ${m >= 1000 ? (m / 1000).toFixed(1) + 'km' : Math.round(m) + 'm'} · 🚶 ${min}분`; };
+      const distLabel = (d) => { if (d.lat == null) return ''; const m = map.distance([d.lat, d.lng], [ctr.lat, ctr.lng]); const min = Math.max(1, Math.round(m / 1000 / 4.5 * 60)); return `${m >= 1000 ? (m / 1000).toFixed(1) + 'km' : Math.round(m) + 'm'} · 도보 ${min}분`; };
       $('rec-list').innerHTML = list.length ? list.map((d, i) => `
         <div class="rec" data-i="${i}">
           <label class="cmp-check"><input type="checkbox" class="cmp" data-i="${i}" ${cmpSel.has(d.id) ? 'checked' : ''} /> 비교</label>
           <span class="score">${d.priceEok == null ? '' : d.priceEok + '억'}</span>
           <h3>${esc(d.name)}</h3>
           <div class="meta">${esc(d.gu || '')} ${esc(d.dong || '')} · ${esc(d.area || '?')}㎡ · ${esc(d.floor || '?')}층</div>
-          <div class="meta" style="color:var(--accent);margin-top:2px;">${distLabel(d)}</div>
-          <div class="tags"><span class="tag">${esc(d.type || '아파트')}</span><span class="tag">🏗️ ${esc(d.build || '?')}년</span><span class="tag">거래 ${esc(d.ymd || '')}</span></div>
+          <div class="meta" style="color:var(--muted);margin-top:2px;">${distLabel(d)}</div>
+          <div class="tags"><span class="tag">${esc(d.type || '아파트')}</span><span class="tag">건축 ${esc(d.build || '?')}년</span><span class="tag">거래 ${esc(d.ymd || '')}</span></div>
           <div class="actions">
-            <button class="unsave" data-i="${i}">⭐ 저장 해제</button>
+            <button class="unsave" data-i="${i}">저장 해제</button>
           </div>
         </div>`).join('')
-        : '<div style="text-align:center;color:var(--muted);padding:24px 0;">저장한 부동산이 없어요.<br>지도의 「🏢 아파트 실거래가」 마커를 클릭해 ☆저장을 눌러보세요.</div>';
+        : '<div style="text-align:center;color:var(--muted);padding:24px 0;">저장한 부동산이 없어요.<br>지도의 「아파트 실거래가」 마커를 클릭해 저장을 눌러보세요.</div>';
 
       list.forEach((d) => {
         if (d.lat == null || d.lng == null) return;
         const m = L.circleMarker([d.lat, d.lng], { radius: 7, color: '#fff', weight: 2, fillColor: '#e8590c', fillOpacity: 0.95 }).addTo(map)
-          .bindPopup(`<b>${esc(d.name)}</b><br>${esc(d.gu || '')} ${esc(d.dong || '')}<br>💰 ${d.priceEok == null ? '-' : d.priceEok + '억'}`);
+          .bindPopup(`<b>${esc(d.name)}</b><br>${esc(d.gu || '')} ${esc(d.dong || '')}<br>${d.priceEok == null ? '-' : d.priceEok + '억'}`);
         markers[d.id] = m;
       });
       const pts = list.map((d) => (d.lat != null ? [d.lat, d.lng] : null)).filter(Boolean);
@@ -1558,15 +1605,15 @@
       agentMarkers.forEach((m) => map.removeLayer(m)); agentMarkers = [];
       if (!(window.kakao && kakao.maps && kakao.maps.services)) {
         if (kakaoTries++ < 8) { $('rec-list').innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px 0;">장소검색 로딩 중…</div>'; setTimeout(() => { if (landMode === 'agents') renderAgents(); }, 800); }
-        else { $('banner').textContent = '🏢 인근 공인중개사'; $('rec-list').innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px 0;">장소검색(카카오)을 불러오지 못했어요.<br>⭐즐겨찾기 탭은 정상 이용 가능합니다.</div>'; }
+        else { $('banner').textContent = '인근 공인중개사'; $('rec-list').innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px 0;">장소검색(카카오)을 불러오지 못했어요.<br>즐겨찾기 탭은 정상 이용 가능합니다.</div>'; }
         return;
       }
       kakaoTries = 0;
-      $('banner').textContent = '🏢 지도 중심 인근 공인중개사예요. 지도를 옮기고 📍버튼으로 갱신하세요.';
+      $('banner').textContent = '지도 중심 인근 공인중개사예요. 지도를 옮기고 위치 버튼으로 갱신하세요.';
       const c = map.getCenter();
       new kakao.maps.services.Places().keywordSearch('공인중개사', (data, status) => {
         if (status !== kakao.maps.services.Status.OK || !data.length) { $('rec-list').innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px 0;">인근 공인중개사가 없어요. 지도를 옮겨보세요.</div>'; return; }
-        $('rec-list').innerHTML = data.map((p, i) => { const dm = Number(p.distance) || 0; const dtxt = dm ? `📍 ${dm >= 1000 ? (dm / 1000).toFixed(1) + 'km' : dm + 'm'} · 🚶 ${Math.max(1, Math.round(dm / 1000 / 4.5 * 60))}분` : ''; return `<div class="rec" data-i="${i}"><h3>${esc(p.place_name)}</h3><div class="meta">${esc((p.category_name || '').split('>').pop().trim())} · ${esc(p.road_address_name || p.address_name || '')}</div>${dtxt ? `<div class="meta" style="color:var(--accent);margin-top:2px;">${dtxt}</div>` : ''}<div class="actions">${p.phone ? `<a href="tel:${esc(p.phone)}">📞 ${esc(p.phone)}</a>` : ''}${p.place_url ? `<a href="${safeUrl(p.place_url)}" target="_blank" rel="noopener">카카오맵</a>` : ''}</div></div>`; }).join('');
+        $('rec-list').innerHTML = data.map((p, i) => { const dm = Number(p.distance) || 0; const dtxt = dm ? `${dm >= 1000 ? (dm / 1000).toFixed(1) + 'km' : dm + 'm'} · 도보 ${Math.max(1, Math.round(dm / 1000 / 4.5 * 60))}분` : ''; return `<div class="rec" data-i="${i}"><h3>${esc(p.place_name)}</h3><div class="meta">${esc((p.category_name || '').split('>').pop().trim())} · ${esc(p.road_address_name || p.address_name || '')}</div>${dtxt ? `<div class="meta" style="color:var(--muted);margin-top:2px;">${dtxt}</div>` : ''}<div class="actions">${p.phone ? `<a href="tel:${esc(p.phone)}">${esc(p.phone)}</a>` : ''}${p.place_url ? `<a href="${safeUrl(p.place_url)}" target="_blank" rel="noopener">카카오맵</a>` : ''}</div></div>`; }).join('');
         data.forEach((p) => { const m = L.marker([Number(p.y), Number(p.x)]).addTo(map).bindPopup(`<b>${esc(p.place_name)}</b><br>${esc(p.phone || '')}`); agentMarkers.push(m); });
         $('rec-list').querySelectorAll('.rec').forEach((card) => card.addEventListener('click', (e) => { if (e.target.closest('.actions')) return; const p = data[Number(card.dataset.i)]; map.setView([Number(p.y), Number(p.x)], 17); }));
       }, { location: new kakao.maps.LatLng(c.lat, c.lng), radius: 3000, sort: kakao.maps.services.SortBy.DISTANCE, size: 15 });
@@ -1598,21 +1645,6 @@
       }
       render();
       renderRecent();
-      loadFooterStats();
-    }
-
-    async function loadFooterStats() {
-      try {
-        const { count: m } = await sb.from('taste_profiles').select('*', { count: 'exact', head: true });
-        const el = document.getElementById('f-members'); if (el && m != null) el.textContent = m.toLocaleString();
-      } catch(e) {}
-      try {
-        const today = new Date().toISOString().slice(0, 10);
-        const { count: t } = await sb.from('feedbacks').select('*', { count: 'exact', head: true }).gte('created_at', today);
-        const { count: tot } = await sb.from('feedbacks').select('*', { count: 'exact', head: true });
-        const et = document.getElementById('f-today'); if (et && t != null) et.textContent = t.toLocaleString();
-        const etot = document.getElementById('f-total'); if (etot && tot != null) etot.textContent = tot.toLocaleString();
-      } catch(e) {}
     }
 
     (function initSheet() { const h = $('sheet-handle'), p = document.querySelector('.panel'); if (h && p) h.addEventListener('click', () => p.classList.toggle('sheet-open')); })();
@@ -1634,7 +1666,7 @@
     function renderAC() {
       const raw = $('search').value.trim(), ac = $('ac');
       if (!raw) { ac.className = 'ac'; ac.innerHTML = ''; return; }
-      ac.innerHTML = `<div class="ac-item" data-place="1"><span>📍</span>'${esc(raw)}' 위치로 이동<span class="t">지명</span></div>`;
+      ac.innerHTML = `<div class="ac-item" data-place="1"><span style="opacity:.7;">⌖</span>'${esc(raw)}' 위치로 이동<span class="t">지명</span></div>`;
       ac.className = 'ac on';
       ac.querySelector('.ac-item').addEventListener('mousedown', (ev) => {
         ev.preventDefault(); runSearch(); ac.className = 'ac';
@@ -1644,7 +1676,7 @@
     // ── 카카오 장소검색 ──
     function runKakaoSearch(q) {
       if (!kakaoReady) { alert('카카오 SDK가 로딩 중이에요. 잠시 후 다시 시도해 주세요.'); return; }
-      $('banner').textContent = '🔎 카카오 검색 중…';
+      $('banner').textContent = '카카오 검색 중…';
       var ps = new kakao.maps.services.Places();
       ps.keywordSearch(q, function (data, status) {
         if (status !== kakao.maps.services.Status.OK || !data.length) {
