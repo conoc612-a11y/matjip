@@ -9,7 +9,7 @@ Static HTML/JS Seoul restaurant finder. No build tools, no bundler, no framework
 - `index.html` → redirects to `onboarding.html`
 - `onboarding.html` — login/signup + taste survey → saves to `taste_profiles`
 - `main.html` — Leaflet map (V-World tiles, OSM fallback) + rule-based recommendations
-- `detail.html` — restaurant detail + directions (Google Maps / Kakao deep links)
+- `detail.html` — restaurant detail + in-app directions (대중교통=ODsay, 도보/자차=OSRM, Kakao deep link)
 - `schema.sql` — all 5 tables, RLS policies, trigger, seed data (run in Supabase SQL Editor)
 - `seed_more.sql` — 24 additional seed restaurants (safe to re-run)
 - `mcp/` — MCP server (Node.js ESM, has own `package.json`)
