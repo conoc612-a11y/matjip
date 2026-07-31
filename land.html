@@ -1002,29 +1002,36 @@
     // 그래서 두 가지를 지킨다.
     //  1) 일시적 실패는 한 번 재시도한다.
     //  2) 일시적 실패를 캐시하지 않는다. 캐시하면 그 필지는 영영 조회를 안 하게 된다.
-    //     '정상 응답인데 기록이 없음'(null)만 캐시한다.
-    function buildingRegister(pnu, cb, _retry) {
+    //     '정상 응답인데 기록이 없음'(빈 배열)만 캐시한다.
+    // 건축HUB 의 조회는 전부 같은 지번 파라미터(sigunguCd·bjdongCd·platGbCd·bun·ji)를
+    // 쓰므로(명세 공통 입력) op 이름만 바꿔 하나의 함수로 호출한다.
+    // 표제부는 대표 동 1건(건물대장), 상세 조회는 배열 전체를 돌려준다.
+    function ledgerOp(op, pnu, cb, _retry) {
       const p = pnuParts(pnu);
       if (!p) { cb(null); return; }
-      if (_brCache.has(pnu)) { cb(_brCache.get(pnu)); return; }
+      const key = op + '|' + pnu;
+      if (_brCache.has(key)) { cb(_brCache.get(key)); return; }
       const q = `serviceKey=${MOLIT_KEY}&sigunguCd=${p.sigunguCd}&bjdongCd=${p.bjdongCd}`
-        + `&platGbCd=${p.platGbCd}&bun=${p.bun}&ji=${p.ji}&numOfRows=10&pageNo=1&_type=json`;
+        + `&platGbCd=${p.platGbCd}&bun=${p.bun}&ji=${p.ji}&numOfRows=${op === 'getBrTitleInfo' ? 10 : 100}&pageNo=1&_type=json`;
       const fail = () => {
-        if (!_retry) { setTimeout(() => buildingRegister(pnu, cb, 1), 600); return; }
+        if (!_retry) { setTimeout(() => ledgerOp(op, pnu, cb, 1), 600); return; }
         cb(null);  // 캐시하지 않는다 — 다음 클릭 때 다시 시도할 수 있도록
       };
-      fetch(`https://apis.data.go.kr/1613000/BldRgstHubService/getBrTitleInfo?${q}`)
+      fetch(`https://apis.data.go.kr/1613000/BldRgstHubService/${op}?${q}`)
         .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
         .then((j) => {
-          let it = null;
           const items = j.response.body.items;
           const arr = (!items ? [] : Array.isArray(items.item) ? items.item : [items.item]).filter(Boolean);
-          // 한 필지에 동이 여러 개일 수 있다(아파트 단지). 연면적이 가장 큰 동을 대표로 삼는다.
-          it = arr.sort((a, b) => (Number(b.totArea) || 0) - (Number(a.totArea) || 0))[0] || null;
-          _brCache.set(pnu, it);
-          cb(it);
+          _brCache.set(key, arr);
+          cb(arr);
         })
         .catch(fail);
+    }
+    function buildingRegister(pnu, cb) {
+      ledgerOp('getBrTitleInfo', pnu, (arr) => {
+        // 한 필지에 동이 여러 개일 수 있다(아파트 단지). 연면적이 가장 큰 동을 대표로 삼는다.
+        cb((arr || []).sort((a, b) => (Number(b.totArea) || 0) - (Number(a.totArea) || 0))[0] || null);
+      });
     }
     // 서울시 도시계획조례 기준 용적률 상한. 지구단위계획·정비계획으로 달라질 수 있어 참고용이다.
     const FAR_LIMIT = {
@@ -1113,6 +1120,7 @@
         const fam = Number(it.fmlyCnt) || Number(it.hhldCnt) || 0;
         const purps = it.mainPurpsCdNm || it.etcPurps || '';
         if (purps) rows.push(ageDot(yr) + `주용도 <b style="color:var(--c-primary);">${esc(purps)}</b>` + (fam ? ` · ${fam}세대` : ''));
+        if (it.bldNm) rows.push(`<span style="color:var(--c-muted);">${esc(it.bldNm)}</span>`);
         const vl = Number(it.vlRat) || 0, bc = Number(it.bcRat) || 0;
         if (vl || bc) {
           let s = (vl ? `용적률 <b>${vl}%</b>` : '') + (bc ? `${vl ? ' · ' : ''}건폐율 ${bc}%` : '');
@@ -1127,6 +1135,7 @@
         }
         const ar = [];
         if (Number(it.platArea)) ar.push(`대지 ${Number(it.platArea).toLocaleString()}㎡`);
+        if (Number(it.archArea)) ar.push(`건축 ${Number(it.archArea).toLocaleString()}㎡`);
         if (Number(it.totArea)) ar.push(`연면적 ${Number(it.totArea).toLocaleString()}㎡`);
         if (ar.length) rows.push(ar.join(' · '));
         const stx = [];
@@ -1153,10 +1162,145 @@
       }
 
       const houseHtml = houseStatHtml(st.house);
-      if (!rows.length && !houseHtml) return '';
+      let detailHtml = '';
+      if (st.br) {
+        // 상세 조회는 클릭 때만 부른다(일일 호출 한도 절약). 결과가 캐시되면 다시 열 때 즉시 나온다.
+        detailHtml = st.detail
+          ? ledgerDetailHtml(st)
+          : `<button type="button" class="ld-more" style="margin-top:5px;font-size:11px;color:var(--c-primary);background:none;border:1px solid var(--c-border);border-radius:6px;padding:3px 10px;cursor:pointer;">건축물대장 상세 보기</button>`;
+      }
+      if (!rows.length && !houseHtml && !detailHtml) return '';
       return `<div style="font-size:12px;margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">`
         + (rows.length ? `<b>토지·건물 정보</b>${badge}<br>${rows.join('<br>')}` : '')
-        + houseHtml + '</div>';
+        + houseHtml + detailHtml + '</div>';
+    }
+
+    // ── 건축물대장 상세 (투자자용 추가 조회) ─────────────────────
+    // 표제부만으론 부족한 항목을 '상세 보기' 클릭 한 번에 모아 보여준다.
+    // 오수정화시설(getBrWclfInfo)은 투자 판단과 무관해 제외했다.
+    const LEDGER_DETAIL_OPS = [
+      ['recap', 'getBrRecapTitleInfo'],         // 총괄표제부 — 단지 전체 세대·주차·주/부속건물
+      ['basis', 'getBrBasisOulnInfo'],          // 기본개요 — 건물명·대장종류
+      ['floors', 'getBrFlrOulnInfo'],           // 층별개요 — 층별 주용도·면적
+      ['atch', 'getBrAtchJibunInfo'],           // 부속지번 — 통합/합병된 필지
+      ['exposPub', 'getBrExposPubuseAreaInfo'], // 전유공용면적 — 전용/공용면적 구분
+      ['housePrice', 'getBrHousePriceInfo'],    // 주택가격 — 공시가격
+      ['jijigu', 'getBrJijiguInfo'],            // 지역지구구역 — 정비구역 등 포함
+      // 전유부(getBrExposInfo)는 목록을 상시 받아도 전유공용면적이 있으면 쓰이지 않는다.
+      // 그래서 상시 호출에서 제외하고, 전유공용면적이 비어 있을 때만 보충 조회한다.
+    ];
+    function loadLedgerDetail(st, render) {
+      if (!st || st.detail || st._ldBusy) return;
+      const pnu = st.parcel && st.parcel.pnu;
+      if (!pnu) return;
+      // '일반'(단독·다세대 단독대장)은 전유/공용면적 개념이 없다. 집합건축물일 때만 조회.
+      const isComplex = !st.br || st.br.regstrGbCdNm !== '일반';
+      const ops = isComplex ? LEDGER_DETAIL_OPS : LEDGER_DETAIL_OPS.filter(([k]) => k !== 'exposPub');
+      st._ldBusy = true;
+      st.detail = { loading: true };
+      render();
+      let left = ops.length;
+      const done = () => {
+        if (--left > 0) return;
+        if (isComplex && !(st.detail.exposPub || []).some((x) => String(x.exposPubuseGbCd) === '1')) {
+          // 전유공용면적이 비면 전유부로 동·호 목록을 보충한다. 이때만 1회 더 호출.
+          ledgerOp('getBrExposInfo', pnu, (arr) => {
+            st.detail.expos = arr || [];
+            st.detail.loading = false;
+            st._ldBusy = false;
+            render();
+          });
+          return;
+        }
+        st.detail.loading = false;
+        st._ldBusy = false;
+        render();
+      };
+      ops.forEach(([k, op]) => {
+        ledgerOp(op, pnu, (arr) => { st.detail[k] = arr || []; done(); });
+      });
+    }
+    function ledgerDetailHtml(st) {
+      const d = st.detail;
+      if (!d) return '';
+      if (d.loading) {
+        return `<div style="margin-top:5px;padding-top:5px;border-top:1px dashed var(--c-border);font-size:11px;color:var(--c-muted);">건축물대장 상세 조회 중…</div>`;
+      }
+      const rows = [];
+      const basis = (d.basis || [])[0];
+      if (basis && basis.bldNm) {
+        rows.push(`건물명 <b>${esc(basis.bldNm)}</b> <span style="color:var(--c-muted);font-size:10px;">${esc(basis.regstrGbCdNm || '')}</span>`);
+      }
+      const recap = (d.recap || [])[0];
+      if (recap) {
+        const parts = [];
+        if (Number(recap.hhldCnt)) parts.push(`세대 <b>${Number(recap.hhldCnt).toLocaleString()}</b>`);
+        if (Number(recap.totPkngCnt)) parts.push(`주차 <b>${Number(recap.totPkngCnt).toLocaleString()}대</b>`);
+        if (Number(recap.mainBldCnt)) parts.push(`주건축물 ${recap.mainBldCnt}동`);
+        if (Number(recap.atchBldCnt)) parts.push(`부속 ${recap.atchBldCnt}동`);
+        if (Number(recap.archArea)) parts.push(`건축면적 ${Number(recap.archArea).toLocaleString()}㎡`);
+        if (parts.length) rows.push(`<b>총괄표제부</b> ${parts.join(' · ')}`);
+      }
+      const jijigu = (d.jijigu || []).filter((x) => x.jijiguCdNm);
+      if (jijigu.length) {
+        const seen = new Set();
+        const arr = [];
+        for (const x of jijigu) {
+          if (seen.has(x.jijiguCdNm)) continue;
+          seen.add(x.jijiguCdNm);
+          const gb = x.jijiguGbCdNm || ({ 1: '용도지역', 2: '용도지구', 3: '용도구역' }[x.jijiguGbCd] || '');
+          arr.push(`<span style="color:var(--c-muted);font-size:10px;">${esc(gb)}</span> ${esc(x.jijiguCdNm)}`);
+        }
+        rows.push(`<b>지역·지구·구역</b> ${arr.join(' · ')}`);
+      }
+      const floors = (d.floors || []).filter((x) => x.flrNoNm || x.flrNo);
+      if (floors.length) {
+        const dongSet = new Set(floors.map((x) => x.dongNm).filter(Boolean));
+        const uni = [];
+        const seen = new Set();
+        for (const f of floors) {
+          const label = f.flrNoNm || (f.flrNo + '층');
+          if (seen.has(label)) continue;
+          seen.add(label);
+          uni.push([label, f.mainPurpsCdNm, f.area].filter(Boolean).join(' '));
+        }
+        const dong = dongSet.size > 1 ? ` <span style="color:var(--c-muted);font-size:10px;">동 ${dongSet.size}개</span>` : '';
+        rows.push(`<b>층별개요</b>${dong} ${uni.slice(0, 6).join(' · ')}${uni.length > 6 ? ` 외 ${uni.length - 6}개 층` : ''}`);
+      }
+      const atch = (d.atch || []).filter((x) => x.atchBun != null);
+      if (atch.length) {
+        const shown = atch.slice(0, 3).map((x) => `${x.atchBun}${Number(x.atchJi) ? '-' + x.atchJi : ''}`).join(', ');
+        rows.push(`<b>부속지번</b> ${atch.length}필지${shown ? ' · ' + esc(shown) + ' 외' : ''}`);
+      }
+      const exp = (d.exposPub || []).filter((x) => String(x.exposPubuseGbCd) === '1');
+      if (exp.length) {
+        const dongSet = new Set(exp.map((x) => x.dongNm).filter(Boolean));
+        const size = new Map();
+        for (const x of exp) {
+          const n = Math.round(Number(x.area) || 0);
+          if (n > 0) size.set(n, (size.get(n) || 0) + 1);
+        }
+        const dist = [...size.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4).map(([a, c]) => `${a}㎡×${c}`).join(', ');
+        rows.push(`<b>전용면적</b> ${exp.length}세대${dongSet.size ? ` · ${dongSet.size}개동` : ''}${dist ? ' · ' + dist : ''}`);
+      }
+      if (!exp.length) {
+        const exx = (d.expos || []).filter((x) => x.dongNm || x.hoNm);
+        if (exx.length) rows.push(`<b>전유부</b> 동·호 ${exx.length}건`);
+      }
+      const hp = (d.housePrice || []).filter((x) => Number(x.hsprc));
+      if (hp.length) {
+        const vs = hp.map((x) => Number(x.hsprc));
+        const min = Math.min(...vs), max = Math.max(...vs);
+        const day = (hp.map((x) => String(x.stdDay || '')).filter((s) => /^\d{8}$/.test(s))[0] || '')
+          .replace(/^(\d{4})(\d{2})(\d{2})$/, '$1.$2.$3');
+        rows.push(`<b>공시가격</b> ${(min / 1e8).toFixed(min >= 1e9 ? 1 : 2)}~${(max / 1e8).toFixed(max >= 1e9 ? 1 : 2)}억 <span style="color:var(--c-muted);font-size:10px;">${day ? day + ' 기준 · ' : ''}세대별 ${hp.length}건</span>`);
+      }
+      if (!rows.length) {
+        return `<div style="margin-top:5px;padding-top:5px;border-top:1px dashed var(--c-border);font-size:11px;color:var(--c-muted);">상세 조회 결과가 없어요</div>`;
+      }
+      return `<div style="margin-top:5px;padding-top:5px;border-top:1px dashed var(--c-border);">`
+        + `<div style="font-size:11px;color:var(--c-muted);margin-bottom:2px;">건축물대장 상세 <span style="font-size:10px;">국토교통부 건축HUB</span></div>`
+        + rows.join('<br>') + '</div>';
     }
 
     // 팝업의 토지·건물 정보를 채운다. 호출 순서를 이렇게 잡은 이유:
@@ -1168,9 +1312,11 @@
     function fillLandInfo(popupEl, getPopup, lat, lng, onInfo) {
       const slot = popupEl && popupEl.querySelector('.bld-info');
       if (!slot) return;
-      const st = { zone: '', parcel: null, br: null, bld: null, house: null };
+      const st = { zone: '', parcel: null, br: null, bld: null, house: null, detail: null };
       const render = () => {
         slot.innerHTML = landInfoHtml(st);
+        const btn = slot.querySelector('.ld-more');
+        if (btn) btn.onclick = () => loadLedgerDetail(st, render);
         if (onInfo) onInfo(st);
         const p = getPopup();
         repanPopup(p);  // update() 를 쓰면 방금 꽂은 내용이 지워진다
