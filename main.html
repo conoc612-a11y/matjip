@@ -149,7 +149,6 @@
       <div id="engine-bar" style="display:flex;gap:4px;margin-bottom:6px;">
         <button class="tool-btn on" data-engine="naver">네이버</button>
         <button class="tool-btn" data-engine="kakao">카카오</button>
-        <button class="tool-btn" data-engine="google">구글</button>
       </div>
       <div style="display:flex;gap:6px;">
         <div class="ac-wrap" style="flex:9;">
@@ -194,7 +193,6 @@
     const SUPABASE_URL = 'https://bhgijvaxxjnocgfnaaeu.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_rYaGd3kk5UuFBe3TSpFA8g_uGHWwkqM';
     const ODSAY_KEY = 'H4Vo/z04g/E+AUShnTQIiQ'; // ODsay 대중교통(웹 도메인 잠금 키)
-    const GOOGLE_PLACES_KEY = ''; // Google Places API 키 (설정 시 구글 검색 활성화)
     let kakaoReady = false;
     if (window.kakao) kakao.maps.load(function () { kakaoReady = true; });
     let searchEngine = 'naver';
@@ -672,10 +670,6 @@
     (function initSheet() { const h = $('sheet-handle'), p = document.querySelector('.panel'); if (h && p) h.addEventListener('click', () => p.classList.toggle('sheet-open')); })();
     // ── 검색엔진 선택 ──
     (function initEngineBar() {
-      if (!GOOGLE_PLACES_KEY) {
-        var gBtn = document.querySelector('#engine-bar .tool-btn[data-engine="google"]');
-        if (gBtn) { gBtn.style.display = 'none'; }
-      }
       document.querySelectorAll('#engine-bar .tool-btn').forEach(function (b) {
         b.addEventListener('click', function () {
           document.querySelectorAll('#engine-bar .tool-btn').forEach(function (x) { x.classList.remove('on'); });
@@ -730,8 +724,7 @@
       const q = $('search').value.trim();
       if (!q) { alert('검색어를 입력해 주세요.'); return; }
       if (searchEngine === 'naver') runNaverSearch(q);
-      else if (searchEngine === 'kakao') runKakaoSearch(q);
-      else runGoogleSearch(q);
+      else runKakaoSearch(q);
     }
 
     // ── 네이버 검색 ──
@@ -879,51 +872,6 @@
       var { error: se } = await sb.from('saved_restaurants').upsert({ user_id: user.id, restaurant_id: rid }, { onConflict: 'user_id,restaurant_id' });
       btn.textContent = se ? '실패' : '저장됨 ✓';
       if (!se) { btn.style.background = 'var(--ok)'; var { data: rs } = await sb.from('mj_restaurants').select('*'); if (rs) restaurants = rs; }
-    }
-
-    // ── Google Places 검색 ──
-    async function runGoogleSearch(q) {
-      if (!GOOGLE_PLACES_KEY) { alert('Google Places API 키(GOOGLE_PLACES_KEY)를 설정해 주세요.'); return; }
-      $('banner').textContent = '🔎 Google 검색 중…';
-      try {
-        var r = await fetch('https://places.googleapis.com/v1/places:searchText', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': GOOGLE_PLACES_KEY, 'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.googleMapsUri' },
-          body: JSON.stringify({ textQuery: q, languageCode: 'ko' }),
-        });
-        var j = await r.json();
-        renderGoogle(j.places || []);
-      } catch (e) { alert('Google 검색에 실패했어요: ' + e); }
-    }
-
-    function renderGoogle(places) {
-      if (markerClustering) markerClustering.setMap(null);
-      clearSearchMarkers();
-      var back = '<button class="kakao-back" id="s-back">← 추천 목록으로</button>';
-      if (!places.length) {
-        $('rec-list').innerHTML = back + '<div style="text-align:center;color:var(--muted);padding:24px 0;">Google 검색 결과가 없어요.</div>';
-        var sbe = document.getElementById('s-back'); if (sbe) sbe.addEventListener('click', backToList); return;
-      }
-      $('rec-list').innerHTML = back + places.map(function (p, i) {
-        var name = p.displayName && p.displayName.text || '';
-        var addr = p.formattedAddress || '';
-        return '<div class="rec" data-i="' + i + '">' +
-          '<h3>' + esc(name) + '</h3>' +
-          '<div class="meta">' + esc(addr) + '</div>' +
-          '<div class="actions">' +
-          (p.googleMapsUri ? '<a href="' + esc(p.googleMapsUri) + '" target="_blank" rel="noopener">Google Maps</a>' : '') +
-          '</div></div>';
-      }).join('');
-      var pts = [];
-      places.forEach(function (p) {
-        if (!p.location) return;
-        var lat = p.location.latitude, lng = p.location.longitude;
-        var m = new naver.maps.Marker({ position: latLng(lat, lng), map: map, title: (p.displayName && p.displayName.text) || '', icon: starIcon('#1a73e8') });
-        naver.maps.Event.addListener(m, 'click', function () { openInfo(m, '<b>' + esc(p.displayName && p.displayName.text || '') + '</b>'); });
-        searchMarkers.push(m); pts.push([lat, lng]);
-      });
-      fitToPoints(pts);
-      var sbe2 = document.getElementById('s-back'); if (sbe2) sbe2.addEventListener('click', backToList);
     }
 
     // ── [정비사업] 서울 재개발·재건축 1,100여 구역 (정보몽땅 공식자료) — 토글 오버레이 ──

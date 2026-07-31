@@ -49,13 +49,12 @@ cd mcp && npm install && node server.js
 
 Tools: `list_restaurants`, `recommend(spicy_level, flavor_tags[], situation_tags[])`.
 
-## Multi-engine search (네이버 / 카카오 / Google / V-World)
+## Multi-engine search (네이버 / 카카오 / V-World)
 
-- **main.html**: 검색창 아래 엔진 선택 버튼(네이버·카카오·구글)으로 전환 가능. Enter 또는 자동완성의 '검색' 항목 클릭 시 선택된 엔진으로 검색.
-- **land.html**: V-World·카카오·구글 중 선택. 주소·지명 검색에 사용.
+- **main.html**: 검색창 아래 엔진 선택 버튼(네이버·카카오)으로 전환 가능. Enter 또는 자동완성의 '검색' 항목 클릭 시 선택된 엔진으로 검색.
+- **land.html**: V-World·카카오 중 선택. 주소·지명 검색에 사용.
 - **네이버**: Supabase Edge Function(`quick-handler`) 프록시 경유, `main.html` 전용.
 - **카카오**: `kakao.maps.services.Places.keywordSearch()` 직접 호출. `main.html`·`land.html`·`ai.html`에서 사용.
-- **Google**: Places API (New) `POST /v1/places:searchText` 직접 호출. `GOOGLE_PLACES_KEY`가 설정되어 있어야 활성화.
 - **V-World**: `land.html` 기본 검색 — JSONP로 CORS 우회, 주소/지명 검색.
 
 검색 결과는 `mj_restaurants`에 저장 가능. 동일 이름 있으면 기존 row 연결, 없으면 새 row 생성.
