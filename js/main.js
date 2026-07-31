@@ -495,7 +495,7 @@ async function handleSave(btn) {
   const { error } = await sb.from('saved_restaurants')
     .upsert({ user_id: user.id, restaurant_id: id }, { onConflict: 'user_id,restaurant_id' });
   btn.textContent = error ? '실패' : '저장됨 ✓';
-  if (!error) { btn.style.background = 'var(--ok)'; savedIds.add(id); savedRev++; }
+  if (!error) { btn.style.background = 'var(--ok)'; btn.style.borderColor = 'var(--ok)'; btn.style.color = '#fff'; savedIds.add(id); savedRev++; }
   btn.disabled = !!error;
 }
 window.handleSave = handleSave; // 지도 팝업/정보창의 인라인 onclick에서 사용
