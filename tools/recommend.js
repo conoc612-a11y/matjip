@@ -10,8 +10,11 @@ async function fetchRestaurants() {
 }
 
 // 규칙기반 점수: 취향 태그 겹침 ×2 + 매운맛 보정
+// taste 객체별로 Set을 1회만 생성 (대량 스코어링 반복 시 성능) — js/recommend.js와 동일 로직 유지
+const tasteCache = new WeakMap();
 function score(r, taste) {
-  const want = new Set([...(taste.flavor_tags || []), ...(taste.situation_tags || [])]);
+  let want = tasteCache.get(taste);
+  if (!want) { want = new Set([...(taste.flavor_tags || []), ...(taste.situation_tags || [])]); tasteCache.set(taste, want); }
   const hits = [];
   let s = 0;
   (r.tags || []).forEach((t) => { if (want.has(t)) { s += 2; hits.push(t); } });
