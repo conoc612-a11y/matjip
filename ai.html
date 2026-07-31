@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>맛집 탐방 — 자연어 추천</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/recommend.js"></script>
   <style>
     :root { --bg:#f4f5f7; --card:#fff; --line:#e6e8eb; --text:#1c1e21; --muted:#8a9099; --accent:#e8590c; --ok:#2f9e44; }
     * { box-sizing:border-box; }
@@ -102,15 +103,7 @@
       return { spicy_level: spicy, flavor_tags: [...flavor], situation_tags: [...situation] };
     }
 
-    function score(r, taste) {
-      const want = new Set([...(taste.flavor_tags||[]), ...(taste.situation_tags||[])]);
-      const hits = []; let s = 0;
-      (r.tags || []).forEach((x) => { if (want.has(x)) { s += 2; hits.push(x); } });
-      const sp = taste.spicy_level ?? 2;
-      if (sp >= 3 && (r.tags||[]).includes('매콤') && !hits.includes('매콤')) { s += 2; hits.push('매콤'); }
-      if (sp <= 1 && (r.tags||[]).includes('담백') && !hits.includes('담백')) { s += 2; hits.push('담백'); }
-      return { score: s, hits };
-    }
+    // score()는 js/recommend.js의 window.score 사용
 
     // 장소검색용: 문장에서 조사/불용어 제거 → 상호만 남기기
     function cleanQuery(text) {
@@ -132,7 +125,7 @@
         taste.situation_tags.map((t) => `<span class="chip">상황:${esc(t)}</span>`).join('');
       const { data: rs, error } = await sb.from('mj_restaurants').select('*');
       if (error) { $('result').style.display='block'; $('result').textContent = '조회 실패: ' + error.message; return; }
-      const ranked = (rs||[]).map((r) => ({ ...r, ...score(r, taste) }))
+      const ranked = (rs||[]).map((r) => ({ ...r, ...window.score(r, taste) }))
         .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name)).slice(0, 5);
       $('result').style.display = 'block';
       $('result').innerHTML = ranked.map((r) =>

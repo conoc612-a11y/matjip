@@ -13,21 +13,23 @@ Static HTML/JS Seoul restaurant finder. No build tools, no bundler, no framework
 - `schema.sql` — all 5 tables, RLS policies, trigger, seed data (run in Supabase SQL Editor)
 - `seed_more.sql` — 24 additional seed restaurants (safe to re-run)
 - `mcp/` — MCP server (Node.js ESM, has own `package.json`)
-- `tools/recommend.js` — shared recommend logic (CommonJS, zero dependencies)
+- `js/recommend.js` — browser용 공유 추천 로직 (`<script src="js/recommend.js">`로 포함)
+- `tools/recommend.js` — Node.js용 공유 추천 로직 (CommonJS, canonical; mcp/server.js가 import)
 - `tools/matjip-cli.js` — CLI for recommendations
 
 ## Key gotchas
 
 - **Table name is `mj_restaurants`**, not `restaurants`. Name chosen to avoid collision with an existing table in the Supabase project.
-- **Module systems differ**: `tools/recommend.js` is CommonJS (`require`/`module.exports`), `mcp/server.js` is ESM (`import`). Do not mix.
-- **Recommend logic is duplicated** between `tools/recommend.js` and `mcp/server.js`. Keep them in sync if changing scoring rules.
+- **Module systems differ**: `tools/recommend.js` is CommonJS (`require`/`module.exports`). `mcp/server.js` is ESM (`import`) and imports `score`/`fetchRestaurants` from `tools/recommend.js`.
+- **Browser scoring logic** lives in `js/recommend.js` (`window.score()`), included via `<script>`. All 3 HTML files (main, ai, land) use it.
+- **Canonical version** is `tools/recommend.js`. If changing scoring rules, update it and mirror to `js/recommend.js`.
 - **Local dev**: open `index.html` directly in browser works, but GPS, V-World tiles, and Supabase Auth require HTTPS or localhost. Use a local server if testing those features.
 - **No build, lint, typecheck, or test commands exist.** There is no CI.
 - **Supabase anon key is embedded** in HTML files, `tools/recommend.js`, and `mcp/server.js`. It is a publishable key — security is handled by RLS, not by hiding the key.
 
 ## Recommendation system
 
-Rule-based scoring: tag overlap × 2 points, plus spicy-level bonus. Implemented in `tools/recommend.js:13` (canonical) and duplicated in `mcp/server.js:16`.
+Rule-based scoring: tag overlap × 2 points, plus spicy-level bonus. Canonical in `tools/recommend.js`, mirrored to `js/recommend.js` for browser use. MCP server imports from `tools/recommend.js`.
 
 CLI usage:
 ```
@@ -47,11 +49,16 @@ cd mcp && npm install && node server.js
 
 Tools: `list_restaurants`, `recommend(spicy_level, flavor_tags[], situation_tags[])`.
 
-## Kakao real-time search
+## Multi-engine search (네이버 / 카카오 / Google / V-World)
 
-`main.html` has a Kakao REST API integration for searching real restaurants. Set `KAKAO_REST_KEY` in `main.html:75` to enable. Uses `/v2/local/search/keyword.json` (FD6 category = food). No domain registration needed — just a REST API key from developers.kakao.com.
+- **main.html**: 검색창 아래 엔진 선택 버튼(네이버·카카오·구글)으로 전환 가능. Enter 또는 자동완성의 '검색' 항목 클릭 시 선택된 엔진으로 검색.
+- **land.html**: V-World·카카오·구글 중 선택. 주소·지명 검색에 사용.
+- **네이버**: Supabase Edge Function(`quick-handler`) 프록시 경유, `main.html` 전용.
+- **카카오**: `kakao.maps.services.Places.keywordSearch()` 직접 호출. `main.html`·`land.html`·`ai.html`에서 사용.
+- **Google**: Places API (New) `POST /v1/places:searchText` 직접 호출. `GOOGLE_PLACES_KEY`가 설정되어 있어야 활성화.
+- **V-World**: `land.html` 기본 검색 — JSONP로 CORS 우회, 주소/지명 검색.
 
-Search results can be saved to `mj_restaurants` directly from the UI. If the restaurant name already exists, it links to the existing row; otherwise it inserts a new row with empty tags.
+검색 결과는 `mj_restaurants`에 저장 가능. 동일 이름 있으면 기존 row 연결, 없으면 새 row 생성.
 
 ## Deployment
 
