@@ -30,9 +30,9 @@
     .btn:disabled { opacity:.5; }
     .btn-row { display:flex; flex-wrap:wrap; gap:8px; }
     .route h3 { font-size:15px; margin:0 0 10px; }
-    .route a.route-btn { display:inline-flex; align-items:center; gap:6px; text-decoration:none;
+    .route a.route-btn, .route button.route-btn { display:inline-flex; align-items:center; gap:6px; text-decoration:none;
       padding:11px 14px; border-radius:8px; border:1px solid var(--line); background:#fff; color:var(--text); font-size:14px; }
-    .route a.route-btn:hover { border-color:var(--accent); color:var(--accent); }
+    .route a.route-btn:hover, .route button.route-btn:hover { border-color:var(--accent); color:var(--accent); }
     .dist { font-size:13px; color:var(--muted); margin-top:10px; }
     .msg { font-size:13px; margin-top:10px; min-height:16px; }
     .msg.ok { color:var(--ok); } .msg.err { color:#e03131; }
@@ -63,6 +63,7 @@
 
     const id = new URLSearchParams(location.search).get('id');
     let user = null, r = null, map = null, destMarker = null, userMarker = null, line = null;
+    let me = null; // 현재 위치 [lat,lng] (한 번 받으면 재사용)
 
     function haversine(a, b) { // km
       const R = 6371, toRad = (d) => d * Math.PI / 180;
@@ -71,11 +72,22 @@
       return R * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1-s));
     }
 
-    // 구글맵 길찾기 URL (mode: transit=대중교통, walking=도보, driving=자차)
-    function gmapDir(mode, origin) {
-      let u = `https://www.google.com/maps/dir/?api=1&destination=${r.lat},${r.lng}&travelmode=${mode}`;
-      if (origin) u += `&origin=${origin[0]},${origin[1]}`;
-      return u;
+    // GPS로 현재 위치 확보 (재사용). 실패 시 null
+    function getPos() {
+      return new Promise((resolve) => {
+        if (me) { resolve(me); return; }
+        if (!navigator.geolocation) { $('dist').textContent = '이 브라우저는 위치를 지원하지 않아요.'; resolve(null); return; }
+        $('dist').textContent = '위치 확인 중…';
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            me = [pos.coords.latitude, pos.coords.longitude];
+            if (userMarker) map.removeLayer(userMarker);
+            userMarker = L.marker(me).addTo(map).bindPopup('현재 위치').openPopup();
+            resolve(me);
+          },
+          () => { $('dist').textContent = '위치 권한이 거부되었어요. (브라우저 주소창 위치 허용 필요)'; resolve(null); }
+        );
+      });
     }
 
     // ODsay 대중교통 상세 경로 (현재위치 → 맛집). origin=[lat,lng]
@@ -106,25 +118,31 @@
       }
     }
 
-    // ── 앱 내부 자차 경로 (OSRM 무료 라우팅, 실제 도로 따라감). origin=[lat,lng] ──
-    async function drawDrivingRoute(me) {
+    // ── 앱 내부 도보/자차 경로 (OSRM 무료 라우팅, 실제 도로 따라감). origin=[lat,lng] ──
+    async function drawRoute(me, mode) {
       if (line) { map.removeLayer(line); line = null; }
-      $('dist').textContent = '🚗 자차 경로 계산 중…';
-      const url = `https://router.project-osrm.org/route/v1/driving/${me[1]},${me[0]};${r.lng},${r.lat}?overview=full&geometries=geojson`;
+      const profile = mode === 'walk' ? 'foot' : 'driving';
+      const label = mode === 'walk' ? '🚶 도보' : '🚗 자차';
+      $('dist').textContent = label + ' 경로 계산 중…';
+      const url = `https://router.project-osrm.org/route/v1/${profile}/${me[1]},${me[0]};${r.lng},${r.lat}?overview=full&geometries=geojson`;
       try {
         const j = await (await fetch(url)).json();
         if (j.code === 'Ok' && j.routes && j.routes[0]) {
           const rt = j.routes[0];
           const latlngs = rt.geometry.coordinates.map((c) => [c[1], c[0]]);
-          line = L.polyline(latlngs, { color: '#1c6dd0', weight: 5, opacity: 0.85 }).addTo(map);
+          line = L.polyline(latlngs, { color: mode === 'walk' ? '#2f9e44' : '#1c6dd0', weight: 5, opacity: 0.85 }).addTo(map);
           map.fitBounds(line.getBounds().pad(0.2));
-          $('dist').innerHTML = `🚗 자차 약 <b>${(rt.distance / 1000).toFixed(1)}km · ${Math.round(rt.duration / 60)}분</b> · 직선 ${haversine(me, [r.lat, r.lng]).toFixed(1)}km`;
+          if (mode === 'walk') {
+            $('dist').innerHTML = `🚶 도보 약 <b>${Math.round(rt.duration / 60)}분</b> · ${(rt.distance / 1000).toFixed(1)}km · 직선 ${haversine(me, [r.lat, r.lng]).toFixed(1)}km`;
+          } else {
+            $('dist').innerHTML = `🚗 자차 약 <b>${(rt.distance / 1000).toFixed(1)}km · ${Math.round(rt.duration / 60)}분</b> · 직선 ${haversine(me, [r.lat, r.lng]).toFixed(1)}km`;
+          }
           return;
         }
       } catch (e) { /* 폴백으로 */ }
       line = L.polyline([me, [r.lat, r.lng]], { color: '#e8590c', dashArray: '6' }).addTo(map);
       map.fitBounds(line.getBounds().pad(0.3));
-      $('dist').textContent = `직선 거리 약 ${haversine(me, [r.lat, r.lng]).toFixed(1)}km (자차 경로 응답 없음)`;
+      $('dist').textContent = `직선 거리 약 ${haversine(me, [r.lat, r.lng]).toFixed(1)}km (경로 응답 없음)`;
     }
 
     async function init() {
@@ -153,12 +171,12 @@
         <div class="card route">
           <h3>길찾기</h3>
           <div class="btn-row">
-            <a class="route-btn" id="r-transit" target="_blank" rel="noopener">🚇 대중교통</a>
-            <a class="route-btn" id="r-walk" target="_blank" rel="noopener">🚶 도보</a>
-            <a class="route-btn" id="r-car" target="_blank" rel="noopener">🚗 자차</a>
+            <button class="route-btn" id="r-transit">🚇 대중교통</button>
+            <button class="route-btn" id="r-walk">🚶 도보</button>
+            <button class="route-btn" id="r-car">🚗 자차</button>
             <a class="route-btn" id="r-kakao" target="_blank" rel="noopener">🗺️ 카카오맵</a>
           </div>
-          <button class="btn sec" id="gps" style="margin-top:12px;">📍 현재 위치에서 길찾기</button>
+          <button class="btn sec" id="gps" style="margin-top:12px;">📍 현재 위치 표시</button>
           <div class="dist" id="dist"></div>
           <div class="dist" id="odsay"></div>
         </div>`;
@@ -177,11 +195,11 @@
       })();
       destMarker = L.marker([r.lat, r.lng]).addTo(map).bindPopup(`<b>${esc(r.name)}</b>`).openPopup();
 
-      // 길찾기 링크 (기본: 목적지만)
-      $('r-transit').href = gmapDir('transit');
-      $('r-walk').href = gmapDir('walking');
-      $('r-car').href = gmapDir('driving');
+      // 길찾기 버튼 (현재 위치에서 경로 계산 — GPS 재사용)
       $('r-kakao').href = `https://map.kakao.com/link/to/${encodeURIComponent(r.name)},${r.lat},${r.lng}`;
+      $('r-transit').addEventListener('click', async () => { const p = await getPos(); if (p) showOdsay(p); });
+      $('r-walk').addEventListener('click', async () => { const p = await getPos(); if (p) drawRoute(p, 'walk'); });
+      $('r-car').addEventListener('click', async () => { const p = await getPos(); if (p) drawRoute(p, 'driving'); });
 
       // 저장
       $('save').addEventListener('click', async () => {
@@ -203,23 +221,8 @@
         $('msg').className = error ? 'msg err' : 'msg ok';
       });
 
-      // GPS 길찾기
-      $('gps').addEventListener('click', () => {
-        if (!navigator.geolocation) { $('dist').textContent = '이 브라우저는 위치를 지원하지 않아요.'; return; }
-        $('dist').textContent = '위치 확인 중…';
-        navigator.geolocation.getCurrentPosition((pos) => {
-          const me = [pos.coords.latitude, pos.coords.longitude];
-          if (userMarker) map.removeLayer(userMarker);
-          if (line) map.removeLayer(line);
-          userMarker = L.marker(me).addTo(map).bindPopup('현재 위치').openPopup();
-          drawDrivingRoute(me); // 앱 내부 자차 경로(OSRM 무료)
-          // 길찾기 링크를 현재위치 출발로 갱신
-          $('r-transit').href = gmapDir('transit', me);
-          $('r-walk').href = gmapDir('walking', me);
-          $('r-car').href = gmapDir('driving', me);
-          showOdsay(me); // 앱 내부 대중교통 상세 경로
-        }, () => { $('dist').textContent = '위치 권한이 거부되었어요. (브라우저 주소창 위치 허용 필요)'; });
-      });
+      // GPS 버튼: 현재 위치만 표시 (길찾기는 위 버튼에서)
+      $('gps').addEventListener('click', () => getPos());
 
       // 조회 로그 (feedbacks: view) — 로그인 시
       if (user) sb.from('feedbacks').insert({ user_id: user.id, restaurant_id: r.id, action: 'view' });
