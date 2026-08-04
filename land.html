@@ -281,7 +281,7 @@
     </div>
     <div class="footer-contact">호룡리싱앤리얼리티 &nbsp;·&nbsp; 오재호 010.4353.6501 &nbsp;·&nbsp; conoc@naver.com
       <!-- 빌드 태그: 브라우저가 옛 파일을 캐시하고 있는지 한눈에 확인하는 용도. 배포마다 올린다. -->
-      &nbsp;·&nbsp; <span class="build-tag">build 2026-07-31-b31</span></div>
+      &nbsp;·&nbsp; <span class="build-tag">build 2026-07-31-b32</span></div>
   </footer>
 
   <script>
@@ -377,7 +377,22 @@
     // 컨테이너 크기가 바뀌면 Leaflet 에 알려야 한다. 안 그러면 캐시된 크기(0일 수도)로
     // 타일·클러스터·팝업 위치를 계산해 화면과 어긋난다.
     function refreshMapSize() { try { map.invalidateSize({ animate: false }); } catch (e) {} syncPopupMaxHeight(); }
-    map.whenReady(() => { refreshMapSize(); setTimeout(refreshMapSize, 300); });
+
+    // 초기 1회 보정은 타이밍을 놓치기 쉽다. 실측: whenReady + 300ms + ResizeObserver 를 모두
+    // 걸었는데도 map._size 가 {0,0} 인 채 남아 타일이 1장만 그려졌다(수동 invalidateSize 로는 즉시 복구).
+    // ResizeObserver 는 '크기 변화'에만 발화하므로, 관측 시작 시점이 어긋나면 다시 오지 않는다.
+    // 그래서 실제로 크기가 잡힐 때까지 짧게 재시도하고, 확인되면 멈춘다.
+    let _sizeTries = 0;
+    (function ensureMapSize() {
+      const el = map.getContainer();
+      if (el.clientWidth > 0 && el.clientHeight > 0) {
+        refreshMapSize();
+        if (map.getSize().y > 0) return;   // 확정 — 폴링 종료
+      }
+      if (_sizeTries++ < 40) setTimeout(ensureMapSize, 100);   // 최대 4초
+    })();
+
+    // 이후의 컨테이너 크기 변화(창 리사이즈, 패널 접기 등)는 관측으로 따라간다
     if (window.ResizeObserver) new ResizeObserver(refreshMapSize).observe(map.getContainer());
     else window.addEventListener('resize', refreshMapSize);
     // V-World 다중 배경지도 (일반/항공영상/하이브리드) — S-Map 유사 룩.
