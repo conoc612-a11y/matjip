@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "matjip-static",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["tools/static-server.js"],
+      "port": 8181
+    }
+  ]
+}
