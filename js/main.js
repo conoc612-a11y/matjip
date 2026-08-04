@@ -586,25 +586,25 @@ function setClusterVisible(v) { clusterPool.forEach((m) => m.setMap(v ? map : nu
 
 // ── ⑪ 정비사업 (재개발·재건축 1,100여 구역, 정보몽땅 공식자료) ─────────────
 // 모아 = 소규모주택정비(가로주택정비·소규모재건축·소규모재개발) → 모아타운/모아주택 계열
-const JB_COLOR = { '재개발': '#e03131', '재건축': '#7048e8', '모아': '#2f9e44', '지역주택': '#1c7ed6', '리모델링': '#f08c00', '기타': '#868e96' };
-function jbGroup(g) { g = g || ''; if (g.indexOf('가로') >= 0 || g.indexOf('소규모') >= 0) return '모아'; if (g.indexOf('재건축') >= 0) return '재건축'; if (g.indexOf('재개발') >= 0) return '재개발'; if (g.indexOf('지역주택') >= 0) return '지역주택'; if (g.indexOf('리모델링') >= 0) return '리모델링'; return '기타'; }
+const JB_COLOR = { '재개발': '#e03131', '재건축': '#7048e8', '모아': '#2f9e44', '지역주택': '#1c7ed6', '리모델링': '#f08c00', '신통': '#e8590c', '기타': '#868e96' };
+function jbGroup(d) { const g = (d && d.gubun) || (typeof d === 'string' ? d : '') || ''; const n = (d && d.name) || ''; if (n && /신속통합기획|신통|통합구역/.test(n)) return '신통'; if (g.indexOf('가로') >= 0 || g.indexOf('소규모') >= 0) return '모아'; if (g.indexOf('재건축') >= 0) return '재건축'; if (g.indexOf('재개발') >= 0) return '재개발'; if (g.indexOf('지역주택') >= 0) return '지역주택'; if (g.indexOf('리모델링') >= 0) return '리모델링'; return '기타'; }
 function jbIcon(color) { return { content: `<div style="width:22px;height:22px;background:${color};border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.5);"></div>`, anchor: new naver.maps.Point(11, 11) }; }
 const jbCIcon = (px) => ({ content: `<div style="cursor:pointer;width:${px}px;height:${px}px;line-height:${px - 4}px;background:#495057;border:2px solid #fff;border-radius:50%;color:#fff;text-align:center;font-weight:700;font-size:13px;box-shadow:0 1px 5px rgba(0,0,0,.4);"></div>`, size: new naver.maps.Size(px, px), anchor: new naver.maps.Point(px / 2, px / 2) });
 const jbClusterIcons = [jbCIcon(34), jbCIcon(42), jbCIcon(50), jbCIcon(58)];
 function jbCard(d) {
-  const g = jbGroup(d.gubun), c = JB_COLOR[g];
+  const g = jbGroup(d), c = JB_COLOR[g];
   return `<div style="min-width:195px;"><span style="display:inline-block;background:${c};color:#fff;font-size:11px;padding:2px 7px;border-radius:10px;">${g}</span> <b style="font-size:11px;color:#555;">${esc(d.stage || '')}</b><div style="font-weight:700;font-size:14px;margin:4px 0 2px;">${esc(d.name)}</div><div style="font-size:12px;color:#8a9099;">${esc(d.gu)} ${esc(d.jibun)}${d.approx ? ' (동 근사)' : ''}</div><div style="font-size:11px;color:#999;margin-top:3px;">사업구분: ${esc(d.gubun)}${d.method ? ' · ' + esc(d.method) : ''}</div>${(d.rc || d.cafe) ? `<div style="display:flex;gap:6px;margin-top:7px;">${d.rc ? `<a href="https://urban.seoul.go.kr/view/map/mapPopup.html?recordCode=${encodeURIComponent(d.rc)}" target="_blank" rel="noopener" style="flex:1;text-align:center;padding:6px;border:1px solid #7048e8;color:#7048e8;border-radius:6px;text-decoration:none;font-size:12px;">🗺️ 경계지도</a>` : ''}${d.cafe ? `<a href="https://cleanup.seoul.go.kr/cafe/mainIndx.do?cafeUrl=${encodeURIComponent(d.cafe)}" target="_blank" rel="noopener" style="flex:1;text-align:center;padding:6px;border:1px solid #1c7ed6;color:#1c7ed6;border-radius:6px;text-decoration:none;font-size:12px;">📂 정보공개</a>` : ''}</div>` : ''}<div style="display:flex;gap:6px;margin-top:8px;"><button onclick="setRoutePt('s',${d.lat},${d.lng})" style="flex:1;font:inherit;font-size:12px;padding:5px 0;border:1px solid #2f9e44;color:#2f9e44;background:#fff;border-radius:6px;cursor:pointer;">🚩 출발</button><button onclick="setRoutePt('e',${d.lat},${d.lng})" style="flex:1;font:inherit;font-size:12px;padding:5px 0;border:1px solid #e03131;color:#e03131;background:#fff;border-radius:6px;cursor:pointer;">🏁 도착</button></div></div>`;
 }
 let jbRows = null, jbClustering = null, jbOn = false, jbPolys = null, jbPolysNaver = [];
-const jbFilter = { '재개발': true, '재건축': true, '모아': true, '지역주택': true, '리모델링': true, '기타': true };
+const jbFilter = { '재개발': true, '재건축': true, '모아': true, '지역주택': true, '리모델링': true, '신통': true, '기타': true };
 function jbBuildNaver() {
   if (jbClustering) { jbClustering.setMap(null); jbClustering = null; }
   jbPolysNaver.forEach((p) => p.setMap(null)); jbPolysNaver = [];
   if (!jbRows || !jbOn) return;
   const arr = [];
   jbRows.forEach((d) => {
-    if (!jbFilter[jbGroup(d.gubun)]) return;
-    const c = JB_COLOR[jbGroup(d.gubun)];
+    if (!jbFilter[jbGroup(d)]) return;
+    const c = JB_COLOR[jbGroup(d)];
     if (d.rc && jbPolys && jbPolys[d.rc]) {
       const paths = jbPolys[d.rc].map((ring) => ring.map((p) => latLng(p[0], p[1])));
       const poly = new naver.maps.Polygon({ map, paths, fillColor: c, fillOpacity: 0.28, strokeColor: c, strokeWeight: 2, strokeOpacity: 0.9 });
