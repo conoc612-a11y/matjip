@@ -1527,6 +1527,7 @@
       const slot = popupEl && popupEl.querySelector('.bld-info');
       if (!slot) return;
       const st = { zone: '', parcel: null, br: null, bld: null, house: null, detail: null, addrPnu: null };
+      let _firstRender = true;
       const render = () => {
         slot.innerHTML = landInfoHtml(st, noDetail);
         const btn = slot.querySelector('.ld-more');
@@ -1548,8 +1549,9 @@
           };
         });
         if (onInfo) onInfo(st);
-        const p = getPopup();
-        repanPopup(p);  // update() 를 쓰면 방금 꽂은 내용이 지워진다
+        // _adjustPan은 최초 렌더에서만 호출. 이후 팝업 내용 갱신(시세·대장 상세) 시에는
+        // 지도를 움직이지 않는다 — 상세 조회가 쌓이는 동안 지도가 밀리는 문제를 방지.
+        if (_firstRender) { _firstRender = false; const p = getPopup(); repanPopup(p); }
       };
       let left = jibun ? 4 : 3;
       const afterBase = () => {
