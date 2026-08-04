@@ -281,7 +281,7 @@
     </div>
     <div class="footer-contact">호룡리싱앤리얼리티 &nbsp;·&nbsp; 오재호 010.4353.6501 &nbsp;·&nbsp; conoc@naver.com
       <!-- 빌드 태그: 브라우저가 옛 파일을 캐시하고 있는지 한눈에 확인하는 용도. 배포마다 올린다. -->
-      &nbsp;·&nbsp; <span class="build-tag">build 2026-07-31-b33</span></div>
+      &nbsp;·&nbsp; <span class="build-tag">build 2026-07-31-b34</span></div>
   </footer>
 
   <script>
@@ -1786,6 +1786,14 @@
     }
 
     map.on('click', (e) => {
+      // 팝업 안에서 시작된 클릭은 지도 클릭으로 취급하지 않는다.
+      // '건축물대장 상세 보기' 같은 팝업 내부 버튼을 누르면 클릭이 지도까지 올라와,
+      // 버튼이 놓인 화면 지점의 좌표로 새 팝업이 열리며 다른 필지로 갈아타는 문제가 있었다.
+      // (실측: 논현동 171-22 -> 138-3, 지도 109m 이동 / 숭인동에서도 동일 재현)
+      // disableClickPropagation 만으로는 막히지 않는 경로가 있어 여기서 한 번 더 거른다.
+      const _oe = e.originalEvent;
+      if (_oe && _oe.target && _oe.target.closest && _oe.target.closest('.leaflet-popup')) return;
+
       const { lat, lng } = e.latlng;
       if (_hovTip) { map.removeLayer(_hovTip); _hovTip = null; _hovKey = ''; }
       if (clickMarker) map.removeLayer(clickMarker);
