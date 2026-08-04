@@ -281,7 +281,7 @@
     </div>
     <div class="footer-contact">호룡리싱앤리얼리티 &nbsp;·&nbsp; 오재호 010.4353.6501 &nbsp;·&nbsp; conoc@naver.com
       <!-- 빌드 태그: 브라우저가 옛 파일을 캐시하고 있는지 한눈에 확인하는 용도. 배포마다 올린다. -->
-      &nbsp;·&nbsp; <span class="build-tag">build 2026-07-31-b32</span></div>
+      &nbsp;·&nbsp; <span class="build-tag">build 2026-07-31-b33</span></div>
   </footer>
 
   <script>
@@ -692,6 +692,18 @@
         if (e.layer !== villaCluster || map.hasLayer(realpriceCluster)) return;
         map.removeControl(rpFilterCtrl);
         map.removeControl(rpLegend);
+      });
+
+      // 팝업 안의 클릭이 지도로 새어나가지 않게 막는다.
+      // 이게 없으면 '건축물대장 상세 보기' 같은 팝업 내부 버튼을 누를 때
+      // map click 이 한 번 더 발생해, 버튼이 놓인 화면 지점의 좌표로 새 팝업이 열린다.
+      // 실측: 논현동 171-22 에서 상세 보기를 누르자 138-3(109m 북쪽) 팝업으로 바뀌었다.
+      // 스크롤도 함께 막아, 팝업 안을 스크롤할 때 지도가 확대/축소되지 않게 한다.
+      map.on('popupopen', (e) => {
+        const n = e.popup._contentNode || e.popup.getElement();
+        if (!n) return;
+        L.DomEvent.disableClickPropagation(n);
+        L.DomEvent.disableScrollPropagation(n);
       });
 
       // 실거래가 마커 팝업의 ☆저장 버튼 → localStorage 즐겨찾기 토글
