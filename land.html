@@ -154,7 +154,11 @@
     .unit-detail b { color:var(--text); }
     /* ── Leaflet 팝업 (다크모드 배경 + 화면 크기에 맞는 크기) ── */
     .leaflet-popup-content-wrapper { background:var(--card); color:var(--text); border-radius:12px; box-shadow:var(--c-shadow-lg); }
-    .leaflet-popup-content { max-height:min(62vh, 520px); overflow-y:auto; max-width:min(340px, calc(100vw - 40px)); }
+    /* 세로만 스크롤한다. overflow-x 를 막지 않으면 긴 한 줄이 컨테이너를 밀어내 가로 스크롤바가 생긴다
+       (예: '공시지가 4,984,000원/㎡ (평당 16,476,032원 · 2025.01 기준)').
+       --popup-max-h 는 지도 높이에 맞춰 JS 가 갱신한다. vh 로 고정하면 지도가 화면 일부일 때 팝업이 넘친다. */
+    .leaflet-popup-content > * { max-width:100%; }
+    .leaflet-popup-content { max-height:var(--popup-max-h, min(62vh, 520px)); overflow-y:auto; overflow-x:hidden; overflow-wrap:anywhere; word-break:break-word; max-width:min(340px, calc(100vw - 40px)); }
     .leaflet-popup-tip { background:var(--card); }
     .leaflet-container a.leaflet-popup-close-button { color:var(--muted); }
     /* ── 호버 툴팁 (건물 위 커서 정지 시 주소·토지·건물 정보) ── */
@@ -271,7 +275,7 @@
     </div>
     <div class="footer-contact">호룡리싱앤리얼리티 &nbsp;·&nbsp; 오재호 010.4353.6501 &nbsp;·&nbsp; conoc@naver.com
       <!-- 빌드 태그: 브라우저가 옛 파일을 캐시하고 있는지 한눈에 확인하는 용도. 배포마다 올린다. -->
-      &nbsp;·&nbsp; <span class="build-tag">build 2026-07-31-b28</span></div>
+      &nbsp;·&nbsp; <span class="build-tag">build 2026-07-31-b30</span></div>
   </footer>
 
   <script>
@@ -349,7 +353,19 @@
     // ── 지도 초기화 (서울 중심) ──
     // preferCanvas: 벡터(마커 9천개 + 폴리곤 정점 4.2만개)를 SVG DOM 대신 캔버스 1장에 그린다.
     // SVG 렌더러는 도형마다 <path> DOM을 만들고 팬/줌마다 전부 좌표를 재계산해서 지도가 버벅인다.
+    // 팝업 폭 기본값. 정하지 않으면 Leaflet 이 내용 폭을 그대로 재서 지도를 넘는 팝업이 나온다.
+    L.Popup.mergeOptions({ maxWidth: 340, minWidth: 220, autoPanPadding: [16, 24] });
+
     const map = L.map('map', { wheelPxPerZoomLevel: 120, preferCanvas: true }).setView([37.5665, 126.9780], 12);
+
+    // 팝업 최대 높이를 지도 높이에 맞춘다. vh 고정이면 지도가 화면 일부일 때 팝업이 지도 밖으로 넘친다.
+    // 내용은 건드리지 않는다 — popup.update() 는 innerHTML 을 다시 그려서 비동기로 채운 내용을 지운다.
+    function syncPopupMaxHeight() {
+      const h = map.getSize().y;
+      document.documentElement.style.setProperty('--popup-max-h', Math.max(160, Math.round(h * 0.62)) + 'px');
+    }
+    map.on('resize zoomend', syncPopupMaxHeight);
+    map.whenReady(syncPopupMaxHeight);
     // V-World 다중 배경지도 (일반/항공영상/하이브리드) — S-Map 유사 룩.
     // Satellite는 jpeg, Base·Hybrid는 png (실측 확인). 우측 상단 레이어에서 전환.
     const vTile = (layer, ext) => L.tileLayer(
@@ -1733,6 +1749,9 @@
       if (_hovTip) { map.removeLayer(_hovTip); _hovTip = null; _hovKey = ''; }
       if (clickMarker) map.removeLayer(clickMarker);
       clickMarker = L.marker([lat, lng]).addTo(map).bindPopup('정보 불러오는 중…').openPopup();
+      // 클릭 지점을 공인중개사 검색 기준으로 삼고 목록을 즉시 갱신한다
+      agentAnchor = { lat, lng };
+      if (landMode === 'agents') renderAgents();
       // 안전장치: 예외나 응답 지연으로 팝업이 '불러오는 중…'에 갇히면 6초 뒤 최소 정보라도 보여준다.
       const _stuckGuard = setTimeout(() => {
         const pel = clickMarker && clickMarker.getPopup() && clickMarker.getPopup().getElement();
@@ -2212,7 +2231,10 @@
       }));
     }
 
-    // ── 인근 공인중개사 (카카오 장소검색, 지도 중심 반경) ──
+    // ── 인근 공인중개사 (카카오 장소검색) ──
+    // 기준점: 마지막 클릭 지점 > 지도 중심. 지도 클릭 핸들러가 agentAnchor 를 갱신한다.
+    // 예전엔 지도 중심 고정이라, 새 주소를 클릭해도 목록이 그대로여서 갱신이 안 되는 것처럼 보였다.
+    let agentAnchor = null;
     let agentMarkers = [];
     let kakaoTries = 0;
     function renderAgents() {
@@ -2224,8 +2246,11 @@
         return;
       }
       kakaoTries = 0;
-      $('banner').textContent = '지도 중심 인근 공인중개사예요. 지도를 옮기고 위치 버튼으로 갱신하세요.';
-      const c = map.getCenter();
+      // 클릭한 지점이 있으면 그걸 기준으로 삼는다. 없을 때만 지도 중심.
+      const c = agentAnchor || map.getCenter();
+      $('banner').textContent = agentAnchor
+        ? '클릭한 위치 기준 인근 공인중개사예요.'
+        : '지도 중심 인근 공인중개사예요. 지도를 옮기고 위치 버튼으로 갱신하세요.';
       new kakao.maps.services.Places().keywordSearch('공인중개사', (data, status) => {
         if (status !== kakao.maps.services.Status.OK || !data.length) { $('rec-list').innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px 0;">인근 공인중개사가 없어요. 지도를 옮겨보세요.</div>'; return; }
         $('rec-list').innerHTML = data.map((p, i) => { const dm = Number(p.distance) || 0; const dtxt = dm ? `${dm >= 1000 ? (dm / 1000).toFixed(1) + 'km' : dm + 'm'} · 도보 ${Math.max(1, Math.round(dm / 1000 / 4.5 * 60))}분` : ''; return `<div class="rec" data-i="${i}"><h3>${esc(p.place_name)}</h3><div class="meta">${esc((p.category_name || '').split('>').pop().trim())} · ${esc(p.road_address_name || p.address_name || '')}</div>${dtxt ? `<div class="meta" style="color:var(--muted);margin-top:2px;">${dtxt}</div>` : ''}<div class="actions">${p.phone ? `<a href="tel:${esc(p.phone)}">${esc(p.phone)}</a>` : ''}${p.place_url ? `<a href="${safeUrl(p.place_url)}" target="_blank" rel="noopener">카카오맵</a>` : ''}</div></div>`; }).join('');
