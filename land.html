@@ -145,11 +145,23 @@
     .pc-btn-row { display:flex; gap:7px; }
     .pc-btn-row .pc-btn { flex:1; }
     .pc-price { font-size:15px; font-weight:700; color:var(--c-price); margin-top:2px; }
+    .unit-row { display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%; padding:6px 8px; margin-top:4px; background:var(--card); border:1px solid var(--line); border-radius:8px; cursor:pointer; font:inherit; font-size:12px; color:var(--text); text-align:left; box-sizing:border-box; }
+    .unit-row:hover { border-color:var(--c-primary); }
+    .unit-row b { color:var(--text); }
+    .unit-row .ur-chev { color:var(--muted); font-size:9px; transition:transform .15s; flex-shrink:0; }
+    .unit-row.open .ur-chev { transform:rotate(90deg); }
+    .unit-detail { display:none; margin:2px 0 2px; padding:7px 9px; border-left:2px solid var(--c-primary); border-radius:0 8px 8px 0; background:var(--c-primary-soft); font-size:11px; color:var(--muted); line-height:1.75; }
+    .unit-detail b { color:var(--text); }
     /* ── Leaflet 팝업 (다크모드 배경 + 화면 크기에 맞는 크기) ── */
     .leaflet-popup-content-wrapper { background:var(--card); color:var(--text); border-radius:12px; box-shadow:var(--c-shadow-lg); }
     .leaflet-popup-content { max-height:min(62vh, 520px); overflow-y:auto; max-width:min(340px, calc(100vw - 40px)); }
     .leaflet-popup-tip { background:var(--card); }
     .leaflet-container a.leaflet-popup-close-button { color:var(--muted); }
+    /* ── 호버 툴팁 (건물 위 커서 정지 시 주소·토지·건물 정보) ── */
+    .leaflet-tooltip.hov-tip { background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:8px; padding:7px 10px; box-shadow:var(--c-shadow-lg); font-size:12px; line-height:1.55; }
+    .leaflet-tooltip-top.hov-tip::before { border-top-color:var(--card); }
+    .hov-tip .hov-addr { color:var(--muted); }
+    .hov-tip .hov-name { font-weight:700; color:var(--text); }
     /* 네이버 부동산 링크는 방문 후 색이 갈리면 안 보이므로 유지한다 */
     a.pc-btn-primary:visited { color:#fff; }
     /* Leaflet 기본 컨트롤은 배경이 흰색으로 고정돼 있어 다크모드에서 메뉴 글씨가 사라진다(실측 1.19:1).
@@ -943,8 +955,10 @@
 
     // ── 지도 클릭 → 위치 정보(주소 + 근처 실거래가) 표시 ──
     let clickMarker = null;
-    const _gcCache = new Map(); // 좌표 캐시(50m 그리드) → {addr, bldName}
-    const _gcKey = (lat, lng) => `${(lat * 200 | 0)},${(lng * 200 | 0)}`;
+    const _gcCache = new Map(); // 좌표 캐시(≈1m 그리드) → {addr, bldName}
+    // 그리드가 너무 크면(예: ×200 = 약 555m) 옆 건물을 클릭해도 같은 셀로 뭉쳐
+    // 첫 건물의 주소·건물명·지번이 그대로 재사용된다. ×100000 ≈ 1.1m(위도)로 좁힌다.
+    const _gcKey = (lat, lng) => `${(lat * 100000 | 0)},${(lng * 100000 | 0)}`;
 
     // ── 단지명 보정 ──────────────────────────────────────────────
     // 국토부 실거래가 원본은 단지명이 축약돼 있다 (실측: 9,030건 중 1,594건 = 17.7%가 3글자 이하).
@@ -995,7 +1009,7 @@
       '20000': '자동차 관련시설', '21000': '동물·식물 관련시설', '22000': '자원순환 관련시설',
     };
     // V-World 데이터 API 범용 조회 (JSONP — 브라우저에서 CORS 없이 호출 가능함을 실측 확인)
-    // 레이어별로 캐시한다. 좌표는 50m 그리드로 뭉쳐서 같은 건물 반복 조회를 막는다.
+    // 레이어별로 캐시한다. 좌표는 ≈1m 그리드로 뭉쳐 같은 건물 반복 조회를 막는다.
     const _vwCache = new Map();
     let _vwSeq = 0;
     function vworldFeature(dataId, lat, lng, cb) {
@@ -1058,23 +1072,38 @@
       if (!p) { cb(null); return; }
       const key = op + '|' + pnu;
       if (_brCache.has(key)) { cb(_brCache.get(key)); return; }
-      const q = `serviceKey=${MOLIT_KEY}&sigunguCd=${p.sigunguCd}&bjdongCd=${p.bjdongCd}`
-        + `&platGbCd=${p.platGbCd}&bun=${p.bun}&ji=${p.ji}&numOfRows=${op === 'getBrTitleInfo' ? 10 : 100}&pageNo=1&_type=json`;
       const attempt = _attempt || 0;
       const fail = () => {
         const wait = [600, 1800, 0][attempt];
         if (wait) { setTimeout(() => ledgerOp(op, pnu, cb, attempt + 1), wait); return; }
         cb(null);  // 캐시하지 않는다 — 다음 클릭 때 다시 시도할 수 있도록
       };
-      fetch(`https://apis.data.go.kr/1613000/BldRgstHubService/${op}?${q}`)
-        .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
-        .then((j) => {
-          const items = j.response.body.items;
-          const arr = (!items ? [] : Array.isArray(items.item) ? items.item : [items.item]).filter(Boolean);
-          _brCache.set(key, arr);
-          cb(arr);
-        })
-        .catch(fail);
+      // 아파트 대단지는 세대가 수백~천 개라 1페이지만 받으면 세대 수·공시가격이 잘린다.
+      // totalCount 를 보고 100행/페이지로 마저 받되, 남용 방지를 위해 최대 500행(5페이지)으로 막는다.
+      // 페이지는 순차로만 이어받아(data.go.kr 이 동시 요청에 약함) 한 번 실패하면 전체 재시도.
+      const MAX_ROWS = 500;
+      const pageSize = op === 'getBrTitleInfo' ? 10 : 100;
+      const page = (pno, acc) => {
+        const q = `serviceKey=${MOLIT_KEY}&sigunguCd=${p.sigunguCd}&bjdongCd=${p.bjdongCd}`
+          + `&platGbCd=${p.platGbCd}&bun=${p.bun}&ji=${p.ji}&numOfRows=${pageSize}&pageNo=${pno}&_type=json`;
+        fetch(`https://apis.data.go.kr/1613000/BldRgstHubService/${op}?${q}`)
+          .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+          .then((j) => {
+            const body = j.response.body;
+            const items = body.items;
+            const arr = (!items ? [] : Array.isArray(items.item) ? items.item : [items.item]).filter(Boolean);
+            const acc2 = acc.concat(arr);
+            const total = Number(body.totalCount) || 0;
+            if (total > acc2.length && acc2.length < MAX_ROWS && arr.length === pageSize) {
+              setTimeout(() => page(pno + 1, acc2), 150);
+              return;
+            }
+            _brCache.set(key, acc2);
+            cb(acc2);
+          })
+          .catch(fail);
+      };
+      page(1, []);
     }
     function buildingRegister(pnu, cb) {
       ledgerOp('getBrTitleInfo', pnu, (arr) => {
@@ -1127,9 +1156,16 @@
     // Leaflet 의 popup.update() 는 저장된 _content 문자열로 innerHTML 을 다시 그린다.
     // 우리가 DOM 에 직접 꽂아 넣은 내용(토지·건물 정보, 상호 목록)이 그 순간 통째로 지워지고,
     // 붙잡아 둔 노드도 분리돼 이후 렌더가 화면에 영영 반영되지 않는다.
-    // 팝업 높이는 자동이라 내용이 늘어나도 알아서 커지므로, 위치 보정만 해주면 된다.
+    // 팝업 높이는 자동이라 내용이 늘어나도 알아서 커진다. 단 _adjustPan() 을 재렌더마다
+    // 부르면 '팝업 전체가 화면에 들어오도록' 지도가 순간이동(animate:false)해, 상세 조회가
+    // 하나씩 쌓이는 동안 지도가 다른 지역으로 훌쩍 옮겨간 것처럼 보인다. 팝업은 내부
+    // 스크롤이 가능하므로 앵커(클릭 지점)가 화면 안에 있는 동안은 지도를 건드리지 않는다.
     function repanPopup(p) {
       if (!p || !p.isOpen || !p.isOpen()) return;
+      const map = p._map;
+      const ll = p.getLatLng ? p.getLatLng() : null;
+      if (!map || !ll) return;
+      if (map.getBounds().pad(-0.03).contains(ll)) return;
       try { if (p._adjustPan) p._adjustPan(); } catch (e) {}
     }
 
@@ -1138,7 +1174,7 @@
     //  br  = 건축물대장 (정확한 주용도·용적률·건폐율) — 있으면 이것만 쓴다
     //  bld = V-World LT_C_BLDGINFO (용도 '계열'까지만) — 대장에 기록이 없을 때만 폴백
     // 둘 다 그리면 '단독주택 계열'과 '주용도 단독주택'이 나란히 나와 중복이다.
-    function landInfoHtml(st) {
+    function landInfoHtml(st, noDetail) {
       if (!st) return '';
       const rows = [];
       let badge = '';
@@ -1212,7 +1248,7 @@
 
       const houseHtml = houseStatHtml(st.house);
       let detailHtml = '';
-      if (st.br) {
+      if (st.br && !noDetail) {
         // 상세 조회는 클릭 때만 부른다(일일 호출 한도 절약). 결과가 캐시되면 다시 열 때 즉시 나온다.
         detailHtml = st.detail
           ? ledgerDetailHtml(st)
@@ -1233,7 +1269,7 @@
       ['floors', 'getBrFlrOulnInfo'],           // 층별개요 — 층별 주용도·면적
       ['atch', 'getBrAtchJibunInfo'],           // 부속지번 — 통합/합병된 필지
       ['exposPub', 'getBrExposPubuseAreaInfo'], // 전유공용면적 — 전용/공용면적 구분
-      ['housePrice', 'getBrHousePriceInfo'],    // 주택가격 — 공시가격
+      ['housePrice', 'getBrHsprcInfo'],        // 주택가격 — 공시가격. op명은 getBrHousePriceInfo가 아님(실측 확인)
       ['jijigu', 'getBrJijiguInfo'],            // 지역지구구역 — 정비구역 등 포함
       // 전유부(getBrExposInfo)는 목록을 상시 받아도 전유공용면적이 있으면 쓰이지 않는다.
       // 그래서 상시 호출에서 제외하고, 전유공용면적이 비어 있을 때만 보충 조회한다.
@@ -1337,20 +1373,58 @@
         const shown = atch.slice(0, 3).map((x) => `${x.atchBun}${Number(x.atchJi) ? '-' + x.atchJi : ''}`).join(', ');
         rows.push(`<b>부속지번</b> ${atch.length}필지${shown ? ' · ' + esc(shown) + ' 외' : ''}`);
       }
-      const exp = (d.exposPub || []).filter((x) => String(x.exposPubuseGbCd) === '1');
-      if (exp.length) {
-        const dongSet = new Set(exp.map((x) => x.dongNm).filter(Boolean));
-        const size = new Map();
-        for (const x of exp) {
-          const n = Math.round(Number(x.area) || 0);
-          if (n > 0) size.set(n, (size.get(n) || 0) + 1);
+      // ── 호실별 전용·공용면적 (전유공용면적 = 집합건축물의 개별 세대 정보) ──
+      // exposPubuseGbCd 1=전유(전용) 2=공용. 같은 동·호의 전용+공용 = 공급면적.
+      // 방 갯수는 건축물대장 어디에도 없어 공급 데이터로는 제공할 수 없다.
+      const expAll = (d.exposPub || []).filter((x) => x.dongNm || x.hoNm);
+      if (expAll.length) {
+        const units = new Map();
+        for (const x of expAll) {
+          const key = (x.dongNm || '') + '|' + (x.hoNm || '');
+          if (key === '|') continue;
+          const u = units.get(key) || {
+            ho: ((x.dongNm && x.dongNm.trim() && x.dongNm !== '1') ? x.dongNm + '-' : '') + (x.hoNm || ''),
+            flr: Number(x.flrNo) || 0, jeon: 0, gong: 0,
+            purps: x.mainPurpsCdNm || '', strct: x.strctCdNm || '',
+          };
+          const a = Number(x.area) || 0;
+          if (String(x.exposPubuseGbCd) === '1') u.jeon += a;
+          else if (String(x.exposPubuseGbCd) === '2') u.gong += a;
+          if (x.mainPurpsCdNm) u.purps = x.mainPurpsCdNm;
+          if (x.strctCdNm) u.strct = x.strctCdNm;
+          units.set(key, u);
         }
-        const dist = [...size.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4).map(([a, c]) => `${a}㎡×${c}`).join(', ');
-        rows.push(`<b>전용면적</b> ${exp.length}세대${dongSet.size ? ` · ${dongSet.size}개동` : ''}${dist ? ' · ' + dist : ''}`);
+        const arr = [...units.values()].filter((u) => u.jeon > 0 || u.gong > 0)
+          .sort((a, b) => (a.flr - b.flr) || (a.ho > b.ho ? 1 : -1));
+        if (arr.length) {
+          const dongSet = new Set(expAll.map((x) => x.dongNm).filter((v) => v && v.trim() && v !== '1'));
+          const MAX = 24;
+          // 행 클릭 → 해당 호 상세(층·전용/공용/공급·주용도·구조)가 아래로 펼쳐진다. 호 하나로
+          // 들어가는 모달 대신 팝업 안에서 같은 자리에 펼침 — 새 데이터 없이 UX만 정리했다.
+          const list = arr.slice(0, MAX).map((u, i) => {
+            const total = u.jeon + u.gong;
+            const detail = [
+              `층 <b>${u.flr || '?'}</b>`,
+              `전용 <b>${u.jeon.toFixed(1)}㎡</b>`,
+              u.gong ? `공용 <b>${u.gong.toFixed(1)}㎡</b>` : '',
+              total ? `공급 <b>${total.toFixed(1)}㎡</b>` : '',
+              u.purps ? `주용도 <b>${esc(u.purps)}</b>` : '',
+              u.strct ? `구조 <b>${esc(u.strct)}</b>` : '',
+            ].filter(Boolean).join(' · ');
+            return `<button type="button" class="unit-row" data-i="${i}">`
+              + `<span>${esc(u.ho)} <b>전용 ${u.jeon.toFixed(1)}㎡</b>${u.gong ? ` · 공급 <b>${total.toFixed(1)}㎡</b>` : ''}</span>`
+              + `<span class="ur-chev">▸</span></button>`
+              + `<div class="unit-detail" id="ud-${i}">${detail}</div>`;
+          }).join('');
+          rows.push(`<b>호실별 면적</b> <span style="color:var(--c-muted);font-size:10px;">${arr.length}세대${dongSet.size ? ` · ${dongSet.size}개동` : ''} · 전용+공용=공급 · 호실 클릭</span>${list}${arr.length > MAX ? `<br><span style="color:var(--c-muted);font-size:10px;">외 ${arr.length - MAX}세대</span>` : ''}`);
+        }
       }
-      if (!exp.length) {
+      if (!expAll.length) {
         const exx = (d.expos || []).filter((x) => x.dongNm || x.hoNm);
-        if (exx.length) rows.push(`<b>전유부</b> 동·호 ${exx.length}건`);
+        if (exx.length) {
+          const names = exx.slice(0, 12).map((x) => `${x.dongNm && x.dongNm.trim() && x.dongNm !== '1' ? x.dongNm + '-' : ''}${x.hoNm || ''}`).filter(Boolean).join(', ');
+          rows.push(`<b>전유부</b> ${exx.length}호${names ? ' · ' + esc(names) + (exx.length > 12 ? ' 외' : '') : ''}`);
+        }
       }
       const hp = (d.housePrice || []).filter((x) => Number(x.hsprc));
       if (hp.length) {
@@ -1383,12 +1457,12 @@
     //  3) 대장에 기록이 없을 때에 한해 V-World 건물정보를 폴백으로 부른다
     // 예전엔 V-World 3종을 무조건 받았는데, 대장이 나오면 LT_C_BLDGINFO 는 쓰이지도
     // 않고 화면에 중복만 만들었다. 일반적인 경우 호출이 3회 → 2회로 줄었다.
-    function fillLandInfo(popupEl, getPopup, lat, lng, onInfo) {
+    function fillLandInfo(popupEl, getPopup, lat, lng, onInfo, noDetail) {
       const slot = popupEl && popupEl.querySelector('.bld-info');
       if (!slot) return;
       const st = { zone: '', parcel: null, br: null, bld: null, house: null, detail: null };
       const render = () => {
-        slot.innerHTML = landInfoHtml(st);
+        slot.innerHTML = landInfoHtml(st, noDetail);
         const btn = slot.querySelector('.ld-more');
         if (btn) btn.onclick = () => loadLedgerDetail(st, render);
         const rb = slot.querySelector('.ld-retry');
@@ -1397,6 +1471,16 @@
           st._ldBusy = false;
           loadLedgerDetail(st, render);
         };
+        slot.querySelectorAll('.unit-row').forEach((row) => {
+          row.onclick = () => {
+            const d = slot.querySelector('#ud-' + row.dataset.i);
+            if (!d) return;
+            const opening = d.style.display === 'none';
+            slot.querySelectorAll('.unit-detail').forEach((x) => { x.style.display = 'none'; });
+            slot.querySelectorAll('.unit-row').forEach((r) => r.classList.remove('open'));
+            if (opening) { d.style.display = 'block'; row.classList.add('open'); }
+          };
+        });
         if (onInfo) onInfo(st);
         const p = getPopup();
         repanPopup(p);  // update() 를 쓰면 방금 꽂은 내용이 지워진다
@@ -1531,8 +1615,43 @@
       });
     }
 
+    // ── 호버 툴팁 (건물 위에 커서를 정지하면 주소·토지·건물 정보) ─────────
+    // 네이버지도처럼 동작하되 API 호출은 전부 무료(V-World + 건축물대장)다. 할당량을
+    // 아끼려고 ① 줌 16 이상일 때만 ② 커서가 400ms 이상 정지한 뒤에만 ③ 1m 그리드 캐시 재사용.
+    let _hovTip = null, _hovKey = '', _hovLatLng = null, _hovLast = 0;
+    map.on('mousemove', (e) => { _hovLatLng = e.latlng; _hovLast = Date.now(); });
+    map.on('mouseout', () => { _hovLatLng = null; _hovKey = ''; if (_hovTip) { map.removeLayer(_hovTip); _hovTip = null; } });
+    setInterval(() => {
+      if (!_hovLatLng || map.getZoom() < 16) return;
+      if (Date.now() - _hovLast < 400) return;
+      const key = _gcKey(_hovLatLng.lat, _hovLatLng.lng);
+      if (key === _hovKey) return;
+      _hovKey = key;
+      showHover(_hovLatLng, key);
+    }, 250);
+    function showHover(ll, key) {
+      if (!_hovTip) _hovTip = L.tooltip({ direction: 'top', offset: L.point(0, -10), opacity: 1, permanent: true, className: 'hov-tip' }).addTo(map);
+      _hovTip.setLatLng(ll).setContent('<div class="hov-addr">불러오는 중…</div><div class="bld-info"></div>').update();
+      const el = _hovTip.getElement();
+      if (!el) return;
+      const addrEl = el.querySelector('.hov-addr');
+      const bldSlot = el.querySelector('.bld-info');
+      const cached = _gcCache.get(key);
+      if (cached) {
+        addrEl.textContent = cached.bldName ? `${cached.bldName} · ${cached.addr || ''}` : (cached.addr || '주소 없음');
+      } else {
+        reverseGeocode(ll.lat, ll.lng, (addr) => {
+          if (_hovKey !== key) return;
+          _gcCache.set(key, { addr, bldName: null });
+          if (addrEl) addrEl.textContent = addr || '주소 없음';
+        });
+      }
+      if (bldSlot) fillLandInfo(bldSlot, () => null, ll.lat, ll.lng, null, true);
+    }
+
     map.on('click', (e) => {
       const { lat, lng } = e.latlng;
+      if (_hovTip) { map.removeLayer(_hovTip); _hovTip = null; _hovKey = ''; }
       if (clickMarker) map.removeLayer(clickMarker);
       clickMarker = L.marker([lat, lng]).addTo(map).bindPopup('정보 불러오는 중…').openPopup();
       // 안전장치: 예외나 응답 지연으로 팝업이 '불러오는 중…'에 갇히면 6초 뒤 최소 정보라도 보여준다.
