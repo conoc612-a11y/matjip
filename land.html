@@ -1010,10 +1010,11 @@
     };
     // V-World 데이터 API 범용 조회 (JSONP — 브라우저에서 CORS 없이 호출 가능함을 실측 확인)
     // 레이어별로 캐시한다. 좌표는 ≈1m 그리드로 뭉쳐 같은 건물 반복 조회를 막는다.
+    // buffer(m)를 주면 POINT 반경 버퍼 쿼리로 바뀐다 (건물 스냅용).
     const _vwCache = new Map();
     let _vwSeq = 0;
-    function vworldFeature(dataId, lat, lng, cb) {
-      const key = dataId + '@' + _gcKey(lat, lng);
+    function vworldFeature(dataId, lat, lng, cb, buffer) {
+      const key = dataId + '@' + _gcKey(lat, lng) + (buffer ? '#b' + buffer : '');
       if (_vwCache.has(key)) { cb(_vwCache.get(key)); return; }
       const cbName = '__vw' + (++_vwSeq) + '_' + Math.abs(lat * 1e5 | 0);
       let done = false;
@@ -1026,16 +1027,82 @@
       };
       window[cbName] = (data) => {
         let props = [];
-        try { props = ((data.response.result.featureCollection.features) || []).map((f) => f.properties).filter(Boolean); } catch (e) {}
+        try {
+          // 기존 호출부(용도지역·지적)는 properties 배열을 그대로 쓴다.
+          // 건물 스냅이 폴리곤 정점과의 거리를 재도록 geometry 를 _geom 에 붙여준다.
+          props = ((data.response.result.featureCollection.features) || []).map((f) => {
+            const p = f.properties || {};
+            p._geom = f.geometry || null;
+            return p;
+          }).filter(Boolean);
+        } catch (e) {}
         finish(props);
       };
       const s = document.createElement('script');
-      s.src = `https://api.vworld.kr/req/data?service=data&version=2.0&request=GetFeature&format=json&size=5`
+      s.src = `https://api.vworld.kr/req/data?service=data&version=2.0&request=GetFeature&format=json&size=${buffer ? 10 : 5}`
         + `&crs=EPSG:4326&geomFilter=POINT(${lng}%20${lat})&data=${dataId}&key=${VWORLD_KEY}`
-        + `&domain=${encodeURIComponent(location.origin)}&callback=${cbName}`;
+        + `&domain=${encodeURIComponent(location.origin)}&callback=${cbName}`
+        + (buffer ? `&buffer=${buffer}` : '');
       s.onerror = () => finish([]);
       document.head.appendChild(s);
       setTimeout(() => finish([]), 7000);
+    }
+
+    // ── 주소 → PNU 조회 (지번 주소로 V-World 검색 → PNU + 좌표) ──
+    // 클릭 시 네이버 역지오코딩에서 받은 지번 주소를 이용해 정확한 PNU를 찾는다.
+    // POINT 쿼리가 경계 오류로 잘못된 필지를 줄 때의 폴백이자 주요 PNU 원천.
+    function vworldAddrToPnu(addr, cb) {
+      if (!addr) { cb(null); return; }
+      const cbName = '__vwAddr_' + (++_vwSeq);
+      let done = false;
+      const finish = (val) => { if (done) return; done = true; try { delete window[cbName]; } catch (e) {} cb(val); };
+      window[cbName] = (data) => {
+        try {
+          const items = (data.response && data.response.result && data.response.result.items) || [];
+          if (items.length) {
+            const it = items[0];
+            const pnu = String(it.id || '');
+            const x = Number(it.point && it.point.x);
+            const y = Number(it.point && it.point.y);
+            if (pnu && x && y) { finish({ pnu, lat: y, lng: x }); return; }
+          }
+        } catch (e) {}
+        finish(null);
+      };
+      const s = document.createElement('script');
+      s.src = `https://api.vworld.kr/req/search?service=search&request=search&version=2.0&crs=EPSG:4326&size=1&page=1&query=${encodeURIComponent(addr)}&type=address&format=json&key=${VWORLD_KEY}&callback=${cbName}`;
+      s.onerror = () => finish(null);
+      document.head.appendChild(s);
+      setTimeout(() => finish(null), 7000);
+    }
+
+    // ── 건물 스냅 (클릭 좌표 → 가장 가까운 건물) ──────────────────
+    // 클릭한 점이 빈터·도로·건물 경계면 지적(POINT 쿼리)은 이웃 필지를 줘서
+    // 주소·PNU가 전부 어긋난다. 그래서 30m 반경 건물들 중 가장 가까운 건물 폴리곤으로
+    // 스냅해 그 건물의 PNU·지번·속성을 쓴다. 폴리곤 정점과의 거리로 판정하므로
+    // 클릭점이 건물 안(또는 인접)이면 거리 0에 가깝게 잡힌다. 30m 안 건물이 없으면 null.
+    function nearestBuilding(lat, lng, cb) {
+      vworldFeature('LT_C_BLDGINFO', lat, lng, (features) => {
+        let best = null, bd = 30 / 1000;
+        for (const f of features || []) {
+          let d = 1e9;
+          try {
+            const g = f._geom || {};
+            if (g.type === 'Point') {
+              const [x, y] = g.coordinates;
+              d = kmDist(lat, lng, y, x);
+            } else {
+              const rings = g.type === 'Polygon' ? g.coordinates
+                : g.type === 'MultiPolygon' ? g.coordinates[0] : null;
+              for (const ring of rings || []) {
+                for (const [x, y] of ring) d = Math.min(d, kmDist(lat, lng, y, x));
+              }
+            }
+          } catch (e) {}
+          if (d < bd) { bd = d; best = f; }
+        }
+        cb(best ? { bld: best, dist: bd } : null);
+      }, 30);
     }
 
     // 토지·건물 정보를 한 번에 모은다.
@@ -1451,16 +1518,15 @@
         + ` <button type="button" class="ld-retry" style="font-size:11px;color:var(--c-primary);background:none;border:1px solid var(--c-border);border-radius:6px;padding:2px 9px;cursor:pointer;">다시 시도</button></div>`;
     }
 
-    // 팝업의 토지·건물 정보를 채운다. 호출 순서를 이렇게 잡은 이유:
-    //  1) 용도지역 + 지적만 먼저 받아 즉시 그린다 (공시지가·지번은 이 둘로 끝난다)
-    //  2) 지적이 준 PNU 로 건축물대장을 조회한다 (정확한 주용도·용적률)
-    //  3) 대장에 기록이 없을 때에 한해 V-World 건물정보를 폴백으로 부른다
-    // 예전엔 V-World 3종을 무조건 받았는데, 대장이 나오면 LT_C_BLDGINFO 는 쓰이지도
-    // 않고 화면에 중복만 만들었다. 일반적인 경우 호출이 3회 → 2회로 줄었다.
-    function fillLandInfo(popupEl, getPopup, lat, lng, onInfo, noDetail) {
+    // 팝업의 토지·건물 정보를 채운다.
+    //  1) 지번 주소가 있으면 V-World 주소 검색으로 정확한 PNU를 먼저 확보 (address-based PNU)
+    //  2) 용도지역 + 지적을 받아 즉시 그린다 (공시지가·지번은 이 둘로 끝난다)
+    //  3) 건물 스냅으로 용도·층수를 받는다
+    //  4) PNU 우선순위: 주소 검색 PNU → 건물 PNU → 필지 PNU
+    function fillLandInfo(popupEl, getPopup, lat, lng, onInfo, noDetail, jibun) {
       const slot = popupEl && popupEl.querySelector('.bld-info');
       if (!slot) return;
-      const st = { zone: '', parcel: null, br: null, bld: null, house: null, detail: null };
+      const st = { zone: '', parcel: null, br: null, bld: null, house: null, detail: null, addrPnu: null };
       const render = () => {
         slot.innerHTML = landInfoHtml(st, noDetail);
         const btn = slot.querySelector('.ld-more');
@@ -1485,7 +1551,7 @@
         const p = getPopup();
         repanPopup(p);  // update() 를 쓰면 방금 꽂은 내용이 지워진다
       };
-      let left = 2;
+      let left = jibun ? 4 : 3;
       const afterBase = () => {
         if (--left > 0) return;
         render();
@@ -1496,22 +1562,32 @@
             if (houseStats && houseStats[key]) { st.house = houseStats[key]; render(); }
           });
         }
-        const pnu = st.parcel && st.parcel.pnu;
+        // PNU 우선순위: 주소 검색 PNU → 건물 PNU → 필지 PNU
+        // 주소 기반 PNU가 가장 정확하고, POINT 쿼리의 경계 오류를 방지한다.
+        const pnu = st.addrPnu || (st.bld && st.bld.pnu) || (st.parcel && st.parcel.pnu);
         if (!pnu) return;
         buildingRegister(pnu, (it) => {
-          if (it) { st.br = it; render(); return; }
-          vworldFeature('LT_C_BLDGINFO', lat, lng, (ps) => {
-            st.bld = (ps || []).find((x) => x.usability) || null;
-            if (st.bld) render();
-          });
+          if (it) { st.br = it; render(); }
         });
       };
+      // 지번 주소가 있으면 V-World 주소 검색으로 PNU를 먼저 확보
+      if (jibun) {
+        vworldAddrToPnu(jibun, (result) => {
+          if (result) st.addrPnu = result.pnu;
+          afterBase();
+        });
+      }
       vworldFeature('LT_C_UQ111', lat, lng, (ps) => {
         st.zone = ((ps || []).find((x) => x.uname) || {}).uname || '';
         afterBase();
       });
       vworldFeature('LP_PA_CBND_BUBUN', lat, lng, (ps) => {
         st.parcel = (ps || [])[0] || null;
+        afterBase();
+      });
+      // 30m 안에서 가장 가까운 건물로 스냅 → st.bld (용도·층수 폴백)
+      nearestBuilding(lat, lng, (hit) => {
+        st.bld = hit ? hit.bld : null;
         afterBase();
       });
     }
@@ -1637,16 +1713,17 @@
       const addrEl = el.querySelector('.hov-addr');
       const bldSlot = el.querySelector('.bld-info');
       const cached = _gcCache.get(key);
+      const jibun = cached && cached.jibun || '';
       if (cached) {
         addrEl.textContent = cached.bldName ? `${cached.bldName} · ${cached.addr || ''}` : (cached.addr || '주소 없음');
       } else {
         reverseGeocode(ll.lat, ll.lng, (addr) => {
           if (_hovKey !== key) return;
-          _gcCache.set(key, { addr, bldName: null });
+          _gcCache.set(key, { addr, bldName: null, jibun: '' });
           if (addrEl) addrEl.textContent = addr || '주소 없음';
         });
       }
-      if (bldSlot) fillLandInfo(bldSlot, () => null, ll.lat, ll.lng, null, true);
+      if (bldSlot) fillLandInfo(bldSlot, () => null, ll.lat, ll.lng, null, true, jibun);
     }
 
     map.on('click', (e) => {
@@ -1706,7 +1783,7 @@
               + near.map(r => `<span style="color:${JB_COLOR[jbGroup(r.gubun)]||'#868e96'}">●</span> ${esc(r.name)} <span style="color:var(--c-muted)">${esc(r.stage||'')}</span>`).join('<br>') + '</div>';
           }
         }
-        const buildClickPopup = (addr, bldName) => {
+        const buildClickPopup = (addr, bldName, jibun) => {
           if (!clickMarker) return;
           const bldHtml = bldName ? `<div style="font-weight:700;font-size:14px;margin-bottom:2px;">${esc(bldName)}</div>` : '';
           const naverLand = addr ? `<a href="${naverSearchUrl(bldName || addr, lat, lng)}" target="_blank" rel="noopener" class="pc-btn pc-btn-primary">네이버 부동산 검색</a>` : '';
@@ -1755,7 +1832,7 @@
             refreshSaveBtn();
             saveBtn.onclick = () => { togglePropSave(clickPropRec()); refreshSaveBtn(); if (landMode === 'favorites') render(); };
           }
-          fillLandInfo(_pel, () => clickMarker && clickMarker.getPopup(), lat, lng, (s) => { clickPropInfo = s; refreshSaveBtn(); });
+          fillLandInfo(_pel, () => clickMarker && clickMarker.getPopup(), lat, lng, (s) => { clickPropInfo = s; refreshSaveBtn(); }, false, jibun);
           // 상호 조회는 카카오를 8번 부르므로 버튼을 눌렀을 때만 실행한다
           const poiBtn = _pel && _pel.querySelector('.poi-btn');
           if (poiBtn) poiBtn.onclick = () => {
@@ -1777,13 +1854,19 @@
         if (_gcCache.has(cacheKey)) { buildClickPopup(...Object.values(_gcCache.get(cacheKey))); return; }
         if (NAVER_KEY && window.naver && naver.maps && naver.maps.Service) {
           naver.maps.Service.reverseGeocode({ coords: new naver.maps.LatLng(lat, lng), orders: [naver.maps.Service.OrderType.ADDR, naver.maps.Service.OrderType.ROAD_ADDR].join(',') }, (status, res) => {
-            let addr = '', bldName = null;
+            let addr = '', bldName = null, jibun = '';
             if (status === naver.maps.Service.Status.OK) {
               const results = (res.v2 && res.v2.results) || [];
               const r = results.find((x) => x.name === 'roadaddr') || results[0];
               if (r) {
                 const rg = r.region, ld = r.land;
                 addr = [rg && rg.area1 && rg.area1.name, rg && rg.area2 && rg.area2.name, rg && rg.area3 && rg.area3.name, ld && ld.name, ld && (ld.number1 + (ld.number2 ? '-' + ld.number2 : ''))].filter(Boolean).join(' ');
+              }
+              // 지번 주소 추출 (V-World 주소 검색용)
+              const addrResult = results.find((x) => x.name === 'addr');
+              if (addrResult) {
+                const rg = addrResult.region, ld = addrResult.land;
+                jibun = [rg && rg.area1 && rg.area1.name, rg && rg.area2 && rg.area2.name, rg && rg.area3 && rg.area3.name, ld && ld.name, ld && (ld.number1 + (ld.number2 ? '-' + ld.number2 : ''))].filter(Boolean).join(' ');
               }
               // 건물명은 roadaddr 결과의 land.addition0 에 실려 온다.
               // 이전 코드는 요청하지도 않은 'legalcode' 를 찾다가 항상 results[0](지번주소)로
@@ -1793,11 +1876,11 @@
                 if (a0 && a0.type === 'building' && a0.value) { bldName = a0.value; break; }
               }
             }
-            _gcCache.set(cacheKey, { addr, bldName });
-            buildClickPopup(addr, bldName);
+            _gcCache.set(cacheKey, { addr, bldName, jibun });
+            buildClickPopup(addr, bldName, jibun);
           });
         } else {
-          reverseGeocode(lat, lng, (addr) => { _gcCache.set(cacheKey, { addr, bldName: null }); buildClickPopup(addr, null); });
+          reverseGeocode(lat, lng, (addr) => { _gcCache.set(cacheKey, { addr, bldName: null, jibun: '' }); buildClickPopup(addr, null, ''); });
         }
       }
     });
