@@ -523,6 +523,9 @@
       // 다시 투영해 항상 타일·마커와 일치한다. (32개 폴리곤·정점 4.2만개는 단일 레이어로
       // 손으로 켜는 오버레이라 SVG 비용이 허용 범위 — 무거운 9천 마커 계열은 캔버스 유지)
       const tojiLayer = L.geoJSON(null, {
+        // noClip: 줌인하면 구역 상당수가 뷰포트(렌더러 패딩) 밖으로 밀려나 'M0 0'으로
+        // 접히는 Leaflet 클리핑을 회피. 32개 폴리곤뿐이라 항상 전부 그려도 비용 미미.
+        noClip: true,
         renderer: L.svg(),
         style: { color: '#c92a2a', weight: 1, fillColor: '#e8590c', fillOpacity: 0.28 },
         onEachFeature: (f, layer) => layer.bindTooltip(`토지거래허가구역 · ${f.properties.name}`, { sticky: true }),
@@ -830,6 +833,10 @@
       function jbBuild() {
         if (!jbRows) return;
         _jbRowsGlobal = jbRows;
+        // 열려 있던 팝업 기록: 팝업 autoPan → moveend → 재빌드 → clearLayers가
+        // 팝업을 닫아버리는 루프를 막기 위해 재빌드 후 같은 구역 팝업을 다시 연다.
+        const openSrc = (map._popup && map._popup._source && map._popup._source._jb) ? map._popup._source._jb : null;
+        const openKey = openSrc ? openSrc.name + '|' + (openSrc.jibun || '') : null;
         jbCluster.clearLayers();
         jbPolyLayer.clearLayers();
         // 뷰포트 필터링: 현재 지도 경계 + 마진 내의 폴리곤만 렌더링
@@ -854,14 +861,31 @@
             poly.bindPopup(() => jbPopupHtml(d));  // 열 때 생성
             jbPolyLayer.addLayer(poly);
           } else {
-            const m = L.circleMarker([d.lat, d.lng], { radius: 10, color: '#fff', weight: 2.5, fillColor: c, fillOpacity: 0.95 });
-            m._jb = d;
-            m.bindTooltip(`<b>${esc(d.name)}</b> · ${esc(d.stage || '')}`, { direction: 'top' });
-            m.bindPopup(() => jbPopupHtml(d));  // 열 때 생성
-            dots.push(m);
+            // 폴리곤 데이터가 없는 건(모아·신통·지역주택·리모델링 등)은 대표 좌표 기준
+            // 근사 구역(반경 300m 점선 원)으로 표시. 실측 경계가 없어 근사치임을 점선으로 구분.
+            const circle = L.circle([d.lat, d.lng], { radius: 300, color: c, weight: 1.5, dashArray: '4 4', fillColor: c, fillOpacity: 0.22 });
+            circle._jb = d;
+            circle._approx = true;
+            circle.bindTooltip(`<b>${esc(d.name)}</b> · ${esc(d.stage || '')}`, { sticky: true });
+            circle.bindPopup(() => jbPopupHtml(d));  // 열 때 생성
+            dots.push(circle);
           }
         });
         jbCluster.addLayers(dots);
+        if (openKey) {
+          const target = (() => {
+            const found = [];
+            const scan = (g) => {
+              if (!g) return;
+              if (g._layers && typeof g._layers === 'object') Object.values(g._layers).forEach(scan);
+              else if (g._featureGroup) scan(g._featureGroup);
+              else if (g._jb && g._jb.name + '|' + (g._jb.jibun || '') === openKey) found.push(g);
+            };
+            scan(jbPolyLayer); scan(jbCluster);
+            return found[0];
+          })();
+          if (target) target.openPopup();
+        }
       }
       const jbCtrl = L.control({ position: 'topleft' });
       jbCtrl.onAdd = () => {
@@ -869,6 +893,7 @@
         div.className = 'lc';
         div.innerHTML = '<div class="lc-title">정비사업 유형</div>'
           + Object.keys(JB_COLOR).map((g) => `<label class="lc-check"><input type="checkbox" class="jb-f" data-g="${g}" checked> <span class="lc-dot" style="background:${JB_COLOR[g]};"></span> ${g}</label>`).join('')
+          + '<div class="lc-sub" style="margin-top:6px;font-size:11px;color:#888;">점선 원 = 경계 미확보 근사 구역(반경 300m)</div>'
           + '<div class="lc-sep lc-sub">진행단계</div>'
           + '<div style="display:flex;flex-wrap:wrap;gap:4px;">'
           + ['전체','추진위','조합설립','사업시행','관리처분','착공','준공'].map((s) => `<button class="jb-stage${s === '전체' ? ' active' : ''}" data-s="${s}">${s}</button>`).join('')
@@ -966,10 +991,10 @@
         '아파트 실거래가·노후도': realpriceCluster,
         '연립·다세대 실거래가': villaCluster,
         '토지거래허가구역': tojiLayer,
-        '행정구역 (시군구)': wms('lt_c_adsigg', 0.5),
-        '행정동 경계': wms('lt_c_ademd', 0.4),
+        '행정구역 (시군구)': wms('lt_c_adsigg', 0.85),
+        '행정동 경계': wms('lt_c_ademd', 0.7),
         '용도지역': wms('lt_c_uq111', 0.55),
-        '지적도 (필지 경계)': wms('lp_pa_cbnd_bubun', 0.6),
+        '지적도 (필지 경계)': wms('lt_c_landinfobasemap', 0.85),
         '개발제한구역 (그린벨트)': wms('lt_c_ud801', 0.5),
         '개발진흥지구': wms('lt_c_uq129', 0.5),
         '택지·사업지구': wms('lt_c_lhzone', 0.5),
@@ -1810,7 +1835,15 @@
       showHover(_hovLatLng, key);
     }, 250);
     function showHover(ll, key) {
-      if (!_hovTip) _hovTip = L.tooltip({ direction: 'top', offset: L.point(0, -10), opacity: 1, permanent: true, className: 'hov-tip' }).addTo(map);
+      // 툴팁을 만들 때 addTo()가 내부적으로 onAdd→update→_updatePosition을 호출해
+      // _latlng를 즉시 필요로 한다. addTo 전에 setLatLng를 해야 zoom 도중 addTo 시
+      // project(undefined) 크래시가 안 난다. (이 크래시가 줌 애니메이션을 중단시켜
+      // 폴리곤 크기 왜곡을 일으키는 실제 원인이었다.)
+      if (!_hovTip) {
+        _hovTip = L.tooltip({ direction: 'top', offset: L.point(0, -10), opacity: 1, permanent: true, className: 'hov-tip' });
+        _hovTip.setLatLng(ll);
+        _hovTip.addTo(map);
+      }
       _hovTip.setLatLng(ll).setContent('<div class="hov-addr">불러오는 중…</div><div class="bld-info"></div>').update();
       const el = _hovTip.getElement();
       if (!el) return;
