@@ -1966,8 +1966,22 @@
 
     // 지도 우클릭 → 열린 팝업/클릭 마커 닫기
     map.on('contextmenu', (e) => { map.closePopup(); if (clickMarker) { map.removeLayer(clickMarker); clickMarker = null; } if (e.originalEvent) e.originalEvent.preventDefault(); });
-    // 확대/축소 후 열린 팝업이 화면 밖으로 밀려나지 않도록 위치를 다시 잡는다 (Leaflet은 zoomend 때 자동으로 안 함)
-    map.on('zoomend', () => { const p = map._popup; if (p) repanPopup(p); });
+    // 확대/축소 후 열린 팝업의 크기·위치를 화면에 맞게 조정
+    map.on('zoomend', () => {
+      const p = map._popup;
+      if (!p || !p.isOpen || !p.isOpen()) return;
+      const el = p.getElement();
+      if (!el) return;
+      // 줌 레벨에 따라 팝업 크기 조정
+      const zoom = map.getZoom();
+      const minW = Math.min(280, window.innerWidth - 60);
+      const maxH = Math.round(window.innerHeight * 0.55);
+      el.style.minWidth = minW + 'px';
+      el.style.maxWidth = Math.min(360, window.innerWidth - 40) + 'px';
+      el.style.maxHeight = maxH + 'px';
+      // 팝업이 화면 밖으로 밀려나지 않도록 재위치
+      repanPopup(p);
+    });
 
     // ── 길찾기: 출발/도착 + 도보(OSRM)·대중교통(ODsay)·자차(OSRM) ──
     const ODSAY_KEY = 'H4Vo/z04g/E+AUShnTQIiQ';
@@ -2158,6 +2172,16 @@
     function loadSavedProps() { try { return JSON.parse(localStorage.getItem(PROP_KEY) || '[]'); } catch (e) { return []; } }
     function saveSavedProps(a) { try { localStorage.setItem(PROP_KEY, JSON.stringify(a)); } catch (e) {} }
     function propId(d) { return d.id || `${d.name}|${d.dong}|${d.ymd}|${d.area}|${d.floor}`; }
+    // ── 인근 공인중개사 ⭐저장 (이 기기 localStorage에 보관) ──
+    const AGENT_KEY = 'mj_saved_agents';
+    function loadSavedAgents() { try { return JSON.parse(localStorage.getItem(AGENT_KEY) || '[]'); } catch (e) { return []; } }
+    function saveSavedAgents(a) { try { localStorage.setItem(AGENT_KEY, JSON.stringify(a)); } catch (e) {} }
+    function toggleAgentSave(p) {
+      let a = loadSavedAgents();
+      if (a.some((x) => x.id === p.id)) a = a.filter((x) => x.id !== p.id);
+      else a.push({ id: p.id, name: p.place_name, phone: p.phone || '', address: p.road_address_name || p.address_name || '', lat: Number(p.y), lng: Number(p.x), url: p.place_url || '', category: p.category_name || '' });
+      saveSavedAgents(a);
+    }
     // 즐겨찾기 유형 필터(아파트/연립/다세대/단독·다가구/기타)로 묶는다.
     // 저장된 유형은 출처마다 표기가 제각각이라 정규화 없이는 필터가 동작하지 않는다.
     function propGroup(t) {
@@ -2236,16 +2260,19 @@
       agentMarkers.forEach((m) => map.removeLayer(m)); agentMarkers = [];
       let list = loadSavedProps();
       if (propCat !== '전체') list = list.filter((x) => propGroup(x.type) === propCat);
-      $('banner').textContent = '저장한 부동산 목록이에요. (이 기기에 보관 · 지도 클릭 팝업이나 실거래가 마커의 「저장」 버튼으로 추가)';
+      // 저장된 공인중개사 목록도 표시
+      const agentList = loadSavedAgents();
+      $('banner').textContent = '저장한 부동산·공인중개사 목록이에요. (이 기기에 보관)';
 
       const ctr = map.getCenter();
       const distLabel = (d) => { if (d.lat == null) return ''; const m = map.distance([d.lat, d.lng], [ctr.lat, ctr.lng]); const min = Math.max(1, Math.round(m / 1000 / 4.5 * 60)); return `${m >= 1000 ? (m / 1000).toFixed(1) + 'km' : Math.round(m) + 'm'} · 도보 ${min}분`; };
-      $('rec-list').innerHTML = list.length ? list.map((d, i) => {
+      // 부동산 카드
+      const propCards = list.map((d, i) => {
         const spec = [d.area ? esc(d.area) + '㎡' : '', d.floor ? esc(d.floor) + '층' : ''].filter(Boolean).join(' · ');
         const tags = [esc(d.type || '아파트'), '건축 ' + (d.build ? esc(d.build) + '년' : '연도 미상')];
         if (d.ymd) tags.push('거래 ' + esc(d.ymd));
         return `
-        <div class="rec" data-i="${i}">
+        <div class="rec" data-i="${i}" data-kind="prop">
           <label class="cmp-check"><input type="checkbox" class="cmp" data-i="${i}" ${cmpSel.has(d.id) ? 'checked' : ''} /> 비교</label>
           <span class="score">${d.priceEok == null ? '' : d.priceEok + '억'}</span>
           <h3>${esc(d.name)}</h3>
@@ -2253,29 +2280,62 @@
           <div class="meta" style="color:var(--muted);margin-top:2px;">${distLabel(d)}</div>
           <div class="tags">${tags.map((t) => `<span class="tag">${t}</span>`).join('')}</div>
           <div class="actions">
-            <button class="unsave" data-i="${i}">저장 해제</button>
+            <button class="unsave" data-i="${i}" data-kind="prop">저장 해제</button>
           </div>
         </div>`;
-      }).join('')
-        : '<div style="text-align:center;color:var(--muted);padding:24px 0;">저장한 부동산이 없어요.<br>지도를 클릭해 「저장」을 누르거나 실거래가 마커의 저장 버튼을 이용해보세요.</div>';
+      });
+      // 공인중개사 카드
+      const agentCards = agentList.map((a, i) => {
+        const dm = (a.lat != null && a.lng != null) ? map.distance([a.lat, a.lng], [ctr.lat, ctr.lng]) : 0;
+        const dtxt = dm ? `${dm >= 1000 ? (dm / 1000).toFixed(1) + 'km' : Math.round(dm) + 'm'} · 도보 ${Math.max(1, Math.round(dm / 1000 / 4.5 * 60))}분` : '';
+        return `
+        <div class="rec" data-i="${i}" data-kind="agent" style="border-left:3px solid #7048e8;">
+          <h3>${esc(a.name)}</h3>
+          <div class="meta">${esc(a.category ? a.category.split('>').pop().trim() : '')} · ${esc(a.address || '')}</div>
+          ${dtxt ? `<div class="meta" style="color:var(--muted);margin-top:2px;">${dtxt}</div>` : ''}
+          <div class="actions">
+            ${a.phone ? `<a href="tel:${esc(a.phone)}">${esc(a.phone)}</a>` : ''}
+            ${a.url ? `<a href="${safeUrl(a.url)}" target="_blank" rel="noopener">카카오맵</a>` : ''}
+            <button class="unsave" data-i="${i}" data-kind="agent">저장 해제</button>
+          </div>
+        </div>`;
+      });
+      const allCards = [...propCards, ...agentCards];
+      $('rec-list').innerHTML = allCards.length ? allCards.join('')
+        : '<div style="text-align:center;color:var(--muted);padding:24px 0;">저장한 부동산·공인중개사가 없어요.<br>지도를 클릭해 「저장」을 누르거나 공인중개사 목록의 「☆ 저장」을 이용해보세요.</div>';
 
+      // 부동산 마커 (오렌지)
       list.forEach((d) => {
         if (d.lat == null || d.lng == null) return;
         const m = L.circleMarker([d.lat, d.lng], { radius: 7, color: '#fff', weight: 2, fillColor: '#e8590c', fillOpacity: 0.95 }).addTo(map)
           .bindPopup(`<b>${esc(d.name)}</b><br>${esc(d.gu || '')} ${esc(d.dong || '')}<br>${d.priceEok == null ? '-' : d.priceEok + '억'}${d.type && d.type !== '아파트' ? '<br>' + esc(d.type) : ''}`);
         markers[d.id] = m;
       });
-      const pts = list.map((d) => (d.lat != null ? [d.lat, d.lng] : null)).filter(Boolean);
+      // 공인중개사 마커 (보라색)
+      agentList.forEach((a) => {
+        if (a.lat == null || a.lng == null) return;
+        const icon = L.divIcon({
+          className: '',
+          html: '<div style="width:22px;height:22px;background:#7048e8;border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700;">중</div>',
+          iconSize: [22, 22],
+          iconAnchor: [11, 11],
+        });
+        const m = L.marker([a.lat, a.lng], { icon }).addTo(map)
+          .bindPopup(`<b>${esc(a.name)}</b><br>${esc(a.phone || '')}${a.url ? '<br><a href="' + safeUrl(a.url) + '" target="_blank" rel="noopener">카카오맵</a>' : ''}`);
+        markers['agent_' + a.id] = m;
+      });
+      const pts = [...list, ...agentList].map((d) => (d.lat != null && d.lng != null ? [d.lat, d.lng] : null)).filter(Boolean);
       if (pts.length) map.fitBounds(pts, { padding: [40, 40], maxZoom: 15 });
 
       $('rec-list').querySelectorAll('.rec').forEach((card) => {
         card.addEventListener('click', (e) => {
           if (e.target.closest('.actions') || e.target.closest('.cmp-check')) return;
-          const d = list[Number(card.dataset.i)];
-          if (d && d.lat != null) { map.setView([d.lat, d.lng], 16); markers[d.id]?.openPopup(); document.querySelector('.panel').classList.remove('sheet-open'); }
+          const kind = card.dataset.kind;
+          const d = kind === 'agent' ? agentList[Number(card.dataset.i)] : list[Number(card.dataset.i)];
+          if (d && d.lat != null) { map.setView([d.lat, d.lng], 16); const mk = markers[d.id] || markers['agent_' + d.id]; if (mk) mk.openPopup(); document.querySelector('.panel').classList.remove('sheet-open'); }
         });
-        card.addEventListener('mouseenter', () => { const d = list[Number(card.dataset.i)]; const m = markers[d && d.id]; if (m) m.setStyle({ radius: 11, fillColor: '#e8590c', weight: 3 }); });
-        card.addEventListener('mouseleave', () => { const d = list[Number(card.dataset.i)]; const m = markers[d && d.id]; if (m) m.setStyle({ radius: 7, fillColor: '#e8590c', weight: 2 }); });
+        card.addEventListener('mouseenter', () => { const kind = card.dataset.kind; const d = kind === 'agent' ? agentList[Number(card.dataset.i)] : list[Number(card.dataset.i)]; const mk = markers[d && d.id] || markers['agent_' + (d && d.id)]; if (mk && mk.setStyle) mk.setStyle({ radius: 11, fillColor: '#e8590c', weight: 3 }); });
+        card.addEventListener('mouseleave', () => { const kind = card.dataset.kind; const d = kind === 'agent' ? agentList[Number(card.dataset.i)] : list[Number(card.dataset.i)]; const mk = markers[d && d.id] || markers['agent_' + (d && d.id)]; if (mk && mk.setStyle) mk.setStyle({ radius: 7, fillColor: '#e8590c', weight: 2 }); });
       });
       $('rec-list').querySelectorAll('.cmp').forEach((cb) => cb.addEventListener('change', (e) => {
         e.stopPropagation(); const d = list[Number(cb.dataset.i)];
@@ -2284,8 +2344,15 @@
       }));
       $('rec-list').querySelectorAll('.unsave').forEach((btn) => btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        const d = list[Number(btn.dataset.i)];
-        togglePropSave(d); render();
+        const kind = btn.dataset.kind;
+        if (kind === 'agent') {
+          const a = agentList[Number(btn.dataset.i)];
+          if (a) toggleAgentSave(a);
+        } else {
+          const d = list[Number(btn.dataset.i)];
+          togglePropSave(d);
+        }
+        render();
       }));
     }
 
@@ -2295,6 +2362,7 @@
     let agentAnchor = null;
     let agentMarkers = [];
     let kakaoTries = 0;
+    let lastAgentCenter = null;  // 마지막으로 에이전트를 로드한 지도 중심 좌표
     function renderAgents() {
       Object.values(markers).forEach((m) => map.removeLayer(m));
       agentMarkers.forEach((m) => map.removeLayer(m)); agentMarkers = [];
@@ -2310,10 +2378,41 @@
         ? '클릭한 위치 기준 인근 공인중개사예요.'
         : '지도 중심 인근 공인중개사예요. 지도를 옮기고 위치 버튼으로 갱신하세요.';
       new kakao.maps.services.Places().keywordSearch('공인중개사', (data, status) => {
-        if (status !== kakao.maps.services.Status.OK || !data.length) { $('rec-list').innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px 0;">인근 공인중개사가 없어요. 지도를 옮겨보세요.</div>'; return; }
-        $('rec-list').innerHTML = data.map((p, i) => { const dm = Number(p.distance) || 0; const dtxt = dm ? `${dm >= 1000 ? (dm / 1000).toFixed(1) + 'km' : dm + 'm'} · 도보 ${Math.max(1, Math.round(dm / 1000 / 4.5 * 60))}분` : ''; return `<div class="rec" data-i="${i}"><h3>${esc(p.place_name)}</h3><div class="meta">${esc((p.category_name || '').split('>').pop().trim())} · ${esc(p.road_address_name || p.address_name || '')}</div>${dtxt ? `<div class="meta" style="color:var(--muted);margin-top:2px;">${dtxt}</div>` : ''}<div class="actions">${p.phone ? `<a href="tel:${esc(p.phone)}">${esc(p.phone)}</a>` : ''}${p.place_url ? `<a href="${safeUrl(p.place_url)}" target="_blank" rel="noopener">카카오맵</a>` : ''}</div></div>`; }).join('');
-        data.forEach((p) => { const m = L.marker([Number(p.y), Number(p.x)]).addTo(map).bindPopup(`<b>${esc(p.place_name)}</b><br>${esc(p.phone || '')}`); agentMarkers.push(m); });
-        $('rec-list').querySelectorAll('.rec').forEach((card) => card.addEventListener('click', (e) => { if (e.target.closest('.actions')) return; const p = data[Number(card.dataset.i)]; map.setView([Number(p.y), Number(p.x)], 17); }));
+        if (status !== kakao.maps.services.Status.OK || !data.length) { $('rec-list').innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px 0;">인근 공인중개사가 없어요. 지도를 옮겨보세요.</div>'; lastAgentCenter = { lat: c.lat, lng: c.lng }; return; }
+        // 인근 공인중개사 즐겨찾기 불러오기
+        const savedAgents = loadSavedAgents();
+        $('rec-list').innerHTML = data.map((p, i) => {
+          const dm = Number(p.distance) || 0;
+          const dtxt = dm ? `${dm >= 1000 ? (dm / 1000).toFixed(1) + 'km' : dm + 'm'} · 도보 ${Math.max(1, Math.round(dm / 1000 / 4.5 * 60))}분` : '';
+          const isSaved = savedAgents.some((a) => a.id === p.id);
+          return `<div class="rec" data-i="${i}"><h3>${esc(p.place_name)}</h3><div class="meta">${esc((p.category_name || '').split('>').pop().trim())} · ${esc(p.road_address_name || p.address_name || '')}</div>${dtxt ? `<div class="meta" style="color:var(--muted);margin-top:2px;">${dtxt}</div>` : ''}<div class="actions">${p.phone ? `<a href="tel:${esc(p.phone)}">${esc(p.phone)}</a>` : ''}${p.place_url ? `<a href="${safeUrl(p.place_url)}" target="_blank" rel="noopener">카카오맵</a>` : ''}<button class="agent-save" data-i="${i}" style="font-size:12px;padding:5px 10px;border-radius:6px;cursor:pointer;border:1px solid var(--c-primary);${isSaved ? 'background:var(--c-primary);color:#fff;' : 'background:var(--card);color:var(--c-primary);'}">${isSaved ? '★ 저장됨' : '☆ 저장'}</button></div></div>`;
+        }).join('');
+        // 인근 공인중개사 마커 (보라색 커스텀 아이콘)
+        data.forEach((p) => {
+          const icon = L.divIcon({
+            className: '',
+            html: '<div style="width:24px;height:24px;background:#7048e8;border:2.5px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;">중</div>',
+            iconSize: [24, 24],
+            iconAnchor: [12, 12],
+          });
+          const m = L.marker([Number(p.y), Number(p.x)], { icon }).addTo(map).bindPopup(`<b>${esc(p.place_name)}</b><br>${esc(p.phone || '')}${p.place_url ? '<br><a href="' + safeUrl(p.place_url) + '" target="_blank" rel="noopener">카카오맵</a>' : ''}`);
+          agentMarkers.push(m);
+        });
+        lastAgentCenter = { lat: c.lat, lng: c.lng };
+        $('rec-list').querySelectorAll('.rec').forEach((card) => card.addEventListener('click', (e) => {
+          if (e.target.closest('.actions')) return;
+          const p = data[Number(card.dataset.i)]; map.setView([Number(p.y), Number(p.x)], 17);
+        }));
+        // 인근 공인중개사 저장/해제 버튼 바인딩
+        $('rec-list').querySelectorAll('.agent-save').forEach((btn) => btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const p = data[Number(btn.dataset.i)];
+          toggleAgentSave(p);
+          const saved = loadSavedAgents().some((a) => a.id === p.id);
+          btn.textContent = saved ? '★ 저장됨' : '☆ 저장';
+          btn.style.background = saved ? 'var(--c-primary)' : 'var(--card)';
+          btn.style.color = saved ? '#fff' : 'var(--c-primary)';
+        }));
       }, { location: new kakao.maps.LatLng(c.lat, c.lng), radius: 3000, sort: kakao.maps.services.SortBy.DISTANCE, size: 15 });
     }
     // 목록 탭 전환 + GPS
@@ -2330,7 +2429,19 @@
     $('geo-btn').addEventListener('click', () => {
       if (!navigator.geolocation) { alert('이 브라우저는 위치를 지원하지 않아요.'); return; }
       $('geo-btn').style.opacity = '.5';
-      navigator.geolocation.getCurrentPosition((pos) => { $('geo-btn').style.opacity = ''; map.setView([pos.coords.latitude, pos.coords.longitude], 15); if (landMode === 'agents') renderAgents(); }, () => { $('geo-btn').style.opacity = ''; alert('위치 권한이 필요해요.'); });
+      navigator.geolocation.getCurrentPosition((pos) => {
+        $('geo-btn').style.opacity = '';
+        map.setView([pos.coords.latitude, pos.coords.longitude], 15);
+        if (landMode === 'agents') { lastAgentCenter = null; renderAgents(); }
+      }, () => { $('geo-btn').style.opacity = ''; alert('위치 권한이 필요해요.'); });
+    });
+    // 지도 이동/줌 후 인근 공인중개사 자동 갱신 (중심이 500m 이상 이동할 때만)
+    map.on('moveend', () => {
+      if (landMode !== 'agents') return;
+      const c = map.getCenter();
+      if (!lastAgentCenter || map.distance([lastAgentCenter.lat, lastAgentCenter.lng], [c.lat, c.lng]) > 500) {
+        renderAgents();
+      }
     });
 
     // ── 푸터 통계 ──
