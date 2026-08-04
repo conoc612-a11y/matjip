@@ -1343,7 +1343,7 @@
     ];
     function loadLedgerDetail(st, render) {
       if (!st || st.detail || st._ldBusy) return;
-      const pnu = st.parcel && st.parcel.pnu;
+      const pnu = st.addrPnu || (st.bld && st.bld.pnu) || (st.parcel && st.parcel.pnu);
       if (!pnu) return;
       // '일반'(단독·다세대 단독대장)은 전유/공용면적 개념이 없다. 집합건축물일 때만 조회.
       const isComplex = !st.br || st.br.regstrGbCdNm !== '일반';
