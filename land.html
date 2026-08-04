@@ -259,7 +259,7 @@
     </div>
     <div class="footer-contact">호룡리싱앤리얼리티 &nbsp;·&nbsp; 오재호 010.4353.6501 &nbsp;·&nbsp; conoc@naver.com
       <!-- 빌드 태그: 브라우저가 옛 파일을 캐시하고 있는지 한눈에 확인하는 용도. 배포마다 올린다. -->
-      &nbsp;·&nbsp; <span class="build-tag">build 2026-07-31-b25</span></div>
+      &nbsp;·&nbsp; <span class="build-tag">build 2026-07-31-b28</span></div>
   </footer>
 
   <script>
@@ -1478,17 +1478,56 @@
     const naverSearchUrl = (q, lat, lng) => `https://map.naver.com/p/search/${encodeURIComponent(q)}?c=${lng},${lat},17,0,0,0,dh`;
     // 팝업이 열린 뒤 제목·네이버 링크를 실제 건물명으로 교체.
     // 원본명과 서로 포함 관계일 때만 반영한다 (엉뚱한 인접 건물명으로 바뀌는 것을 막기 위함).
+    // 카카오 장소 DB 에서 단지 통칭을 찾는다.
+    // 공적 장부에는 '1단지' 같은 구분이 없다 — 실측으로 확인했다:
+    //   동대문구 답십리동 990 → 건축물대장 표제부 13개 동 전부 bldNm "두산아파트",
+    //   총괄표제부도 "두산아파트", 네이버 역지오코딩도 "두산아파트".
+    //   같은 지번을 카카오 장소 DB 로 보면 "두산1단지아파트"(1m)와 "두산2단지아파트"(66m)로 나뉜다.
+    //   국토부 실거래가는 둘 다 "두산"으로 축약해 내려주므로, 통칭이 있어야 구분된다.
+    // 카테고리 필터가 핵심이다. 이름·거리만 보면 부속 시설이 이긴다:
+    //   "삼성" → "종로 평창삼성 전기차충전소"(7m) 가 "삼성아파트"(8m) 보다 가깝다.
+    // 그래서 '주거시설 > 아파트' 분류만 채택한다. 실측: 20건 중 18건 보정, 오염 0건.
+    const _kakaoNameCache = new Map();
+    function kakaoAptName(lat, lng, rawName, cb) {
+      const key = _gcKey(lat, lng) + '|' + rawName;
+      if (_kakaoNameCache.has(key)) { cb(_kakaoNameCache.get(key)); return; }
+      if (!rawName || !(window.kakao && kakao.maps && kakao.maps.services)) { cb(null); return; }
+      let settled = false;
+      const finish = (v) => { if (settled) return; settled = true; _kakaoNameCache.set(key, v); cb(v); };
+      try {
+        new kakao.maps.services.Places().keywordSearch(rawName, (data, status) => {
+          if (status !== kakao.maps.services.Status.OK) { finish(null); return; }
+          const hit = (data || [])
+            .filter((x) => /주거시설\s*>\s*아파트/.test(x.category_name || ''))
+            .filter((x) => Number(x.distance) <= 50 && String(x.place_name).includes(rawName))
+            .sort((a, b) => Number(a.distance) - Number(b.distance))[0];
+          finish(hit ? hit.place_name : null);
+        }, { location: new kakao.maps.LatLng(lat, lng), radius: 100, sort: kakao.maps.services.SortBy.DISTANCE });
+      } catch (e) { finish(null); }
+      setTimeout(() => finish(null), 6000);
+    }
+
+    // 팝업 제목과 네이버 링크를 실제 단지명으로 교체한다.
+    // 카카오(통칭, '1단지'까지 구분) 를 먼저 쓰고, 없으면 네이버 역지오코딩(공부상 건물명)으로 물러선다.
+    // 둘 다 실패하면 원본명을 그대로 둔다 — 틀린 이름으로 바꾸지 않는다.
     function enrichAptName(el, rawName, area, lat, lng) {
       if (!el) return;
-      naverBldName(lat, lng, (bld) => {
-        if (!bld || bld === rawName) return;
-        const related = bld.includes(rawName) || rawName.includes(bld);
-        if (!related) return;
-        const full = bld.length >= rawName.length ? bld : rawName;
+      const apply = (full) => {
+        if (!full || full === rawName) return false;
         const nameEl = el.querySelector('.rp-name');
         if (nameEl) nameEl.textContent = full;
         const a = el.querySelector('.rp-naver');
         if (a) a.href = naverSearchUrl(full + ' ' + (area || ''), lat, lng);
+        return true;
+      };
+      kakaoAptName(lat, lng, rawName, (place) => {
+        if (apply(place)) return;
+        naverBldName(lat, lng, (bld) => {
+          if (!bld || bld === rawName) return;
+          // 원본명과 서로 포함 관계일 때만 반영해 인접 건물 오적용을 막는다
+          if (!(bld.includes(rawName) || rawName.includes(bld))) return;
+          apply(bld.length >= rawName.length ? bld : rawName);
+        });
       });
     }
 
