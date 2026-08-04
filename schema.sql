@@ -109,6 +109,21 @@ drop policy if exists "visits anon select" on visits;
 create policy "visits anon insert" on visits for insert with check (true);
 create policy "visits anon select" on visits for select using (true);
 
+-- ── 정비구역 커뮤니티 피드 (land.html) — visits와 동일한 anon 모델: 로그인 없이 익명 작성 ──
+create table if not exists jb_posts (
+  id bigint generated always as identity primary key,
+  zone_rc text not null,       -- 정비구역 recordCode (jbRows[i].rc)
+  zone_name text not null,     -- 표시용 스냅샷(구역명이 나중에 바뀌어도 작성 당시 이름 유지)
+  nickname text not null default '익명',
+  content text not null check (char_length(content) <= 300),
+  created_at timestamptz not null default now()
+);
+alter table jb_posts enable row level security;
+drop policy if exists "jb_posts anon read"   on jb_posts;
+drop policy if exists "jb_posts anon insert" on jb_posts;
+create policy "jb_posts anon read"   on jb_posts for select using (true);
+create policy "jb_posts anon insert" on jb_posts for insert with check (true);
+
 -- ── 시드 (mj_restaurants 비었을 때만) ──
 insert into mj_restaurants (name, address, lat, lng, category, tags)
 select v.name, v.address, v.lat, v.lng, v.category, v.tags
