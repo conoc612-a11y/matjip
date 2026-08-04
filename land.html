@@ -281,7 +281,7 @@
     </div>
     <div class="footer-contact">호룡리싱앤리얼리티 &nbsp;·&nbsp; 오재호 010.4353.6501 &nbsp;·&nbsp; conoc@naver.com
       <!-- 빌드 태그: 브라우저가 옛 파일을 캐시하고 있는지 한눈에 확인하는 용도. 배포마다 올린다. -->
-      &nbsp;·&nbsp; <span class="build-tag">build 2026-07-31-b34</span></div>
+      &nbsp;·&nbsp; <span class="build-tag">build 2026-07-31-b35</span></div>
   </footer>
 
   <script>
@@ -1587,16 +1587,25 @@
       let _firstRender = true;
       const render = () => {
         slot.innerHTML = landInfoHtml(st, noDetail);
+        // 팝업 안 버튼은 반드시 전파를 끊어야 한다.
+        // 안 끊으면 클릭이 지도까지 올라가 map click 이 한 번 더 발생하고,
+        // 버튼이 놓인 화면 지점의 좌표로 새 팝업이 열려 다른 필지로 갈아탄다.
+        // (실측: 숭인동2길 29-10 -> 41, 지도 81m 이동)
+        // 상위에서 걸러내려 했지만, 그 시점엔 이미 팝업 내용이 교체돼 버튼 노드가 DOM 에서
+        // 분리된 뒤라 closest('.leaflet-popup') 가 null 을 반환해 통과됐다. 발생 지점에서 끊는다.
+        const stop = (ev) => { if (ev) { ev.preventDefault(); ev.stopPropagation(); } };
         const btn = slot.querySelector('.ld-more');
-        if (btn) btn.onclick = () => loadLedgerDetail(st, render);
+        if (btn) btn.onclick = (ev) => { stop(ev); loadLedgerDetail(st, render); };
         const rb = slot.querySelector('.ld-retry');
-        if (rb) rb.onclick = () => {
+        if (rb) rb.onclick = (ev) => {
+          stop(ev);
           st.detail = null;
           st._ldBusy = false;
           loadLedgerDetail(st, render);
         };
         slot.querySelectorAll('.unit-row').forEach((row) => {
-          row.onclick = () => {
+          row.onclick = (ev) => {
+            stop(ev);   // 호실 아코디언 클릭도 지도로 새면 안 된다
             const d = slot.querySelector('#ud-' + row.dataset.i);
             if (!d) return;
             const opening = d.style.display === 'none';
