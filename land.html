@@ -911,6 +911,13 @@
         Promise.all([fetch('redevelop_seoul.json?v=3').then((r) => r.json()), fetch('redevelop_polygons.json?v=1').then((r) => r.json()).catch(() => ({}))]).then(([rows, polys]) => { jbRows = rows; jbPolys = polys; jbBuild(); }).catch(() => {});
       });
       map.on('overlayremove', (e) => { if (e.layer === jbCluster) { map.removeControl(jbCtrl); map.removeLayer(jbPolyLayer); jbStageBar.style.display = 'none'; } });
+      // 정비구역 폴리곤 뷰포트 갱신 (debounce) — jbPolyLayer/jbBuild 는 이 함수 스코프 변수라 여기서 등록해야 한다.
+      let _jbRebuildTimer = null;
+      map.on('moveend', () => {
+        if (!map.hasLayer(jbPolyLayer)) return;
+        clearTimeout(_jbRebuildTimer);
+        _jbRebuildTimer = setTimeout(jbBuild, 250);
+      });
       // 정비구역 팝업의 출발/도착 → 길찾기
       map.on('popupopen', (e) => {
         const m = e.popup._source;
@@ -2526,13 +2533,6 @@
       if (!lastAgentCenter || map.distance([lastAgentCenter.lat, lastAgentCenter.lng], [c.lat, c.lng]) > 500) {
         renderAgents();
       }
-    });
-    // 정비구역 폴리곤 뷰포트 갱신 (debounce)
-    let _jbRebuildTimer = null;
-    map.on('moveend', () => {
-      if (!map.hasLayer(jbPolyLayer)) return;
-      clearTimeout(_jbRebuildTimer);
-      _jbRebuildTimer = setTimeout(jbBuild, 250);
     });
 
     // ── 푸터 통계 ──
