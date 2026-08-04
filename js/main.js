@@ -645,7 +645,7 @@ async function loadAllRestaurants() {
 // visits 테이블이 아직 없으면(스키마 미실행) 조용히 넘어가고 '—'로 남는다.
 async function loadFooterStats() {
   const today = new Date().toISOString().slice(0, 10);
-  sb.from('visits').insert({ page: 'main' }).catch(() => {});
+  sb.from('visits').insert({ page: 'main' }).then(() => {}, () => {});
   const [mRes, tRes, totRes] = await Promise.allSettled([
     sb.from('taste_profiles').select('*', { count: 'exact', head: true }),
     sb.from('visits').select('*', { count: 'exact', head: true }).gte('created_at', today),
