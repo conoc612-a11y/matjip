@@ -1296,12 +1296,12 @@
     //  LT_C_BLDGINFO     건물       → 용도 계열, 층수, 연면적, 사용승인일
 
     // ── 국토교통부 건축HUB 건축물대장 (data.go.kr) ──────────────
-    // 실측 확인: Access-Control-Allow-Origin: * 라서 브라우저에서 fetch 로 직접 호출된다.
+    // serviceKey는 프론트에 두지 않는다 — Supabase Edge Function(molit-proxy)이
+    // 서버에서 중계한다(supabase/functions/molit-proxy 참고). 일일 호출 한도가 있어
+    // 키가 노출되면 남용으로 소진될 수 있기 때문.
     // 주의 1) 구버전 BldRgstService_v2 는 응답이 비어 있다. BldRgstHubService 를 써야 한다.
     // 주의 2) platGbCd 를 빠뜨리면 조회되지 않는다.
-    // 주의 3) 이 키는 공개 HTML에 노출된다(V-World·네이버·카카오 키와 동일한 상황).
-    //         일일 호출 한도가 있어 남용되면 소진될 수 있다.
-    const MOLIT_KEY = '716d7a26e9743cf52ecda06537934dd5845ebafbc7322c4e32536652a5209030';
+    const MOLIT_PROXY = 'https://bhgijvaxxjnocgfnaaeu.supabase.co/functions/v1/molit-proxy';
     // PNU(19자리) = 시군구5 + 법정동5 + 산여부1 + 본번4 + 부번4
     // V-World 지적 레이어가 주는 PNU 를 그대로 건축물대장 파라미터로 분해할 수 있다.
     function pnuParts(pnu) {
@@ -1336,9 +1336,9 @@
       const MAX_ROWS = 500;
       const pageSize = op === 'getBrTitleInfo' ? 10 : 100;
       const page = (pno, acc) => {
-        const q = `serviceKey=${MOLIT_KEY}&sigunguCd=${p.sigunguCd}&bjdongCd=${p.bjdongCd}`
-          + `&platGbCd=${p.platGbCd}&bun=${p.bun}&ji=${p.ji}&numOfRows=${pageSize}&pageNo=${pno}&_type=json`;
-        fetch(`https://apis.data.go.kr/1613000/BldRgstHubService/${op}?${q}`)
+        const q = `op=${op}&sigunguCd=${p.sigunguCd}&bjdongCd=${p.bjdongCd}`
+          + `&platGbCd=${p.platGbCd}&bun=${p.bun}&ji=${p.ji}&numOfRows=${pageSize}&pageNo=${pno}`;
+        fetch(`${MOLIT_PROXY}?${q}`)
           .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
           .then((j) => {
             const body = j.response.body;
