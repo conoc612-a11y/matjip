@@ -124,14 +124,29 @@
     .cmp-check { float:right; font-size:11px; color:var(--muted); cursor:pointer; user-select:none; margin-left:8px; }
     .sheet-handle { display:none; }
     /* ── Leaflet custom controls ── */
-    .lc { background:var(--card); border:1px solid var(--line); border-radius:10px; box-shadow:var(--c-shadow); font-size:12px; color:var(--text); padding:11px 13px; line-height:1.7; max-width:215px; }
-    .lc-title { font-weight:700; font-size:12px; margin-bottom:7px; color:var(--text); letter-spacing:-.1px; }
-    .lc-check { display:block; cursor:pointer; font-size:12px; }
+    /* 폰트 크기는 서울도시공간포털(urban.seoul.go.kr) 실측 기준에 맞춘다 —
+       대분류 13px/w500, 중분류 13px/w400. 지도 위 작은 글씨는 가독성이 급격히 떨어져
+       기존 12px/10.5px에서 한 단계씩 올렸다. 글자가 커진 만큼 max-width도 함께 넓힌다. */
+    /* 정비사업 메뉴는 대분류 4개 + 중분류 9개 + 진행단계 8칩이라 세로가 길다(13px 기준 605px).
+       지도 높이(실측 577px)를 넘겨 진행단계 칩이 화면 밖으로 잘리던 문제가 있어 스크롤로 처리한다.
+       방식은 서울도시공간포털을 따랐다 — 그쪽 범례는 뷰포트가 아니라 부모 기준으로
+       `height:calc(100% - 46px)` + `overflow-y:auto` + 얇은 스크롤바(.thinScroll)를 쓴다.
+       여기서도 부모(지도) 기준을 1차 제약으로 두되, 모바일에서는 지도 컨테이너 자체가
+       뷰포트를 92px 넘기 때문에(헤더 높이만큼 밀려서 100vh가 잘림) 뷰포트 제약을 함께 건다.
+       둘 중 작은 값이 적용돼 데스크톱·모바일 모두에서 패널이 화면 안에 들어온다.
+       스크롤이 지도로 전파되면 메뉴를 훑을 때 지도가 확대/축소되므로
+       jbCtrl 쪽에 disableScrollPropagation 을 반드시 함께 걸어야 한다. */
+    .leaflet-top.leaflet-left { max-height:100%; display:flex; flex-direction:column; }
+    .lc { background:var(--card); border:1px solid var(--line); border-radius:10px; box-shadow:var(--c-shadow); font-size:13px; color:var(--text); padding:11px 13px; line-height:1.7; max-width:232px; min-height:0; max-height:calc(100vh - 240px); overflow-y:auto; overscroll-behavior:contain; }
+    .lc::-webkit-scrollbar { width:5px; background-color:var(--line); border-radius:2.5px; }
+    .lc::-webkit-scrollbar-thumb { border-radius:2.5px; background-color:#c1c1c1; background-clip:padding-box; }
+    .lc-title { font-weight:700; font-size:13px; margin-bottom:7px; color:var(--text); letter-spacing:-.1px; }
+    .lc-check { display:block; cursor:pointer; font-size:13px; font-weight:400; }
     .lc-check input { vertical-align:middle; margin-right:5px; accent-color:var(--c-primary); }
     .lc-sep { margin:9px 0 6px; padding-top:8px; border-top:1px solid var(--line); }
-    .lc-sub { font-weight:700; font-size:12px; margin-bottom:6px; }
+    .lc-sub { font-weight:600; font-size:13px; margin-bottom:6px; }
     .lc-dot { display:inline-block; width:9px; height:9px; border-radius:50%; vertical-align:middle; margin-right:5px; }
-    .jb-stage { font:inherit; font-size:10.5px; padding:3px 9px; border:1px solid var(--line); border-radius:999px; background:var(--card); color:var(--muted); cursor:pointer; }
+    .jb-stage { font:inherit; font-size:11.5px; padding:3px 9px; border:1px solid var(--line); border-radius:999px; background:var(--card); color:var(--muted); cursor:pointer; }
     .jb-stage.active { background:var(--c-primary); border-color:var(--c-primary); color:#fff; }
     .sat-btn { padding:7px 10px; background:var(--card); border:1px solid var(--line); border-radius:8px; cursor:pointer; font-size:12px; font-weight:600; box-shadow:var(--c-shadow); color:var(--text); }
     .sat-btn.on { background:var(--c-primary); color:#fff; border-color:var(--c-primary); }
@@ -511,18 +526,33 @@
     const ageColor = (b) => { const y = parseInt(b) || 0; return !y ? '#868e96' : y >= 2015 ? '#2f9e44' : y >= 2005 ? '#94d82d' : y >= 1995 ? '#fab005' : y >= 1985 ? '#fd7e14' : '#e03131'; };
     // 두 좌표 사이 대략 거리(km). 서울권 한정 근사식(위도 1도≈111km, 경도 1도≈88km).
     const kmDist = (lat1, lng1, lat2, lng2) => { const dy = (lat1 - lat2) * 111, dx = (lng1 - lng2) * 88; return Math.sqrt(dx * dx + dy * dy); };
-    // 정비사업 유형 분류 + 색상
-    const JB_COLOR = { '재개발': '#e03131', '재건축': '#7048e8', '모아': '#2f9e44', '지역주택': '#1c7ed6', '리모델링': '#f08c00', '신통': '#e8590c', '기타': '#868e96' };
-    // 신통(신속통합기획)은 gubun이 아닌 사업명에서 온다 → 레코드 전체를 받아 먼저 판별.
+    // 정비사업 유형 분류 + 색상 — 대분류 구조는 서울도시공간포털 도시계획사업 메뉴(BZ1xx 정비 / BZ2xx 소규모 /
+    // BZ3xx 역세권 / BZ4xx 재정비 / BZ5xx 국토부 / BZ6xx 기타)를 따름. 분류는 bz(사업유형코드)가 1순위.
+    const JB_COLOR = { '신통': '#e8590c', '재개발': '#e03131', '재건축': '#7048e8', '지역주택': '#1c7ed6', '재정비촉진': '#f08c00', '모아': '#2f9e44', '역세권': '#0c8599', '노후계획도시': '#5c7cfa', '기타': '#868e96' };
+    // 대분류(도시계획사업 메뉴 구조) → 표시 그룹 순서
+    const JB_SEC = [['정비사업', ['신통', '재개발', '재건축', '지역주택', '재정비촉진']], ['소규모정비', ['모아']], ['역세권', ['역세권']], ['국토부·기타', ['노후계획도시', '기타']]];
     function jbGroup(d) {
+      const bz = (d && d.bz) || '';
       const g = (d && d.gubun) || (typeof d === 'string' ? d : '') || '';
       const n = (d && d.name) || '';
+      if (bz) {
+        if (bz.indexOf('BZ101') === 0) return '신통';
+        if (bz.indexOf('BZ2') === 0) return '모아';
+        if (bz.indexOf('BZ3') === 0) return '역세권';
+        if (bz.indexOf('BZ4') === 0) return '재정비촉진';
+        if (bz.indexOf('BZ5') === 0) return '노후계획도시';
+        if (bz.indexOf('BZ6') === 0) return '기타';
+        if (g.indexOf('지역주택') >= 0) return '지역주택';
+        if (g.indexOf('재건축') >= 0) return '재건축';
+        return '재개발';
+      }
+      // 이전 수동 시드(정보몽땅, bz 없음)와의 호환 fallback
       if (n && /신속통합기획|신통|통합구역/.test(n)) return '신통';
-      if (g.indexOf('가로') >= 0 || g.indexOf('소규모') >= 0) return '모아';
+      if (g.indexOf('신통') >= 0) return '신통';
+      if (g.indexOf('가로') >= 0 || g.indexOf('소규모') >= 0 || g.indexOf('모아') >= 0) return '모아';
       if (g.indexOf('재건축') >= 0) return '재건축';
       if (g.indexOf('재개발') >= 0) return '재개발';
       if (g.indexOf('지역주택') >= 0) return '지역주택';
-      if (g.indexOf('리모델링') >= 0) return '리모델링';
       return '기타';
     }
 
@@ -791,17 +821,17 @@
         }
       });
 
-      // ── [정비사업] 서울 재개발·재건축·가로주택·지역주택 등 1,100여 구역 (정보몽땅 공식자료) ──
+      // ── [정비사업] 서울 정비사업 2,964개 구역 (서울도시공간포털 urban.seoul.go.kr UQ120, 2026-08-05 수집) ──
       // 사업구분 → 표시 그룹/색상. jaegebal 처럼 유형별로 색 구분 + 진행단계 표시.
       // 모아 = 소규모주택정비(가로주택정비·소규모재건축·소규모재개발) → 모아타운/모아주택 계열
       const jbCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 50 });
       const jbPolyLayer = L.featureGroup();
       let jbRows = null, jbPolys = null;
-      const jbFilter = { '재개발': true, '재건축': true, '모아': true, '지역주택': true, '리모델링': true, '신통': true, '기타': true };
+      const jbFilter = { '신통': true, '재개발': true, '재건축': true, '지역주택': true, '재정비촉진': true, '모아': true, '역세권': true, '노후계획도시': true, '기타': true };
       let jbActiveStage = 'all';
-      const STAGE_COLOR_MAP = { '착공': '#2f9e44', '준공': '#1c7ed6', '관리처분': '#7048e8', '사업시행': '#e8590c', '조합설립': '#f08c00', '추진위': '#aaa', '대지선정': '#f08c00' };
+      const STAGE_COLOR_MAP = { '착공': '#2f9e44', '준공': '#1c7ed6', '관리처분': '#7048e8', '사업시행': '#e8590c', '조합설립': '#f08c00', '추진위': '#aaa', '기획': '#e8590c', '대상지선정': '#f08c00' };
       function stageColor(s) { s = s || ''; for (const [k, v] of Object.entries(STAGE_COLOR_MAP)) { if (s.includes(k)) return v; } return '#868e96'; }
-      const STAGE_PCT = { '대지선정':10,'추진위':20,'조합설립':35,'사업시행':50,'관리처분':65,'착공':80,'준공':95,'조합해산':100,'정비구역해제':0 };
+      const STAGE_PCT = { '대상지선정':10,'추진위':20,'조합설립':35,'사업시행':50,'관리처분':65,'착공':80,'준공':95,'조합해산':100,'정비구역해제':0,'기획':15 };
       function stagePct(s) { s=s||''; for(const [k,v] of Object.entries(STAGE_PCT)) { if(s.includes(k)) return v; } return 15; }
       function jbPopupHtml(d) {
         const g = jbGroup(d), c = JB_COLOR[g];
@@ -884,6 +914,8 @@
       function jbBuild() {
         if (!jbRows) return;
         _jbRowsGlobal = jbRows;
+        // 메뉴에 유형별 구역 수 표시
+        document.querySelectorAll('.jb-cnt').forEach((el) => { el.textContent = jbRows.filter((r) => jbGroup(r) === el.dataset.g).length.toLocaleString(); });
         // 열려 있던 팝업 기록: 팝업 autoPan → moveend → 재빌드 → clearLayers가
         // 팝업을 닫아버리는 루프를 막기 위해 재빌드 후 같은 구역 팝업을 다시 연다.
         const openSrc = (map._popup && map._popup._source && map._popup._source._jb) ? map._popup._source._jb : null;
@@ -897,10 +929,10 @@
         const showStageBadge = map.getZoom() >= 14;
         const stageBadgeHtml = (d) => `<span class="jb-perm-badge" style="background:${stageColor(d.stage)}">${esc(d.name)} · ${stagePct(d.stage)}%</span>`;
         jbRows.forEach((d) => {
+          if (d.lat == null || d.lng == null) return;  // 좌표 미확보 레코드(수집 데이터 중 소수)는 건너뜀
           if (!jbFilter[jbGroup(d)]) return;
           if (jbActiveStage !== 'all' && !(d.stage || '').includes(jbActiveStage)) return;
-          // 뷰포트 밖 폴리곤은 스킵 (마커도 스킵)
-          if (d.lat != null && d.lng != null && !bounds.contains([d.lat, d.lng])) return;
+          if (!bounds.contains([d.lat, d.lng])) return;  // 뷰포트 밖 폴리곤·마커 스킵
           const c = JB_COLOR[jbGroup(d)];
           // 쓸 수 있는 링이 하나도 안 남으면 폴리곤을 그리지 않고 마커로 떨어뜨린다.
           // (예전엔 빈 배열로 L.polygon 을 만들어 아무것도 안 보이는 유령 도형이 됐다.)
@@ -952,20 +984,21 @@
         const div = L.DomUtil.create('div');
         div.className = 'lc';
         div.innerHTML = '<div class="lc-title">정비사업 유형</div>'
-          + Object.keys(JB_COLOR).map((g) => `<label class="lc-check"><input type="checkbox" class="jb-f" data-g="${g}" checked> <span class="lc-dot" style="background:${JB_COLOR[g]};"></span> ${g}</label>`).join('')
+          + JB_SEC.map(([sec, groups]) => `<div class="lc-sep lc-sub">${sec}</div>` + groups.map((g) => `<label class="lc-check"><input type="checkbox" class="jb-f" data-g="${g}" checked> <span class="lc-dot" style="background:${JB_COLOR[g]};"></span> ${g}<span class="jb-cnt" data-g="${g}" style="float:right;opacity:.6;font-size:11px;"></span></label>`).join('')).join('')
           + '<div class="lc-sub" style="margin-top:6px;font-size:11px;color:#888;">점선 원 = 경계 미확보 근사 구역(반경 300m)</div>'
           + '<div class="lc-sep lc-sub">진행단계</div>'
           + '<div style="display:flex;flex-wrap:wrap;gap:4px;">'
-          + ['전체','추진위','조합설립','사업시행','관리처분','착공','준공'].map((s) => `<button class="jb-stage${s === '전체' ? ' active' : ''}" data-s="${s}">${s}</button>`).join('')
+          + ['전체','기획','추진위','조합설립','사업시행','관리처분','착공','준공'].map((s) => `<button class="jb-stage${s === '전체' ? ' active' : ''}" data-s="${s}">${s}</button>`).join('')
           + '</div>';
         L.DomEvent.disableClickPropagation(div);
+        L.DomEvent.disableScrollPropagation(div);  // 메뉴 스크롤이 지도 줌으로 새지 않도록
         return div;
       };
       // ── Stage chip bar (bottom-center, shown when JB layer is active) ──
       const jbStageBar = document.createElement('div');
       jbStageBar.id = 'jb-stage-bar';
       jbStageBar.style.display = 'none';
-      jbStageBar.innerHTML = ['전체','추진위','조합설립','사업시행','관리처분','착공','준공','대지선정'].map((s) => `<button class="jb-chip${s === '전체' ? ' active' : ''}" data-s="${s}">${s}</button>`).join('');
+      jbStageBar.innerHTML = ['전체','기획','추진위','조합설립','사업시행','관리처분','착공','준공','대상지선정'].map((s) => `<button class="jb-chip${s === '전체' ? ' active' : ''}" data-s="${s}">${s}</button>`).join('');
       document.getElementById('map').appendChild(jbStageBar);
       L.DomEvent.disableClickPropagation(jbStageBar);
       L.DomEvent.disableScrollPropagation(jbStageBar);
@@ -993,7 +1026,7 @@
           });
         }, 60);
         if (jbRows) return;
-        Promise.all([fetch('redevelop_seoul.json?v=3').then((r) => r.json()), fetch('redevelop_polygons.json?v=1').then((r) => r.json()).catch(() => ({}))]).then(([rows, polys]) => { jbRows = rows; jbPolys = polys; jbBuild(); }).catch(() => {});
+        Promise.all([fetch('redevelop_seoul.json?v=4').then((r) => r.json()), fetch('redevelop_polygons.json?v=2').then((r) => r.json()).catch(() => ({}))]).then(([rows, polys]) => { jbRows = rows; jbPolys = polys; jbBuild(); }).catch(() => {});
       });
       map.on('overlayremove', (e) => { if (e.layer === jbCluster) { map.removeControl(jbCtrl); map.removeLayer(jbPolyLayer); jbStageBar.style.display = 'none'; } });
       // 정비구역 폴리곤 뷰포트 갱신 (debounce) — jbPolyLayer/jbBuild 는 이 함수 스코프 변수라 여기서 등록해야 한다.
@@ -2753,7 +2786,7 @@
     function ensureJbRows() {
       if (_jbRowsGlobal || _jbRowsLoading) return;
       _jbRowsLoading = true;
-      fetch('redevelop_seoul.json?v=3').then((r) => r.json()).then((rows) => { _jbRowsGlobal = rows; _jbRowsLoading = false; }).catch(() => { _jbRowsLoading = false; });
+      fetch('redevelop_seoul.json?v=4').then((r) => r.json()).then((rows) => { _jbRowsGlobal = rows; _jbRowsLoading = false; }).catch(() => { _jbRowsLoading = false; });
     }
     function renderAC() {
       const raw = $('search').value.trim(), ac = $('ac');
