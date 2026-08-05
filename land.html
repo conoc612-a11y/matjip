@@ -352,6 +352,8 @@
     // data.go.kr에서 "한국부동산원_청약Home 청약일정 정보" 또는 "LH 청약센터" Open API를
     // 활용신청(무료) 후 발급받은 인증키를 아래에 채우면 loadSubscriptions()가 동작한다.
     // 키가 비어 있는 동안은 항상 빈 배열을 반환해 지도에 아무 영향도 주지 않는다(no-op).
+    // data.go.kr 청약 API serviceKey는 여기(프론트)에 두지 말 것 — keys.env 참고.
+    // Edge Function 프록시(molit-proxy 패턴)로 중계하거나, 빈 값이면 기능 비활성.
     const SUBSCRIPTION_API_KEY = '';
     function loadSubscriptions() {
       if (!SUBSCRIPTION_API_KEY) return Promise.resolve([]);
