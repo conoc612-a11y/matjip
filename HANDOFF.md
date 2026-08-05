@@ -4,6 +4,26 @@
 
 ---
 
+## 2026-08-05 (심야 2) — Claude Code
+
+### Objective
+사용자가 "요청했는데 왜 반영 안 됐냐"고 지적한 3건 처리. **교훈: 이전 세션에서 HANDOFF 에 "목업만 하고 실코드 미반영"이라 적어두고 그대로 넘어간 항목이 있었다. 기록만 남기고 실제로 안 한 것은 안 한 것이다 — 다음 세션은 이 파일의 "미반영/보류" 항목을 먼저 확인할 것.**
+
+### Work State — Completed (배포됨)
+1. **배경지도 선택을 줌(+/−) 옆으로 + OSM 추가** — 미반영이었던 항목. `.ctl-row` 래퍼로 줌 컨트롤과 `.bm-picker` 를 한 줄에 넣었다(Leaflet 은 같은 코너 컨트롤을 세로로만 쌓으므로). `BASEMAPS` 에 `OSM (대체)` 를 4번째로 추가 — 기존엔 V-World 장애 시 자동 대체용으로만 있어 수동 선택 불가였다. 검증: 4종 클릭 시 타일 호스트가 vworld↔openstreetmap 으로 실제 전환됨, 좁은 화면 대응 media query(썸네일 52px) 추가.
+2. **팝업 줌 재배치 — 진짜 원인 두 개 규명 후 수정**. 앞선 `bc66a95` 로 부족했던 이유:
+   - Leaflet `_adjustPan()` 의 `_autopanning` 플래그가 다음 호출을 삼킨다(팝업 열 때 1회 패닝 → 그 다음 줌 호출이 무시). **`L.Popup.prototype._adjustPan` 을 통째로 교체** — 플래그 없이 픽셀 기준으로 잘렸는지만 보고 최소 거리 `panBy`.
+   - 상세 내용은 `update()` 우회하여 **팝업 DOM 에 직접 주입**하므로 `update()` → `_adjustPan` 경로를 아예 안 탄다. 그 주입 지점 2곳(`fillLandInfo` 렌더 끝, 인근 상호 렌더)에서 `repanPopup(p, true)` 직접 호출로 변경. `_firstRender` 게이트도 제거(매번 부르지만 잘렸을 때만 최소 이동이라 3e02fdb 회귀 없음).
+   - **실패한 접근 기록**: ResizeObserver 로 팝업 성장 감지 시도 → `--popup-max-h` 에 걸리면 컨테이너 크기가 안 변해 콜백 0회(실측). 제거함. 다시 시도하지 말 것.
+   - 검증: 새 지점 클릭 후 상세 로드 완료 시 top 104(지도 top 92 + pad 12), 줌 12/19/15/17 전부 `fits: true`.
+3. **참조 사이트 대조** — 서울도시공간포털은 `.esri-popup__main-container { max-height:300px; }` + `.esri-popup__content { overflow: hidden auto; }`. 즉 "고정 최대높이 + 내부 스크롤". matjip 은 이미 동일 구조에 고정값 대신 지도 높이 62%(`--popup-max-h`)라 더 반응형 — 높이 방식은 바꿀 필요 없었고 문제는 위치였음이 확인됨.
+
+### 여전히 미반영/보류 (다음 세션이 이어받을 것)
+- **헤더 대출금리** — 은행별 실시간 비교는 금감원 Finlife API 필요(키 미신청). 수출입은행 AP02/AP03 은 `result:2` 로 사용 불가(위 항목 참고).
+- **CCTV 영상** — ITS 가 Supabase Edge Function 아웃바운드 IP 차단(로컬 curl 2초 성공 / Edge 무응답). 레이어·팝업 UI 는 구현돼 있고 데이터만 안 옴.
+
+---
+
 ## 2026-08-05 (심야) — Claude Code
 
 ### Objective
