@@ -4,3 +4,4 @@ keys.env
 tools/.geocache.json
 .gstack/
 supabase/.temp/
+_mockup_*.html

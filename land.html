@@ -1464,12 +1464,27 @@
     // 부르면 '팝업 전체가 화면에 들어오도록' 지도가 순간이동(animate:false)해, 상세 조회가
     // 하나씩 쌓이는 동안 지도가 다른 지역으로 훌쩍 옮겨간 것처럼 보인다. 팝업은 내부
     // 스크롤이 가능하므로 앵커(클릭 지점)가 화면 안에 있는 동안은 지도를 건드리지 않는다.
-    function repanPopup(p) {
+    // precise=true 는 좌표가 아니라 팝업 DOM 박스가 실제로 지도 밖으로 나갔는지(픽셀 기준)를 본다.
+    // 줌 직후처럼 '한 번의 명확한 사용자 동작' 뒤에는 정확하게 재배치해야 팝업 하단이
+    // 지도 밖으로 잘리는 문제(예: maxHeight가 커도 앵커가 가장자리 근처면 못 잡아냄)를 막는다.
+    // 반면 상세 조회가 하나씩 쌓일 때(precise 생략)는 좌표 기준의 느슨한 판정을 유지한다 —
+    // 매 렌더마다 정밀 판정을 하면 팝업이 자라날 때마다 지도가 순간이동해 버린다(과거 회귀).
+    function repanPopup(p, precise) {
       if (!p || !p.isOpen || !p.isOpen()) return;
       const map = p._map;
-      const ll = p.getLatLng ? p.getLatLng() : null;
-      if (!map || !ll) return;
-      if (map.getBounds().pad(-0.03).contains(ll)) return;
+      if (!map) return;
+      if (precise) {
+        const el = p.getElement();
+        if (!el) return;
+        const mapRect = map.getContainer().getBoundingClientRect();
+        const popRect = el.getBoundingClientRect();
+        const outOfView = popRect.top < mapRect.top || popRect.bottom > mapRect.bottom
+          || popRect.left < mapRect.left || popRect.right > mapRect.right;
+        if (!outOfView) return;
+      } else {
+        const ll = p.getLatLng ? p.getLatLng() : null;
+        if (!ll || map.getBounds().pad(-0.03).contains(ll)) return;
+      }
       try { if (p._adjustPan) p._adjustPan(); } catch (e) {}
     }
 
@@ -2154,22 +2169,15 @@
 
     // 지도 우클릭 → 열린 팝업/클릭 마커 닫기
     map.on('contextmenu', (e) => { map.closePopup(); if (clickMarker) { map.removeLayer(clickMarker); clickMarker = null; } if (e.originalEvent) e.originalEvent.preventDefault(); });
-    // 확대/축소 후 열린 팝업의 크기·위치를 화면에 맞게 조정
-    map.on('zoomend', () => {
-      const p = map._popup;
-      if (!p || !p.isOpen || !p.isOpen()) return;
-      const el = p.getElement();
-      if (!el) return;
-      // 줌 레벨에 따라 팝업 크기 조정
-      const zoom = map.getZoom();
-      const minW = Math.min(280, window.innerWidth - 60);
-      const maxH = Math.round(window.innerHeight * 0.55);
-      el.style.minWidth = minW + 'px';
-      el.style.maxWidth = Math.min(360, window.innerWidth - 40) + 'px';
-      el.style.maxHeight = maxH + 'px';
-      // 팝업이 화면 밖으로 밀려나지 않도록 재위치
-      repanPopup(p);
-    });
+    // 확대/축소 후 열린 팝업이 지도 밖으로 잘려나가지 않도록 재배치.
+    // 팝업 크기 자체는 손대지 않는다 — 폭은 CSS(calc(100vw - 40px)), 높이는
+    // --popup-max-h(지도 높이 기준, refreshMapSize 가 갱신)가 이미 반응형으로 처리한다.
+    // 예전엔 여기서 el.style.maxHeight 를 바깥 .leaflet-popup 래퍼에 직접 지정했는데,
+    // 실제 높이 제한은 안쪽 .leaflet-popup-content 에 CSS 변수로 걸려 있어 아무 효과가
+    // 없었다(죽은 코드) — 그 사이 앵커가 가장자리 근처로 줌되면 재배치 판정(좌표 기준)도
+    // 못 잡아내 팝업 하단이 지도 밖으로 잘리는 게 실제 버그였다. precise=true 로 픽셀
+    // 기준 판정을 써서 고친다.
+    map.on('zoomend', () => repanPopup(map._popup, true));
 
     // ── 길찾기: 출발/도착 + 도보(OSRM)·대중교통(ODsay)·자차(OSRM) ──
     const ODSAY_KEY = 'H4Vo/z04g/E+AUShnTQIiQ';
