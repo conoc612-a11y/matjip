@@ -148,8 +148,14 @@
     .lc-dot { display:inline-block; width:9px; height:9px; border-radius:50%; vertical-align:middle; margin-right:5px; }
     .jb-stage { font:inherit; font-size:11.5px; padding:3px 9px; border:1px solid var(--line); border-radius:999px; background:var(--card); color:var(--muted); cursor:pointer; }
     .jb-stage.active { background:var(--c-primary); border-color:var(--c-primary); color:#fff; }
-    .sat-btn { padding:7px 10px; background:var(--card); border:1px solid var(--line); border-radius:8px; cursor:pointer; font-size:12px; font-weight:600; box-shadow:var(--c-shadow); color:var(--text); }
-    .sat-btn.on { background:var(--c-primary); color:#fff; border-color:var(--c-primary); }
+    /* 배경지도 선택 — 네이버지도처럼 썸네일 3종을 나란히 보여준다.
+       썸네일은 실제 V-World 타일이라 각 지도가 어떤 모습인지 그대로 미리 보인다. */
+    .bm-picker { display:flex; gap:6px; background:var(--card); border:1px solid var(--line); border-radius:10px; padding:6px; box-shadow:var(--c-shadow); }
+    .bm-item { font:inherit; padding:0; border:2px solid transparent; border-radius:8px; background:var(--card); cursor:pointer; overflow:hidden; width:72px; }
+    .bm-thumb { display:block; width:100%; height:44px; background-size:cover; background-position:center; background-color:var(--line); }
+    .bm-label { display:block; padding:4px 2px; font-size:11.5px; font-weight:600; color:var(--muted); white-space:nowrap; }
+    .bm-item.on { border-color:var(--c-primary); }
+    .bm-item.on .bm-label { color:var(--c-primary); }
     .rp-stat { font-size:11px; color:var(--muted); margin-top:5px; }
     .jb-perm-badge { color:#fff; font-size:10.5px; font-weight:600; padding:2px 7px; border-radius:999px; white-space:nowrap; box-shadow:var(--c-shadow); }
     .leaflet-tooltip.jb-perm-tt { background:none; border:none; box-shadow:none; padding:0; }
@@ -941,7 +947,9 @@
             // fillRule 'nonzero': Leaflet 기본값은 'evenodd'인데, 그 규칙에서는 겹친 링이 서로를
             // 상쇄해 채움이 사라지고 외곽선만 남는다 (= 폴리곤 색이 안 칠해지는 증상).
             // weight 를 얇게: 서울 전체 줌에서는 구역이 20px 남짓이라 굵은 선이 채움을 덮어버린다.
-            const poly = L.polygon(rings.map((r) => [r]), { color: c, weight: 1.5, fillColor: c, fillOpacity: 0.45, fillRule: 'nonzero', smoothFactor: 2 });
+            // smoothFactor 는 화면 픽셀 기준 단순화 허용오차다. 2 로 두면 줌 17에서
+            // 경계가 실제 필지선에서 최대 2.4m 벗어난다(실측). 1 로 낮춰 절반으로 줄인다.
+            const poly = L.polygon(rings.map((r) => [r]), { color: c, weight: 1.5, fillColor: c, fillOpacity: 0.45, fillRule: 'nonzero', smoothFactor: 1 });
             poly._jb = d;
             poly.bindTooltip(
               showStageBadge ? stageBadgeHtml(d) : `<b>${esc(d.name)}</b><br><span style="font-size:11px;color:#555">${esc(d.stage || '')}</span>`,
@@ -1102,30 +1110,39 @@
         '택지·사업지구': wms('lt_c_lhzone', 0.5),
       };
       L.control.layers(baseLayers, landOverlays, { collapsed: true, position: 'topright' }).addTo(map);
-      // 항공영상 퀵토글
-      const satBtn = L.control({ position: 'topleft' });
-      satBtn.onAdd = () => {
-        const b = L.DomUtil.create('button');
-        b.title = '항공영상/일반지도 전환';
-        b.className = 'sat-btn';
-        b.textContent = '항공';
-        let sat = false;
-        b.onclick = () => {
-          sat = !sat;
-          if (sat) {
-            Object.values(baseLayers).forEach(l => map.hasLayer(l) && map.removeLayer(l));
-            baseLayers['항공+라벨'] && baseLayers['항공+라벨'].addTo(map);
-            b.classList.add('on');
-          } else {
-            Object.values(baseLayers).forEach(l => map.hasLayer(l) && map.removeLayer(l));
-            defaultBase.addTo(map);
-            b.classList.remove('on');
-          }
-        };
-        L.DomEvent.disableClickPropagation(b);
-        return b;
+      // 배경지도 선택 (일반/위성/위성+라벨) — 예전엔 '항공' 토글 버튼 하나뿐이라
+      // 어떤 지도가 있는지 알 수 없었다. 네이버지도처럼 썸네일로 셋을 나란히 보여준다.
+      // 썸네일 배경은 서울 도심(z15) 실제 타일이라 별도 이미지 파일이 필요 없다.
+      const THUMB = (layer, ext) => `https://api.vworld.kr/req/wmts/1.0.0/${VWORLD_KEY}/${layer}/15/12688/27942.${ext}`;
+      const BASEMAPS = [
+        { key: '일반지도', label: '일반지도', thumb: THUMB('Base', 'png') },
+        { key: '항공영상', label: '위성지도', thumb: THUMB('Satellite', 'jpeg') },
+        { key: '항공+라벨', label: '위성+라벨', thumb: `${THUMB('Hybrid', 'png')}), url(${THUMB('Satellite', 'jpeg')}` },
+      ];
+      const bmPicker = L.control({ position: 'topleft' });
+      bmPicker.onAdd = () => {
+        const div = L.DomUtil.create('div');
+        div.className = 'bm-picker';
+        div.innerHTML = BASEMAPS.map((b) =>
+          `<button type="button" class="bm-item${b.key === '일반지도' ? ' on' : ''}" data-b="${b.key}" title="${b.label}">`
+          + `<span class="bm-thumb" style="background-image:url(${b.thumb});"></span>`
+          + `<span class="bm-label">${b.label}</span></button>`
+        ).join('');
+        div.querySelectorAll('.bm-item').forEach((btn) => {
+          btn.onclick = () => {
+            const target = baseLayers[btn.dataset.b];
+            if (!target) return;
+            Object.values(baseLayers).forEach((l) => map.hasLayer(l) && map.removeLayer(l));
+            target.addTo(map);
+            if (target.bringToBack) target.bringToBack();
+            div.querySelectorAll('.bm-item').forEach((o) => o.classList.toggle('on', o === btn));
+          };
+        });
+        L.DomEvent.disableClickPropagation(div);
+        L.DomEvent.disableScrollPropagation(div);
+        return div;
       };
-      satBtn.addTo(map);
+      bmPicker.addTo(map);
     }
     // 실거래가 데이터는 초기 렌더를 막지 않도록 브라우저가 한가할 때 미리 로드 (클릭 팝업의 '근처 실거래'에 사용)
     (window.requestIdleCallback || ((f) => setTimeout(f, 2500)))(() => { loadRp(); ensureNaver(); });
