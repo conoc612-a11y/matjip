@@ -4,6 +4,34 @@
 
 ---
 
+## 2026-08-05 (심야) — Claude Code
+
+### Objective
+헤더 날씨·환율 위젯 실제 구현·배포 + CCTV(ITS 키 수령) 연동 시도.
+
+### Work State
+**Completed (배포됨)**
+- Edge Function 3개 신규 배포 (전부 `--no-verify-jwt`): `kma-weather-proxy`, `eximbank-proxy`, `its-cctv-proxy`. Supabase secrets에 `EXCHANGE_RATE_KEY`, `ITS_CCTV_KEY` 등록.
+- **헤더 날씨** — 지도 클릭 시 그 지점으로 갱신됨(실측: 해운대 중동 26℃ → 대구 사일동 26℃ → 강남역 서초동 29℃ 구름많음). 기상청 초단기예보(`getUltraSrtFcst`) 사용. `kma-weather-proxy`가 위경도→기상청 격자(nx,ny) Lambert 변환과 base_date/base_time 계산까지 서버에서 처리하므로 프론트는 lat/lng만 넘긴다. data.go.kr 인증키는 계정당 공용이라 기존 `MOLIT_KEY`를 재사용(별도 발급 불필요).
+- **헤더 환율** — USD + JPY(100) 두 개 표시(실측 USD 1,428.2 / JPY 905.16). 한국수출입은행 AP01. 휴일엔 고시가 없어 최대 6일 거슬러 재조회.
+- **버그 수정: `reverseGeocode` JSONP 콜백 이름 충돌(기존 잠재 버그)** — 콜백 전역명이 좌표만으로 만들어져, 같은 지점을 동시에 두 번 조회하면(지도 클릭 시 팝업 주소용 + 헤더 날씨 지역명용) 뒤에 등록한 쪽이 `window[name]`을 덮어써 앞의 콜백이 영구히 안 불렸다. 실제로 헤더 지역명이 이전 지점에 멈추는 증상으로 드러남. 호출마다 `_vwRevSeq` 고유번호를 붙여 해결.
+- **버그 수정: TDZ** — `EXIM_PROXY` 등 프록시 상수를 `MOLIT_PROXY` 근처(1500번대)에 뒀는데 헤더 위젯이 1300번대에서 즉시 호출해 `Cannot access before initialization`으로 **스크립트 전체가 죽었다**(그 아래 `let _naverPromise` 등도 초기화 안 돼 연쇄 에러). 상수를 사용 지점 앞으로 이동.
+
+**Blocked — CCTV**
+- 키는 정상이고 **로컬(직접 curl)에서는 2초 내 41건 응답**하지만, **Supabase Edge Function(Deno Deploy)에서는 응답이 아예 없다**(8초 타임아웃까지 무응답). ITS가 클라우드 아웃바운드 IP대역을 차단하는 것으로 판단 — 한국 공공기관 API에 흔한 패턴이며 패킷 드랍형이라 일반 타임아웃과 구분되지 않는다.
+- 현재 상태: 레이어 목록에 'CCTV (실시간 도로영상)' 항목은 있고, 켜도 **마커 0개 + JS 에러 0건 + 지도 정상 동작**(조용히 비활성). 앱을 깨뜨리지 않으므로 그대로 배포함. 프록시에 8초 `AbortController` 타임아웃을 걸어 무한 대기를 막아뒀고 응답에 `timedOut: true`를 실어 원인 추적이 가능하다.
+- **이어서 할 것(우회 방법)**: (1) Cloudflare Workers 등 다른 IP대역에서 재시도, (2) ITS에 서비스 IP 등록/문의, (3) 사용자 브라우저에서 직접 호출 — 단 이러면 `apiKey`가 노출되므로 ITS 콘솔에 도메인 잠금이 되는지 먼저 확인해야 함(안 되면 이 방법은 쓰지 말 것). CCTV 팝업 UI(영상 재생 + 닫기 버튼 + hls.js 지연로드)는 이미 구현돼 있어 데이터만 들어오면 바로 동작한다.
+
+**대출금리 — 제외됨(구현 안 함)**
+- 한국수출입은행 `exchangeJSON`은 **AP01(환율)만 동작**. `data=AP02`/`AP03`은 키 4가지 조합(LOAN_RATE_KEY/INT_RATE_KEY × AP02/AP03) 전부 `result:2`(데이터코드 오류) — 엔드포인트 자체가 확인 불가. 사용자 지시로 헤더에서 제외.
+- 애초에 수출입은행 API는 자기 은행 금리 하나만 주는 구조라 "은행별 비교"와 맞지 않음. **올바른 소스는 [금융감독원 Finlife(금융상품 한눈에)](https://finlife.fss.or.kr/finlife/main/main.do?menuNo=700000)** — 은행별 주택담보/전세자금/신용대출 금리 비교 제공, 무료, 별도 키 신청 필요. 은행연합회 소비자포털(portal.kfb.or.kr)은 웹페이지만 있고 OpenAPI 없음. 한국은행 ECOS는 은행별이 아니라 평균·월별.
+
+### Next Move
+1. Finlife 키 신청 → `finlife-proxy` Edge Function → 헤더에 은행별 대출금리 추가(원래 사용자 요구사항: "은행별로 금리가 계속 변경되게").
+2. CCTV IP 차단 우회(위 3안 중 택일).
+
+---
+
 ## 2026-08-05 (밤, 늦게) — Claude Code
 
 ### Objective
