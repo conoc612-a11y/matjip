@@ -163,6 +163,17 @@
     .bm-label { display:block; padding:4px 2px; font-size:11.5px; font-weight:600; color:var(--muted); white-space:nowrap; }
     .bm-item.on { border-color:var(--c-primary); }
     .bm-item.on .bm-label { color:var(--c-primary); }
+    /* 줌(+/−) 버튼과 배경지도 피커를 한 줄로 나란히 놓는 래퍼.
+       Leaflet 이 .leaflet-control 에 걸어 두는 코너 여백을 래퍼가 대신 갖는다. */
+    .ctl-row { display:flex; align-items:flex-start; gap:6px; margin:10px 0 0 10px; }
+    .ctl-row > .leaflet-control { margin:0 !important; float:none; }
+    @media (max-width:760px) {
+      /* 좁은 화면에서 줌 버튼 + 썸네일 4개가 가로를 넘기지 않도록 줄인다. */
+      .bm-item { width:52px; }
+      .bm-thumb { height:32px; }
+      .bm-label { font-size:10.5px; }
+      .bm-picker { gap:4px; padding:4px; }
+    }
     .rp-stat { font-size:11px; color:var(--muted); margin-top:5px; }
     .jb-perm-badge { color:#fff; font-size:10.5px; font-weight:600; padding:2px 7px; border-radius:999px; white-space:nowrap; box-shadow:var(--c-shadow); }
     .leaflet-tooltip.jb-perm-tt { background:none; border:none; box-shadow:none; padding:0; }
@@ -1229,6 +1240,10 @@
         { key: '일반지도', label: '일반지도', thumb: THUMB('Base', 'png') },
         { key: '항공영상', label: '위성지도', thumb: THUMB('Satellite', 'jpeg') },
         { key: '항공+라벨', label: '위성+라벨', thumb: `${THUMB('Hybrid', 'png')}), url(${THUMB('Satellite', 'jpeg')}` },
+        // OSM 은 V-World 장애 시 자동 대체용으로만 쓰이던 레이어인데, 수동으로도
+        // 고를 수 있게 넷째 선택지로 노출한다. 썸네일은 위 V-World 것과 같은 z/x/y
+        // 타일(둘 다 WebMercator XYZ) 이라 같은 지역이 나온다.
+        { key: 'OSM (대체)', label: 'OSM', thumb: 'https://tile.openstreetmap.org/15/12688/27942.png' },
       ];
       const bmPicker = L.control({ position: 'topleft' });
       bmPicker.onAdd = () => {
@@ -1254,6 +1269,19 @@
         return div;
       };
       bmPicker.addTo(map);
+      // 배경지도 선택을 줌(+/−) 버튼 "옆"에 나란히 붙인다.
+      // Leaflet 은 같은 코너(topleft)에 추가한 컨트롤을 세로로 쌓기만 해서,
+      // 줌 컨트롤과 이 피커를 한 줄(.ctl-row)로 감싸 가로 배치로 바꾼다.
+      // (코너 컨테이너 자체는 정비사업 메뉴 스크롤 때문에 flex column 을 유지해야 한다.)
+      const _tl = map.getContainer().querySelector('.leaflet-top.leaflet-left');
+      const _zoomEl = map.zoomControl && map.zoomControl.getContainer();
+      const _pickEl = bmPicker.getContainer();
+      if (_tl && _pickEl) {
+        const row = L.DomUtil.create('div', 'ctl-row');
+        _tl.insertBefore(row, _tl.firstChild);
+        if (_zoomEl) row.appendChild(_zoomEl);
+        row.appendChild(_pickEl);
+      }
     }
     // 실거래가 데이터는 초기 렌더를 막지 않도록 브라우저가 한가할 때 미리 로드 (클릭 팝업의 '근처 실거래'에 사용)
     (window.requestIdleCallback || ((f) => setTimeout(f, 2500)))(() => { loadRp(); ensureNaver(); });
@@ -1627,23 +1655,50 @@
     // 지도 밖으로 잘리는 문제(예: maxHeight가 커도 앵커가 가장자리 근처면 못 잡아냄)를 막는다.
     // 반면 상세 조회가 하나씩 쌓일 때(precise 생략)는 좌표 기준의 느슨한 판정을 유지한다 —
     // 매 렌더마다 정밀 판정을 하면 팝업이 자라날 때마다 지도가 순간이동해 버린다(과거 회귀).
+    // precise 경로는 Leaflet 의 _adjustPan() 을 쓰지 않는다. 그 함수에는 _autopanning
+    // 플래그가 있어 "직전에 자동 패닝을 했으면 이번 호출은 통째로 건너뛰고 플래그만 리셋"
+    // 한다. 팝업이 열릴 때 한 번 패닝되므로 그 다음 줌에서의 호출이 그대로 삼켜져,
+    // 줌해도 팝업이 계속 지도 위쪽으로 잘린 채 남았다(실측: top -52px, 모든 줌 레벨 동일).
+    // 그래서 필요한 이동량을 직접 계산해 panBy 한다 — 잘렸을 때만, 최소 거리로만 움직이므로
+    // 상세 조회가 쌓일 때 지도가 순간이동하던 과거 회귀(3e02fdb)도 재발하지 않는다.
+    const POPUP_PAD = 12;
     function repanPopup(p, precise) {
       if (!p || !p.isOpen || !p.isOpen()) return;
       const map = p._map;
       if (!map) return;
-      if (precise) {
-        const el = p.getElement();
-        if (!el) return;
-        const mapRect = map.getContainer().getBoundingClientRect();
-        const popRect = el.getBoundingClientRect();
-        const outOfView = popRect.top < mapRect.top || popRect.bottom > mapRect.bottom
-          || popRect.left < mapRect.left || popRect.right > mapRect.right;
-        if (!outOfView) return;
-      } else {
+      if (!precise) {
         const ll = p.getLatLng ? p.getLatLng() : null;
         if (!ll || map.getBounds().pad(-0.03).contains(ll)) return;
+        try { if (p._adjustPan) p._adjustPan(); } catch (e) {}
+        return;
       }
-      try { if (p._adjustPan) p._adjustPan(); } catch (e) {}
+      const el = p.getElement();
+      if (!el) return;
+      const m = map.getContainer().getBoundingClientRect();
+      const r = el.getBoundingClientRect();
+      // panBy([dx,dy]) 는 시야를 그 방향으로 옮긴다 = 내용은 반대로 움직인다.
+      // 아래가 넘치면 양수(내용을 위로), 위가 잘리면 음수(내용을 아래로).
+      let dx = 0, dy = 0;
+      if (r.bottom > m.bottom - POPUP_PAD) dy = r.bottom - (m.bottom - POPUP_PAD);
+      // 위쪽 판정을 나중에 둬서, 팝업이 지도보다 길 때는 상단이 보이도록 한다(내부 스크롤 가능).
+      if (r.top - dy < m.top + POPUP_PAD) dy = r.top - (m.top + POPUP_PAD);
+      if (r.right > m.right - POPUP_PAD) dx = r.right - (m.right - POPUP_PAD);
+      if (r.left - dx < m.left + POPUP_PAD) dx = r.left - (m.left + POPUP_PAD);
+      if (dx || dy) map.panBy([dx, dy], { animate: false });
+    }
+    // Leaflet 내부의 _adjustPan 을 위 로직으로 통째로 교체한다.
+    // 원본은 _autopanning 플래그로 "직전에 자동 패닝했으면 이번 호출은 건너뛰고 플래그만
+    // 리셋"하는데, 팝업은 열릴 때 한 번 패닝되고( '정보 불러오는 중…' 상태라 짧음 ) 그 뒤
+    // 내용이 비동기로 채워지며 커진다. 그때 update() 가 부르는 _adjustPan 이 플래그에
+    // 삼켜져, 길어진 팝업의 위쪽이 지도 밖으로 잘린 채 남았다(실측 top -52px).
+    // ResizeObserver 로 잡으려 했지만 --popup-max-h 에 걸리면 컨테이너 크기가 더 이상
+    // 변하지 않아 콜백이 아예 오지 않는다(실측 0회). 그래서 호출 지점이 아니라
+    // 함수 자체를 고친다 — 열 때·내용 갱신·줌 전부 같은 경로로 정확히 맞춰진다.
+    if (L.Popup && L.Popup.prototype) {
+      L.Popup.prototype._adjustPan = function () {
+        if (!this.options.autoPan) return;
+        repanPopup(this, true);
+      };
     }
 
     const M2_PER_PY = 3.305785;
@@ -1968,9 +2023,14 @@
           };
         });
         if (onInfo) onInfo(st);
-        // _adjustPan은 최초 렌더에서만 호출. 이후 팝업 내용 갱신(시세·대장 상세) 시에는
-        // 지도를 움직이지 않는다 — 상세 조회가 쌓이는 동안 지도가 밀리는 문제를 방지.
-        if (_firstRender) { _firstRender = false; const p = getPopup(); repanPopup(p); }
+        // 이 렌더는 팝업 DOM 에 직접 꽂아 넣는 경로라 Leaflet 의 update() 를 타지 않는다
+        // → update() 가 부르는 _adjustPan 도 안 불린다. 그래서 여기서 직접 맞춰 준다.
+        // 예전엔 최초 렌더에서만(그것도 좌표 기준 느슨한 판정으로) 불러서, 상세가 쌓여
+        // 팝업이 길어지면 위쪽이 지도 밖으로 잘린 채 남았다(실측 top -52px).
+        // 지금은 매 렌더마다 부르지만 '실제로 잘렸을 때만 최소 거리로' 움직이므로,
+        // 상세가 쌓일 때 지도가 훌쩍 밀리던 과거 회귀(3e02fdb)는 생기지 않는다.
+        _firstRender = false;
+        repanPopup(getPopup(), true);
       };
       let left = jibun ? 4 : 3;
       const afterBase = () => {
@@ -2286,8 +2346,9 @@
                 ? '<div style="font-size:11px;color:var(--c-muted);">반경 50m에 등록된 상호가 없어요</div>'
                 : `<div style="font-size:12px;border-top:1px solid var(--c-border);padding-top:5px;"><b>이 부근 상호</b><br>`
                   + list.map((p) => `${esc(p.name)} <span style="color:var(--c-muted);font-size:10px;">${esc(p.label)} · ${p.dist}m</span>`).join('<br>') + '</div>';
+              // 위와 같은 이유(DOM 직접 주입 → update() 미경유)로 여기서도 정밀 재배치한다.
               const pp2 = clickMarker && clickMarker.getPopup();
-              repanPopup(pp2);
+              repanPopup(pp2, true);
             });
           };
         };
