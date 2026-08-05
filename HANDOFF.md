@@ -4,6 +4,32 @@
 
 ---
 
+## 2026-08-05 (밤, 늦게) — Claude Code
+
+### Objective
+헤더 정보(날씨·금리·환율) + 지도 CCTV 팝업 기능 논의. 목업까지 만들고 실제 반영 전에 CCTV API 출처를 조사하다 사용자가 이미 별도로 키를 신청해뒀다는 걸 확인, CCTV는 보류하고 기록만 남김.
+
+### Work State
+**Completed (목업 — 실제 land.html엔 아직 미반영)**
+- 헤더에 "부동산 지도" 제목 옆으로 날씨·대출금리·환율 정보 칩을 붙이는 디자인을 목업(`_mockup_header_cctv.html`, 로컬 서버로 검증 후 삭제 — 커밋 안 됨)으로 만들어 확인. 지도 클릭 시 클릭 지점 날씨로 갱신, CCTV 핀 클릭 시 영상 팝업(닫기 버튼 포함) 여닫기까지 인터랙티브하게 동작 확인함.
+- 지도 종류 선택 UI(일반지도/위성지도/위성+라벨)는 이미 실제 `land.html`에 반영·배포됨(이전 항목 "배경지도 썸네일 선택 UI" 참고). OSM을 4번째 옵션으로 추가하는 것과 zoom(+/−) 컨트롤 바로 옆에 붙이는 배치는 목업에서만 확인, 아직 실코드 미반영.
+
+**CCTV API 조사 결과 — 정정 필요**
+- data.go.kr에 승인돼 있는 **기상청_CCTV 기반 도로날씨정보 조회서비스**(`https://www.data.go.kr/data/15057966/openapi.do`)는 **영상이 아니라 그 CCTV 지점의 날씨 텍스트**(날씨명·관측시각)만 준다. 엔드포인트: `https://apis.data.go.kr/1360000/RoadWthrInfoService/getCctvStnRoadWthr` (params: ServiceKey, pageNo, numOfRows, eqmtId). 이 키가 실제로 발급됐는지는 `keys.env`에서 확인 안 됨(변수명 목록에 없었음) — data.go.kr 마이페이지에서 확인 필요.
+- 처음에 "영상 팝업엔 국토교통부_CCTV 화상자료(`data.go.kr/data/15040466`)를 신청하라"고 안내했는데, **사용자가 이미 정확한 경로로 [ITS 국가교통정보센터](https://www.its.go.kr/user/mypage)에 직접 인증키를 신청해둔 상태(승인 대기 중, 2026-08-05 기준)**. data.go.kr의 15040466 리스팅은 "LINK" 유형이라 실제 키 발급은 ITS 자체 마이페이지에서 이뤄지는 게 맞다 — 처음 안내가 부정확했다.
+
+**Blocked**
+- CCTV 영상 기능은 ITS 국가교통정보센터 키 승인 대기 중 (사용자 지시: "CCTV 건은 나중에 하자"). **키 승인되면 이어서**: (1) 키를 `keys.env`에 등록(예: `ITS_CCTV_KEY`), (2) `supabase/functions/cctv-proxy` Edge Function으로 감싸기(기존 `molit-proxy`/`naver-search` 패턴), (3) land.html에 CCTV 마커+영상 팝업(닫기 버튼) 실제 구현, (4) 기상청 CCTV 도로날씨 API로 팝업에 노면 날씨 텍스트도 같이 노출.
+
+### Next Move (CCTV 제외, 바로 착수 가능)
+- 헤더 날씨·금리·환율 위젯은 **키가 이미 다 있어서** CCTV와 무관하게 바로 구현 가능: 기상청 단기예보(승인됨) + 한국수출입은행 AP01(환율)·AP02(대출금리)(`EXCHANGE_RATE_KEY`/`LOAN_RATE_KEY`, `keys.env`에 등록돼 있음, 아직 Edge Function 연동 안 됨 — `API 정보.txt` §6 참고). 목업 디자인 그대로 가져다 실코드에 반영하면 됨.
+
+### Relevant Files
+- `API 정보.txt` §6 (금융 API), §8 (도시공간포털 CCTV 관련 없음 — 별도)
+- `keys.env` (gitignored) — 변수명: VWORLD_KEY, KAKAO_JS_KEY, NAVER_MAPS_KEY, ODSAY_KEY, MOLIT_KEY, NAVER_CLIENT_ID, NAVER_CLIENT_SECRET, DGK, EXCHANGE_RATE_KEY, LOAN_RATE_KEY, INT_RATE_KEY, CHUNGAK_API_KEY (ITS CCTV 키는 승인되면 여기 추가)
+
+---
+
 ## 2026-08-05 (밤) — Claude Code
 
 ### Objective
