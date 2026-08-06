@@ -122,8 +122,10 @@
     .tag { font-size:11px; background:var(--c-hover); color:var(--muted); border-radius:999px; padding:3px 10px; font-weight:500; }
     .tag.hit { background:var(--c-primary); color:#fff; }
     .rec .why { font-size:12px; color:var(--ok); margin:6px 0; min-height:15px; }
-    .rec .actions { display:flex; gap:8px; margin-top:10px; }
-    .rec .actions a, .rec .actions button { font-size:12px; font-weight:500; padding:7px 12px; border-radius:8px; border:1px solid var(--line); cursor:pointer; background:var(--card); color:var(--text); text-decoration:none; }
+    /* 버튼 3개(전화번호·카카오맵·저장)가 좁은 패널에서 한 줄에 안 들어가 '저 장' 처럼
+       글자가 줄바꿈되던 문제 — 줄바꿈은 버튼 사이에서만 하고 글자는 자르지 않는다. */
+    .rec .actions { display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; }
+    .rec .actions a, .rec .actions button { font-size:12px; font-weight:500; padding:7px 10px; border-radius:8px; border:1px solid var(--line); cursor:pointer; background:var(--card); color:var(--text); text-decoration:none; white-space:nowrap; flex:0 0 auto; line-height:1.2; }
     .rec .actions a:hover, .rec .actions button:hover { border-color:var(--c-primary); color:var(--c-primary); }
     .rec .actions .save { background:var(--c-primary); color:#fff; border:none; }
     .rec .actions .save:hover { color:#fff; }
@@ -165,8 +167,12 @@
     .bm-item.on .bm-label { color:var(--c-primary); }
     /* 줌(+/−) 버튼과 배경지도 피커를 한 줄로 나란히 놓는 래퍼.
        Leaflet 이 .leaflet-control 에 걸어 두는 코너 여백을 래퍼가 대신 갖는다. */
-    .ctl-row { display:flex; align-items:flex-start; gap:6px; margin:10px 0 0 10px; }
+    .ctl-row { display:flex; align-items:stretch; gap:6px; margin:10px 0 0 10px; }
     .ctl-row > .leaflet-control { margin:0 !important; float:none; }
+    /* 줌(+/−)은 기본 26px×2 라 썸네일 피커(약 82px)보다 28px 짧아, 피커만 아래로 튀어나왔다.
+       줌 버튼을 피커 높이에 맞춰 늘려(각 버튼이 절반씩) 위·아래 끝을 정확히 맞춘다. */
+    .ctl-row .leaflet-control-zoom { display:flex; flex-direction:column; }
+    .ctl-row .leaflet-control-zoom a { flex:1; height:auto; display:flex; align-items:center; justify-content:center; }
     @media (max-width:760px) {
       /* 좁은 화면에서 줌 버튼 + 썸네일 4개가 가로를 넘기지 않도록 줄인다. */
       .bm-item { width:52px; }
@@ -222,7 +228,12 @@
        (예: '공시지가 4,984,000원/㎡ (평당 16,476,032원 · 2025.01 기준)').
        --popup-max-h 는 지도 높이에 맞춰 JS 가 갱신한다. vh 로 고정하면 지도가 화면 일부일 때 팝업이 넘친다. */
     .leaflet-popup-content > * { max-width:100%; }
-    .leaflet-popup-content { max-height:var(--popup-max-h, min(62vh, 520px)); overflow-y:auto; overflow-x:hidden; overflow-wrap:anywhere; word-break:break-word; max-width:min(340px, calc(100vw - 40px)); }
+    /* resize:both — 팝업이 고정 크기라 답답하다는 지적에 따라 사용자가 우하단 모서리를
+       끌어 크기를 조절할 수 있게 한다. overflow 가 visible 이 아니어야 동작한다(아래 auto).
+       max-* 는 상한일 뿐이라 사용자가 줄이는 것도 가능하다. */
+    .leaflet-popup-content { max-height:var(--popup-max-h, min(62vh, 520px)); overflow:auto; overflow-wrap:anywhere; word-break:break-word; max-width:min(340px, calc(100vw - 40px)); resize:both; }
+    /* 리사이즈 그립이 둥근 모서리에 잘리지 않도록 */
+    .leaflet-popup-content-wrapper { overflow:visible; }
     .leaflet-popup-tip { background:var(--card); }
     .leaflet-container a.leaflet-popup-close-button { color:var(--muted); }
     /* ── 호버 툴팁 (건물 위 커서 정지 시 주소·토지·건물 정보) ── */
@@ -619,6 +630,31 @@
         KEY: VWORLD_KEY, DOMAIN: location.origin,
         opacity, attribution: '© V-World', maxZoom: 19,
       });
+      // ── 서울 UPIS 주제도 (참조: urban.seoul.go.kr) ────────────────────────
+      // 참조 사이트가 쓰는 ArcGIS MapServer 를 그대로 타일로 붙인다. 데이터·기호·라벨은
+      // 물론 minScale(축척이 작으면 서버가 빈 이미지를 준다)까지 그쪽과 동일하게 동작한다.
+      // MapServer 는 http 라 https 페이지에서 직접 못 부르고, 서울시가 열어 둔 프록시를 탄다.
+      const UPIS_PROXY = 'https://urban.seoul.go.kr/proxy/proxy.jsp?';
+      const UPIS_MAP = 'http://98.33.2.225:6080/arcgis/rest/services/UPIS/20200526_WMS/MapServer';
+      const UpisTile = L.TileLayer.extend({
+        getTileUrl(coords) {
+          const crs = this._map.options.crs;
+          const [nwLL, seLL] = this._tileCoordsToNwSe(coords);
+          const nw = crs.project(nwLL), se = crs.project(seLL);
+          const s = this.getTileSize();
+          return UPIS_PROXY + UPIS_MAP + '/export'
+            + `?bbox=${nw.x},${se.y},${se.x},${nw.y}&bboxSR=102100&imageSR=102100`
+            + `&size=${s.x},${s.y}&format=png32&transparent=true&dpi=96`
+            + `&layers=show:${this.options.upisLayers}&f=image`;
+        },
+      });
+      // 레이어 id 는 MapServer 의 ?f=pjson 목록에서 확인했고, 각 묶음이 실제로 그려지는지
+      // export 호출로 하나씩 검증했다(빈 이미지 2.2KB 와 비교).
+      const upis = (ids, opacity) => new UpisTile('', {
+        upisLayers: ids, opacity: opacity == null ? 0.75 : opacity, maxZoom: 19,
+        attribution: '© 서울도시공간포털',
+      });
+
       // 레이어 코드는 V-World 공식 WMS 가이드에서 확인함(추측 아님).
       // 일부(그린벨트·진흥지구)는 도심 중앙엔 데이터가 없어 외곽에서 보임 — 정상.
       // 토지거래허가구역 — 서울시 UPIS 실제 경계(tools/collect_toji.js 로 생성).
@@ -1248,6 +1284,14 @@
         '개발제한구역 (그린벨트)': wms('lt_c_ud801', 0.5),
         '개발진흥지구': wms('lt_c_uq129', 0.5),
         '택지·사업지구': wms('lt_c_lhzone', 0.5),
+        // 서울도시공간포털 주제도 — 참조 사이트와 같은 서비스·같은 기호
+        '지구단위계획구역': upis('57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,80,81,82,83,84,85,86,87,88,89,90'),
+        '용도지구': upis('19,20,21,22,23,24,25,26,27,28,29'),
+        '용도구역': upis('30,31,32'),
+        '도시계획시설': upis('33,34,39,40,41,42,43,72,73,74,75,76,77,78'),
+        '가로구역별 건축물 높이기준': upis('333,337,338'),
+        '기후환경 공간유형': upis('339,340,341,342', 0.6),
+        '생태현황도 (2025)': upis('162,163,164', 0.6),
       };
       // 레이어 목록을 대분류로 묶는다 — 참조 사이트(서울도시공간포털)의 '주제도'가
       // 대분류 > 중분류로 정리돼 있어 12개가 한 줄로 늘어선 기존 목록보다 훨씬 찾기 쉽다.
@@ -1256,13 +1300,17 @@
       // 아래 배열 순서는 landOverlays 의 선언 순서와 반드시 일치해야 한다.
       const OVERLAY_SECTIONS = [
         ['도시계획사업', ['정비사업 (재개발·재건축)']],
-        ['현장 확인', ['CCTV (실시간 도로영상)']],
-        ['실거래', ['아파트 실거래가·노후도', '연립·다세대 실거래가']],
+        ['도시계획 (서울)', ['지구단위계획구역', '용도지구', '용도구역', '도시계획시설']],
         ['규제구역', ['토지거래허가구역', '개발제한구역 (그린벨트)', '개발진흥지구', '택지·사업지구']],
+        ['주제도', ['가로구역별 건축물 높이기준', '기후환경 공간유형', '생태현황도 (2025)']],
+        ['실거래', ['아파트 실거래가·노후도', '연립·다세대 실거래가']],
+        ['현장 확인', ['CCTV (실시간 도로영상)']],
         ['용도·지적', ['용도지역', '지적도 (필지 경계)']],
         ['행정경계', ['행정구역 (시군구)', '행정동 경계']],
       ];
-      const layersCtrl = L.control.layers(baseLayers, landOverlays, { collapsed: true, position: 'topright' }).addTo(map);
+      // 배경지도(일반/위성/위성+라벨/OSM)는 좌상단 썸네일 버튼으로 이미 고르므로
+      // 오른쪽 목록에서는 뺀다 — 같은 선택지가 두 군데 있으면 헷갈린다.
+      const layersCtrl = L.control.layers(null, landOverlays, { collapsed: true, position: 'topright' }).addTo(map);
       function applyOverlaySections() {
         const box = layersCtrl.getContainer().querySelector('.leaflet-control-layers-overlays');
         if (!box) return;
@@ -1271,21 +1319,21 @@
           if (row.classList.contains('lc-sub')) { row.remove(); return; }
           byName.set(row.textContent.trim(), row);
         });
+        // 섹션 순서까지 OVERLAY_SECTIONS 정의대로 맞춘다(선언 순서를 따라가면
+        // 대분류가 뒤섞여 참조 사이트의 정리된 구조가 안 나온다).
+        const frag = document.createDocumentFragment();
+        const used = new Set();
         OVERLAY_SECTIONS.forEach(([sec, names]) => {
-          const first = names.map((n) => byName.get(n)).find(Boolean);
-          if (!first) return;   // 이름이 바뀌면 헤더만 빠지고 목록은 정상 동작한다
+          const rows = names.map((n) => byName.get(n)).filter(Boolean);
+          if (!rows.length) return;   // 이름이 바뀌면 그 섹션만 빠지고 목록은 정상 동작한다
           const h = L.DomUtil.create('div', 'lc-sep lc-sub');
           h.textContent = sec;
-          box.insertBefore(h, first);
-          // 같은 대분류의 나머지 항목을 헤더 바로 뒤로 모은다(선언 순서가 어긋나도 묶이게)
-          let anchor = first;
-          names.forEach((n) => {
-            const row = byName.get(n);
-            if (!row || row === first) return;
-            box.insertBefore(row, anchor.nextSibling);
-            anchor = row;
-          });
+          frag.appendChild(h);
+          rows.forEach((r) => { frag.appendChild(r); used.add(r); });
         });
+        // 어느 섹션에도 안 들어간 항목은 뒤에 그대로 붙여, 이름이 바뀌어도 사라지지 않게 한다.
+        [...box.children].forEach((r) => { if (!used.has(r)) frag.appendChild(r); });
+        box.appendChild(frag);
       }
       // Leaflet 은 레이어를 켜고 끌 때마다 _update() 로 목록 DOM 을 통째로 다시 만든다.
       // 그래서 헤더를 한 번만 꽂아 두면 첫 체크 즉시 사라진다 — 갱신 뒤마다 다시 적용한다.
