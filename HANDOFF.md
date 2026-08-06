@@ -4,6 +4,24 @@
 
 ---
 
+## 2026-08-07 — Claude Code
+
+### 한 일 (요청 4건)
+1. **레이어 메뉴 3단화** (대분류 > 중분류 > 소분류). Leaflet 기본 컨트롤을 버리고 전용 패널 `.lp` 를 만들었다(`LAYER_TREE` 자료구조 + `layerPanel` 컨트롤). 9/36/63개.
+   - 색 견본: `{MapServer}/legend?f=pjson` 의 `imageData`(base64 PNG)를 그대로 `UPIS_SWATCH` 로 박아 넣었다(41개, 9KB). 참조 사이트와 같은 색이 나온다.
+   - 소분류는 레이어를 개별로 만들지 않는다. 중분류마다 타일 레이어 1개를 두고 `options.upisLayers` 문자열만 갈아끼운 뒤 `redraw()`.
+   - **함정 1**: `upisGroupLayer()` 안에서 `mid._on = new Set()` 으로 초기화하면 방금 추가한 소분류 id 가 지워져 레이어가 안 뜬다. 초기화는 패널 생성 시 한 번만.
+   - **함정 2**: 부분선택(indeterminate) 체크박스를 누르면 브라우저 기본은 '해제'다. 참조처럼 '전체 선택'이 되게 하려면 직전 indeterminate 여부를 `dataset` 에 기억해 두고 onchange 에서 뒤집어야 한다.
+2. **CCTV 아이콘 표시**. 원인 2개: ① 반경 3km 조회 → ITS 는 고속도로·국도만 커버해 도심은 늘 0건(강남 0 / 서울 전역 240) → 화면 bbox 로 변경. ② **ITS 가 Supabase Edge Function IP 를 사실상 차단**(내 PC 1.5초 / Edge 20초+ 타임아웃, 재시도·병렬·캐시 다 넣어도 간헐 성공) → **브라우저 직접 호출로 전환**(CORS 허용 확인, 1.4초/220건). Edge Function 은 사내망 등 대비 폴백으로 남겨 둠. 실측 189개 마커.
+   - **키 정책 변경**: `ITS_CCTV_KEY` 가 프론트에 노출된다. 서버 경유가 물리적으로 불가능해 내린 결정이고, 무료 공개 API 라 V-World·카카오와 같은 취급으로 바꿨다. `keys.env` 에도 정정 기록. 남용 시 its.go.kr 에서 재발급.
+3. **드래그 시 엉뚱한 글자 선택** — 조작용 UI 에 `user-select:none`, 복사할 내용만 `text` 허용.
+4. **팝업/패널 크기 조절 + 글자 자동 맞춤** — 팝업 내부 `.pc` 가 264px 고정이라 늘려도 여백만 생겼다 → `width:100%`. `.leaflet-popup-content` 의 `max-width` 도 화면폭까지 열어야 넓히기가 된다. 오른쪽 패널은 `#panel-resizer` 드래그(260 ~ 화면폭−360px, localStorage 저장, 놓을 때 `map.invalidateSize()`).
+
+### 검증
+JS 에러 0. 3단 메뉴: 소분류 1개 → `upisLayers="94"`, 중분류 전체 → `"94,95,96,97,98,99,100"`, 해제 → 제거. CCTV 마커 189개. 패널 280→430px 리사이즈·저장 확인.
+
+---
+
 ## 2026-08-06 (4) — Claude Code
 
 ### 한 일
