@@ -1,5 +1,12 @@
 # AGENTS.md
 
+> **읽는 순서 (다른 AI / opencode 포함)**
+> 1. 이 파일 — 프로젝트 구조와 규칙
+> 2. **[`TROUBLESHOOTING.md`](TROUBLESHOOTING.md) — 반복해서 터진 버그와 해결법. 코드 만지기 전에 반드시 볼 것.**
+>    (Leaflet 팝업/레이어 함정, localhost 키 제약, UPIS·ITS·수출입은행 API 함정, 배포·검증 방법)
+> 3. [`HANDOFF.md`](HANDOFF.md) — 직전 세션이 어디까지 했고 무엇이 남았는지
+> 4. `git log -5`, `git status` 로 교차 확인
+
 ## What this is
 
 Static HTML/JS Seoul restaurant finder. No build tools, no bundler, no framework. Supabase backend (Auth + Postgres + RLS). Deployed on GitHub Pages.
@@ -27,6 +34,9 @@ Static HTML/JS Seoul restaurant finder. No build tools, no bundler, no framework
 - **데이터 로드 병렬화** — 식당 페이지네이션(2페이지씩), 사용자 취향·즐겨찾기, 푸터 통계 3종을 Promise.all(Settled)로 동시 조회. 검색결과 저장 시 전체 재조회 대신 새 행만 append.
 
 ## Key gotchas
+
+> 아래는 코드 구조에 관한 것이고, **실제로 자주 터진 런타임 버그·API 함정은
+> [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md) 에 따로 정리돼 있다.**
 
 - **Table name is `mj_restaurants`**, not `restaurants`. Name chosen to avoid collision with an existing table in the Supabase project.
 - **Module systems differ**: `tools/recommend.js` is CommonJS (`require`/`module.exports`). `mcp/server.js` is ESM (`import`) and imports `score`/`fetchRestaurants` from `tools/recommend.js`.
