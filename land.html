@@ -86,6 +86,14 @@
     .layout { display:flex; flex-wrap:nowrap; align-items:stretch; flex:9.4; min-height:0; overflow:hidden; }
     #map { flex:9 1 0; min-width:0; min-height:0; }
     .panel { flex:1 1 0; min-width:280px; min-height:0; overflow-y:auto; padding:14px 16px; transition:min-width .15s, padding .15s; }
+    /* 패널 왼쪽 가장자리를 끌어 폭을 조절한다. 폭이 바뀌면 안쪽 카드는 %/flex 기반이라
+       글자가 저절로 다시 흐른다(고정 px 폭을 쓰지 않는 이유). */
+    .panel-resizer { width:6px; flex:0 0 6px; cursor:col-resize; background:transparent; position:relative; }
+    .panel-resizer::before { content:''; position:absolute; inset:0 2px; border-radius:3px; background:var(--line); opacity:0; transition:opacity .15s; }
+    .panel-resizer:hover::before, .panel-resizer.dragging::before { opacity:1; }
+    body.panel-resizing { cursor:col-resize; -webkit-user-select:none; user-select:none; }
+    .panel.collapsed + .panel-resizer, .panel.collapsed ~ .panel-resizer { display:none; }
+    @media (max-width:820px) { .panel-resizer { display:none; } }
     .panel.collapsed { flex:0 0 0; min-width:0; width:0; padding:0; overflow:hidden; border:none; }
     /* ── Panel widgets ── */
     .engine-bar { display:flex; gap:4px; margin-bottom:10px; background:var(--c-hover); padding:4px; border-radius:10px; }
@@ -133,6 +141,20 @@
     .rec .actions .save:hover { color:#fff; }
     .score { float:right; font-size:14px; color:var(--c-price); font-weight:700; margin-left:8px; }
     .cmp-check { float:right; font-size:11px; color:var(--muted); cursor:pointer; user-select:none; margin-left:8px; }
+    /* ── 드래그 시 엉뚱한 곳의 글자가 잡히는 문제 ──────────────────────────
+       지도를 끌거나 컨트롤을 누를 때 헤더·패널의 텍스트가 선택돼 파랗게 드래그되는
+       현상이 있었다. 조작용 UI(헤더·탭·버튼·지도 컨트롤·팝업 버튼)는 선택을 끄고,
+       사용자가 복사할 만한 내용(주소·전화번호·팝업 본문)만 선택을 허용한다. */
+    header, .stat-bar, .engine-bar, .list-tabs, .fav-cats, .banner,
+    .leaflet-control, .leaflet-control-layers-list, .lc, .bm-picker, .ctl-row,
+    .pc-actions, .rec .actions, .jb-chip, .jb-stage, .sheet-handle {
+      -webkit-user-select:none; user-select:none;
+    }
+    /* 내용은 복사할 수 있어야 한다 */
+    .pc-body, .rec h3, .rec .meta, .leaflet-popup-content .ld-body,
+    .rec .actions a[href^="tel:"] { -webkit-user-select:text; user-select:text; }
+    /* 지도 위에서 드래그할 때 커서가 텍스트 선택 모양으로 바뀌지 않도록 */
+    .leaflet-container { -webkit-user-select:none; user-select:none; }
     .sheet-handle { display:none; }
     /* ── Leaflet custom controls ── */
     /* 폰트 크기는 서울도시공간포털(urban.seoul.go.kr) 실측 기준에 맞춘다 —
@@ -169,11 +191,37 @@
     .bm-item.on .bm-label { color:var(--c-primary); }
     /* 줌(+/−) 버튼과 배경지도 피커를 한 줄로 나란히 놓는 래퍼.
        Leaflet 이 .leaflet-control 에 걸어 두는 코너 여백을 래퍼가 대신 갖는다. */
-    /* 참조 사이트의 주제도를 전부 옮겨오면서 항목이 40개 가까이 됐다.
-       목록이 화면을 넘지 않도록 스크롤을 준다(정비사업 메뉴와 같은 방식). */
-    .leaflet-control-layers-list { max-height:calc(100vh - 240px); overflow-y:auto; overscroll-behavior:contain; }
-    .leaflet-control-layers-list::-webkit-scrollbar { width:5px; background-color:var(--line); border-radius:2.5px; }
-    .leaflet-control-layers-list::-webkit-scrollbar-thumb { border-radius:2.5px; background-color:#c1c1c1; background-clip:padding-box; }
+    /* ── 레이어 트리 패널 (대분류 > 중분류 > 소분류) ──────────────────────
+       참조 사이트(서울도시공간포털) 범례가 3단이라 그 구조를 그대로 따랐다.
+       Leaflet 기본 레이어 컨트롤은 평평한 목록뿐이라 전용 패널을 쓴다. */
+    .lp { position:relative; }
+    .lp-toggle { width:34px; height:34px; border:1px solid var(--line); background:var(--card); color:var(--text);
+      border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:var(--c-shadow); }
+    .lp-toggle svg { width:18px; height:18px; }
+    .lp-body { display:none; position:absolute; right:0; top:40px; width:250px; background:var(--card);
+      border:1px solid var(--line); border-radius:10px; box-shadow:var(--c-shadow-lg); padding:6px 4px;
+      max-height:calc(100vh - 220px); overflow-y:auto; overscroll-behavior:contain; font-size:12.5px; }
+    .lp.open .lp-body { display:block; }
+    .lp-body::-webkit-scrollbar { width:5px; background-color:var(--line); border-radius:2.5px; }
+    .lp-body::-webkit-scrollbar-thumb { border-radius:2.5px; background-color:#c1c1c1; background-clip:padding-box; }
+    .lp-sec + .lp-sec { border-top:1px solid var(--line); margin-top:4px; padding-top:4px; }
+    .lp-head { display:flex; align-items:center; gap:6px; padding:5px 8px; font-weight:700; cursor:pointer; border-radius:6px; }
+    .lp-head:hover { background:var(--c-hover); }
+    .lp-arrow { margin-left:auto; color:var(--muted); font-size:11px; }
+    .lp-sec.closed .lp-kids { display:none; }
+    .lp-sec.closed .lp-arrow { transform:rotate(-90deg); display:inline-block; }
+    .lp-midhead { display:flex; align-items:center; gap:5px; padding:4px 8px 4px 14px; border-radius:6px; }
+    .lp-midhead:hover { background:var(--c-hover); }
+    .lp-exp { width:14px; text-align:center; color:var(--muted); cursor:pointer; font-size:11px; flex-shrink:0; }
+    .lp-exp-none { visibility:hidden; }
+    .lp-mid.open .lp-exp { }
+    .lp-subs { display:none; padding:2px 0 4px 34px; }
+    .lp-mid.open .lp-subs { display:block; }
+    .lp-sub { display:flex; align-items:center; gap:5px; padding:3px 4px; cursor:pointer; color:var(--muted); border-radius:5px; }
+    .lp-sub:hover { background:var(--c-hover); color:var(--text); }
+    .lp-sw { width:14px; height:12px; flex-shrink:0; border:1px solid var(--line); border-radius:2px; object-fit:cover; }
+    .lp-cb { flex-shrink:0; accent-color:var(--c-primary); margin:0; }
+    .lp-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .ctl-row { display:flex; align-items:stretch; gap:6px; margin:10px 0 0 10px; }
     .ctl-row > .leaflet-control { margin:0 !important; float:none; }
     /* 줌(+/−)은 기본 26px×2 라 썸네일 피커(약 82px)보다 28px 짧아, 피커만 아래로 튀어나왔다.
@@ -192,7 +240,9 @@
     .leaflet-tooltip.jb-perm-tt { background:none; border:none; box-shadow:none; padding:0; }
     .leaflet-tooltip.jb-perm-tt::before { display:none; }
     /* ── Popup card system ── */
-    .pc { width:min(264px, calc(100vw - 56px)); padding:16px; box-sizing:border-box; }
+    /* width:100% — 팝업을 리사이즈하면 그 폭에 맞춰 내용이 다시 흐르도록.
+       예전엔 264px 고정이라 팝업을 키워도 카드가 그대로여서 여백만 늘었다. */
+    .pc { width:100%; min-width:200px; padding:16px; box-sizing:border-box; }
     .pc-head { font-weight:700; font-size:14px; margin-bottom:8px; display:flex; align-items:center; gap:6px; flex-wrap:wrap; line-height:1.35; color:var(--text); }
     .pc-body { font-size:12px; color:var(--muted); margin-bottom:12px; line-height:1.6; }
     .pc-body b { color:var(--text); }
@@ -237,8 +287,9 @@
     .leaflet-popup-content > * { max-width:100%; }
     /* resize:both — 팝업이 고정 크기라 답답하다는 지적에 따라 사용자가 우하단 모서리를
        끌어 크기를 조절할 수 있게 한다. overflow 가 visible 이 아니어야 동작한다(아래 auto).
-       max-* 는 상한일 뿐이라 사용자가 줄이는 것도 가능하다. */
-    .leaflet-popup-content { max-height:var(--popup-max-h, min(62vh, 520px)); overflow:auto; overflow-wrap:anywhere; word-break:break-word; max-width:min(340px, calc(100vw - 40px)); resize:both; }
+       max-width 는 리사이즈 상한이 되어 '넓히기'를 막으므로 넉넉히 준다(화면 폭까지).
+       내용은 .pc 가 width:100% 라 늘어난 폭에 맞춰 자동으로 다시 흐른다. */
+    .leaflet-popup-content { max-height:var(--popup-max-h, min(62vh, 520px)); overflow:auto; overflow-wrap:anywhere; word-break:break-word; min-width:220px; max-width:calc(100vw - 40px); resize:both; }
     /* 리사이즈 그립이 둥근 모서리에 잘리지 않도록 */
     .leaflet-popup-content-wrapper { overflow:visible; }
     .leaflet-popup-tip { background:var(--card); }
@@ -328,6 +379,7 @@
 
   <div class="layout">
     <div id="map"></div>
+    <div class="panel-resizer" id="panel-resizer" title="드래그해서 목록 너비 조절"></div>
     <div class="panel" id="panel">
       <div class="sheet-handle" id="sheet-handle" title="위로 올려서 목록 보기"></div>
       <div id="engine-bar" class="engine-bar">
@@ -1205,17 +1257,53 @@
         html: '<div class="cctv-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8l5 3v-2l5-3v8l-5-3v-2l-5 3z"/><rect x="14" y="6" width="8" height="10" rx="2"/></svg></div>',
         iconSize: [26, 26], iconAnchor: [13, 26],
       });
+      // ITS 는 Supabase Edge Function 의 아웃바운드 IP 를 사실상 막고 있다
+      // (실측: 내 PC 직접 호출 1.5초 / Edge Function 20초 초과 타임아웃, 간헐적으로만 성공).
+      // 반면 브라우저에서 직접 부르면 CORS 가 열려 있어 1.4초에 정상 응답한다.
+      // 그래서 브라우저 직접 호출을 기본으로 쓴다 — 이 키는 프론트에 노출되지만
+      // ITS 는 무료 공개 API 이고, 서버 경유가 불가능해 다른 선택지가 없다.
+      // (V-World·카카오 키와 같은 취급. 남용되면 its.go.kr 에서 재발급할 것.)
+      const ITS_KEY = '143145cd464a4522b3a9347a9d768d4f';
+      function itsDirect(minX, maxX, minY, maxY) {
+        const call = (type) => fetch(`https://openapi.its.go.kr:9443/cctvInfo?apiKey=${ITS_KEY}`
+          + `&type=${type}&cctvType=2&minX=${minX}&maxX=${maxX}&minY=${minY}&maxY=${maxY}&getType=json`)
+          .then((r) => r.json())
+          .then((j) => (j && j.response && Array.isArray(j.response.data)) ? j.response.data : [])
+          .catch(() => null);   // null = 실패(프록시로 넘어감), [] = 정상인데 0건
+        return Promise.all([call('ex'), call('its')]).then((rs) => {
+          if (rs.every((x) => x === null)) return null;
+          return rs.flatMap((x) => x || []).map((d) => ({
+            name: d.cctvname, url: d.cctvurl,
+            lat: Number(d.coordy), lng: Number(d.coordx), format: d.cctvformat,
+          }));
+        });
+      }
       function loadCctv() {
         if (!map.hasLayer(cctvLayer)) return;
-        const c = map.getCenter();
-        fetch(`${CCTV_PROXY}?lat=${c.lat}&lng=${c.lng}&radius=0.03`)
-          .then((r) => r.json())
-          .then((d) => {
-            cctvLayer.clearLayers();
-            (d.items || []).slice(0, 60).forEach((it) => {
-              if (it.lat == null || it.lng == null) return;
-              L.marker([it.lat, it.lng], { icon: cctvIcon }).addTo(cctvLayer).on('click', () => openCctvPopup(it));
-            });
+        // ITS 는 고속도로·국도만 커버해 도심 한복판엔 CCTV 가 없다(실측: 강남 0건 /
+        // 서울 전역 240건). 반경 3km 로 좁게 물으면 늘 빈 결과라, 화면에 보이는 범위를
+        // 그대로 넘긴다. 너무 좁게 보고 있으면 최소 범위를 확보해 근처 것이라도 잡는다.
+        const b = map.getBounds().pad(0.2);
+        const MIN_SPAN = 0.08;   // 약 8km
+        let [minY, maxY] = [b.getSouth(), b.getNorth()];
+        let [minX, maxX] = [b.getWest(), b.getEast()];
+        const cy = (minY + maxY) / 2, cx = (minX + maxX) / 2;
+        if (maxY - minY < MIN_SPAN) { minY = cy - MIN_SPAN / 2; maxY = cy + MIN_SPAN / 2; }
+        if (maxX - minX < MIN_SPAN) { minX = cx - MIN_SPAN / 2; maxX = cx + MIN_SPAN / 2; }
+        const render = (items) => {
+          if (!items) return;
+          cctvLayer.clearLayers();
+          items.slice(0, 200).forEach((it) => {
+            if (!Number.isFinite(it.lat) || !Number.isFinite(it.lng)) return;
+            L.marker([it.lat, it.lng], { icon: cctvIcon }).addTo(cctvLayer).on('click', () => openCctvPopup(it));
+          });
+        };
+        itsDirect(minX, maxX, minY, maxY)
+          .then((items) => {
+            if (items) { render(items); return; }
+            // 직접 호출이 막힌 환경(사내망 등)을 위한 대비책
+            return fetch(`${CCTV_PROXY}?minX=${minX}&maxX=${maxX}&minY=${minY}&maxY=${maxY}`)
+              .then((r) => r.json()).then((d) => render(d.items || []));
           })
           .catch(() => {});
       }
@@ -1278,103 +1366,210 @@
         _cctvTimer = setTimeout(loadCctv, 400);
       });
 
-      const landOverlays = {
-        '정비사업 (재개발·재건축)': jbCluster,
-        'CCTV (실시간 도로영상)': cctvLayer,
-        '아파트 실거래가·노후도': realpriceCluster,
-        '연립·다세대 실거래가': villaCluster,
-        '토지거래허가구역': tojiLayer,
-        '행정구역 (시군구)': wms('lt_c_adsigg', 0.85),
-        '행정동 경계': wms('lt_c_ademd', 0.7),
-        // 서울 밖(경기 등)에서도 보이도록 V-World 전국 용도지역은 남겨 둔다.
-        // 서울 안에서는 아래 UPIS '용도지역 (서울)' 이 참조 사이트와 같은 기호로 더 정확하다.
-        '용도지역 (전국)': wms('lt_c_uq111', 0.55),
-        '지적도 (필지 경계)': wms('lt_c_landinfobasemap', 0.85),
-        '개발제한구역 (그린벨트)': wms('lt_c_ud801', 0.5),
-        '개발진흥지구': wms('lt_c_uq129', 0.5),
-        '택지·사업지구': wms('lt_c_lhzone', 0.5),
-        // ── 서울도시공간포털 주제도 — 참조 사이트와 같은 서비스·같은 기호·같은 이름 ──
-        // 레이어 id 와 한글명은 MapServer 의 /legend?f=pjson 에서 그대로 가져왔다(추측 아님).
-        // 도시계획사업: 참조 사이트 범례가 6개 중분류로 나눠 놓은 것을 그대로 따른다.
-        '정비사업': upis('94,95,96,97,98,99,100'),            // 신속통합기획·재개발·재건축·주거환경개선
-        '소규모정비사업': upis('101,102,103,104,105'),          // 모아타운·가로주택·자율주택·소규모재건축/재개발
-        '재정비촉진사업': upis('112,113,114,115'),
-        '역세권사업': upis('106,107,108,109,110,111'),          // 장기전세·역세권활성화·청년/어르신/신혼부부안심주택·미리내집
-        '국토부사업': upis('116,117'),                          // 공공주택지구조성·도심 공공주택 복합
-        '기타사업': upis('118,119,120,121,122'),                // 도시개발·리모델링활성화·시장정비·도시재생·사전협상
-        // 지구단위계획
-        '지구단위계획구역': upis('33'),
-        '특별계획구역': upis('34'),
-        '획지예정선': upis('39'),
-        // 용도지역·지구·구역
-        '용도지역 (서울)': upis('123', 0.55),
-        '용도지구': upis('19,20,21,22,23,24,25,26,27,28,29'),
-        '용도구역': upis('30,31,32'),
-        // 도시계획시설 (UQ151~159)
-        '도로': upis('3'),
-        '주차장': upis('12'),
-        '광장': upis('13'),
-        '유통·공급시설': upis('11'),
-        '공공·문화체육시설': upis('14'),
-        '방재시설': upis('15'),
-        '보건위생시설': upis('16'),
-        '환경기초시설': upis('17'),
-        '기타기반시설': upis('18'),
-        // 그 밖의 주제도
-        '가로구역별 건축물 높이기준': upis('333,337,338'),
-        '기후환경 공간유형': upis('339,340,341,342', 0.6),
-        '생태현황도 (2025)': upis('162,163,164', 0.6),
-      };
-      // 레이어 목록을 대분류로 묶는다 — 참조 사이트(서울도시공간포털)의 '주제도'가
-      // 대분류 > 중분류로 정리돼 있어 12개가 한 줄로 늘어선 기존 목록보다 훨씬 찾기 쉽다.
-      // Leaflet 기본 컨트롤에는 그룹 기능이 없어서, 컨트롤을 만든 뒤 DOM 에 구분 헤더를
-      // 끼워 넣는다(플러그인 추가 없이 되고, 체크박스 동작은 그대로 유지된다).
-      // 아래 배열 순서는 landOverlays 의 선언 순서와 반드시 일치해야 한다.
-      // 참조 사이트(서울도시공간포털)의 대분류 구성을 그대로 옮겼다.
-      // 도시계획사업 아래 6개 중분류는 그쪽 범례와 이름·묶음이 동일하다.
-      const OVERLAY_SECTIONS = [
-        ['도시계획사업', ['정비사업', '소규모정비사업', '재정비촉진사업', '역세권사업', '국토부사업', '기타사업', '정비사업 (재개발·재건축)']],
-        ['지구단위계획구역', ['지구단위계획구역', '특별계획구역', '획지예정선']],
-        ['용도지역·지구·구역', ['용도지역 (서울)', '용도지구', '용도구역', '용도지역 (전국)']],
-        ['도시계획시설', ['도로', '주차장', '광장', '유통·공급시설', '공공·문화체육시설', '방재시설', '보건위생시설', '환경기초시설', '기타기반시설']],
-        ['규제구역', ['토지거래허가구역', '개발제한구역 (그린벨트)', '개발진흥지구', '택지·사업지구']],
-        ['주제도', ['가로구역별 건축물 높이기준', '기후환경 공간유형', '생태현황도 (2025)']],
-        ['실거래', ['아파트 실거래가·노후도', '연립·다세대 실거래가']],
-        ['현장 확인', ['CCTV (실시간 도로영상)']],
-        ['지적·행정경계', ['지적도 (필지 경계)', '행정구역 (시군구)', '행정동 경계']],
+      const UPIS_SWATCH = {"3":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAEBJREFUOI3t1DEKADAMQtEv5P5XTtcUOgWzlHiAhy4G5gRAQjowgcIB1VygQB2kLpxtuOCCC/4BOn5xpmH3B185Bz8GUZJ4V1sAAAAASUVORK5CYII=","11":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAENJREFUOI1jYaAyYGFgYGCY5p/7nxqGZW2czMhCDYOQAYqBWRsnM5JjCLIPaevCUQNHDRw1cHgYSI1ykTYuJLccxAYA4qcMUVrRAj4AAAAASUVORK5CYII=","12":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAENJREFUOI1jYaAyYGFgYGC4Y3jiPzUMUzlvwchCDYOQAYqBKuctGMkxBNmHtHXhqIGjBo4aODwMpEa5SBsXklsOYgMAObQMUUlQtLEAAAAASUVORK5CYII=","13":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAERJREFUOI1jYaAyYGFgYGDwd9f6Tw3DNu68xshCDYOQAYqBG3deYyTHEGQf0taFowaOGjhq4PAwkBrlIm1cSG45iA0AAIGzDFGpLVgOAAAAAElFTkSuQmCC","14":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAENJREFUOI1jYaAyYGFgYGDQ0rrznxqGXbumwshCDYOQAYqB166pMJJjCLIPaevCUQNHDRw1cHgYSI1ykTYuJLccxAYAzBMMUcwsQGUAAAAASUVORK5CYII=","15":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAENJREFUOI1jYaAyYGFgYGDQYvj/nxqGXWNgZGShhkHIAMXAawyMjOQYguxD2rpw1MBRA0cNHB4GUqNcpI0LyS0HsQEAc8gJUViX6UAAAAAASUVORK5CYII=","16":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAEFJREFUOI1jYaAyYGFgYGBg6On5TxXTSkoYWahiEBJANbCkhJEsU5B8SGMXjho4auCogcPDQCqUizRyIbnlIBYAAGV+CVFzr9ueAAAAAElFTkSuQmCC","17":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAENJREFUOI1jYaAyYGFgYGCYNo3hPzUMy8piYGShhkHIAMXArCwGRnIMQfYhbV04auCogaMGDg8DqVEu0saF5JaD2AAAeMYJUeoem4QAAAAASUVORK5CYII=","18":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAERJREFUOI1jYaAyYGFgYGCIior6Tw3Dli1bxshCDYOQAYqBy5YtYyTHEGQf0taFowaOGjhq4PAwkBrlIm1cSG45iA0AALV/DFFz735aAAAAAElFTkSuQmCC","33":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAMBJREFUOI3l0zEKAjEQheF/dC3WYKF4A4/hCbyEB9BWthML6wXZC4iFN7HzIiILFjI2ImNhCpuF7EYLcSCQB5OPCSQJQWUTYA90gQykqOpMQjjnyFXp+5iDbUGujUFV7m/x4VfUhHNVdkAPWIDcokBVOQCjkN4gsE59EzQDkWaMDV+WnD4woc2AAmiBLT9x5TXQ9vtVNOgcZ1UGPl6iwTRlqsoG6DhHFg2WpRyBMYDqj73DPwXNwo5Vf9EkpKlOPQGRKSvyKoW0VwAAAABJRU5ErkJggg==","34":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAEhJREFUOI1jYWBgYJg2bdp/BiqArKwsRhZqGcbAAHEYC7UMgwHaG5iVlcVIigHoQTYEvTxq4KiBw9JASouzIeDlrKwsRmpWAQAapxXTxeOKdwAAAABJRU5ErkJggg==","39":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAABtJREFUOI1jYaAyYBk1cNTAUQNHDRw1cKQaCAAQKwBR5g8A3AAAAABJRU5ErkJggg==","94":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAEZJREFUOI3t1DEOACAIBMEl8d/El2OlkVauMmwFzYSKgbgBEBBVyMAOqCggDCyD7m/anGeUXdhggw3+DF5fQwMWSg92L4oWLbYHV75oq3QAAAAASUVORK5CYII=","95":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE9JREFUOI1jYaAyYGFgYGD4z3D0P6UGMTJYM8INpAb4z3D0PyODNSOKgX83m5NlGLPvSTibai4cNXDUwFEDh7GByKUGVQykBKAUsDAONQAACX4K5HcHM08AAAAASUVORK5CYII=","96":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE1JREFUOI1jYaAyYGFgYGBgKPj/n2KTJjAyIgykBij4/59hAiMjioEHCv+SZZZDPzOcTT0Xjho4auCogcPXQORSgyoGUgRQClgohxoAAPcgC0cLRmFmAAAAAElFTkSuQmCC","97":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE9JREFUOI1jYaAyYGFgYGD4H8rwn1KDGFczMMINpAb4H8rwn3E1AyOKgX+zdpBlGPM0Dzibai4cNXDUwFEDh7GByKUGVQykBKAUsDAONQAADm0LjNDXwnoAAAAASUVORK5CYII=","98":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE1JREFUOI1jYaAyYGFgYGBgeLbyP8UmSYUzIgykBni28j+DVDgjioGbxVzIMsv31R44m3ouHDVw1MBRA4evgcilBlUMpAigFLBQDjUAAK3EDCi4+VvQAAAAAElFTkSuQmCC","99":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE9JREFUOI1jYaAyYGFgYGD4WrXtP6UGcbd5McINpAb4WrXtP3ebFyOKgeyxjmQZ9nPxfjibai4cNXDUwFEDh7GByKUGVQykBKAUsDAONQAAgkcPZFtXdysAAAAASUVORK5CYII=","100":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE9JREFUOI1jYaAyYGFgYGD4v4rhP6UGMYYxMMINpAb4v4rhP2MYAyOKgX8drpNlGPMBTTibai4cNXDUwFEDh7GByKUGVQykBKAUsDAONQAA97UK7R2GvdwAAAAASUVORK5CYII=","101":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE9JREFUOI1jYaAyYGFgYGBIP7v6P6UGzTQOZYQbSA2Qfnb1/5nGoYwoBvrrS5Bl2MaLL+Bsqrlw1MBRA0cNHMYGIpcaVDGQEoBSwMI41AAApeEP/wO5CC4AAAAASUVORK5CYII=","102":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE1JREFUOI1jYaAyYGFgYGBgOPr/P8UmWTMyIgykBjj6/z+DNSMjioHXzf+SZZbmSWY4m3ouHDVw1MBRA4evgcilBlUMpAigFLBQDjUAAPB5CsDCfOrcAAAAAElFTkSuQmCC","103":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE9JREFUOI1jYaAyYGFgYGDoPJv+n1KDyo1nMsINpAboPJv+v9x4JiOKgW76BWQZtuviBDibai4cNXDUwFEDh7GByKUGVQykBKAUsDAONQAAfCkP9OnBN70AAAAASUVORK5CYII=","104":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE9JREFUOI1jYaAyYGFgYGBYlX72P6UGhc00ZoQbSA2wKv3s/7CZxowoBurk6pNl2JXJF+Fsqrlw1MBRA0cNHMYGIpcaVDGQEoBSwMI41AAAhGoPzwTtFGcAAAAASUVORK5CYII=","105":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE9JREFUOI1jYaAyYGFgYGAocO38T6lBE3aXM8INpAYocO38P2F3OSOKgRV1xWQZ1tHUC2dTzYWjBo4aOGrgMDYQudSgioGUAJQCFsahBgAAUGEQbkO7weoAAAAASUVORK5CYII=","106":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE9JREFUOI1jYaAyYGFgYGB45s3wn1KDpLYyMMINpAZ45s3wX2orAyOKgWI9N8gy7FWJBpxNNReOGjhq4KiBw9hA5FKDKgZSAlAKWBiHGgAAi5gMdwOFQ9MAAAAASUVORK5CYII=","107":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE9JREFUOI1jYaAyYGFgYGBYwdDyn1KDIhhqGOEGUgOsYGj5H8FQw4hiYMgBX7IMW+OwGc6mmgtHDRw1cNTAYWwgcqlBFQMpASgFLIxDDQAAmv8MmvafzDkAAAAASUVORK5CYII=","108":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE9JREFUOI1jYaAyYGFgYGD4WrXtP6UGcbd5McINpAb4WrXtP3ebFyOKgeyOpmQZ9nP/aTibai4cNXDUwFEDh7GByKUGVQykBKAUsDAONQAAnUMPjFkMKuEAAAAASUVORK5CYII=","109":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAF5JREFUOI3t1TEKgEAMRNEJzBHEYu7kab3TFuIdtDGwuLCgSZlfpXpdEuKpNVwIJMEAgBmYGxKMGViPMgvzBnBd9k/AcW5zMFqBBRb4C3zvZhiMRgmWdRMlGH3IegE3k+UaP4Ke/sYAAAAASUVORK5CYII=","110":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAFhJREFUOI3t1bEJgFAMRdH78C3jKg7sKk4j38aAKAialLlVqtMlMWcDBokEAnAFFoZArsCuqKuw6AHu2/oJmOblHczWYIMN/gLvu5kGs1mgqpsokGOoegEHSlIRxWLNT0wAAAAASUVORK5CYII=","111":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAEtJREFUOI1jYaAyYGFgYGBgWNHyn2KTImoYEQZSA6xo+c8QUcOIaqCdKnmGHboNZ1LPhaMGjho4auAwNhCp1KCOgZQAlAIWyqEGAABB1guY1jYTsgAAAABJRU5ErkJggg==","112":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE9JREFUOI1jYaAyYGFgYGB4NoPhP6UGSWUwMMINpAZ4NoPhv1QGAyOKgWJ+m8ky7NUmXzibai4cNXDUwFEDh7GByKUGVQykBKAUsDAONQAAsvsMQI/z4JsAAAAASUVORK5CYII=","113":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE9JREFUOI1jYaAyYGFgYGBILz/7n1KDZnYaM8INpAZILz/7f2anMSOKgf7B+mQZtnHtRTibai4cNXDUwFEDh7GByKUGVQykBKAUsDAONQAAkNkQLA8qe60AAAAASUVORK5CYII=","114":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE9JREFUOI1jYaAyYGFgYGAo7nT9T6lBveW7GeEGUgMUd7r+7y3fzYhiYFJxGVmGzevtgrOp5sJRA0cNHDVwGBuIXGpQxUBKAEoBC+NQAwAAYyEQhqfFu2wAAAAASUVORK5CYII=","115":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE9JREFUOI1jYaAyYGFgYGD4eqrqP6UGcZu1McINpAb4eqrqP7dZGyOKgewaAWQZ9vPGBjibai4cNXDUwFEDh7GByKUGVQykBKAUsDAONQAAlHAPYkBoBjYAAAAASUVORK5CYII=","116":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE1JREFUOI1jYaAyYGFgYGBgOPr/P8UmWTMyIgykBjj6/z+DNSMjioE7TP+SZZbHaWY4m3ouHDVw1MBRA4evgcilBlUMpAigFLBQDjUAAAb0CuGWZ+6qAAAAAElFTkSuQmCC","117":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE9JREFUOI1jYaAyYGFgYGAo3vT/P6UG9foxMsINpAYo3vT/f68fIyOKgQ6Wf8ky7MBxZjibai4cNXDUwFEDh7GByKUGVQykBKAUsDAONQAA928Old3e1QAAAAAASUVORK5CYII=","118":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE9JREFUOI1jYaAyYGFgYGBYfTb9P6UGhRrPZIQbSA2w+mz6/1DjmYwoBjroF5Bl2IGLE+Bsqrlw1MBRA0cNHMYGIpcaVDGQEoBSwMI41AAAc+MPtjw4qVkAAAAASUVORK5CYII=","119":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE9JREFUOI1jYaAyYGFgYGBoYVjxn1KDahgiGOEGUgO0MKz4X8MQwYhiYNi2ELIMW+W1Bs6mmgtHDRw1cNTAYWwgcqlBFQMpASgFLIxDDQAAnEEMmxCorjsAAAAASUVORK5CYII=","120":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE9JREFUOI1jYaAyYGFgYGB4xrDyP6UGSTGEM8INpAZ4xrDyvxRDOCOKgWLbdMgy7JXXFTibai4cNXDUwFEDh7GByKUGVQykBKAUsDAONQAAvq4MPYMEk0gAAAAASUVORK5CYII=","121":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE9JREFUOI1jYaAyYGFgYGC4X/z/P6UGKfYyMsINpAa4X/z/v2IvIyOKgf/D/5JlGONKZjibai4cNXDUwFEDh7GByKUGVQykBKAUsDAONQAAUIANXmqgl6QAAAAASUVORK5CYII=","122":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAF1JREFUOI1jYYAB3xX/GSgBmyMYGRgYGFioYhjMjM0RjCxUMQzJUBaqGQYFGAYWp4aTZEDv7JX4DaQUjBo4auCogWQZiJ43KTaQUsDCsDmCkWpl4uYIRhYYg1pVAAD22xkWydIOaAAAAABJRU5ErkJggg=="};
+      // ── 레이어 트리 (대분류 > 중분류 > 소분류) ─────────────────────────
+      // 참조 사이트(서울도시공간포털)의 범례가 3단으로 정리돼 있어 그 구조를 그대로 따른다.
+      // Leaflet 기본 레이어 컨트롤은 평평한 목록뿐이라 전용 패널을 만든다.
+      //
+      // 중분류 항목은 두 형태 중 하나다.
+      //   { name, layer }        — 소분류 없는 잎 (기존 matjip 레이어들)
+      //   { name, subs:[[id,이름]…] } — UPIS 레이어 id 별 소분류. 켠 것만 합쳐 한 장으로 그린다.
+      // 소분류의 색 견본은 MapServer 의 /legend 에서 받은 실제 범례 이미지라 참조와 같다.
+      const LAYER_TREE = [
+        ['도시계획사업', [
+          { name: '정비사업', subs: [[94, '신속통합기획'], [95, '재개발(도시정비형)'], [96, '재개발(주택정비형)'], [97, '재건축(단독)'], [98, '재건축(공동)'], [99, '주거환경개선(관리형)'], [100, '주거환경개선(정비형)']] },
+          { name: '소규모정비사업', subs: [[101, '모아타운'], [102, '가로주택정비사업'], [103, '자율주택정비사업'], [104, '소규모재건축사업'], [105, '소규모재개발사업']] },
+          { name: '재정비촉진사업', subs: [[112, '재정비촉진지구'], [113, '재정비촉진구역'], [114, '존치정비구역'], [115, '존치관리구역']] },
+          { name: '역세권사업', subs: [[106, '장기전세주택'], [107, '역세권 활성화'], [108, '청년안심주택'], [109, '어르신안심주택'], [110, '신혼부부안심주택'], [111, '미리내집']] },
+          { name: '국토부사업', subs: [[116, '공공주택지구조성사업'], [117, '도심 공공주택 복합사업']] },
+          { name: '기타사업', subs: [[118, '도시개발사업'], [119, '리모델링활성화구역'], [120, '시장정비사업'], [121, '도시재생활성화지역'], [122, '사전협상제']] },
+          { name: '정비사업 상세 (matjip)', layer: jbCluster },
+        ]],
+        ['지구단위계획구역', [
+          { name: '지구단위계획구역', subs: [[33, '지구단위계획구역']] },
+          { name: '특별계획구역', subs: [[34, '특별계획구역']] },
+          { name: '획지예정선', subs: [[39, '획지예정선']] },
+        ]],
+        ['용도지역·지구·구역', [
+          { name: '용도지역 (서울)', subs: [[123, '용도지역']] },
+          { name: '용도지구', subs: [[19, '경관지구'], [20, '고도지구'], [21, '방화지구'], [22, '방재지구'], [23, '보호지구'], [25, '취락지구'], [26, '개발진흥지구'], [27, '특정용도제한지구'], [28, '복합용도지구'], [29, '폐지·사용중지 지구']] },
+          { name: '용도구역', subs: [[30, '개발제한구역'], [31, '도시자연공원구역'], [32, '기타 용도구역']] },
+          { name: '용도지역 (전국·V-World)', layer: wms('lt_c_uq111', 0.55) },
+        ]],
+        ['도시계획시설', [
+          { name: '도로', subs: [[3, '도로']] },
+          { name: '주차장', subs: [[12, '주차장']] },
+          { name: '광장', subs: [[13, '광장']] },
+          { name: '유통·공급시설', subs: [[11, '유통·공급시설']] },
+          { name: '공공·문화체육시설', subs: [[14, '공공·문화체육시설']] },
+          { name: '방재시설', subs: [[15, '방재시설']] },
+          { name: '보건위생시설', subs: [[16, '보건위생시설']] },
+          { name: '환경기초시설', subs: [[17, '환경기초시설']] },
+          { name: '기타기반시설', subs: [[18, '기타기반시설']] },
+        ]],
+        ['규제구역', [
+          { name: '토지거래허가구역', layer: tojiLayer },
+          { name: '개발제한구역 (그린벨트)', layer: wms('lt_c_ud801', 0.5) },
+          { name: '개발진흥지구', layer: wms('lt_c_uq129', 0.5) },
+          { name: '택지·사업지구', layer: wms('lt_c_lhzone', 0.5) },
+        ]],
+        ['주제도', [
+          { name: '가로구역별 건축물 높이기준', subs: [[333, '가로구역별 높이기준']] },
+          { name: '기후환경 공간유형', subs: [[339, '기후'], [340, '열환경'], [341, '바람'], [342, '바람길']] },
+          { name: '생태현황도 (2025)', subs: [[162, '비오톱 유형'], [163, '비오톱 유형(세부)'], [164, '개별 비오톱']] },
+        ]],
+        ['실거래', [
+          { name: '아파트 실거래가·노후도', layer: realpriceCluster },
+          { name: '연립·다세대 실거래가', layer: villaCluster },
+        ]],
+        ['현장 확인', [
+          { name: 'CCTV (실시간 도로영상)', layer: cctvLayer },
+        ]],
+        ['지적·행정경계', [
+          { name: '지적도 (필지 경계)', layer: wms('lt_c_landinfobasemap', 0.85) },
+          { name: '행정구역 (시군구)', layer: wms('lt_c_adsigg', 0.85) },
+          { name: '행정동 경계', layer: wms('lt_c_ademd', 0.7) },
+        ]],
       ];
-      // 배경지도(일반/위성/위성+라벨/OSM)는 좌상단 썸네일 버튼으로 이미 고르므로
-      // 오른쪽 목록에서는 뺀다 — 같은 선택지가 두 군데 있으면 헷갈린다.
-      const layersCtrl = L.control.layers(null, landOverlays, { collapsed: true, position: 'topright' }).addTo(map);
-      function applyOverlaySections() {
-        const box = layersCtrl.getContainer().querySelector('.leaflet-control-layers-overlays');
-        if (!box) return;
-        const byName = new Map();
-        [...box.children].forEach((row) => {
-          if (row.classList.contains('lc-sub')) { row.remove(); return; }
-          byName.set(row.textContent.trim(), row);
-        });
-        // 섹션 순서까지 OVERLAY_SECTIONS 정의대로 맞춘다(선언 순서를 따라가면
-        // 대분류가 뒤섞여 참조 사이트의 정리된 구조가 안 나온다).
-        const frag = document.createDocumentFragment();
-        const used = new Set();
-        OVERLAY_SECTIONS.forEach(([sec, names]) => {
-          const rows = names.map((n) => byName.get(n)).filter(Boolean);
-          if (!rows.length) return;   // 이름이 바뀌면 그 섹션만 빠지고 목록은 정상 동작한다
-          const h = L.DomUtil.create('div', 'lc-sep lc-sub');
-          h.textContent = sec;
-          frag.appendChild(h);
-          rows.forEach((r) => { frag.appendChild(r); used.add(r); });
-        });
-        // 어느 섹션에도 안 들어간 항목은 뒤에 그대로 붙여, 이름이 바뀌어도 사라지지 않게 한다.
-        [...box.children].forEach((r) => { if (!used.has(r)) frag.appendChild(r); });
-        box.appendChild(frag);
+
+      // 소분류를 켜고 끌 때마다 UPIS 레이어를 새로 만들지 않고, 중분류마다 타일 레이어를
+      // 하나만 두고 'layers=show:...' 목록만 바꿔 다시 그린다(요청 수도 줄고 관리도 쉽다).
+      function upisGroupLayer(mid) {
+        // 주의: 여기서 mid._on 을 초기화하면 안 된다. 소분류를 처음 켤 때
+        // add() 직후 이 함수가 불려 방금 넣은 id 가 지워졌다(레이어가 안 뜨던 원인).
+        if (!mid._layer) mid._layer = upis('', mid.opacity);
+        return mid._layer;
       }
-      // Leaflet 은 레이어를 켜고 끌 때마다 _update() 로 목록 DOM 을 통째로 다시 만든다.
-      // 그래서 헤더를 한 번만 꽂아 두면 첫 체크 즉시 사라진다 — 갱신 뒤마다 다시 적용한다.
-      const _origLayersUpdate = layersCtrl._update.bind(layersCtrl);
-      layersCtrl._update = function () { _origLayersUpdate(); applyOverlaySections(); };
-      applyOverlaySections();
+      function refreshUpisGroup(mid) {
+        const lyr = upisGroupLayer(mid);
+        const ids = [...mid._on];
+        if (!ids.length) { if (map.hasLayer(lyr)) map.removeLayer(lyr); return; }
+        lyr.options.upisLayers = ids.join(',');
+        if (!map.hasLayer(lyr)) lyr.addTo(map);
+        else lyr.redraw();
+      }
+
+      const layerPanel = L.control({ position: 'topright' });
+      layerPanel.onAdd = () => {
+        const div = L.DomUtil.create('div', 'lp');
+        div.innerHTML = '<button type="button" class="lp-toggle" title="레이어" aria-label="레이어">'
+          + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l9 5-9 5-9-5 9-5z"/><path d="M3 12l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg></button>'
+          + '<div class="lp-body"></div>';
+        const body = div.querySelector('.lp-body');
+        const toggle = div.querySelector('.lp-toggle');
+        toggle.onclick = () => div.classList.toggle('open');
+
+        LAYER_TREE.forEach(([big, mids]) => {
+          const sec = L.DomUtil.create('div', 'lp-sec', body);
+          const head = L.DomUtil.create('div', 'lp-head', sec);
+          head.innerHTML = `<input type="checkbox" class="lp-cb"><span class="lp-name">${big}</span><span class="lp-arrow">▾</span>`;
+          const kids = L.DomUtil.create('div', 'lp-kids', sec);
+          head.querySelector('.lp-arrow').onclick = (e) => { e.stopPropagation(); sec.classList.toggle('closed'); };
+          head.querySelector('.lp-name').onclick = () => sec.classList.toggle('closed');
+
+          const midCbs = [];
+          mids.forEach((mid) => {
+            const row = L.DomUtil.create('div', 'lp-mid', kids);
+            const hasSubs = !!mid.subs;
+            row.innerHTML = `<div class="lp-midhead">${hasSubs ? '<span class="lp-exp">＋</span>' : '<span class="lp-exp lp-exp-none"></span>'}`
+              + `<input type="checkbox" class="lp-cb lp-midcb"><span class="lp-name">${mid.name}</span></div>`;
+            const midCb = row.querySelector('.lp-midcb');
+            midCbs.push(midCb);
+
+            if (!hasSubs) {
+              midCb.onchange = () => { midCb.checked ? mid.layer.addTo(map) : map.removeLayer(mid.layer); syncBig(); };
+              return;
+            }
+            const subBox = L.DomUtil.create('div', 'lp-subs', row);
+            const subCbs = [];
+            mid._on = new Set();
+            mid.subs.forEach(([id, label]) => {
+              const s = L.DomUtil.create('label', 'lp-sub', subBox);
+              const sw = UPIS_SWATCH[id] ? `<img class="lp-sw" src="data:image/png;base64,${UPIS_SWATCH[id]}" alt="">` : '<span class="lp-sw"></span>';
+              s.innerHTML = `<input type="checkbox" class="lp-cb">${sw}<span>${label}</span>`;
+              const cb = s.querySelector('input');
+              subCbs.push(cb);
+              cb.onchange = () => {
+                cb.checked ? mid._on.add(id) : mid._on.delete(id);
+                refreshUpisGroup(mid);
+                midCb.checked = subCbs.some((c) => c.checked);
+                midCb.indeterminate = midCb.checked && !subCbs.every((c) => c.checked);
+                // 브라우저는 부분선택(indeterminate) 체크박스를 누르면 '해제'로 간다.
+                // 참조 사이트처럼 '전체 선택'이 되도록, 부분선택이었음을 기억해 둔다.
+                midCb.dataset.wasInd = midCb.indeterminate ? '1' : '0';
+                syncBig();
+              };
+            });
+            row.querySelector('.lp-exp').onclick = () => row.classList.toggle('open');
+            midCb.onchange = () => {
+              // 부분선택 상태에서 눌렀으면 '전체 선택'으로 만든다(위 주석 참고).
+              if (midCb.dataset.wasInd === '1') midCb.checked = true;
+              midCb.dataset.wasInd = '0';
+              subCbs.forEach((c) => { c.checked = midCb.checked; });
+              mid._on = new Set(midCb.checked ? mid.subs.map(([id]) => id) : []);
+              midCb.indeterminate = false;
+              refreshUpisGroup(mid);
+              syncBig();
+            };
+          });
+
+          const bigCb = head.querySelector('.lp-cb');
+          function syncBig() {
+            const on = midCbs.filter((c) => c.checked).length;
+            bigCb.checked = on > 0;
+            bigCb.indeterminate = on > 0 && on < midCbs.length;
+          }
+          bigCb.onchange = () => {
+            midCbs.forEach((c) => { if (c.checked !== bigCb.checked) { c.checked = bigCb.checked; c.onchange(); } });
+            bigCb.indeterminate = false;
+          };
+        });
+
+        L.DomEvent.disableClickPropagation(div);
+        L.DomEvent.disableScrollPropagation(div);
+        return div;
+      };
+      layerPanel.addTo(map);
+
+      // ── 오른쪽 목록 패널 너비 조절 ────────────────────────────────────
+      // 팝업처럼 목록도 고정 폭이라 답답하다는 지적. 가장자리를 끌어 넓히면
+      // 안쪽 카드는 %/flex 기반이라 글자가 저절로 그 폭에 맞춰 다시 흐른다.
+      (() => {
+        const rz = document.getElementById('panel-resizer');
+        const pnl = document.getElementById('panel');
+        if (!rz || !pnl) return;
+        let startX = 0, startW = 0;
+        const onMove = (e) => {
+          const dx = startX - e.clientX;                 // 왼쪽으로 끌면 넓어진다
+          const max = Math.max(320, window.innerWidth - 360);   // 지도도 최소 폭은 남긴다
+          const w = Math.min(max, Math.max(260, startW + dx));
+          pnl.style.flex = `0 0 ${w}px`;
+          pnl.style.minWidth = w + 'px';
+        };
+        const onUp = () => {
+          document.removeEventListener('mousemove', onMove);
+          document.removeEventListener('mouseup', onUp);
+          document.body.classList.remove('panel-resizing');
+          rz.classList.remove('dragging');
+          try { localStorage.setItem('mj_panel_w', pnl.getBoundingClientRect().width); } catch (e) {}
+          map.invalidateSize();   // 지도 크기가 바뀌었으니 타일·팝업 기준을 다시 잡는다
+        };
+        rz.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          startX = e.clientX;
+          startW = pnl.getBoundingClientRect().width;
+          document.addEventListener('mousemove', onMove);
+          document.addEventListener('mouseup', onUp);
+          document.body.classList.add('panel-resizing');
+          rz.classList.add('dragging');
+        });
+        // 지난번 폭 복원
+        try {
+          const saved = Number(localStorage.getItem('mj_panel_w'));
+          if (saved >= 260) { pnl.style.flex = `0 0 ${saved}px`; pnl.style.minWidth = saved + 'px'; }
+        } catch (e) {}
+      })();
+
       // 배경지도 선택 (일반/위성/위성+라벨) — 예전엔 '항공' 토글 버튼 하나뿐이라
       // 어떤 지도가 있는지 알 수 없었다. 네이버지도처럼 썸네일로 셋을 나란히 보여준다.
       // 썸네일 배경은 서울 도심(z15) 실제 타일이라 별도 이미지 파일이 필요 없다.
