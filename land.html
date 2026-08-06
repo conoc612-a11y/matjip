@@ -634,11 +634,25 @@
         // 접히는 Leaflet 클리핑을 회피. 수백 개 규모라 항상 전부 그려도 감당 가능하다.
         noClip: true,
         renderer: L.svg(),
-        style: { color: '#c92a2a', weight: 1, fillColor: '#e8590c', fillOpacity: 0.28 },
+        // 참조 사이트(서울도시공간포털)와 동일하게 '외곽선만' 그린다.
+        // 채우면 자치구 전역 지정(서초 46.9㎢·강남 39.5㎢ 등)이 도시 전체를 덮어
+        // 한강까지 색칠된 것처럼 보인다. 그쪽도 채움 없이 얇은 테두리 + 라벨만 쓴다.
+        style: () => tojiStyle(),
         onEachFeature: (f, layer) => layer.bindTooltip(`토지거래허가구역 · ${f.properties.name}`, { sticky: true }),
       });
+      // 참조 사이트는 이 레이어에 minScale 1:50,000 을 걸어, 축척이 그보다 작으면(=많이 축소하면)
+      // 아예 그리지 않는다. 서울 전역이 한꺼번에 보이는 축척에서 구역선이 도시를 뒤덮는 걸 막는 장치다.
+      // Leaflet 줌 14 ≈ 1:35,000, 줌 13 ≈ 1:70,000 이라 14를 경계로 잡는다.
+      const TOJI_MIN_ZOOM = 14;
+      const tojiStyle = () => ({
+        color: '#e8590c', weight: 1.5, fill: false,
+        opacity: map.getZoom() >= TOJI_MIN_ZOOM ? 1 : 0,
+      });
+      function applyTojiZoom() { if (map.hasLayer(tojiLayer)) tojiLayer.setStyle(tojiStyle()); }
+      map.on('zoomend', applyTojiZoom);
+      map.on('overlayadd', (e) => { if (e.layer === tojiLayer) applyTojiZoom(); });
       // ?v= 는 캐시 무효화용 — 데이터를 갈아끼울 때마다 올린다(정비사업 json 과 같은 방식).
-      fetch('toji_heoga.geojson?v=2').then((r) => r.json()).then((gj) => tojiLayer.addData(gj)).catch(() => {});
+      fetch('toji_heoga.geojson?v=2').then((r) => r.json()).then((gj) => { tojiLayer.addData(gj); applyTojiZoom(); }).catch(() => {});
 
       // ── 아파트 실거래가·노후도 (서울+경기 9천여 단지) : 필터 + 범례 + 카드 팝업 ──
       const realpriceCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 60 });
@@ -1235,7 +1249,49 @@
         '개발진흥지구': wms('lt_c_uq129', 0.5),
         '택지·사업지구': wms('lt_c_lhzone', 0.5),
       };
-      L.control.layers(baseLayers, landOverlays, { collapsed: true, position: 'topright' }).addTo(map);
+      // 레이어 목록을 대분류로 묶는다 — 참조 사이트(서울도시공간포털)의 '주제도'가
+      // 대분류 > 중분류로 정리돼 있어 12개가 한 줄로 늘어선 기존 목록보다 훨씬 찾기 쉽다.
+      // Leaflet 기본 컨트롤에는 그룹 기능이 없어서, 컨트롤을 만든 뒤 DOM 에 구분 헤더를
+      // 끼워 넣는다(플러그인 추가 없이 되고, 체크박스 동작은 그대로 유지된다).
+      // 아래 배열 순서는 landOverlays 의 선언 순서와 반드시 일치해야 한다.
+      const OVERLAY_SECTIONS = [
+        ['도시계획사업', ['정비사업 (재개발·재건축)']],
+        ['현장 확인', ['CCTV (실시간 도로영상)']],
+        ['실거래', ['아파트 실거래가·노후도', '연립·다세대 실거래가']],
+        ['규제구역', ['토지거래허가구역', '개발제한구역 (그린벨트)', '개발진흥지구', '택지·사업지구']],
+        ['용도·지적', ['용도지역', '지적도 (필지 경계)']],
+        ['행정경계', ['행정구역 (시군구)', '행정동 경계']],
+      ];
+      const layersCtrl = L.control.layers(baseLayers, landOverlays, { collapsed: true, position: 'topright' }).addTo(map);
+      function applyOverlaySections() {
+        const box = layersCtrl.getContainer().querySelector('.leaflet-control-layers-overlays');
+        if (!box) return;
+        const byName = new Map();
+        [...box.children].forEach((row) => {
+          if (row.classList.contains('lc-sub')) { row.remove(); return; }
+          byName.set(row.textContent.trim(), row);
+        });
+        OVERLAY_SECTIONS.forEach(([sec, names]) => {
+          const first = names.map((n) => byName.get(n)).find(Boolean);
+          if (!first) return;   // 이름이 바뀌면 헤더만 빠지고 목록은 정상 동작한다
+          const h = L.DomUtil.create('div', 'lc-sep lc-sub');
+          h.textContent = sec;
+          box.insertBefore(h, first);
+          // 같은 대분류의 나머지 항목을 헤더 바로 뒤로 모은다(선언 순서가 어긋나도 묶이게)
+          let anchor = first;
+          names.forEach((n) => {
+            const row = byName.get(n);
+            if (!row || row === first) return;
+            box.insertBefore(row, anchor.nextSibling);
+            anchor = row;
+          });
+        });
+      }
+      // Leaflet 은 레이어를 켜고 끌 때마다 _update() 로 목록 DOM 을 통째로 다시 만든다.
+      // 그래서 헤더를 한 번만 꽂아 두면 첫 체크 즉시 사라진다 — 갱신 뒤마다 다시 적용한다.
+      const _origLayersUpdate = layersCtrl._update.bind(layersCtrl);
+      layersCtrl._update = function () { _origLayersUpdate(); applyOverlaySections(); };
+      applyOverlaySections();
       // 배경지도 선택 (일반/위성/위성+라벨) — 예전엔 '항공' 토글 버튼 하나뿐이라
       // 어떤 지도가 있는지 알 수 없었다. 네이버지도처럼 썸네일로 셋을 나란히 보여준다.
       // 썸네일 배경은 서울 도심(z15) 실제 타일이라 별도 이미지 파일이 필요 없다.
