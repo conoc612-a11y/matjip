@@ -2,6 +2,12 @@
 
 서울 맛집을 취향 기반으로 추천받고 지도·길찾기로 찾아가는 서비스 + 부동산 투자자를 위한 원격 임장 지도.
 
+> **작업을 이어받는 사람(사람/AI 모두)에게**
+> - 구조·규칙: [`AGENTS.md`](AGENTS.md)
+> - **반복해서 터진 버그와 해결법: [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md) ← 코드 만지기 전에 필독**
+> - 직전 세션 상태와 남은 일: [`HANDOFF.md`](HANDOFF.md)
+> - 이 README 아래쪽은 날짜별 작업 기록이다.
+
 ## 화면
 - `index.html` → `onboarding.html` : 로그인/회원가입 + 취향 온보딩 설문 → `taste_profiles` 저장
 - `main.html` : 맛집 지도(Leaflet + V-World/OSM) + 취향 기반 규칙 추천 + 저장 + GPS 길찾기
