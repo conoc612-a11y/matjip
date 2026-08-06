@@ -621,20 +621,24 @@
       });
       // 레이어 코드는 V-World 공식 WMS 가이드에서 확인함(추측 아님).
       // 일부(그린벨트·진흥지구)는 도심 중앙엔 데이터가 없어 외곽에서 보임 — 정상.
-      // 토지거래허가구역(동 단위 근사) — 지정 동 경계 GeoJSON 색칠. 정확·최신은 land.seoul.go.kr.
+      // 토지거래허가구역 — 서울시 UPIS 실제 경계(tools/collect_toji.js 로 생성).
+      // 예전엔 '지정 동 전체를 칠하는 근사치'였는데, 서울 행정동 경계가 한강 수면까지
+      // 포함해 압구정·여의도 앞 한강이 통째로 칠해졌다(사용자 제보). 지금은 필지 단위
+      // 실제 경계에서 하천 폴리곤을 뺀 데이터라 강기슭에서 정확히 끊긴다.
       // 렌더러는 캔버스 대신 SVG를 강제: 캔버스는 팬/줌 후 이전 transform(scale/translate)이
       // 남아 폴리곤이 지도와 어긋나 보이는 스테일 버그가 있었음. SVG는 moveend마다 좌표를
-      // 다시 투영해 항상 타일·마커와 일치한다. (32개 폴리곤·정점 4.2만개는 단일 레이어로
-      // 손으로 켜는 오버레이라 SVG 비용이 허용 범위 — 무거운 9천 마커 계열은 캔버스 유지)
+      // 다시 투영해 항상 타일·마커와 일치한다. (손으로 켜는 단일 오버레이라 SVG 비용 허용
+      // 범위 — 무거운 9천 마커 계열은 캔버스 유지)
       const tojiLayer = L.geoJSON(null, {
         // noClip: 줌인하면 구역 상당수가 뷰포트(렌더러 패딩) 밖으로 밀려나 'M0 0'으로
-        // 접히는 Leaflet 클리핑을 회피. 32개 폴리곤뿐이라 항상 전부 그려도 비용 미미.
+        // 접히는 Leaflet 클리핑을 회피. 수백 개 규모라 항상 전부 그려도 감당 가능하다.
         noClip: true,
         renderer: L.svg(),
         style: { color: '#c92a2a', weight: 1, fillColor: '#e8590c', fillOpacity: 0.28 },
         onEachFeature: (f, layer) => layer.bindTooltip(`토지거래허가구역 · ${f.properties.name}`, { sticky: true }),
       });
-      fetch('toji_heoga.geojson').then((r) => r.json()).then((gj) => tojiLayer.addData(gj)).catch(() => {});
+      // ?v= 는 캐시 무효화용 — 데이터를 갈아끼울 때마다 올린다(정비사업 json 과 같은 방식).
+      fetch('toji_heoga.geojson?v=2').then((r) => r.json()).then((gj) => tojiLayer.addData(gj)).catch(() => {});
 
       // ── 아파트 실거래가·노후도 (서울+경기 9천여 단지) : 필터 + 범례 + 카드 팝업 ──
       const realpriceCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 60 });
