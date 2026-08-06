@@ -160,6 +160,12 @@ console.log('blocks:',i,'fails:',f);
   ```bash
   curl -s https://conoc612-a11y.github.io/matjip/land.html | grep -c "찾을_코드조각"
   ```
+- **빌드가 `building` 에 멈추거나 계속 실패한다면 (2026-08-07 실측)**:
+  - 증상: 정상 빌드는 30~60초였는데 갑자기 10~15분 실패(`Page build failed`)·몇 시간 `building` 멈춤. **문서만 바꾼 커밋도 실패**한다.
+  - 원인: 이 리포는 **100% 정적 파일**(프론트매터·Liquid·`_config.yml` 전무, Jekyll 은 복사만 함)이라 콘텐츠 문제가 아니다. `build_type: legacy`(Jekyll) 파이프라인이 GitHub 측에서 먹통이 된 것.
+  - 해결: 루트에 **`.nojekyll`** 추가 → Jekyll 단계 자체 제거(배포 결과물은 동일, 이 리포는 Jekyll 이 아무것도 안 하므로). 이미 추가돼 있음(`5107f05`).
+  - 그래도 멈추면 GitHub Pages 파이프라인 문제 → Unpublish 후 재생성(Settings → Pages)으로 재초기화.
+  - 확인: `gh api repos/conoc612-a11y/matjip/pages/builds/latest --jq .status` 가 `built` 인지.
 
 ---
 

@@ -12,6 +12,38 @@
 
 ---
 
+## 2026-08-07 (2) — opencode (배포 복구 시도 — GitHub Pages 빌드 멈춤)
+
+> **이 항목은 "기록만 남기고 안 한 것"이 아니다.** 실제로 push 까지 했고, 배포 결과 확인이 남아 있다.
+> 이어받는 세션은 아래 **"현재 상태 / 다음 세션 확인할 것"** 부터 확인할 것.
+
+### 상황 (사용자: "배포 중 멈췄다")
+- 배포본 = **72d153f**(마지막 성공 빌드) 버전. 이후 커밋 4개(**21757c0, bba6f0f, bd5bb8e, b914149**)가 전부 미반영.
+- 배포 반영 확인법(실측): `https://conoc612-a11y.github.io/matjip/land.html` 에 `LAYER_TREE`/`UPIS_SWATCH`/`layerPanel` 포함 여부 → 미반영 상태에선 전부 `False`.
+- 빌드 이력(`gh api repos/conoc612-a11y/matjip/pages/builds`): 과거엔 전부 30~60초 `built` → **2026-08-06 12:31Z 부터** `bba6f0f`(10분 실패)·`bd5bb8e`(15분 실패)·`b914149`(9시간 `building` 멈춤).
+
+### 왜 안 됐는가 (실패 원인 분석 — 재조사하지 말 것)
+- **콘텐츠 문제 아님을 하나씩 배제함**:
+  - 실패 커밋에 Liquid 구문(`{{`/`{%`) 0건. 프론트매터(`---`)로 시작하는 파일은 `.claude/skills/matjip-recommend/SKILL.md` 1개뿐인데 이건 72d153f(성공 빌드) 때부터 있었고, `.claude/` 는 점 디렉터리라 Jekyll 이 어차피 스킵함.
+  - `_config.yml`/`_layouts`/`_includes` 없음. 대용량 파일 추가 없음(52→53개, +15KB).
+  - **문서만 바꾼 커밋(bba6f0f, b914149)까지 실패/멈춤** — 콘텐츠로는 설명 불가.
+- **결론: GitHub Pages 레거시 Jekyll 빌드 파이프라인 문제**(`build_type: legacy`). 정상 빌드 30~60초 → 갑자기 10~15분 실패·무한 `building`. `githubstatus.com` 은 Pages operational 이라 공식 장애 아님.
+
+### 시도한 조치 (master 에 반영됨)
+1. **빈 커밋 `f91be03`** push → 효과: 멈춰 있던 9시간 `b914149` 빌드가 `errored` 로 정리됨(큐 해제). 그러나 새 빌드도 **13분+ `building`** 멈춤.
+2. **`.nojekyll` 추가 `5107f05`** → Jekyll 빌드 단계 자체 제거. **이 사이트는 100% 정적 파일**(프론트매터·Liquid·_config.yml 전무)이라 배포 결과물은 Jekyll 이 끼든 안 끼든 **1바이트도 안 바뀐다**. 그런데도 새 빌드가 **6분+ `building`** 멈춤 → Jekyll 문제가 아니라 순수 GitHub Pages 배포 파이프라인 문제임을 재확인.
+
+### 현재 상태 / 다음 세션 확인할 것 (가장 중요)
+- 확인 명령: `gh api repos/conoc612-a11y/matjip/pages/builds/latest` → `status: built` 면 배포 완료. `building` 이 10분 넘게 지속되면 파이프라인 장애로 보고 대기/재시도.
+- 반영 확인: `land.html` 에 `LAYER_TREE` 포함 여부.
+- **만약 계속 안 되면**: ① 시간을 두고 재확인 → ② GitHub Pages 를 끄고(Unpublish) 다시 켜서 배포 재초기화(Settings → Pages → Create site) → ③ 브라우저에서 Pages 설정 페이지의 에러 메시지 확인.
+- 참고: `.nojekyll` 이 추가돼 있어 앞으로 콘텐츠 쪽으로는 빌드가 깨질 일이 없다. 문제는 GitHub 측 배포 파이프라인.
+
+### 손대면 안 되는 것
+- `.nojekyll` 을 지우지 말 것. 이 리포는 정적 사이트라 Jekyll 은 불필요하며, 이 파일이 앞으로의 빌드 멈춤/실패를 원천 차단한다.
+
+---
+
 ## 2026-08-07 — Claude Code
 
 ### 한 일 (요청 4건)
