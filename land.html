@@ -124,7 +124,9 @@
     .rec .why { font-size:12px; color:var(--ok); margin:6px 0; min-height:15px; }
     /* 버튼 3개(전화번호·카카오맵·저장)가 좁은 패널에서 한 줄에 안 들어가 '저 장' 처럼
        글자가 줄바꿈되던 문제 — 줄바꿈은 버튼 사이에서만 하고 글자는 자르지 않는다. */
-    .rec .actions { display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; }
+    /* align-items:flex-start — flex 기본값 stretch 면 줄바꿈된 행에서 버튼이 줄 높이만큼
+       세로로 늘어나(실측 34px → 52px) 들쭉날쭉해 보인다. 제 높이를 유지시킨다. */
+    .rec .actions { display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; align-items:flex-start; }
     .rec .actions a, .rec .actions button { font-size:12px; font-weight:500; padding:7px 10px; border-radius:8px; border:1px solid var(--line); cursor:pointer; background:var(--card); color:var(--text); text-decoration:none; white-space:nowrap; flex:0 0 auto; line-height:1.2; }
     .rec .actions a:hover, .rec .actions button:hover { border-color:var(--c-primary); color:var(--c-primary); }
     .rec .actions .save { background:var(--c-primary); color:#fff; border:none; }
