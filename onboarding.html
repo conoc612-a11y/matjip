@@ -59,6 +59,10 @@
       <p class="sub">취향을 알려주시면 딱 맞는 서울 맛집을 추천해 드려요. 먼저 로그인해 주세요.</p>
       <div class="card">
         <h2 id="auth-title" style="margin:0 0 4px;font-size:18px;">로그인</h2>
+        <div id="name-fld" class="hidden">
+          <label class="fld">이름 (필수)</label>
+          <input type="text" id="name" placeholder="홍길동" autocomplete="name" />
+        </div>
         <label class="fld">이메일</label>
         <input type="email" id="email" placeholder="name@example.com" />
         <label class="fld">비밀번호 (6자 이상)</label>
@@ -150,20 +154,25 @@
         ? '계정이 없으신가요? <a>회원가입</a>'
         : '이미 계정이 있으신가요? <a>로그인</a>';
       bindSwitch();
+      $('name-fld').classList.toggle('hidden', mode !== 'signup');
       $('auth-msg').textContent = '';
     }
     bindSwitch();
 
     // ── 로그인/회원가입 실행 ──
+    const next = new URLSearchParams(location.search).get('next') || '';
+    if (next) sessionStorage.setItem('mj_next', next); // 이메일 확인 리다이렉트 후에도 유지
     $('auth-btn').addEventListener('click', async () => {
       const email = $('email').value.trim();
       const password = $('password').value;
+      const name = $('name') ? $('name').value.trim() : '';
       const msg = $('auth-msg');
       if (!email || !password) { msg.textContent = '이메일과 비밀번호를 입력해 주세요.'; msg.className = 'msg err'; return; }
+      if (mode === 'signup' && !name) { msg.textContent = '이름을 입력해 주세요.'; msg.className = 'msg err'; return; }
       $('auth-btn').disabled = true;
       const fn = mode === 'login'
         ? sb.auth.signInWithPassword({ email, password })
-        : sb.auth.signUp({ email, password, options: { emailRedirectTo: location.origin + location.pathname } });
+        : sb.auth.signUp({ email, password, options: { data: { name }, emailRedirectTo: location.origin + location.pathname } });
       const { data, error } = await fn;
       $('auth-btn').disabled = false;
       if (error) { msg.textContent = error.message; msg.className = 'msg err'; return; }
@@ -194,6 +203,8 @@
       const { error } = await sb.from('taste_profiles').upsert(payload, { onConflict: 'user_id' });
       $('save-btn').disabled = false;
       if (error) { msg.textContent = '저장 실패: ' + error.message; msg.className = 'msg err'; return; }
+      const nxt = sessionStorage.getItem('mj_next');
+      if (nxt) { sessionStorage.removeItem('mj_next'); location.href = nxt; return; }
       msg.textContent = '';
       $('done-summary').textContent =
         `매운맛 ${payload.spicy_level}/5 · 맛 [${payload.flavor_tags.join(', ') || '없음'}] · 상황 [${payload.situation_tags.join(', ') || '없음'}]`;
