@@ -109,6 +109,16 @@ drop policy if exists "visits anon select" on visits;
 create policy "visits anon insert" on visits for insert with check (true);
 create policy "visits anon select" on visits for select using (true);
 
+-- ── 회원수 (푸터 통계) ──
+-- taste_profiles는 RLS가 authenticated 전용이라 anon SELECT가 차단된다(회원수=0으로 보임).
+-- 그래서 개인정보를 노출하지 않으면서 숫자만 반환하는 security definer 함수로 집계한다.
+-- (비회원에게 취향·user_id가 새지 않도록, 반환값은 개수 하나뿐)
+create or replace function public.member_count()
+returns bigint language sql stable security definer set search_path = public as
+$$ select count(*) from taste_profiles $$;
+revoke all on function public.member_count() from public;
+grant execute on function public.member_count() to anon, authenticated;
+
 -- ── 정비구역 커뮤니티 피드 (land.html) — visits와 동일한 anon 모델: 로그인 없이 익명 작성 ──
 create table if not exists jb_posts (
   id bigint generated always as identity primary key,

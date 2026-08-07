@@ -203,8 +203,10 @@
       border:1px solid var(--line); border-radius:10px; box-shadow:var(--c-shadow-lg); padding:6px 4px;
       max-height:calc(100vh - 220px); overflow-y:auto; overscroll-behavior:contain; font-size:14px; }
     .lp.open .lp-body { display:block; }
-    .lp-body::-webkit-scrollbar { width:5px; background-color:var(--line); border-radius:2.5px; }
-    .lp-body::-webkit-scrollbar-thumb { border-radius:2.5px; background-color:#c1c1c1; background-clip:padding-box; }
+    .lp-body::-webkit-scrollbar { width:14px; }
+    .lp-body::-webkit-scrollbar-track { background:var(--line); border-radius:7px; }
+    .lp-body::-webkit-scrollbar-thumb { border-radius:7px; background-color:#c1c1c1; border:4px solid var(--card); }
+    .lp-body::-webkit-scrollbar-thumb:hover { background-color:#a8a8a8; }
     .lp-sec + .lp-sec { border-top:1px solid var(--line); margin-top:4px; padding-top:4px; }
     .lp-head { display:flex; align-items:center; gap:6px; padding:5px 8px; font-weight:700; cursor:pointer; border-radius:6px; }
     .lp-head:hover { background:var(--c-hover); }
@@ -320,7 +322,7 @@
     .jb-chip:hover { border-color:var(--c-primary); color:var(--c-primary); }
     .jb-chip.active { border-color:var(--c-primary); background:var(--c-primary); color:#fff; }
     /* ── Footer ── */
-    .site-footer { flex:0.6; flex-shrink:0; background:var(--card); border-top:1px solid var(--line);
+    .site-footer { flex:0 0 auto; background:var(--card); border-top:1px solid var(--line);
       padding:7px 18px; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:4px 14px; }
     .footer-links { display:flex; gap:14px; flex-wrap:wrap; }
     .footer-links a { font-size:13px; color:var(--muted); text-decoration:none; }
@@ -971,7 +973,7 @@
         realpriceCluster.addLayers(rpRows.filter((d) => inPrice(d.priceEok) && inAge(d.build)).map((d) => {
           const m = L.circleMarker([d.lat, d.lng], { radius: 5, color: '#fff', weight: 1, fillColor: ageColor(d.build), fillOpacity: 0.9 });
           m._rp = d;
-          m._pop = (() => `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};flex-shrink:0;"></span><span class="rp-name">${esc(d.name)}</span></div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div><div class="pc-price">매매 ${d.priceEok == null ? '-' : d.priceEok + '억'}</div><div style="margin-top:3px;">평단가: ${d.area && d.priceEok ? Math.round(d.priceEok * 10000 / d.area).toLocaleString() + '만원/㎡' : '-'}</div><div style="margin-top:3px;">${esc(d.area)}㎡ · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="margin-top:3px;">${esc(d.build || '?')}년 건축${parseInt(d.build) <= 1994 ? '<span style="background:#e03131;color:#fff;font-size:12px;padding:2px 8px;border-radius:999px;margin-left:6px;">재건축연한 초과</span>' : ''}</div>${jeonseHtml(d, '평형 기준')}${rpFlagsHtml(d)}<div class="rp-radius-stat rp-stat" style="display:none;"></div></div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline" style="border-color:var(--c-price) !important;color:var(--c-price);">저장</button><a href="https://map.naver.com/p/search/${encodeURIComponent(d.name + ' ' + (d.dong || d.gu || ''))}?c=${d.lng},${d.lat},17,0,0,0,dh" target="_blank" rel="noopener" class="pc-btn pc-btn-primary rp-naver">네이버 부동산</a><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline">출발</button><button class="rt-end pc-btn pc-btn-outline">도착</button></div><button class="sv-btn pc-btn pc-btn-outline">거리뷰</button></div></div>`);
+          m._pop = (() => `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};flex-shrink:0;"></span><span class="rp-name">${esc(d.name)}</span></div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div><div class="pc-price">매매 ${d.priceEok == null ? '-' : d.priceEok + '억'}</div><div style="margin-top:3px;">평단가: ${d.area && d.priceEok ? Math.round(d.priceEok * 10000 / d.area).toLocaleString() + '만원/㎡' : '-'}</div><div style="margin-top:3px;">전용 ${esc(d.area)}㎡ · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="margin-top:3px;">${esc(d.build || '?')}년 건축${parseInt(d.build) <= 1994 ? '<span style="background:#e03131;color:#fff;font-size:12px;padding:2px 8px;border-radius:999px;margin-left:6px;">재건축연한 초과</span>' : ''}</div>${jeonseHtml(d, '평형 기준')}${rpFlagsHtml(d)}<div class="rp-radius-stat rp-stat" style="display:none;"></div></div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline" style="border-color:var(--c-price) !important;color:var(--c-price);">저장</button><a href="https://map.naver.com/p/search/${encodeURIComponent(d.name + ' ' + (d.dong || d.gu || ''))}?c=${d.lng},${d.lat},17,0,0,0,dh" target="_blank" rel="noopener" class="pc-btn pc-btn-primary rp-naver">네이버 부동산</a><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline">출발</button><button class="rt-end pc-btn pc-btn-outline">도착</button></div><button class="sv-btn pc-btn pc-btn-outline">거리뷰</button></div></div>`);
           return m;
         }));
       }
@@ -1068,7 +1070,7 @@
         const range = d.cnt > 1 && d.pmax > d.pmin
           ? `<div style="margin-top:3px;font-size:12px;color:var(--c-muted);">12개월 ${d.cnt}건 · ${d.pmin}~${d.pmax}억</div>`
           : `<div style="margin-top:3px;font-size:12px;color:var(--c-muted);">12개월 ${d.cnt}건</div>`;
-        return `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};flex-shrink:0;"></span><span class="rp-name">${esc(d.name)}</span><span style="font-size:12px;background:var(--c-primary);color:#fff;padding:1px 8px;border-radius:999px;">${esc(d.type)}</span></div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div><div class="pc-price">매매 ${d.priceEok}억</div><div style="margin-top:3px;">평단가: ${ppm}</div><div style="margin-top:3px;">${esc(d.area)}㎡ · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="margin-top:3px;">${esc(d.build)}년 건축${oldTag}</div>${jeonseHtml(d, '건물 기준 참고')}${range}<div class="rp-radius-stat" style="display:none;"></div></div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline" style="border-color:var(--c-price) !important;color:var(--c-price);">저장</button><a href="${naverSearchUrl(d.name + ' ' + (d.dong || d.gu || ''), d.lat, d.lng)}" target="_blank" rel="noopener" class="pc-btn pc-btn-primary rp-naver">네이버 부동산</a><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline">출발</button><button class="rt-end pc-btn pc-btn-outline">도착</button></div><button class="sv-btn pc-btn pc-btn-outline">거리뷰</button></div></div>`;
+        return `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};flex-shrink:0;"></span><span class="rp-name">${esc(d.name)}</span><span style="font-size:12px;background:var(--c-primary);color:#fff;padding:1px 8px;border-radius:999px;">${esc(d.type)}</span></div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div><div class="pc-price">매매 ${d.priceEok}억</div><div style="margin-top:3px;">평단가: ${ppm}</div><div style="margin-top:3px;">전용 ${esc(d.area)}㎡ · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="margin-top:3px;">${esc(d.build)}년 건축${oldTag}</div>${jeonseHtml(d, '건물 기준 참고')}${range}<div class="rp-radius-stat" style="display:none;"></div></div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline" style="border-color:var(--c-price) !important;color:var(--c-price);">저장</button><a href="${naverSearchUrl(d.name + ' ' + (d.dong || d.gu || ''), d.lat, d.lng)}" target="_blank" rel="noopener" class="pc-btn pc-btn-primary rp-naver">네이버 부동산</a><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline">출발</button><button class="rt-end pc-btn pc-btn-outline">도착</button></div><button class="sv-btn pc-btn pc-btn-outline">거리뷰</button></div></div>`;
       }
 
       let villaRows = null, _villaPromise = null;
@@ -1710,7 +1712,13 @@
           head.innerHTML = `<input type="checkbox" class="lp-cb"><span class="lp-name">${big}</span><span class="lp-arrow">▾</span>`;
           const kids = L.DomUtil.create('div', 'lp-kids', sec);
           head.querySelector('.lp-arrow').onclick = (e) => { e.stopPropagation(); sec.classList.toggle('closed'); };
-          head.querySelector('.lp-name').onclick = () => sec.classList.toggle('closed');
+          // 대분류 행 클릭 = 하위 전부 선택/해제 토글. 부분선택(일부만 켬) 중이면 '전체 선택'으로.
+          head.addEventListener('click', (e) => {
+            if (e.target.closest('.lp-cb') || e.target.closest('.lp-arrow')) return;
+            if (bigCb.indeterminate) bigCb.checked = true;
+            else bigCb.checked = !bigCb.checked;
+            bigCb.onchange();
+          });
 
           const midCbs = [];
           mids.forEach((mid) => {
@@ -1765,7 +1773,12 @@
             bigCb.indeterminate = on > 0 && on < midCbs.length;
           }
           bigCb.onchange = () => {
-            midCbs.forEach((c) => { if (c.checked !== bigCb.checked) { c.checked = bigCb.checked; c.onchange(); } });
+            // 목표 상태를 미리 박아둔다. 루프 안에서 syncBig() 이 bigCb.checked 를 갈아치워도
+            // 비교가 어긋나 일부만 토글되는 일(두 번째 클릭에 남는 체크)이 없게 한다.
+            const target = bigCb.checked;
+            midCbs.forEach((c) => {
+              if (c.checked !== target) { c.checked = target; c.dataset.wasInd = '0'; c.onchange(); }
+            });
             bigCb.indeterminate = false;
           };
         });
@@ -2855,7 +2868,7 @@
             + `<b>${esc(best.name)}</b> <span style="color:var(--c-muted);font-size:12px;">여기서 ${Math.round(bd * 1000)}m</span><br>`
             + `<span style="color:var(--c-price);font-weight:700;">매매 ${best.priceEok == null ? '-' : best.priceEok + '억'}</span>`
             + `${npy ? ` <span style="color:var(--c-muted);">· ${npy}</span>` : ''}<br>`
-            + `${esc(best.area || '?')}㎡ · ${esc(best.floor || '?')}층 · ${esc(best.build || '?')}년${nOld}`
+            + `전용 ${esc(best.area || '?')}㎡ · ${esc(best.floor || '?')}층 · ${esc(best.build || '?')}년${nOld}`
             + ` <a href="${naverSearchUrl(best.name + ' ' + (best.dong || best.gu || ''), best.lat, best.lng)}" target="_blank" rel="noopener" style="color:var(--c-primary);font-size:12px;">네이버 ↗</a>`
             + `</div>`;
         }
@@ -2870,7 +2883,9 @@
         const buildClickPopup = (addr, bldName, jibun) => {
           if (!clickMarker) return;
           const bldHtml = bldName ? `<div style="font-weight:700;font-size:15px;margin-bottom:2px;">${esc(bldName)}</div>` : '';
-          const naverLand = addr ? `<a href="${naverSearchUrl(bldName || addr, lat, lng)}" target="_blank" rel="noopener" class="pc-btn pc-btn-primary">네이버 부동산 검색</a>` : '';
+          // 건물명이 없으면(아파트는 역지오코딩 건물명이 비어 오는 경우가 많다) 100m 안 근처 실거래 단지명으로 검색한다.
+          const searchName = bldName || (bd <= 0.1 && best && best.name ? (best.name + ' ' + (best.dong || best.gu || '')).trim() : '') || addr;
+          const naverLand = addr ? `<a href="${naverSearchUrl(searchName, lat, lng)}" target="_blank" rel="noopener" class="pc-btn pc-btn-primary">네이버 부동산 검색</a>` : '';
           clickMarker.setPopupContent(`<div class="pc"><div class="pc-head">위치 정보</div><div class="pc-body">${bldHtml}<div>${addr ? esc(addr) : '주소를 찾지 못했어요'}</div><div style="font-size:12px;color:var(--c-muted);margin-top:2px;">${lat.toFixed(5)}, ${lng.toFixed(5)}</div><div class="bld-info"></div><div class="poi-box" style="margin-top:6px;"><button class="poi-btn pc-btn pc-btn-outline" style="font-size:12px;padding:4px 8px;">이 부근 상호 보기</button></div>${nearHtml}${jbNearHtml}</div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline">저장</button>${naverLand}${rtBtns}</div></div>`).openPopup();
           bindRtBtns();
           // 건축물 용도·층수·연면적·사용승인일을 비동기로 채운다 (아파트가 아닌 건물의 정체를 알려주는 핵심 정보)
@@ -3543,15 +3558,15 @@
     });
 
     // ── 푸터 통계 ──
-    // 회원수 = taste_profiles, 방문자 = visits 테이블(페이지 로드마다 1건씩 기록).
+    // 회원수 = member_count() RPC(security definer, 개인정보 미노출), 방문자 = visits 테이블.
     // visits 테이블이 아직 없으면(스키마 미실행) 조용히 넘어가고 '—'로 남는다.
     async function loadFooterStats() {
       const set = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.textContent = v.toLocaleString(); };
       const s = await ensureSb();
       if (!s) return;
       try {
-        const { count: m } = await s.from('taste_profiles').select('*', { count: 'exact', head: true });
-        set('f-members', m);
+        const { data: m, error: mErr } = await s.rpc('member_count');
+        if (!mErr) set('f-members', Number(m));
       } catch (e) {}
       try {
         await s.from('visits').insert({ page: 'land' });
