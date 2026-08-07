@@ -195,14 +195,13 @@ function renderChips() {
     return `<button class="chip${name === segFilter ? ' on' : ''}" onclick="segFilter='${name}';renderChips();renderMembers();">${name} <b>${n}</b></button>`;
   }).join('');
 }
-const maskEmail = (e) => { if (!e) return '—'; const [n, d] = e.split('@'); if (!d) return e; return n.slice(0, 2) + '***@' + d; };
 function renderMembers() {
   const fn = SEGS.find(([n]) => n === segFilter)[1];
   const rows = data.members.filter(fn);
   $('member-rows').innerHTML = rows.map((m) => `
     <tr>
       <td>${(m.joined_at || '').slice(0, 10)}</td>
-      <td>${maskEmail(m.email)}</td>
+      <td>${m.email || '—'}</td>
       <td>${m.spicy_level != null ? '★'.repeat(m.spicy_level) : '—'}</td>
       <td>${m.flavor_tags.map((t) => `<span class="tag">${t}</span>`).join('') || '—'}</td>
       <td>${m.situation_tags.map((t) => `<span class="tag">${t}</span>`).join('') || '—'}</td>
