@@ -332,6 +332,7 @@
     .build-tag { opacity:.55; }
     .footer-stats { display:flex; gap:14px; flex-wrap:wrap; font-size:13px; color:var(--muted); }
     .footer-stats b { font-weight:600; color:var(--text); }
+    .footer-stats .footer-note { color:var(--muted); font-size:11px; }
     @media (max-width:640px) {
       .layout { display:block; flex:none; }
       #map { height:100vh; min-height:0; }
@@ -433,6 +434,8 @@
       <span>회원수 <b id="f-members">—</b></span>
       <span>오늘방문자 <b id="f-today">—</b></span>
       <span>누적방문자 <b id="f-total">—</b></span>
+      <span class="footer-note">동일 IP는 하루 1회만 집계됩니다</span>
+      <span class="footer-note"><a href="admin.html" style="color:var(--muted);text-decoration:none;">관리자</a></span>
     </div>
     <div class="footer-contact">호룡리싱앤리얼리티 &nbsp;·&nbsp; 오재호 010.4353.6501 &nbsp;·&nbsp; conoc@naver.com
       <!-- 빌드 태그: 브라우저가 옛 파일을 캐시하고 있는지 한눈에 확인하는 용도. 배포마다 올린다. -->
@@ -1847,9 +1850,9 @@
         { key: '항공영상', label: '위성지도', thumb: THUMB('Satellite', 'jpeg') },
         { key: '항공+라벨', label: '위성+라벨', thumb: `${THUMB('Hybrid', 'png')}), url(${THUMB('Satellite', 'jpeg')}` },
         // OSM 은 V-World 장애 시 자동 대체용으로만 쓰이던 레이어인데, 수동으로도
-        // 고를 수 있게 넷째 선택지로 노출한다. 썸네일은 위 V-World 것과 같은 z/x/y
-        // 타일(둘 다 WebMercator XYZ) 이라 같은 지역이 나온다.
-        { key: 'OSM (대체)', label: 'OSM', thumb: 'https://tile.openstreetmap.org/15/12688/27942.png' },
+        // 고를 수 있게 넷째 선택지로 노출한다. 같은 지역(z15 서울)을 보여주되
+        // V-World는 {z}/{y}/{x}, OSM은 {z}/{x}/{y} 순서라 OSM 좌표는 뒤집어 쓴다.
+        { key: 'OSM (대체)', label: 'OSM', thumb: 'https://tile.openstreetmap.org/15/27942/12688.png' },
       ];
       const bmPicker = L.control({ position: 'topleft' });
       bmPicker.onAdd = () => {
@@ -3568,8 +3571,9 @@
     });
 
     // ── 푸터 통계 ──
-    // 회원수 = member_count() RPC(security definer, 개인정보 미노출), 방문자 = visits 테이블.
-    // visits 테이블이 아직 없으면(스키마 미실행) 조용히 넘어가고 '—'로 남는다.
+    // 회원수 = member_count() RPC(security definer, 개인정보 미노출),
+    // 방문자 = visit-count Edge Function(같은 IP 하루 1회 집계, x-forwarded-for 사용).
+    // Edge Function 미배포/미설정 시 조용히 넘어가고 '—'로 남는다.
     async function loadFooterStats() {
       const set = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.textContent = v.toLocaleString(); };
       const s = await ensureSb();
@@ -3579,14 +3583,9 @@
         if (!mErr) set('f-members', Number(m));
       } catch (e) {}
       try {
-        await s.from('visits').insert({ page: 'land' });
-        const today = new Date().toISOString().slice(0, 10);
-        const [tRes, totRes] = await Promise.allSettled([
-          s.from('visits').select('*', { count: 'exact', head: true }).gte('created_at', today),
-          s.from('visits').select('*', { count: 'exact', head: true }),
-        ]);
-        set('f-today', tRes.status === 'fulfilled' ? tRes.value.count : null);
-        set('f-total', totRes.status === 'fulfilled' ? totRes.value.count : null);
+        const v = await (await fetch(SUPABASE_URL + '/functions/v1/visit-count?page=land')).json();
+        set('f-today', v.today);
+        set('f-total', v.total);
       } catch (e) {}
     }
 
