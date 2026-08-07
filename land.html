@@ -172,6 +172,7 @@
        jbCtrl 쪽에 disableScrollPropagation 을 반드시 함께 걸어야 한다. */
     .leaflet-top.leaflet-left { max-height:100%; display:flex; flex-direction:column; }
     .lc { background:var(--card); border:1px solid var(--line); border-radius:10px; box-shadow:var(--c-shadow); font-size:14px; color:var(--text); padding:11px 13px; line-height:1.7; max-width:232px; min-height:0; max-height:calc(100vh - 240px); overflow-y:auto; overscroll-behavior:contain; }
+    .lc-rp { width:190px; min-width:150px; max-width:380px; resize:both; overflow:auto; }
     .lc::-webkit-scrollbar { width:5px; background-color:var(--line); border-radius:2.5px; }
     .lc::-webkit-scrollbar-thumb { border-radius:2.5px; background-color:#c1c1c1; background-clip:padding-box; }
     .lc-title { font-weight:700; font-size:14px; margin-bottom:7px; color:var(--text); letter-spacing:-.1px; }
@@ -980,19 +981,21 @@
       const rpFilterCtrl = L.control({ position: 'topleft' });
       rpFilterCtrl.onAdd = () => {
         const div = L.DomUtil.create('div');
-        div.className = 'lc';
+        div.className = 'lc lc-rp';
         div.innerHTML = '<div class="lc-title">실거래가 필터</div>'
           + '<label style="display:block;margin-bottom:6px;">실거래가 <select id="rp-price" style="font:inherit;font-size:13px;"><option value="all">전체</option><option value="u10">10억 이하</option><option value="10_20">10~20억</option><option value="20_30">20~30억</option><option value="o30">30억+</option></select></label>'
           + '<label style="display:block;">건축년도 <select id="rp-age" style="font:inherit;font-size:13px;"><option value="all">전체</option><option value="new">2015~ 신축</option><option value="mid">2000~2014</option><option value="old">2000 이전</option></select></label>';
         L.DomEvent.disableClickPropagation(div);
         return div;
       };
-      const rpLegend = L.control({ position: 'bottomright' });
+      const rpLegend = L.control({ position: 'topleft' });
       rpLegend.onAdd = () => {
         const div = L.DomUtil.create('div');
-        div.className = 'lc';
+        div.className = 'lc lc-rp';
         const row = (c, t) => `<div><span class="lc-dot" style="background:${c};"></span>${t}</div>`;
         div.innerHTML = '<div class="lc-title">건축년도 (노후도)</div>' + row('#2f9e44', '신축 2015~') + row('#94d82d', '2005~2014') + row('#fab005', '1995~2004') + row('#fd7e14', '1985~1994') + row('#e03131', '노후 ~1984') + row('#868e96', '미상');
+        // 코너 드래그로 크기 조절할 때 mousedown이 지도까지 전파돼 지도가 함께 팬되는 것 방지
+        L.DomEvent.disableClickPropagation(div);
         return div;
       };
       // 가격·건축년도 필터와 노후도 범례는 아파트/연립다세대 두 레이어가 공용으로 쓴다.
@@ -1730,7 +1733,14 @@
             midCbs.push(midCb);
 
             if (!hasSubs) {
-              midCb.onchange = () => { midCb.checked ? mid.layer.addTo(map) : map.removeLayer(mid.layer); syncBig(); };
+              midCb.onchange = () => {
+                // Leaflet의 overlayadd/overlayremove 는 기본 레이어 컨트롤(L.Control.Layers)이
+                // 있을 때만 발생한다. 커스텀 패널로 교체한 뒤로 이 이벤트가 안 불려
+                // 실거래·정비사업 등 레이어가 빈 채로 남는 버그가 있었다 — 직접 fire 해준다.
+                if (midCb.checked) { mid.layer.addTo(map); map.fire('overlayadd', { layer: mid.layer }); }
+                else { map.removeLayer(mid.layer); map.fire('overlayremove', { layer: mid.layer }); }
+                syncBig();
+              };
               return;
             }
             const subBox = L.DomUtil.create('div', 'lp-subs', row);

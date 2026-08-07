@@ -12,6 +12,33 @@
 
 ---
 
+## 2026-08-07 (5) — opencode (실거래·정비사업 레이어 렌더 버그 수정 + 전용면적 검증 + 범례 개선)
+
+> 커밋·push 완료. 이어받는 세션은 **"다음 세션 확인할 것"** 만 보면 된다.
+
+### 한 일 (전부 실측 검증 후 확정)
+1. **실거래·정비사업 레이어 마커 렌더 버그 원인 규명·수정** (핵심, TROUBLESHOOTING §3 신규 행):
+   - 증상: 실거래/정비사업 체크박스를 켜도 클러스터가 전혀 안 그려짐. 실서버(conoc612-a11y.github.io)에서도 재현 — 프로덕션 버그.
+   - 원인: Leaflet 1.9 에서 `overlayadd`/`overlayremove` 는 **`L.Control.Layers` 가 있을 때만** 발생. 커스텀 3단 패널이 기본 컨트롤을 대체(bd5bb8e)한 뒤로 `map.on('overlayadd')` 에 묶인 `rpBuild()`/`jbBuild()`/`showPriceFilter()` 가 영원히 불리지 않음.
+   - 진단 경로: `layer-check.mjs`(데이터 9,030건 로드 OK + 클러스터 0) → `probe-events.mjs`(`layeradd` 는 뜨고 `overlayadd` 는 안 뜸) → leaflet-1.9.4.js 에서 `overlayadd` 출현이 Control.Layers 한 곳뿐임을 grep 으로 확인.
+   - 수정 (land.html ~1733 `midCb.onchange`): 체크/해제 시 `addTo`/`removeLayer` 후 **직접 `map.fire('overlayadd'/'overlayremove', { layer })`**. 기존 overlayadd 핸들러 배선은 그대로 동작.
+   - 검증: 로컬 8798 서버에서 실거래 클러스터 304, 정비사업 343건 로드·렌더, 실거래가 필터 컨트롤·건축년도 단계 바 표시 확인.
+2. **실거래 팝업 전용면적 라벨 최종 검증** (`rp-popup-check.mjs`): "광화문스페이스본(101동~105동)" area 126.34 → 실제 팝업 DOM 에 "전용 126.34㎡" 렌더 확인. (참고: `m.bindPopup(m._pop())` 후 `openPopup()` 을 해야 DOM 이 열림)
+3. **건축년도(노후도) 범례 → 실거래가 필터 아래(topleft)로 이동** + **좌우 폭 통일(190px)** + **코너 드래그 크기조절**(`.lc-rp { width:190px; min-width:150px; max-width:380px; resize:both; overflow:auto }`).
+   - 크기조절 중 지도가 함께 팬되던 버그: 범례에 `L.DomEvent.disableClickPropagation(div)` 가 없어 mousedown 이 지도로 전파 → 추가로 해결. CDP Input.dispatchMouseEvent 로 실제 드래그 시뮬레이션 → `mapMoved:false`, 190→280px 리사이즈 정상 확인.
+
+### 커밋·배포 상태
+- 커밋 `f319151` push 완료 (실거래 팝업 전용면적·대분류 토글·스크롤바·네이버 근처 단지명·푸터 member_count RPC) — 이전 세션 작업.
+- **이번 작업 커밋**: land.html 만, overlayadd fix + 범례 개선 포함. push 완료. GitHub Pages 빌드가 `built` 되는지 확인할 것.
+- 로컬 검증 서버: `%TEMP%\opencode\serve-matjip.mjs` 포트 8798 (실행 중일 수 있음 — 안 뜨면 재기동).
+
+### ⚠️ 다음 세션 확인할 것
+- GitHub Pages 빌드가 `built` 되고 라이브 land.html 에서 실거래/정비사업 레이어 체크 시 마커가 실제로 그려지는지 (실측: 배포 URL에서 직접 확인).
+- Supabase 액세스 토큰(`sbp_86b17faf...`)은 대시보드에서 **Revoke 권고** — 새로 발급 후 `$env:SUPABASE_ACCESS_TOKEN` 으로만 사용.
+- 검증 스크립트는 `%TEMP%\opencode\` 에 보존: `live-check.mjs`(로컬 8798), `rp-popup-check.mjs`, `drag-check.mjs`, `legend-order-check.mjs`, `width-check.mjs`, `resize-check.mjs`, `probe-events.mjs`.
+
+---
+
 ## 2026-08-07 (4) — opencode (사업자등록증 조회 메뉴)
 
 > 커밋·배포·실검증 완료. 이어받는 세션은 **"다음 세션 확인할 것"** 만 보면 된다.
