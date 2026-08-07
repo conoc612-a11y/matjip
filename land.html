@@ -745,9 +745,16 @@
       });
       function applyTojiZoom() { if (map.hasLayer(tojiLayer)) tojiLayer.setStyle(tojiStyle()); }
       map.on('zoomend', applyTojiZoom);
-      map.on('overlayadd', (e) => { if (e.layer === tojiLayer) applyTojiZoom(); });
+      // 2.5MB 지오JSON이라 시작 시 로드를 피하고, 레이어 첫 활성화(overlayadd) 때만 1회 fetch.
       // ?v= 는 캐시 무효화용 — 데이터를 갈아끼울 때마다 올린다(정비사업 json 과 같은 방식).
-      fetch('toji_heoga.geojson?v=2').then((r) => r.json()).then((gj) => { tojiLayer.addData(gj); applyTojiZoom(); }).catch(() => {});
+      let _tojiLoaded = false;
+      map.on('overlayadd', (e) => {
+        if (e.layer !== tojiLayer) return;
+        applyTojiZoom();
+        if (_tojiLoaded) return;
+        _tojiLoaded = true;
+        fetch('toji_heoga.geojson?v=2').then((r) => r.json()).then((gj) => { tojiLayer.addData(gj); applyTojiZoom(); }).catch(() => {});
+      });
 
       // ── 아파트 실거래가·노후도 (서울+경기 9천여 단지) : 필터 + 범례 + 카드 팝업 ──
       const realpriceCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 60 });
@@ -1188,7 +1195,7 @@
           });
         }, 60);
         if (jbRows) return;
-        Promise.all([fetch('redevelop_seoul.json?v=4').then((r) => r.json()), fetch('redevelop_polygons.json?v=2').then((r) => r.json()).catch(() => ({}))]).then(([rows, polys]) => { jbRows = rows; jbPolys = polys; jbBuild(); }).catch(() => {});
+        Promise.all([fetch('redevelop_seoul.json?v=4').then((r) => r.json()), fetch('redevelop_polygons.json?v=2').then((r) => r.json()).catch(() => ({}))]).then(([rows, polys]) => { jbRows = rows; jbPolys = polys; _jbRowsGlobal = rows; jbBuild(); }).catch(() => {});
       });
       map.on('overlayremove', (e) => { if (e.layer === jbCluster) { map.removeControl(jbCtrl); map.removeLayer(jbPolyLayer); jbStageBar.style.display = 'none'; } });
       // 정비구역 폴리곤 뷰포트 갱신 (debounce) — jbPolyLayer/jbBuild 는 이 함수 스코프 변수라 여기서 등록해야 한다.
