@@ -234,6 +234,7 @@ console.log('blocks:',i,'fails:',f);
 | VWORLD / KAKAO_JS / NAVER_MAPS / ODSAY | 프론트 허용 | 도메인 잠금이 방어 수단. 콘솔에 도메인 등록 필수 |
 | **ITS_CCTV_KEY** | **프론트 허용(정책 변경)** | 서버 경유 불가(6-3). 남용 시 its.go.kr 재발급 |
 | MOLIT / NAVER_CLIENT_SECRET / CHUNGAK / NTS | **서버 전용** | Supabase Edge Function env 에만. HTML 금지 |
+| ADMIN_PASSWORD / ADMIN_EMAIL / ADMIN_BACKUP_EMAIL / RESEND_API_KEY / ADMIN_MGMT_TOKEN | **서버 전용** | 관리자 인증·메일용. HTML·DB에 두지 말 것. ADMIN_MGMT_TOKEN 은 Edge Function 이 비밀번호를 바꿀 때 사용(11-3) |
 | DGK | 로컬 도구 전용 | `tools/collect_realprice.js` 가 env 로 읽음 |
 | EXCHANGE_RATE / LOAN_RATE / INT_RATE | 서버 전용 | `eximbank-proxy` |
 | SUPABASE_ACCESS_TOKEN | 환경변수 임시 | `$env:SUPABASE_ACCESS_TOKEN='...'` 로 세션에만. 파일·리포 저장 금지. **채팅에 노출됐으면 대시보드에서 즉시 Revoke** (https://supabase.com/dashboard/account/tokens)
@@ -242,7 +243,52 @@ console.log('blocks:',i,'fails:',f);
 
 ---
 
-## 10. 자주 쓰는 명령
+## 11. 관리자 모드 (로그인·시크릿·메일) — 2026-08-07 실측
+
+### 11-1. "관리자 비밀번호가 다르다" — 비밀번호는 맞는데 로그인 거부
+- 서버 env secret(ADMIN_PASSWORD)과 정확히 일치하는 비밀번호를 넣어도 "이메일 또는 비밀번호가 올바르지 않습니다."가 나올 수 있다.
+- 원인 ①: **오타/복사 오류** (대소문자, 앞뒤 공백). 원인 ②: **IP 잠금** — `admin-login` 은 IP당 15분 내 5회 실패 시 15분 차단(429 대신 401과 같은 문구 아님, 단 로그인 실패 메시지도 401).
+- **판별법(검증)**: 서버에서 직접
+  ```bash
+  Invoke-RestMethod -Uri 'https://bhgijvaxxjnocgfnaaeu.supabase.co/functions/v1/admin-login' -Method POST -ContentType 'application/json' -Body '{"email":"conoc@naver.com","password":"<비밀번호>"}'
+  ```
+  가 200 + token 을 주면 비밀번호는 정상. 브라우저 입력 문제다.
+- `admin-login` 검증 방식: 이메일은 **소문자 정규화 후 상수시간 비교**, 비밀번호는 **SHA-256 다이제스트 XOR 상수시간 비교**.
+
+### 11-2. Supabase CLI `secrets set` 함정
+- **이름이 `SUPABASE_`로 시작하는 secret은 조용히 건너뛴다**: `npx -y supabase secrets set SUPABASE_MGMT_TOKEN=...` → "No arguments found" / "Env name cannot start with SUPABASE_, skipping". → **이름을 바꿔서** 넣는다(예: `ADMIN_MGMT_TOKEN`).
+- 값에 `=`, `!`, `$`, `#` 가 있어도 `secrets set 'NAME=value'`(작은따옴표)는 정상 동작(실측: `!@#$%^&*()...`).
+- `--env-file` 로도 설정 가능.
+
+### 11-3. Management API로 env secret 갱신 (Edge Function 내부에서 비밀번호 변경)
+- **PUT `/v1/projects/{ref}/secrets` 는 404**("Cannot PUT"). **POST** 로 보낸다.
+- POST body 는 **raw array** 여야 한다: `[{"name":"ADMIN_PASSWORD","value":"..."}]` — `{"secrets":[...]}` 로 감싸면 "expected array, received object" 400.
+- 삭제도 **raw array**: `DELETE ... -Body '["NAME"]'`.
+- **secret 변경은 Edge Function 재배포 없이 즉시 반영**된다(실측: Management API로 ADMIN_PASSWORD 교체 → 3~5초 후 admin-login 이 새 비밀번호 인식). `admin-apply-reset` 이 이 메커니즘으로 비밀번호를 바꾼다.
+
+### 11-4. Supabase Auth admin API는 anon 키로 호출 불가
+- `POST /auth/v1/admin/users` 등 admin 엔드포인트는 **apikey=service_role 키**가 필요. anon 키로는 "No API key found".
+- 테스트는 **anon 키로 실제 signup**을 만들어 검증한다:
+  ```bash
+  Invoke-RestMethod -Uri 'https://<ref>.supabase.co/auth/v1/signup' -Headers @{apikey='<anon>'...} -Body '{"email":"...","password":"...","data":{"name":"..."}}'
+  ```
+- 회원 삭제(`admin.auth.admin.deleteUser`)는 **auth.users 삭제 → FK `on delete cascade` 로 profiles/taste_profiles/saved_restaurants/feedbacks/visits 자동 삭제**. 삭제 검증은 같은 이메일로 로그인 시 400 거부로 확인.
+
+### 11-5. Resend 무료 모드는 "가입자 본인 이메일"로만 발송 가능
+- Resend 계정을 conoc612@gmail.com으로 가입했다면, 무료 모드에서 **그 주소로만** 테스트 발송된다. 다른 주소(conoc@naver.com)를 `to` 에 넣으면 **배열 전체가 403**:
+  `"You can only send testing emails to your own email address (conoc612@gmail.com). To send emails to other recipients, please verify a domain at resend.com/domains..."`
+- 즉 메인·백업을 한 번에 보내려다 **둘 다 실패(502)** 한다. 도메인 인증 전까지는 **백업(본인 주소)만 `to` 에 넣는다**.
+- 메인(conoc@naver.com) 발송을 추가하려면 resend.com/domains 에서 **소유 도메인 DNS(DKIM TXT) 인증** 후 `RESEND_FROM` 을 `noreply@<도메인>` 으로 바꾸고 `to` 에 메인을 추가한다 (`admin-request-reset` 에 `// ponytail: domain needed` 표시).
+- 발송 테스트: `POST https://api.resend.com/emails`, `Authorization: Bearer re_...`, body `{from, to:[...], subject, html}`.
+
+### 11-6. 관리자 비밀번호 변경 흐름 (이메일 인증)
+- `admin-request-reset`: 토큰(UUID) 생성 → DB `admin_reset_tokens` 에 **SHA-256 해시만** 저장(30분 만료) → 백업 이메일로 링크(`admin.html?reset=<토큰>`) 발송. **활성 토큰 1개만 허용**(재요청 시 429, 메일 폭탄 방지). Resend 실패 시 토큰 롤백.
+- `admin-apply-reset`: 토큰 해시 조회 → 만료/사용 여부 확인 → Management API로 ADMIN_PASSWORD secret 교체(11-3) → `used_at` 표시. 새 비밀번호는 6자 이상.
+- 인증 메일 링크는 GitHub Pages 정적 주소 `?reset=` 쿼리로 열리고, admin.html 이 초기화 시 토큰을 읽어 새 비밀번호 화면을 띄운다.
+
+---
+
+## 12. 자주 쓰는 명령 (관리자 관련 추가)
 
 ```bash
 # 로컬 서버
@@ -258,6 +304,19 @@ $env:SUPABASE_ACCESS_TOKEN='<sbp_...>'
 npx -y supabase functions deploy molit-proxy   --project-ref bhgijvaxxjnocgfnaaeu --no-verify-jwt
 npx -y supabase functions deploy chungak-proxy --project-ref bhgijvaxxjnocgfnaaeu --no-verify-jwt
 npx -y supabase functions deploy bizno-proxy   --project-ref bhgijvaxxjnocgfnaaeu --no-verify-jwt
+# 관리자 계열
+npx -y supabase functions deploy admin-login          --project-ref bhgijvaxxjnocgfnaaeu --no-verify-jwt
+npx -y supabase functions deploy admin-data           --project-ref bhgijvaxxjnocgfnaaeu --no-verify-jwt
+npx -y supabase functions deploy admin-delete-user    --project-ref bhgijvaxxjnocgfnaaeu --no-verify-jwt
+npx -y supabase functions deploy admin-request-reset  --project-ref bhgijvaxxjnocgfnaaeu --no-verify-jwt
+npx -y supabase functions deploy admin-apply-reset    --project-ref bhgijvaxxjnocgfnaaeu --no-verify-jwt
+npx -y supabase functions deploy delete-account       --project-ref bhgijvaxxjnocgfnaaeu --no-verify-jwt
+
+# 관리자 시크릿
+npx -y supabase secrets set "ADMIN_PASSWORD=<pw>"   --project-ref bhgijvaxxjnocgfnaaeu
+npx -y supabase secrets set "ADMIN_EMAIL=conoc@naver.com" "ADMIN_BACKUP_EMAIL=conoc612@gmail.com" --project-ref bhgijvaxxjnocgfnaaeu
+npx -y supabase secrets set "RESEND_API_KEY=re_..." --project-ref bhgijvaxxjnocgfnaaeu
+npx -y supabase secrets set --env-file <file> ADMIN_MGMT_TOKEN=... --project-ref bhgijvaxxjnocgfnaaeu   # SUPABASE_ 시작 이름은 CLI가 skip(11-2)
 
 # 시크릿 설정/확인
 npx -y supabase secrets set "CHUNGAK_API_KEY=<키>" --project-ref bhgijvaxxjnocgfnaaeu
