@@ -45,6 +45,7 @@ Static HTML/JS Seoul restaurant finder. No build tools, no bundler, no framework
 - **Local dev**: open `index.html` directly in browser works, but GPS, V-World tiles, and Supabase Auth require HTTPS or localhost. Use a local server if testing those features.
 - **No build, lint, typecheck, or test commands exist.** There is no CI.
 - **Supabase anon key is embedded** in HTML files, `tools/recommend.js`, and `mcp/server.js`. It is a publishable key — security is handled by RLS, not by hiding the key.
+- **land.html 은 커스텀 레이어 패널을 쓴다** (`L.Control.Layers` 없음). Leaflet 1.9 는 `overlayadd`/`overlayremove` 를 기본 컨트롤이 있을 때만 fire 하므로, 레이어를 켜고 끄는 코드는 `map.fire('overlayadd'/'overlayremove', { layer })` 를 직접 호출해야 한다 (TROUBLESHOOTING §3). 커스텀 컨트롤에는 `L.DomEvent.disableClickPropagation` 도 필수.
 - **API keys live in `keys.env`** (gitignored). V-World/Kakao/Naver/ODsay frontend keys are domain-locked publishable keys — they must stay in HTML (tiles/SDK/JSONP need them in URL), keep their domains registered. data.go.kr serviceKeys and Naver client secret are **server-only** — route through Supabase Edge Functions (`molit-proxy`, `naver-search`); never hardcode them into HTML (see `land.html` SUBSCRIPTION_API_KEY guard).
 
 ## Recommendation system

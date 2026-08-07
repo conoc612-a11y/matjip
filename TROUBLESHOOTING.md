@@ -71,8 +71,11 @@ V-World/카카오가 필요한 검증은 **배포본에서** 해야 한다.
 | 대분류 순서가 뒤섞임 | 헤더를 "첫 항목 앞에 삽입"하면 순서가 **선언 순서**를 따라감 | `DocumentFragment` 로 정의 순서대로 재배치 |
 | 3단(대>중>소) 불가 | 기본 컨트롤은 평평한 목록만 지원 | 전용 패널(`.lp` + `LAYER_TREE`)을 따로 만듦 |
 | 부분선택 체크박스를 누르면 전체 해제됨 | 브라우저 기본 동작(indeterminate + checked → unchecked) | 직전 indeterminate 여부를 `dataset` 에 기억했다가 onchange 에서 '전체 선택'으로 뒤집기 |
+| **실거래·정비사업 등 레이어를 켜도 마커/클러스터가 전혀 안 그려짐** | Leaflet 1.9 는 `overlayadd`/`overlayremove` 를 **`L.Control.Layers` 가 있을 때만** fire 한다(커스텀 패널이 기본 컨트롤을 대체하자 `rpBuild()`/`jbBuild()`/`showPriceFilter()` 등 `map.on('overlayadd')` 핸들러가 영영 안 불림). "지도가 그려지는데"처럼 보이던 건 UPIS 타일을 정비사업 마커로 오인한 것 | 체크박스 `onchange` 에서 `addTo`/`removeLayer` 후 **직접 `map.fire('overlayadd', { layer })` 호출** (land.html ~1733 `midCb.onchange`) |
 
 **3단 패널 구현 시 주의**: 중분류 레이어를 만드는 헬퍼 안에서 선택 집합(`mid._on`)을 초기화하면 **방금 켠 소분류 id 가 지워져** 레이어가 안 뜬다. 초기화는 패널 생성 시 한 번만.
+
+**커스텀 레이어 컨트롤 재사용 시 체크리스트**: ① `L.DomEvent.disableClickPropagation(div)` — 없으면 컨트롤에서 마우스 드래그(예: `resize:both` 코너) 시 mousedown 이 지도로 전파돼 **지도가 함께 팬**된다(실측, 2026-08-07). ② 기본 컨트롤 대체 시 위 overlayadd 문제. ③ 스크롤이 지도 줌을 타면 `disableScrollPropagation`.
 
 ---
 
