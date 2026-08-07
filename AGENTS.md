@@ -7,6 +7,14 @@
 > 3. [`HANDOFF.md`](HANDOFF.md) — 직전 세션이 어디까지 했고 무엇이 남았는지
 > 4. `git log -5`, `git status` 로 교차 확인
 
+## 작업 규칙 (모든 AI 공통 — 사용자 지시)
+
+- **응답은 반드시 존댓말**로 한다.
+- **주장에는 출처와 근거를 명시**한다: 실측 값·파일 경로·줄 번호·커밋 해시·공식 문서 URL. "~한 것 같다"는 추측일 뿐 근거가 아니다. 검증 없이 확정으로 말하지 말 것.
+- **버그/오류/함정은 [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md)에 기록**한다: 증상 → 원인 → 해결 → 검증 순으로, 실측 근거를 붙여서. 수정 커밋과 함께 문서화한다.
+- **세션을 끝낼 때마다 [`HANDOFF.md`](HANDOFF.md)를 갱신**한다: 한 일(근거 포함)·커밋/배포 상태·"다음 세션 확인할 것". 다른 AI(Claude/opencode 등)가 바로 이어갈 수 있어야 한다.
+- **커밋·push·Edge Function 배포는 반드시 사용자 동의 후 진행**한다. 로컬 편집까지만 하고, 배포 단계에서 먼저 확인을 구한다.
+
 ## What this is
 
 Static HTML/JS Seoul restaurant finder. No build tools, no bundler, no framework. Supabase backend (Auth + Postgres + RLS). Deployed on GitHub Pages.
