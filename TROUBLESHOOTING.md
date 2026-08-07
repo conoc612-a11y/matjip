@@ -243,6 +243,16 @@ console.log('blocks:',i,'fails:',f);
 
 ---
 
+## 10. main.html — 지도/패널 flex 라인 높이가 콘텐츠 높이에 부풀려진다 (2026-08-08 실측)
+
+- **증상**: 데스크톱에서 `#map` offsetHeight 가 8203px 로 나온다(컨테이너는 617px). 추천목록 패널도 8203px → `.panel` 에 스크롤바가 안 생겨 **목록 하단이 잘려 못 봄**. 첫 로드에서 마커/클러스터가 안 보이기도 함(렌더 타이밍 영향).
+- **원인**: `.layout { display:flex; flex-wrap:wrap; flex:8.5; min-height:0; overflow:hidden }` 의 **flex 라인 높이 = 항목들의 콘텐츠 높이 중 최댓값**. 컨테이너 높이가 정해져 있어도 flex 는 라인을 콘텐츠 기준으로 잡고 넘치면 자르기만 한다. 추천목록(50장 카드, ~8203px)이 비동기 렌더되면서 라인이 8203으로 부풀고, `align-self:stretch` 때문에 `#map`(Naver는 `getSize`=617로 정상 계산)과 `.panel` 둘 다 8203으로 늘어남. `.panel` 은 `overflow-y:auto` 여도 **항목이 라인 크기만큼 이미 커져 있어 스크롤이 안 생김**.
+- **해결**: `main.html` — `#map` 과 `.panel` 에 `max-height:100%` 추가 → 라인 최대치가 컨테이너(617px)로 고정, 패널은 내부 스크롤. 모바일 미디어쿼리는 자체 `height:100vh`/`max-height:82vh` 라 영향 없음 (커밋 `34d31d8`).
+- **검증**: 실배포 페이지에 CSS 주입 → mapH 8203→617, `p.scrollHeight > p.clientHeight`(scrollable=true). 지도 bounds/zoom/타일 정상.
+- 참고: `#map` 높이는 `map.getBounds()`·`getSize()`로 오판하지 말 것 — Naver 내부 크기는 항상 정상(617)이고, 깨진 건 **컨테이너**다.
+
+---
+
 ## 11. 관리자 모드 (로그인·시크릿·메일) — 2026-08-07 실측
 
 ### 11-1. "관리자 비밀번호가 다르다" — 비밀번호는 맞는데 로그인 거부
