@@ -642,20 +642,17 @@ async function loadAllRestaurants() {
   }
   return all;
 }
-// 푸터 통계 3종(head count) — 방문자는 visits 테이블(페이지 로드마다 1건 기록)로 집계한다.
+// 푸터 통계 — 방문자는 visit-count Edge Function(같은 IP 하루 1회 집계)으로 가져온다.
 // 회원수는 member_count() RPC(security definer, 개인정보 미노출)로 집계.
-// visits 테이블이 아직 없으면(스키마 미실행) 조용히 넘어가고 '—'로 남는다.
+// Edge Function 미배포/미설정 시 조용히 넘어가고 '—'로 남는다.
 async function loadFooterStats() {
-  const today = new Date().toISOString().slice(0, 10);
-  sb.from('visits').insert({ page: 'main' }).then(() => {}, () => {});
-  const [mRes, tRes, totRes] = await Promise.allSettled([
+  const [mRes, vRes] = await Promise.allSettled([
     sb.rpc('member_count'),
-    sb.from('visits').select('*', { count: 'exact', head: true }).gte('created_at', today),
-    sb.from('visits').select('*', { count: 'exact', head: true }),
+    fetch(`${SUPABASE_URL}/functions/v1/visit-count?page=main`).then((r) => r.json()),
   ]);
   const el = document.getElementById('f-members'); if (el && mRes.status === 'fulfilled' && !mRes.value.error && mRes.value.data != null) el.textContent = Number(mRes.value.data).toLocaleString();
-  const et = document.getElementById('f-today'); if (et && tRes.status === 'fulfilled' && tRes.value.count != null) et.textContent = tRes.value.count.toLocaleString();
-  const etot = document.getElementById('f-total'); if (etot && totRes.status === 'fulfilled' && totRes.value.count != null) etot.textContent = totRes.value.count.toLocaleString();
+  const et = document.getElementById('f-today'); if (et && vRes.status === 'fulfilled' && vRes.value.today != null) et.textContent = Number(vRes.value.today).toLocaleString();
+  const etot = document.getElementById('f-total'); if (etot && vRes.status === 'fulfilled' && vRes.value.total != null) etot.textContent = Number(vRes.value.total).toLocaleString();
 }
 async function loadAll() {
   $('rec-list').innerHTML = Array(4).fill('<div class="skel-card"><div class="skel skel-h"></div><div class="skel skel-m"></div><div class="skel skel-s"></div></div>').join('');

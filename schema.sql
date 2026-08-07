@@ -97,17 +97,24 @@ drop policy if exists "own feedback insert" on feedbacks;
 create policy "own feedback read"   on feedbacks for select to authenticated using (auth.uid() = user_id);
 create policy "own feedback insert" on feedbacks for insert to authenticated with check (auth.uid() = user_id);
 
--- ── 방문자 기록 (페이지 로드마다 1건씩. 로그인 없이도 집계되도록 anon 허용) ──
+-- ── 방문자 기록 (같은 IP는 하루 1건만. 로그인 없이도 집계되도록 anon 허용) ──
+-- visit-count Edge Function 이 x-forwarded-for 로 IP 를 읽어 upsert 한다.
 create table if not exists visits (
   id bigint generated always as identity primary key,
   created_at timestamptz not null default now(),
-  page text not null default 'land'
+  page text not null default 'land',
+  ip text,
+  visit_date date
 );
+-- 기존 DB(테이블 생성 이후)에 컬럼/인덱스를 추가하는 마이그레이션:
+alter table visits add column if not exists ip text;
+alter table visits add column if not exists visit_date date;
+create unique index if not exists visits_ip_date_uniq on visits (ip, visit_date);
 alter table visits enable row level security;
+-- 기록·집계는 전부 visit-count Edge Function(service role)이 담당하므로
+-- anon 직접 INSERT/SELECT는 막아 같은 IP 당일 중복 기록으로 숫자가 부풀리는 것을 차단한다.
 drop policy if exists "visits anon insert" on visits;
 drop policy if exists "visits anon select" on visits;
-create policy "visits anon insert" on visits for insert with check (true);
-create policy "visits anon select" on visits for select using (true);
 
 -- ── 회원수 (푸터 통계) ──
 -- taste_profiles는 RLS가 authenticated 전용이라 anon SELECT가 차단된다(회원수=0으로 보임).
@@ -146,3 +153,22 @@ from (values
   ('광장시장 김밥골목',   '서울 종로구 창경궁로 88',     37.5701, 126.9997, '분식', array['김밥','로컬','간단'])
 ) as v(name, address, lat, lng, category, tags)
 where not exists (select 1 from mj_restaurants);
+
+-- ── 관리자 (admin.html) ──
+-- 비밀번호는 서버 env secret(ADMIN_PASSWORD)에만 두고 브라우저 JS·DB 어디에도 저장하지 않는다.
+-- admin-login 이 성공 시 발급하는 세션 토큰만 DB에 보관한다(토큰 원문이 아니라 SHA-256 해시).
+create table if not exists admin_sessions (
+  token_hash text primary key,
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null
+);
+-- 로그인 실패 기록 (IP당 15분 5회 시도 시 잠금. 함수 인스턴스가 재시작돼도 유지되도록 DB에 저장)
+create table if not exists admin_login_log (
+  id bigint generated always as identity primary key,
+  ip text not null,
+  attempted_at timestamptz not null default now()
+);
+alter table admin_sessions  enable row level security;
+alter table admin_login_log enable row level security;
+-- 두 표 모두 RLS 정책 없음(service role 전용) → anon·authenticated는 아예 접근 불가.
+-- 세션·실패기록은 admin Edge Function(service role)만 읽고 쓴다.

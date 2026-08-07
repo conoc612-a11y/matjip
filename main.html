@@ -103,6 +103,7 @@
     .footer-stats span { padding:0 12px; border-right:1px solid var(--line); }
     .footer-stats span:first-child { padding-left:0; }
     .footer-stats b { color:var(--accent); }
+    .footer-stats .footer-note { padding:0; border-right:0; color:var(--muted); font-size:11px; }
     .footer-contact { font-size:12px; color:var(--muted); }
     /* 모바일: 패널을 지도 위로 올라오는 하단 시트로 */
     @media (max-width:640px) {
@@ -191,6 +192,8 @@
       <span>회원수 <b id="f-members">—</b></span>
       <span>오늘방문자 <b id="f-today">—</b></span>
       <span>누적방문자 <b id="f-total">—</b></span>
+      <span class="footer-note">동일 IP는 하루 1회만 집계됩니다</span>
+      <span class="footer-note"><a href="admin.html" style="color:var(--muted);text-decoration:none;">관리자</a></span>
     </div>
     <div class="footer-contact">호룡리싱앤리얼리티 &nbsp;·&nbsp; 오재호 010.4353.6501 &nbsp;·&nbsp; conoc@naver.com</div>
   </footer>

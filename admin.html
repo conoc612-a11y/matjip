@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>관리자 모드</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root { --bg:#0f1520; --card:#1a2332; --line:#2a3564; --text:#e8eef7; --muted:#8b9bb4; --accent:#4da3ff; }
+  * { box-sizing:border-box; margin:0; }
+  body { font-family:'Malgun Gothic',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+  .wrap { max-width:1100px; margin:0 auto; padding:24px 16px 60px; }
+  h1 { font-size:22px; margin-bottom:4px; }
+  .sub { color:var(--muted); font-size:13px; margin-bottom:24px; }
+
+  /* 로그인 */
+  #login-view { max-width:360px; margin:12vh auto 0; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:28px; }
+  #login-view h2 { font-size:17px; margin-bottom:18px; }
+  #login-view input { width:100%; padding:11px 12px; border-radius:8px; border:1px solid var(--line); background:#0f1622; color:var(--text); font-size:15px; }
+  #login-view button { width:100%; margin-top:12px; padding:11px; border:0; border-radius:8px; background:var(--accent); color:#fff; font-size:15px; font-weight:600; cursor:pointer; }
+  #login-err { color:#ff7a7a; font-size:13px; margin-top:10px; min-height:18px; }
+
+  /* 대시보드 헤더 */
+  .topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; }
+  .topbar button { background:var(--card); color:var(--muted); border:1px solid var(--line); border-radius:8px; padding:7px 14px; cursor:pointer; font-size:13px; }
+  .tabs { display:flex; gap:8px; margin-bottom:16px; }
+  .tabs button { background:var(--card); color:var(--muted); border:1px solid var(--line); border-radius:8px; padding:8px 16px; cursor:pointer; font-size:14px; }
+  .tabs button.on { background:var(--accent); color:#fff; border-color:var(--accent); }
+
+  /* 카드 */
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; margin-bottom:20px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+  .card .k { color:var(--muted); font-size:12px; }
+  .card .v { font-size:24px; font-weight:700; margin-top:4px; }
+
+  /* 회원관리 */
+  .chips { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
+  .chip { background:var(--card); border:1px solid var(--line); color:var(--muted); border-radius:20px; padding:5px 12px; font-size:12px; cursor:pointer; }
+  .chip.on { border-color:var(--accent); color:var(--accent); }
+  .chip b { color:var(--text); }
+  .tablebox { background:var(--card); border:1px solid var(--line); border-radius:10px; overflow:auto; max-height:520px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { padding:9px 12px; text-align:left; border-bottom:1px solid var(--line); white-space:nowrap; }
+  th { position:sticky; top:0; background:#1e2940; color:var(--muted); font-size:12px; }
+  .tag { display:inline-block; background:#16233b; color:#8fb8ff; border-radius:4px; padding:1px 6px; font-size:11px; margin-right:3px; }
+
+  /* 차트 */
+  .charts { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:14px; }
+  .chartbox { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; }
+  .chartbox h3 { font-size:14px; color:var(--muted); margin-bottom:10px; font-weight:600; }
+  canvas { width:100% !important; }
+
+  .btn { background:var(--card); color:var(--muted); border:1px solid var(--line); border-radius:8px; padding:7px 14px; cursor:pointer; font-size:13px; }
+  .btn:hover { color:var(--text); }
+  .row { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+  .hidden { display:none !important; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <!-- 로그인 -->
+    <div id="login-view">
+      <h2>관리자 모드</h2>
+      <input type="password" id="pw" placeholder="관리자 비밀번호" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+      <button onclick="doLogin()">로그인</button>
+      <div id="login-err"></div>
+    </div>
+
+    <!-- 대시보드 -->
+    <div id="dash-view" class="hidden">
+      <div class="topbar">
+        <div>
+          <h1>관리자 모드</h1>
+          <div class="sub" id="asof"></div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn" onclick="logout()">로그아웃</button>
+        </div>
+      </div>
+
+      <div class="cards">
+        <div class="card"><div class="k">오늘 방문자</div><div class="v" id="c-today">—</div></div>
+        <div class="card"><div class="k">누적 방문자</div><div class="v" id="c-total">—</div></div>
+        <div class="card"><div class="k">총 방문자 (고유IP)</div><div class="v" id="c-ip">—</div></div>
+        <div class="card"><div class="k">총 회원</div><div class="v" id="c-member">—</div></div>
+      </div>
+
+      <div class="tabs">
+        <button id="tab-member" class="on" onclick="showTab('member')">회원관리</button>
+        <button id="tab-stat" onclick="showTab('stat')">방문자 통계</button>
+      </div>
+
+      <!-- 회원관리 -->
+      <div id="view-member">
+        <div class="row">
+          <div class="chips" id="member-chips"></div>
+          <button class="btn" onclick="exportMembers()">회원 CSV</button>
+        </div>
+        <div class="tablebox">
+          <table>
+            <thead><tr><th>가입일</th><th>이메일</th><th>매운맛</th><th>맛 취향</th><th>상황</th></tr></thead>
+            <tbody id="member-rows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 방문자 통계 -->
+      <div id="view-stat" class="hidden">
+        <div class="row">
+          <div class="sub" style="margin:0;">방문자 수는 동일 IP를 하루 1회만 집계한 값입니다.</div>
+          <button class="btn" onclick="exportStats()">통계 CSV</button>
+        </div>
+        <div class="charts">
+          <div class="chartbox"><h3>일일 방문자 (최근 30일)</h3><canvas id="ch-daily"></canvas></div>
+          <div class="chartbox"><h3>신규 가입 (최근 30일)</h3><canvas id="ch-member"></canvas></div>
+          <div class="chartbox"><h3>시간대별 방문 (최근 7일)</h3><canvas id="ch-hour"></canvas></div>
+          <div class="chartbox"><h3>요일별 방문 (최근 7일)</h3><canvas id="ch-wd"></canvas></div>
+          <div class="chartbox"><h3>페이지 분포</h3><canvas id="ch-page"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+const FN = 'https://bhgijvaxxjnocgfnaaeu.supabase.co/functions/v1';
+let token = sessionStorage.getItem('admin_token');
+let data = null;
+let charts = {};
+const ACCENT = '#4da3ff';
+
+const $ = (id) => document.getElementById(id);
+
+async function doLogin() {
+  const err = $('login-err');
+  err.textContent = '확인 중…';
+  try {
+    const r = await fetch(FN + '/admin-login', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ password: $('pw').value }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.token) { err.textContent = j.error || '로그인 실패'; return; }
+    token = j.token;
+    sessionStorage.setItem('admin_token', token);
+    await loadData();
+  } catch (e) { err.textContent = '서버 연결 실패: ' + e; }
+}
+
+async function loadData() {
+  try {
+    const r = await fetch(FN + '/admin-data', { headers: { 'Authorization': 'Bearer ' + token } });
+    if (r.status === 401) { sessionStorage.removeItem('admin_token'); token = null; location.reload(); return; }
+    const j = await r.json();
+    if (j.error) throw new Error(j.error);
+    data = j;
+    render();
+  } catch (e) { $('login-err').textContent = '데이터 조회 실패: ' + e; $('dash-view').classList.add('hidden'); $('login-view').classList.remove('hidden'); }
+}
+
+function render() {
+  $('login-view').classList.add('hidden');
+  $('dash-view').classList.remove('hidden');
+  $('asof').textContent = '집계 기준: ' + new Date().toLocaleString('ko-KR');
+  $('c-today').textContent = data.today.toLocaleString();
+  $('c-total').textContent = data.total.toLocaleString();
+  $('c-ip').textContent = data.uniqueIps.toLocaleString();
+  $('c-member').textContent = data.memberCount.toLocaleString();
+  renderChips();
+  renderMembers();
+  renderCharts();
+}
+
+function logout() { sessionStorage.removeItem('admin_token'); token = null; location.reload(); }
+function showTab(t) {
+  $('tab-member').classList.toggle('on', t === 'member');
+  $('tab-stat').classList.toggle('on', t === 'stat');
+  $('view-member').classList.toggle('hidden', t !== 'member');
+  $('view-stat').classList.toggle('hidden', t !== 'stat');
+}
+
+// ── 회원관리 ──
+let segFilter = '전체';
+const SEGS = [
+  ['전체',       (m) => true],
+  ['취향 입력',   (m) => m.spicy_level != null],
+  ['맵찔이(4~5)', (m) => m.spicy_level >= 4],
+  ['맵 약함(0~1)',(m) => m.spicy_level != null && m.spicy_level <= 1],
+  ['회식',       (m) => m.situation_tags.includes('회식')],
+  ['혼밥',       (m) => m.situation_tags.includes('혼밥')],
+  ['데이트',     (m) => m.situation_tags.includes('데이트')],
+];
+function renderChips() {
+  $('member-chips').innerHTML = SEGS.map(([name, fn]) => {
+    const n = data.members.filter(fn).length;
+    return `<button class="chip${name === segFilter ? ' on' : ''}" onclick="segFilter='${name}';renderChips();renderMembers();">${name} <b>${n}</b></button>`;
+  }).join('');
+}
+const maskEmail = (e) => { if (!e) return '—'; const [n, d] = e.split('@'); if (!d) return e; return n.slice(0, 2) + '***@' + d; };
+function renderMembers() {
+  const fn = SEGS.find(([n]) => n === segFilter)[1];
+  const rows = data.members.filter(fn);
+  $('member-rows').innerHTML = rows.map((m) => `
+    <tr>
+      <td>${(m.joined_at || '').slice(0, 10)}</td>
+      <td>${maskEmail(m.email)}</td>
+      <td>${m.spicy_level != null ? '★'.repeat(m.spicy_level) : '—'}</td>
+      <td>${m.flavor_tags.map((t) => `<span class="tag">${t}</span>`).join('') || '—'}</td>
+      <td>${m.situation_tags.map((t) => `<span class="tag">${t}</span>`).join('') || '—'}</td>
+    </tr>`).join('') || '<tr><td colspan="5" style="color:var(--muted);text-align:center;">해당 세그먼트 회원이 없습니다.</td></tr>';
+}
+
+// ── 차트 ──
+function mk(id, type, labels, values, label, extra) {
+  if (typeof Chart === 'undefined') return;
+  if (charts[id]) charts[id].destroy();
+  const isLine = type === 'line';
+  charts[id] = new Chart($(id), {
+    type,
+    data: { labels, datasets: [Object.assign({
+      label, data: values,
+      borderColor: ACCENT, backgroundColor: type === 'doughnut' ? ACCENT : isLine ? ACCENT + '33' : ACCENT,
+      fill: isLine, tension: .3, borderWidth: 2, borderJoinStyle: 'round',
+    }, extra || {})] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: type === 'doughnut', position: 'bottom' } },
+      scales: type === 'doughnut' ? {} : { y: { beginAtZero: true, ticks: { precision: 0, color: '#8b9bb4' } }, x: { ticks: { color: '#8b9bb4', maxTicksLimit: 15 } } },
+    },
+  });
+}
+function renderCharts() {
+  mk('ch-daily', 'line', data.daily.map((d) => d.d.slice(5)), data.daily.map((d) => d.c), '방문자');
+  mk('ch-member', 'line', data.memberDaily.map((d) => d.d.slice(5)), data.memberDaily.map((d) => d.c), '신규가입');
+  mk('ch-hour', 'bar', data.hourly.map((h) => h.h + '시'), data.hourly.map((h) => h.c), '방문');
+  mk('ch-wd', 'bar', ['월', '화', '수', '목', '금', '토', '일'], data.weekday.map((w) => w.c), '방문');
+  const labels = Object.keys(data.byPage).map((k) => (k === 'main' ? '맛집지도(main)' : '부동산(land)'));
+  const vals = Object.values(data.byPage);
+  mk('ch-page', 'doughnut', labels, vals, '방문', { backgroundColor: ['#4da3ff', '#7d5cff'] });
+}
+
+// ── CSV 내보내기 ──
+function download(name, text) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\uFEFF' + text], { type: 'text/csv;charset=utf-8' }));
+  a.download = name; a.click(); URL.revokeObjectURL(a.href);
+}
+const csv = (rows) => rows.map((r) => r.map((c) => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\n');
+function exportMembers() {
+  const rows = [['가입일', '이메일', '매운맛(0~5)', '맛취향', '상황']]
+    .concat(data.members.map((m) => [m.joined_at.slice(0, 10), m.email, m.spicy_level ?? '', m.flavor_tags.join(' '), m.situation_tags.join(' ')]));
+  download('회원목록_' + new Date().toISOString().slice(0, 10) + '.csv', csv(rows));
+}
+function exportStats() {
+  const d = new Date().toISOString().slice(0, 10);
+  const lines = [
+    ['지표', '값'],
+    ['오늘 방문자', data.today], ['누적 방문자', data.total], ['총 방문자(고유IP)', data.uniqueIps], ['총 회원', data.memberCount], [],
+    ['일일 방문자(최근30일)', ''],
+    ['날짜', '방문자수'],
+    ...data.daily.map((x) => [x.d, x.c]), [],
+    ['시간대별(최근7일)', ''],
+    ['시간', '방문'],
+    ...data.hourly.map((x) => [x.h + '시', x.c]), [],
+    ['요일별(최근7일)', ''],
+    ['요일', '방문'],
+    ...data.weekday.map((x, i) => [['월', '화', '수', '목', '금', '토', '일'][i], x.c]), [],
+    ['페이지', '방문'],
+    ...Object.entries(data.byPage),
+  ];
+  download('방문자통계_' + d + '.csv', csv(lines));
+}
+
+// 초기화: 토큰이 있으면 바로 대시보드
+(async () => { if (token) await loadData(); })();
+</script>
+</body>
+</html>
