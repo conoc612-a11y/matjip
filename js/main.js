@@ -643,16 +643,17 @@ async function loadAllRestaurants() {
   return all;
 }
 // 푸터 통계 3종(head count) — 방문자는 visits 테이블(페이지 로드마다 1건 기록)로 집계한다.
+// 회원수는 member_count() RPC(security definer, 개인정보 미노출)로 집계.
 // visits 테이블이 아직 없으면(스키마 미실행) 조용히 넘어가고 '—'로 남는다.
 async function loadFooterStats() {
   const today = new Date().toISOString().slice(0, 10);
   sb.from('visits').insert({ page: 'main' }).then(() => {}, () => {});
   const [mRes, tRes, totRes] = await Promise.allSettled([
-    sb.from('taste_profiles').select('*', { count: 'exact', head: true }),
+    sb.rpc('member_count'),
     sb.from('visits').select('*', { count: 'exact', head: true }).gte('created_at', today),
     sb.from('visits').select('*', { count: 'exact', head: true }),
   ]);
-  const el = document.getElementById('f-members'); if (el && mRes.status === 'fulfilled' && mRes.value.count != null) el.textContent = mRes.value.count.toLocaleString();
+  const el = document.getElementById('f-members'); if (el && mRes.status === 'fulfilled' && !mRes.value.error && mRes.value.data != null) el.textContent = Number(mRes.value.data).toLocaleString();
   const et = document.getElementById('f-today'); if (et && tRes.status === 'fulfilled' && tRes.value.count != null) et.textContent = tRes.value.count.toLocaleString();
   const etot = document.getElementById('f-total'); if (etot && totRes.status === 'fulfilled' && totRes.value.count != null) etot.textContent = totRes.value.count.toLocaleString();
 }
