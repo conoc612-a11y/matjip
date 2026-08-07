@@ -3,5 +3,6 @@ node_modules/
 keys.env
 tools/.geocache.json
 .gstack/
+.omc/
 supabase/.temp/
 _mockup_*.html
