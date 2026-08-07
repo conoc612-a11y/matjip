@@ -47,6 +47,29 @@
 - Jekyll 이 있던 유일한 이유 = **GitHub Pages 기본 동작**(`.nojekyll` 없으면 legacy 빌드가 아무 저장소나 Jekyll 로 빌드). 프론트매터가 없으니 Jekyll 은 파일을 그대로 복사만 했고, 배포 결과물은 리포와 1:1 동일.
 - Jekyll 이 유일하게 쓸모 있을 곳: 6개 HTML 페이지(index/onboarding/main/ai/land/detail)의 헤더·내비·푸터·CSS **중복 제거**(`_layouts`+`_includes`)뿐. 다만 이는 AGENTS.md 의 "No build tools" 원칙과 충돌 → **도입 보류 확정**. 중복 제거가 필요해지면 빌드 도구 없이(JS 주입 등) 처리하는 방향.
 
+## 2026-08-07 (3) — opencode (land.html 로딩 속도 최적화 — 시작 시 2.5MB 절감)
+
+> 사용자 요청: "페이지 로딩 속도 최적화, 최대한 코드 안 건드리면서." **아직 커밋 안 함** (편집만 완료, 문법 검증만 통과).
+
+### 로드 타이밍 전수 조사 결과 (재조사하지 말 것)
+- **이미 lazy**: 정비사업(`overlayadd` 시 redevelop_seoul.json + redevelop_polygons.json 10MB), 실거래가(`loadRp` — 레이어 켤 때), 빌라/단독(`_villaPromise`/`_housePromise`), Naver SDK(`ensureNaver`), Supabase(`ensureSb`), CCTV(bbox 이동 시).
+- **시작 시 로드**: Leaflet/markercluster(필수), **toji_heoga.geojson 2.5MB**(문제 — 토지거래허가구역 레이어는 기본으로 꺼져 있는데 무조건 fetch), Kakao SDK(~L501, 기본 검색엔진이 vworld 인데 무조건 로드), 헤더 날씨·환율(소량, 그대로).
+
+### 적용한 수정 (land.html, 2건)
+1. **토지거래허가구역 지오JSON lazy-load** — `fetch('toji_heoga.geojson?v=2')` 를 시작 시 실행에서 `overlayadd` 핸들러(레이어 첫 활성화 때, `_tojiLoaded` 플래그로 1회)로 이동. 시작 다운로드 **2.5MB 절감**. 기존 overlayadd 패턴(정비사업)과 동일.
+2. **정비사업 rows 중복 fetch 제거** — overlay 로드 완료 시 `_jbRowsGlobal = rows` 도 세팅해, 정비사업 레이어를 켠 뒤 검색창에 정비구역명을 치면 redevelop_seoul.json(~1MB)을 재다운로드 하지 않음. 검색→overlay 순서는 **의도적으로 안 건드림** — 검색 캐시엔 폴리곤이 없어 재사용하면 원반경 폴리곤으로 시각적 회귀가 생김(jbPolys null 허용 확인됨).
+
+### 검증
+- 인라인 스크립트 전부 `node --check` 통과 (UTF-8 명시 필수 — PS5.1 기본 인코딩이 한글을 깨뜨려 오탐 난다).
+
+### 보류 (이유와 함께 — 최대한 안 건드리는 원칙)
+- **Kakao SDK 시작 로드**: ~L501 무조건 주입. lazy로 옮기려면 `kakao.maps.services` 호출부 전부 확인이 필요해 침습적 → 이번엔 스킵. 원하면 다음에.
+- 검색→overlay 중복 fetch: 위 2번 이유로 스킵.
+
+### Next Move
+1. 커밋·push → 배포 반영 확인 (`gh api repos/conoc612-a11y/matjip/pages/builds/latest --jq .status` → `built`, 배포본 land.html 에 `_tojiLoaded` 포함 확인).
+2. (선택) Kakao SDK lazy 화 — 별도 세션에서 침습적으로.
+
 ---
 
 ## 2026-08-07 — Claude Code
