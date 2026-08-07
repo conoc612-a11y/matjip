@@ -37,7 +37,21 @@
     .spicy-val { font-weight:700; color:var(--accent); }
     .topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
     .logout { background:none; border:1px solid var(--line); border-radius:8px; padding:6px 12px; font-size:13px; cursor:pointer; color:var(--muted); }
-    .hidden { display:none; }
+    .hidden { display:none !important; }
+    .agree-fld { display:flex; flex-direction:column; gap:6px; font-size:13px; margin:12px 0 4px; }
+    .agree { display:flex; align-items:center; gap:7px; color:var(--muted); cursor:pointer;
+      padding:7px 9px; border:1px solid var(--line); border-radius:8px; }
+    .agree:hover { border-color:var(--accent); }
+    .agree input { accent-color:var(--accent); width:15px; height:15px; flex:none; }
+    .agree-text { flex:1; color:var(--text); }
+    .agree-open { color:var(--accent); font-size:12px; text-decoration:none; white-space:nowrap; }
+    .caret { color:var(--muted); font-size:11px; }
+    .agree-body { font-size:12px; color:#555; line-height:1.5; max-height:220px; overflow:auto;
+      border:1px solid var(--line); border-radius:8px; padding:10px 12px; background:#fafbfc; }
+    .agree-body h2 { font-size:13px; margin:0 0 6px; }
+    .agree-body h3 { font-size:12px; margin:10px 0 2px; }
+    .agree-body p, .agree-body li { margin:4px 0; }
+    .agree-body ul { padding-left:16px; margin:4px 0; }
     .done-box { text-align:center; padding:8px 0; }
     .done-box .big { font-size:40px; }
     .nav-tab { color:var(--muted); padding:6px 10px; border-radius:7px; text-decoration:none; font-size:14px; }
@@ -63,13 +77,62 @@
           <label class="fld">이름 (필수)</label>
           <input type="text" id="name" placeholder="홍길동" autocomplete="name" />
         </div>
-        <label class="fld">이메일</label>
+        <label class="fld">이메일 (필수)</label>
         <input type="email" id="email" placeholder="name@example.com" />
-        <label class="fld">비밀번호 (6자 이상)</label>
+        <label class="fld">비밀번호 (필수, 6자 이상)</label>
         <input type="password" id="password" placeholder="••••••" />
+        <div id="agree-fld" class="agree-fld hidden">
+          <div class="agree" data-sec="terms">
+            <input type="checkbox" id="agree-terms" />
+            <span class="agree-text">이용약관에 동의합니다</span>
+            <a class="agree-open" href="terms.html#terms" target="_blank" rel="noopener">내용 보기</a>
+            <span class="caret">▾</span>
+          </div>
+          <div class="agree-body hidden" id="body-terms"></div>
+          <div class="agree" data-sec="privacy">
+            <input type="checkbox" id="agree-privacy" />
+            <span class="agree-text">개인정보처리방침에 동의합니다</span>
+            <a class="agree-open" href="terms.html#privacy" target="_blank" rel="noopener">내용 보기</a>
+            <span class="caret">▾</span>
+          </div>
+          <div class="agree-body hidden" id="body-privacy"></div>
+          <div class="agree" data-sec="copyright">
+            <input type="checkbox" id="agree-copyright" />
+            <span class="agree-text">저작권정책에 동의합니다</span>
+            <a class="agree-open" href="terms.html#copyright" target="_blank" rel="noopener">내용 보기</a>
+            <span class="caret">▾</span>
+          </div>
+          <div class="agree-body hidden" id="body-copyright"></div>
+        </div>
         <button class="btn" id="auth-btn">로그인</button>
         <div class="msg" id="auth-msg"></div>
         <div class="switch" id="auth-switch">계정이 없으신가요? <a id="to-signup">회원가입</a></div>
+        <div class="switch"><a id="forgot">비밀번호를 잊으셨나요?</a></div>
+      </div>
+    </div>
+
+    <!-- (A2) 비밀번호 재설정: 가입한 이메일로 확인 메일 발송 -->
+    <div id="reset-view" class="hidden">
+      <h1>비밀번호 재설정</h1>
+      <p class="sub">가입 시 등록한 이메일로 재설정 링크를 보내드려요.</p>
+      <div class="card">
+        <label class="fld">가입한 이메일 (필수)</label>
+        <input type="email" id="reset-email" placeholder="name@example.com" />
+        <button class="btn" id="reset-send">재설정 메일 보내기</button>
+        <div class="msg" id="reset-msg"></div>
+        <div class="switch"><a id="reset-back">← 로그인 화면으로</a></div>
+      </div>
+    </div>
+
+    <!-- (A3) 메일 링크 확인 후 새 비밀번호 설정 -->
+    <div id="newpw-view" class="hidden">
+      <h1>새 비밀번호 설정</h1>
+      <p class="sub">이메일 확인이 완료되었습니다. 새 비밀번호를 입력해 주세요.</p>
+      <div class="card">
+        <label class="fld">새 비밀번호 (필수, 6자 이상)</label>
+        <input type="password" id="new-password" placeholder="••••••" />
+        <button class="btn" id="newpw-btn">비밀번호 변경</button>
+        <div class="msg" id="newpw-msg"></div>
       </div>
     </div>
 
@@ -141,6 +204,33 @@
 
     $('spicy').addEventListener('input', () => { $('spicy-val').textContent = $('spicy').value; });
 
+    // 동의 박스 클릭 → 해당 약관 내용 펼치기(접기) + 자동 체크. '내용 보기' 링크는 새 탭만.
+    let termsCache = null;
+    async function termContent(sec) {
+      if (!termsCache) termsCache = await fetch('terms.html').then((r) => r.text());
+      return new DOMParser().parseFromString(termsCache, 'text/html').getElementById(sec)?.innerHTML || '';
+    }
+    document.querySelectorAll('.agree').forEach((row) => {
+      row.addEventListener('click', (e) => {
+        if (e.target.closest('.agree-open')) return;
+        const sec = row.dataset.sec;
+        const box = row.querySelector('input[type=checkbox]');
+        const body = document.getElementById('body-' + sec);
+        const isOpen = !body.classList.contains('hidden');
+        if (isOpen) {
+          body.classList.add('hidden');
+          row.querySelector('.caret').textContent = '▾';
+        } else {
+          box.checked = true;
+          termContent(sec).then((html) => { body.innerHTML = html; });
+          body.classList.remove('hidden');
+          row.querySelector('.caret').textContent = '▴';
+        }
+      });
+    });
+    document.querySelectorAll('.agree-open').forEach((a) =>
+      a.addEventListener('click', () => { a.closest('.agree').querySelector('input').checked = true; }));
+
     // ── 로그인/회원가입 전환 ──
     function bindSwitch() {
       const link = $('auth-switch').querySelector('a');
@@ -155,6 +245,7 @@
         : '이미 계정이 있으신가요? <a>로그인</a>';
       bindSwitch();
       $('name-fld').classList.toggle('hidden', mode !== 'signup');
+      $('agree-fld').classList.toggle('hidden', mode !== 'signup');
       $('auth-msg').textContent = '';
     }
     bindSwitch();
@@ -167,8 +258,11 @@
       const password = $('password').value;
       const name = $('name') ? $('name').value.trim() : '';
       const msg = $('auth-msg');
-      if (!email || !password) { msg.textContent = '이메일과 비밀번호를 입력해 주세요.'; msg.className = 'msg err'; return; }
+      if (!email || !password) { msg.textContent = '이메일(필수)과 비밀번호(필수)를 입력해 주세요.'; msg.className = 'msg err'; return; }
       if (mode === 'signup' && !name) { msg.textContent = '이름을 입력해 주세요.'; msg.className = 'msg err'; return; }
+      if (mode === 'signup' && !($('agree-terms').checked && $('agree-privacy').checked && $('agree-copyright').checked)) {
+        msg.textContent = '이용약관·개인정보처리방침·저작권정책에 모두 동의해 주세요.'; msg.className = 'msg err'; return;
+      }
       $('auth-btn').disabled = true;
       const fn = mode === 'login'
         ? sb.auth.signInWithPassword({ email, password })
@@ -187,6 +281,48 @@
       $('onb-view').classList.add('hidden');
       $('auth-view').classList.remove('hidden');
     });
+
+    // ── 비밀번호 재설정 (가입한 이메일로 확인 메일 발송) ──
+    $('forgot').addEventListener('click', () => {
+      $('auth-view').classList.add('hidden');
+      $('reset-view').classList.remove('hidden');
+    });
+    $('reset-back').addEventListener('click', () => {
+      $('reset-view').classList.add('hidden');
+      $('auth-view').classList.remove('hidden');
+    });
+    $('reset-send').addEventListener('click', async () => {
+      const email = $('reset-email').value.trim();
+      const msg = $('reset-msg');
+      if (!email) { msg.textContent = '가입한 이메일을 입력해 주세요.'; msg.className = 'msg err'; return; }
+      $('reset-send').disabled = true;
+      const { error } = await sb.auth.resetPasswordForEmail(email, {
+        redirectTo: location.origin + location.pathname,
+      });
+      $('reset-send').disabled = false;
+      if (error) { msg.textContent = error.message; msg.className = 'msg err'; return; }
+      msg.textContent = '재설정 메일을 보냈어요. 이메일 링크를 눌러 새 비밀번호를 설정해 주세요.'; msg.className = 'msg ok';
+    });
+    $('newpw-btn').addEventListener('click', async () => {
+      const pw = $('new-password').value;
+      const msg = $('newpw-msg');
+      if (pw.length < 6) { msg.textContent = '비밀번호는 6자 이상이어야 합니다.'; msg.className = 'msg err'; return; }
+      $('newpw-btn').disabled = true;
+      const { error } = await sb.auth.updateUser({ password: pw });
+      $('newpw-btn').disabled = false;
+      if (error) { msg.textContent = error.message; msg.className = 'msg err'; return; }
+      msg.textContent = '비밀번호가 변경됐어요. 새 비밀번호로 로그인해 주세요.'; msg.className = 'msg ok';
+      history.replaceState(null, '', location.pathname + location.search);
+      setTimeout(() => {
+        $('newpw-view').classList.add('hidden');
+        $('auth-view').classList.remove('hidden');
+        $('password').value = '';
+      }, 1500);
+    });
+    if (new URLSearchParams(location.hash.slice(1)).get('type') === 'recovery') {
+      $('auth-view').classList.add('hidden');
+      $('newpw-view').classList.remove('hidden');
+    }
 
     // ── 취향 저장 ──
     $('save-btn').addEventListener('click', async () => {
@@ -229,7 +365,8 @@
     // ── 세션 확인 (새로고침해도 로그인 유지) ──
     (async () => {
       const { data: { session } } = await sb.auth.getSession();
-      if (session) showOnboarding(session.user);
+      const isRecovery = new URLSearchParams(location.hash.slice(1)).get('type') === 'recovery';
+      if (session && !isRecovery) showOnboarding(session.user);
     })();
   </script>
 </body>
