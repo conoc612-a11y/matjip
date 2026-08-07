@@ -55,13 +55,17 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ error: "POST만 허용합니다." }, 405);
 
-  const pw = (await req.json().catch(() => ({}))).password;
+  const body = await req.json().catch(() => ({}));
+  const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+  const pw = body.password;
+  if (!email) return json({ error: "이메일을 입력하세요." }, 400);
   if (typeof pw !== "string" || !pw) return json({ error: "비밀번호를 입력하세요." }, 400);
 
   const adminPw = Deno.env.get("ADMIN_PASSWORD");
+  const adminEmail = Deno.env.get("ADMIN_EMAIL");
   const suUrl = Deno.env.get("SUPABASE_URL");
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!adminPw || !suUrl || !serviceKey) return json({ error: "서버 설정 오류 (ADMIN_PASSWORD 미설정)" }, 500);
+  if (!adminPw || !adminEmail || !suUrl || !serviceKey) return json({ error: "서버 설정 오류 (ADMIN_PASSWORD/ADMIN_EMAIL 미설정)" }, 500);
 
   const admin = createClient(suUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
   const ip = clientIp(req);
@@ -80,11 +84,12 @@ Deno.serve(async (req) => {
     return json({ error: "로그인 시도가 너무 많습니다. 15분 후 다시 시도하세요." }, 429);
   }
 
-  // 상수시간 비교로 비밀번호 검증
-  const ok = ctEqual(await sha256hex(pw), await sha256hex(adminPw));
-  if (!ok) {
+  // 이메일·비밀번호 검증 (둘 다 일치해야 로그인 성공)
+  const emailOk = ctEqual(email.toLowerCase(), adminEmail.toLowerCase());
+  const pwOk = ctEqual(await sha256hex(pw), await sha256hex(adminPw));
+  if (!emailOk || !pwOk) {
     await admin.from("admin_login_log").insert({ ip });
-    return json({ error: "비밀번호가 올바르지 않습니다." }, 401);
+    return json({ error: "이메일 또는 비밀번호가 올바르지 않습니다." }, 401);
   }
 
   // 성공: 실패기록 초기화 + 세션 발급
