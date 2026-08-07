@@ -98,7 +98,7 @@
         </div>
         <div class="tablebox">
           <table>
-            <thead><tr><th>가입일</th><th>이메일</th><th>매운맛</th><th>맛 취향</th><th>상황</th></tr></thead>
+            <thead><tr><th>가입일</th><th>최종 접속</th><th>이메일</th><th>매운맛</th><th>맛 취향</th><th>상황</th></tr></thead>
             <tbody id="member-rows"></tbody>
           </table>
         </div>
@@ -201,11 +201,12 @@ function renderMembers() {
   $('member-rows').innerHTML = rows.map((m) => `
     <tr>
       <td>${(m.joined_at || '').slice(0, 10)}</td>
+      <td>${(m.last_login_at || '').slice(0, 10) || '—'}</td>
       <td>${m.email || '—'}</td>
       <td>${m.spicy_level != null ? '★'.repeat(m.spicy_level) : '—'}</td>
       <td>${m.flavor_tags.map((t) => `<span class="tag">${t}</span>`).join('') || '—'}</td>
       <td>${m.situation_tags.map((t) => `<span class="tag">${t}</span>`).join('') || '—'}</td>
-    </tr>`).join('') || '<tr><td colspan="5" style="color:var(--muted);text-align:center;">해당 세그먼트 회원이 없습니다.</td></tr>';
+    </tr>`).join('') || '<tr><td colspan="6" style="color:var(--muted);text-align:center;">해당 세그먼트 회원이 없습니다.</td></tr>';
 }
 
 // ── 차트 ──
@@ -245,8 +246,8 @@ function download(name, text) {
 }
 const csv = (rows) => rows.map((r) => r.map((c) => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\n');
 function exportMembers() {
-  const rows = [['가입일', '이메일', '매운맛(0~5)', '맛취향', '상황']]
-    .concat(data.members.map((m) => [m.joined_at.slice(0, 10), m.email, m.spicy_level ?? '', m.flavor_tags.join(' '), m.situation_tags.join(' ')]));
+  const rows = [['가입일', '최종 접속일', '이메일', '매운맛(0~5)', '맛취향', '상황']]
+    .concat(data.members.map((m) => [m.joined_at.slice(0, 10), (m.last_login_at || '').slice(0, 10), m.email, m.spicy_level ?? '', m.flavor_tags.join(' '), m.situation_tags.join(' ')]));
   download('회원목록_' + new Date().toISOString().slice(0, 10) + '.csv', csv(rows));
 }
 function exportStats() {
