@@ -82,3 +82,5 @@ Tools: `list_restaurants`, `recommend(spicy_level, flavor_tags[], situation_tags
 ## Deployment
 
 GitHub Pages (static files). After deploy, set Supabase Authentication → Confirm email ON + Site URL to deployment URL. V-World map key requires domain registration at vworld.kr.
+
+> **커밋·push·Edge Function 배포는 반드시 사용자 동의를 받은 뒤 진행할 것** (2026-08-07). 사용자가 앞으로 계속 수정할 예정이므로, 변경만 해 두고 push/배포 단계에서 먼저 확인을 구한다.
