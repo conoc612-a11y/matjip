@@ -52,6 +52,8 @@
 
   .btn { background:var(--card); color:var(--muted); border:1px solid var(--line); border-radius:8px; padding:7px 14px; cursor:pointer; font-size:13px; }
   .btn:hover { color:var(--text); }
+  .btn.del { color:#ff7a7a; border-color:#5a2a33; padding:4px 10px; font-size:12px; }
+  .btn.del:hover { background:#3a1f28; }
   .row { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
   .hidden { display:none !important; }
 </style>
@@ -61,9 +63,37 @@
     <!-- 로그인 -->
     <div id="login-view">
       <h2>관리자 모드</h2>
+      <input type="email" id="adm-email" placeholder="관리자 이메일" autocomplete="username" style="margin-bottom:10px;" onkeydown="if(event.key==='Enter')doLogin()">
       <input type="password" id="pw" placeholder="관리자 비밀번호" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
       <button onclick="doLogin()">로그인</button>
       <div id="login-err"></div>
+      <div style="text-align:center;margin-top:14px;font-size:13px;">
+        <a href="#" onclick="event.preventDefault();showReset()">비밀번호 변경</a>
+      </div>
+    </div>
+
+    <!-- 비밀번호 변경: 인증 메일 발송 -->
+    <div id="reset-view" class="hidden">
+      <div style="max-width:360px;margin:12vh auto 0;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:28px;">
+        <h2 style="font-size:17px;margin-bottom:8px;">비밀번호 변경</h2>
+        <p class="sub">백업 이메일(conoc612@gmail.com)로 인증 메일을 보냅니다.</p>
+        <button onclick="requestReset()">인증 메일 보내기</button>
+        <div id="reset-msg" style="color:#8b9bb4;font-size:13px;margin-top:10px;min-height:18px;"></div>
+        <div style="text-align:center;margin-top:14px;font-size:13px;">
+          <a href="#" onclick="event.preventDefault();hideReset()">← 로그인으로</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- 비밀번호 변경: 이메일 링크 확인 후 새 비밀번호 설정 -->
+    <div id="newpw-view" class="hidden">
+      <div style="max-width:360px;margin:12vh auto 0;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:28px;">
+        <h2 style="font-size:17px;margin-bottom:8px;">새 비밀번호 설정</h2>
+        <p class="sub">이메일 인증이 완료되었습니다.</p>
+        <input type="password" id="new-pw" placeholder="새 관리자 비밀번호 (6자 이상)" autocomplete="new-password" onkeydown="if(event.key==='Enter')applyReset()">
+        <button onclick="applyReset()">비밀번호 변경</button>
+        <div id="newpw-msg" style="color:#8b9bb4;font-size:13px;margin-top:10px;min-height:18px;"></div>
+      </div>
     </div>
 
     <!-- 대시보드 -->
@@ -98,7 +128,7 @@
         </div>
         <div class="tablebox">
           <table>
-            <thead><tr><th>가입일</th><th>이름</th><th>최종 접속</th><th>이메일</th><th>매운맛</th><th>맛 취향</th><th>상황</th></tr></thead>
+            <thead><tr><th>가입일</th><th>이름</th><th>최종 접속</th><th>이메일</th><th>매운맛</th><th>맛 취향</th><th>상황</th><th></th></tr></thead>
             <tbody id="member-rows"></tbody>
           </table>
         </div>
@@ -136,7 +166,7 @@ async function doLogin() {
   try {
     const r = await fetch(FN + '/admin-login', {
       method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ password: $('pw').value }),
+      body: JSON.stringify({ email: $('adm-email').value.trim(), password: $('pw').value }),
     });
     const j = await r.json().catch(() => ({}));
     if (!r.ok || !j.token) { err.textContent = j.error || '로그인 실패'; return; }
@@ -144,6 +174,53 @@ async function doLogin() {
     sessionStorage.setItem('admin_token', token);
     await loadData();
   } catch (e) { err.textContent = '서버 연결 실패: ' + e; }
+}
+
+// ── 비밀번호 변경 (이메일 인증) ──
+function showReset() {
+  $('login-view').classList.add('hidden');
+  $('reset-view').classList.remove('hidden');
+  $('reset-msg').textContent = '';
+}
+function hideReset() {
+  $('reset-view').classList.add('hidden');
+  $('login-view').classList.remove('hidden');
+}
+async function requestReset() {
+  const msg = $('reset-msg');
+  msg.textContent = '발송 중…';
+  try {
+    const r = await fetch(FN + '/admin-request-reset', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: '{}',
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { msg.style.color = '#ff7a7a'; msg.textContent = j.error || '요청 실패'; return; }
+    msg.style.color = '#8b9bb4';
+    msg.textContent = '백업 이메일(conoc612@gmail.com)로 인증 메일을 보냈어요. 메일 링크를 눌러 주세요.';
+  } catch (e) { msg.style.color = '#ff7a7a'; msg.textContent = '서버 연결 실패: ' + e; }
+}
+async function applyReset() {
+  const pw = $('new-pw').value;
+  const msg = $('newpw-msg');
+  if (pw.length < 6) { msg.style.color = '#ff7a7a'; msg.textContent = '비밀번호는 6자 이상이어야 합니다.'; return; }
+  msg.textContent = '적용 중…'; msg.style.color = '#8b9bb4';
+  try {
+    const r = await fetch(FN + '/admin-apply-reset', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ token: resetToken, new_password: pw }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { msg.style.color = '#ff7a7a'; msg.textContent = j.error || '변경 실패'; return; }
+    msg.style.color = '#8b9bb4';
+    msg.textContent = '비밀번호가 변경됐어요. 새 비밀번호로 로그인하세요.';
+    history.replaceState(null, '', location.pathname);
+    setTimeout(() => {
+      $('newpw-view').classList.add('hidden');
+      $('login-view').classList.remove('hidden');
+      $('pw').value = '';
+    }, 1500);
+  } catch (e) { msg.style.color = '#ff7a7a'; msg.textContent = '서버 연결 실패: ' + e; }
 }
 
 async function loadData() {
@@ -207,7 +284,26 @@ function renderMembers() {
       <td>${m.spicy_level != null ? '★'.repeat(m.spicy_level) : '—'}</td>
       <td>${m.flavor_tags.map((t) => `<span class="tag">${t}</span>`).join('') || '—'}</td>
       <td>${m.situation_tags.map((t) => `<span class="tag">${t}</span>`).join('') || '—'}</td>
-    </tr>`).join('') || '<tr><td colspan="7" style="color:var(--muted);text-align:center;">해당 세그먼트 회원이 없습니다.</td></tr>';
+      <td><button class="btn del" onclick="deleteMember('${m.id}', '${(m.name || m.email || '').replace(/'/g, "\\'")}')">탈퇴</button></td>
+    </tr>`).join('') || '<tr><td colspan="8" style="color:var(--muted);text-align:center;">해당 세그먼트 회원이 없습니다.</td></tr>';
+}
+
+// ── 회원 탈퇴 ──
+async function deleteMember(id, label) {
+  if (!confirm(`회원 [${label}]을(를) 탈퇴시킬까요?\n저장된 취향·즐겨찾기·방문기록이 모두 삭제되며 되돌릴 수 없습니다.`)) return;
+  if (!confirm('정말로 최종 확인합니다. 다시 한 번 누르면 탈퇴됩니다.')) return;
+  try {
+    const r = await fetch(FN + '/admin-delete-user', {
+      method: 'POST', headers: { 'content-type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ user_id: id }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || '탈퇴 실패');
+    await loadData();
+    alert('탈퇴 처리되었습니다.');
+  } catch (e) {
+    alert('탈퇴 실패: ' + e.message);
+  }
 }
 
 // ── 차트 ──
@@ -271,8 +367,16 @@ function exportStats() {
   download('방문자통계_' + d + '.csv', csv(lines));
 }
 
-// 초기화: 토큰이 있으면 바로 대시보드
-(async () => { if (token) await loadData(); })();
+// 초기화: 토큰이 있으면 바로 대시보드 / 이메일 링크(?reset=)면 새 비밀번호 화면
+let resetToken = new URLSearchParams(location.search).get('reset') || '';
+(async () => {
+  if (resetToken) {
+    $('login-view').classList.add('hidden');
+    $('newpw-view').classList.remove('hidden');
+  } else if (token) {
+    await loadData();
+  }
+})();
 </script>
 </body>
 </html>

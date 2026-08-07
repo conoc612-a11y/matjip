@@ -117,6 +117,7 @@ Deno.serve(async (req) => {
       const t = tByUser.get(p.id);
       const a = authByUser.get(p.id);
       return {
+        id: p.id,
         email: p.email,
         name: a?.name ?? null,
         joined_at: p.created_at,
