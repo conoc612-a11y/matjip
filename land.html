@@ -328,17 +328,19 @@
       padding:9px 18px; display:flex; flex-direction:column; justify-content:center; gap:4px; }
     .footer-resize { position:absolute; top:-6px; left:0; right:0; height:12px; cursor:ns-resize; z-index:5; }
     .footer-resize::after { content:''; position:absolute; top:4px; left:50%; transform:translateX(-50%); width:48px; height:4px; border-radius:2px; background:#c1c4c9; }
-    .footer-top { display:flex; align-items:center; justify-content:space-between; gap:16px; }
-    .footer-links { display:flex; gap:14px; white-space:nowrap; }
+    .footer-top { display:flex; align-items:center; gap:16px; }
+    .footer-links { flex:1; display:flex; gap:14px; white-space:nowrap; }
     .footer-links a { font-size:13px; color:var(--muted); text-decoration:none; }
     .footer-links a:hover { color:var(--c-primary); }
+    .footer-right { flex:1; display:flex; justify-content:flex-end; align-items:center; gap:16px; }
+    .footer-stats { flex:0 0 auto; }
     .footer-stats { display:flex; gap:14px; align-items:center; font-size:13px; color:var(--muted); white-space:nowrap; }
     .footer-stats b { font-weight:600; color:var(--text); }
     .footer-stats .footer-note { color:var(--muted); font-size:11px; }
     .footer-admin { flex:none; font-size:12px; font-weight:600; color:var(--accent); text-decoration:none;
       border:1px solid var(--accent); border-radius:6px; padding:2px 10px; margin-left:8px; white-space:nowrap; }
     .footer-admin:hover { background:var(--accent); color:#fff; }
-    .footer-contact { font-size:13px; color:var(--muted); }
+    .footer-contact { font-size:13px; color:var(--muted); white-space:nowrap; }
     .build-tag { opacity:.55; }
     @media (max-width:640px) {
       .layout { display:block; flex:none; }
@@ -445,11 +447,13 @@
         <span>누적방문자 <b id="f-total">—</b></span>
         <span class="footer-note">동일 IP는 하루 1회만 집계됩니다</span>
       </div>
-      <a href="admin.html" class="footer-admin">관리자</a>
+      <div class="footer-right">
+        <span class="footer-contact">호룡리싱앤리얼리티 · 오재호 010.4353.6501 · conoc@naver.com
+          <!-- 빌드 태그: 브라우저가 옛 파일을 캐시하고 있는지 한눈에 확인하는 용도. 배포마다 올린다. -->
+          · <span class="build-tag">build 2026-08-04-b36</span></span>
+        <a href="admin.html" class="footer-admin">관리자</a>
+      </div>
     </div>
-    <div class="footer-contact">호룡리싱앤리얼리티 &nbsp;·&nbsp; 오재호 010.4353.6501 &nbsp;·&nbsp; conoc@naver.com
-      <!-- 빌드 태그: 브라우저가 옛 파일을 캐시하고 있는지 한눈에 확인하는 용도. 배포마다 올린다. -->
-      &nbsp;·&nbsp; <span class="build-tag">build 2026-08-04-b36</span></div>
   </footer>
   <script src="js/footer-resize.js"></script>
 

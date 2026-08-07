@@ -39,8 +39,10 @@ Deno.serve(async (req) => {
 
   const page = new URL(req.url).searchParams.get("page") || "land";
   const ip = clientIp(req);
-  const today = new Date().toISOString().slice(0, 10);
-  const todayStart = today + "T00:00:00Z";
+  // "오늘"은 항상 한국시간 00:00(24:00 경계) 기준 — UTC 날짜로 쓰면 자정~09시에 전날 숫자로 보인다.
+  const KST = 9 * 3600e3;
+  const today = new Date(Date.now() + KST).toISOString().slice(0, 10);               // 한국 날짜
+  const todayStart = new Date(new Date(today + "T00:00:00Z").getTime() - KST).toISOString(); // 한국 0시(UTC)
 
   const suUrl = Deno.env.get("SUPABASE_URL");
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");

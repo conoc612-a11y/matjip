@@ -28,7 +28,9 @@ const sha256hex = async (s: string) =>
   [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)))]
     .map((b) => b.toString(16).padStart(2, "0")).join("");
 
-const toDate = (d: Date) => d.toISOString().slice(0, 10);
+// "오늘" 집계는 한국시간 00:00(24:00) 경계 기준 (visit-count와 동일한 규칙)
+const KST = 9 * 3600e3;
+const toKstDate = (d: Date) => new Date(d.getTime() + KST).toISOString().slice(0, 10);
 const DAY = 86400e3;
 // 한국 시간 기준 시간대 (UTC+9, 한국은 서머타임 없음)
 const seoulHour = (iso: string) => (new Date(iso).getUTCHours() + 9) % 24;
@@ -55,15 +57,16 @@ Deno.serve(async (req) => {
 
   try {
     const now = new Date();
-    const today = toDate(now);
-    const day29 = toDate(new Date(now.getTime() - 29 * DAY));
+    const today = toKstDate(now);
+    const todayStart = new Date(new Date(today + "T00:00:00Z").getTime() - KST).toISOString();
+    const day29 = toKstDate(new Date(now.getTime() - 29 * DAY));
     const day7iso = new Date(now.getTime() - 6 * DAY).toISOString();
 
     // ── 개수 (오늘/누적/고유IP/회원수) ──
     const [totRes, todayRes, ipsRes, memRes] = await Promise.all([
       admin.from("visits").select("*", { count: "exact", head: true }),
       admin.from("visits").select("*", { count: "exact", head: true })
-        .or(`visit_date.eq.${today},created_at.gte.${today}T00:00:00Z`),
+        .or(`visit_date.eq.${today},created_at.gte.${todayStart}`),
       admin.from("visits").select("ip").not("ip", "is", null),
       admin.from("profiles").select("*", { count: "exact", head: true }),
     ]);
@@ -79,7 +82,7 @@ Deno.serve(async (req) => {
     dailyRows.forEach((r) => { dailyMap[r.visit_date] = (dailyMap[r.visit_date] || 0) + 1; });
     const daily: { d: string; c: number }[] = [];
     for (let i = 0; i < 30; i++) {
-      const d = toDate(new Date(now.getTime() - (29 - i) * DAY));
+      const d = toKstDate(new Date(now.getTime() - (29 - i) * DAY));
       daily.push({ d, c: dailyMap[d] || 0 });
     }
 
@@ -129,12 +132,13 @@ Deno.serve(async (req) => {
     });
 
     // ── 최근 30일 신규가입 추이 ──
-    const mpRows = (await admin.from("profiles").select("created_at").gte("created_at", day29 + "T00:00:00Z")).data || [];
+    const day29Start = new Date(new Date(day29 + "T00:00:00Z").getTime() - KST).toISOString();
+    const mpRows = (await admin.from("profiles").select("created_at").gte("created_at", day29Start)).data || [];
     const mpMap: Record<string, number> = {};
-    mpRows.forEach((r) => { const d = toDate(new Date(r.created_at)); mpMap[d] = (mpMap[d] || 0) + 1; });
+    mpRows.forEach((r) => { const d = toKstDate(new Date(r.created_at)); mpMap[d] = (mpMap[d] || 0) + 1; });
     const memberDaily: { d: string; c: number }[] = [];
     for (let i = 0; i < 30; i++) {
-      const d = toDate(new Date(now.getTime() - (29 - i) * DAY));
+      const d = toKstDate(new Date(now.getTime() - (29 - i) * DAY));
       memberDaily.push({ d, c: mpMap[d] || 0 });
     }
 
