@@ -12,6 +12,35 @@
 
 ---
 
+## 2026-08-08 (1) — opencode (전면 QA + main.html 지도/패널 높이 버그 수정·배포)
+
+> 커밋·push·배포·실검증 완료. 이어받는 세션은 **"다음 세션 확인할 것"** 만 보면 된다.
+
+### 한 일 (전부 실측 검증 후 확정)
+1. **전 페이지 QA 완료** (배포 URL `https://conoc612-a11y.github.io/matjip/`, 테스트 계정으로 헤드리스 실사용):
+   - onboarding: 약관 미동의 차단 → 동의 후 가입 → 설문 진입. **함정 기록: 로그인 모드가 기본이라 회원가입은 `#to-signup` 전환 필수.**
+   - main: 식당 1338건 로드, 추천목록, 카드 클릭→줌16·정보창·최근목록, 검색 "왕비"→자동완성·결과 5건, 즐겨찾기 저장→탭 반영, GPS 폴백 배너, 푸터 통계.
+   - detail: Leaflet+V-World 타일 200, GPS 미허용 시 안내 정상.
+   - land: 날씨·환율 실데이터, V-World 검색 "강남역"→이동(37.4977,127.0278 z16), 베이스맵 4종.
+   - admin: Edge Function 로그인 200, 대시보드 차트·회원표, **탈퇴 기능으로 QA 계정 삭제 확인**.
+2. **main.html 지도/패널 높이 버그 수정·배포** (커밋 `34d31d8`, TROUBLESHOOTING §10 신규):
+   - 증상: `#map` offsetHeight 8203px(컨테이너 617px), `.panel` 스크롤 없음 → 추천목록 하단 잘림.
+   - 원인: `.layout` flex-wrap 라인 높이 = 항목 콘텐츠 높이 최댓값. 추천목록(8203px)이 비동기 렌더되며 라인이 부풀고 `align-self:stretch`로 `#map`·`.panel` 모두 8203으로 늘어남. `.panel`은 라인 크기만큼 이미 커서 `overflow-y:auto`여도 스크롤이 안 생김.
+   - 해결: `#map`·`.panel`에 `max-height:100%` 추가 → 라인을 컨테이너 높이로 고정, 패널 내부 스크롤.
+   - 검증: 실배포 페이지에 CSS 주입 → mapH 8203→617, `scrollHeight>clientHeight`(scrollable=true). Naver `getSize()`=617로 정상 — **깨진 건 컨테이너지 지도가 아님**.
+3. **TROUBLESHOOTING §10 기록** (커밋 `2d0d099`).
+
+### 커밋·배포 상태
+- `34d31d8`(fix) → `2d0d099`(docs) 순 push 완료, GitHub Pages 반영 확인 (`max-height:100%` 배포본 존재, mapH=617 실측).
+- QA 테스트 계정 `qa.matjip.20260808@example.com`(QA2) **유지** — 사용자 승인. `qa.matjip.20260807@example.com`은 삭제됨.
+
+### ⚠️ 다음 세션 확인할 것
+- **무엇보다: Supabase 액세스 토큰(`sbp_86b17faf...`)이 여러 채팅에 노출됨 → 대시보드에서 Revoke 후 새로 발급**해서 `$env:SUPABASE_ACCESS_TOKEN`으로만 사용(파일·리포 저장 금지).
+- 회원가입 QA 시: `#to-signup`(회원가입 모드) 전환 후 진행. 이메일 확인은 `mailer_autoconfirm:true`(꺼짐)라 가입 즉시 로그인 가능.
+- 배포 후 검증은 `curl -s URL | grep`(PS `Invoke-WebRequest`는 비인터랙티브 오류) 사용.
+
+---
+
 ## 2026-08-07 (5) — opencode (실거래·정비사업 레이어 렌더 버그 수정 + 전용면적 검증 + 범례 개선)
 
 > 커밋·push 완료. 이어받는 세션은 **"다음 세션 확인할 것"** 만 보면 된다.
