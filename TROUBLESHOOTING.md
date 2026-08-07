@@ -170,15 +170,20 @@ console.log('blocks:',i,'fails:',f);
 - **역사**: 2026-08-05 `5347fa2` 에서 키를 프론트 하드코딩 → 프록시로 분리하면서 **화이트리스트에 이 op 들을 빼먹어** 상세보기가 깨졌다. "예전엔 됐는데" 하면 키 분리 커밋 이후의 화이트리스트 누락을 의심할 것. **되돌리기(프론트 직호출)는 금지** — 키 노출 보안 회귀다. 화이트리스트에 op 를 추가해서 복구한다.
 - op 를 새로 추가했다면 **배포 후 반드시 배포본에서 확인**: `https://<ref>.supabase.co/functions/v1/molit-proxy?op=<op>&sigunguCd=...` 가 400 대신 200 을 주는지. (임의 PNU 는 `totalCount=0` 이어도 정상이다 — 400 이 "화이트리스트 거부", 200 이 "통과"의 판별 기준.)
 
-### 6-9. 국세청 사업자등록 상태조회 (bizno-proxy, 2026-08-07 신규)
+### 6-9. 국세청 사업자등록 상태조회·진위확인 (bizno-proxy, 2026-08-07 신규)
 - data.go.kr **data/15081808** (국세청_사업자등록정보 진위확인 및 상태조회). 활용신청은 **자동승인**. 실측으로 활용승인·응답 정상 확인.
-- **엔드포인트는 odcloud**: `POST https://api.odcloud.kr/api/nts-businessman/v1/status?serviceKey=<키>` (청약홈과 같은 Infuser 호스트. 기술문서 swagger 의 `data/12302` 를 봐도 실제 호출은 이 호스트다).
-- 요청 body: `{ "b_no": ["숫자10자리"] }` — 하이픈 `-` **반드시 제거**. 1회 최대 100건. `validate`(진위확인, `start_dt`·`p_nm` 필수)와 `status`(번호만) 두 가지 op.
-- 응답: `{ status_code:"OK", request_cnt, match_cnt, data:[{ b_no, b_stt_cd, b_stt("계속사업자"/"휴업자"/"폐업자"), tax_type_cd, tax_type("부가가치세 일반과세자" 등), end_dt(폐업일), utcc_yn, ... }] }`.
-- **미등록 번호는 b_stt 가 빈 문자열**이고 `tax_type` 에 "국세청에 등록되지 않은 사업자등록번호입니다."가 온다. "미등록" 판정은 `b_stt` 를 보지 말고 이 메시지로 구분할 것.
-- status_code 가 `OK` 가 아니면 인증/활용승인 문제. `Unauthorized`(키 오류)·`Forbidden`(활용신청 없음) 에러코드는 §6-5 의 서버전용 키 규칙을 위반하지 않았는지부터 확인.
+- **엔드포인트는 odcloud**: `POST https://api.odcloud.kr/api/nts-businessman/v1/{status|validate}?serviceKey=<키>` (청약홈과 같은 Infuser 호스트).
+- 요청 body:
+  - 상태조회: `{ "b_no": ["숫자10자리"] }` — 하이픈 `-` **반드시 제거**. 1회 최대 100건.
+  - 진위확인: `{ "businesses": [{ b_no(필수), start_dt "YYYYMMDD"(필수), p_nm 대표자(필수), b_nm 상호(선택), p_nm2, corp_no, b_sector, b_type }] }`
+- 응답:
+  - 상태조회: `data:[{ b_no, b_stt("계속사업자"/"휴업자"/"폐업자"), b_stt_cd, tax_type("부가가치세 일반과세자" 등), end_dt(폐업일), utcc_yn }]`
+  - 진위확인: `data[].valid = "01"(일치) / "02"(불일치, valid_msg "확인할 수 없습니다.")`, 일치 시 상태조회 정보(b_stt/tax_type/end_dt)도 함께 온다.
+- **미등록 번호는 b_stt 가 빈 문자열**이고 상태조회 `tax_type` 에 "국세청에 등록되지 않은 사업자등록번호입니다."가 온다. 판정은 메시지로 구분할 것.
+- **⚠️ 이 API 는 상호명·대표자·연락처·주소를 "반환하지 않는다"** — 진위확인은 사용자가 입력한 상호/대표자/개업일이 국세청 DB와 일치하는지 Y/N만 알려준다. 그런 필드를 보여주려면 제3자 기업정보 API(NICE 등 유료)가 필요. (2026-08-07 실측·확정)
+- status_code 가 `OK` 가 아니면 인증/활용승인 문제. `Unauthorized`(키 오류)·`Forbidden`(활용신청 없음).
 - serviceKey 는 인코딩된 문자열 그대로 query 로(`%`→`%25` 이중인코딩 금지, 타 프록시와 동일). land.html 은 `bizno-proxy` 경유 — 시크릿 `NTS_API_KEY`.
-- land.html 헤더 '사업자조회' 버튼 → 모달. 로컬 테스트는 `?biznoEndpoint=` 로 mock 교체 가능(청약 배지와 동일한 패턴).
+- land.html 헤더 '사업자등록증조회' 버튼 → 모달. 사업자번호는 **하이픈 자동 입력**(`_bizFmt`). 대표자·개업일 입력하면 validate, 번호만 입력하면 status 로 자동 분기. 로컬 테스트는 `?biznoEndpoint=` 로 mock 교체.
 
 ---
 
