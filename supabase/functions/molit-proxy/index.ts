@@ -22,7 +22,13 @@ const CORS = {
 
 // 건축HUB에서 이 프록시가 중계하도록 허용한 오퍼레이션만 화이트리스트로 제한한다.
 // (임의의 op를 그대로 넘기면 이 함수가 만능 오픈 프록시가 되어 남용될 수 있다.)
-const ALLOWED_OPS = new Set(["getBrTitleInfo", "getBrExposInfo"]);
+// getBrTitleInfo/getBrExposInfo는 목록·보충 조회용이고, 나머지는 land.html의
+// '건축물대장 상세 보기'(loadLedgerDetail)가 쓰는 상세 조회 op다.
+const ALLOWED_OPS = new Set([
+  "getBrTitleInfo", "getBrExposInfo",
+  "getBrRecapTitleInfo", "getBrBasisOulnInfo", "getBrFlrOulnInfo",
+  "getBrAtchJibunInfo", "getBrExposPubuseAreaInfo", "getBrHsprcInfo", "getBrJijiguInfo",
+]);
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {

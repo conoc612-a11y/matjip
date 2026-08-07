@@ -239,6 +239,9 @@
     .jb-perm-badge { color:#fff; font-size:10.5px; font-weight:600; padding:2px 7px; border-radius:999px; white-space:nowrap; box-shadow:var(--c-shadow); }
     .leaflet-tooltip.jb-perm-tt { background:none; border:none; box-shadow:none; padding:0; }
     .leaflet-tooltip.jb-perm-tt::before { display:none; }
+    /* 청약예정 배지 — land.html renderSubscriptions() */
+    .sub-badge { display:inline-block; background:#0ca678; color:#fff; font-size:10.5px; font-weight:700; padding:2px 7px; border-radius:999px; white-space:nowrap; box-shadow:0 1px 3px rgba(0,0,0,.35); border:1.5px solid #fff; cursor:pointer; }
+    .sub-badge-wrap { background:none; border:none; }
     /* ── Popup card system ── */
     /* width:100% — 팝업을 리사이즈하면 그 폭에 맞춰 내용이 다시 흐르도록.
        예전엔 264px 고정이라 팝업을 키워도 카드가 그대로여서 여백만 늘었다. */
@@ -414,9 +417,9 @@
   </div>
   <footer class="site-footer">
     <div class="footer-links">
-      <a href="#">이용약관</a>
-      <a href="#">개인정보처리방침</a>
-      <a href="#">저작권정책</a>
+      <a href="terms.html#terms">이용약관</a>
+      <a href="terms.html#privacy">개인정보처리방침</a>
+      <a href="terms.html#copyright">저작권정책</a>
       <a href="#">이용안내</a>
       <a href="#">이용방법 및 장애문의</a>
     </div>
@@ -480,17 +483,40 @@
     // ── V-World 인증키: 발급받으면 아래에 넣으세요. 비어 있으면 OSM 지도로 자동 대체 ──
     const VWORLD_KEY = 'B2CDEEDD-D622-311B-883B-CC7890E50822';
 
-    // ── 청약예정 배지 (스캐폴딩 — 아직 미구현) ──
-    // data.go.kr에서 "한국부동산원_청약Home 청약일정 정보" 또는 "LH 청약센터" Open API를
-    // 활용신청(무료) 후 발급받은 인증키를 아래에 채우면 loadSubscriptions()가 동작한다.
-    // 키가 비어 있는 동안은 항상 빈 배열을 반환해 지도에 아무 영향도 주지 않는다(no-op).
-    // data.go.kr 청약 API serviceKey는 여기(프론트)에 두지 말 것 — keys.env 참고.
-    // Edge Function 프록시(molit-proxy 패턴)로 중계하거나, 빈 값이면 기능 비활성.
-    const SUBSCRIPTION_API_KEY = '';
+    // ── 청약예정 배지 (한국부동산원 청약홈 분양정보 — Edge Function 프록시 경유) ──
+    // data.go.kr serviceKey는 프론트에 두지 않는다. supabase/functions/chungak-proxy가
+    // 중계하고 키는 서버 secret(CHUNGAK_API_KEY)에만 둔다.
+    // ?chungakEndpoint=... 로 로컬 테스트용 엔드포인트를 잠시 바꿀 수 있다.
+    const SUBSCRIPTION_ENDPOINT = new URLSearchParams(location.search).get('chungakEndpoint')
+      || 'https://bhgijvaxxjnocgfnaaeu.supabase.co/functions/v1/chungak-proxy';
+    let _subPromise = null;
     function loadSubscriptions() {
-      if (!SUBSCRIPTION_API_KEY) return Promise.resolve([]);
-      // TODO: 키 발급 후 청약Home Open API 연동 + 지도 배지 렌더링 구현
-      return Promise.resolve([]);
+      if (!SUBSCRIPTION_ENDPOINT) return Promise.resolve([]);
+      if (_subPromise) return _subPromise;
+      const q = new URLSearchParams({
+        op: 'getAPTLttotPblancDetail', page: '1', perPage: '50', returnType: 'JSON',
+        'cond[SUBSCRPT_AREA_CODE_NM::EQ]': '서울',
+      });
+      _subPromise = fetch(SUBSCRIPTION_ENDPOINT + '?' + q)
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error('청약API HTTP ' + r.status))))
+        .then((j) => {
+          const d = new Date();
+          const ymd = (x) => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
+          const todayStr = ymd(d);
+          const seen = new Set();
+          return (Array.isArray(j && j.data) ? j.data : [])
+            // 접수가 아직 끝나지 않은(접수중·접수예정) 공고만 배지로 띄운다.
+            .filter((x) => x && x.RCEPT_ENDDE && x.RCEPT_ENDDE >= todayStr && x.HSSPLY_ADRES)
+            .filter((x) => (seen.has(x.PBLANC_NO) ? false : (seen.add(x.PBLANC_NO), true)))
+            .map((x) => ({
+              pblancNo: x.PBLANC_NO, name: x.HOUSE_NM || x.PBLANC_NO, addr: x.HSSPLY_ADRES,
+              supply: x.TOT_SUPLY_HSHLDCO, pblancDe: x.RCRIT_PBLANC_DE,
+              spStart: x.SPSPLY_RCEPT_BGNDE, spEnd: x.SPSPLY_RCEPT_ENDDE,
+              rcptStart: x.RCEPT_BGNDE, rcptEnd: x.RCEPT_ENDDE, url: x.PBLANC_URL,
+            }));
+        })
+        .catch((err) => { _subPromise = null; console.warn('청약예정 불러오기 실패:', err); return []; });
+      return _subPromise;
     }
 
     // ── 카카오 실시간 장소검색 (REST API, 도메인 등록 불필요) ──
@@ -1374,6 +1400,51 @@
       });
 
       const UPIS_SWATCH = {"3":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAEBJREFUOI3t1DEKADAMQtEv5P5XTtcUOgWzlHiAhy4G5gRAQjowgcIB1VygQB2kLpxtuOCCC/4BOn5xpmH3B185Bz8GUZJ4V1sAAAAASUVORK5CYII=","11":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAENJREFUOI1jYaAyYGFgYGCY5p/7nxqGZW2czMhCDYOQAYqBWRsnM5JjCLIPaevCUQNHDRw1cHgYSI1ykTYuJLccxAYA4qcMUVrRAj4AAAAASUVORK5CYII=","12":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAENJREFUOI1jYaAyYGFgYGC4Y3jiPzUMUzlvwchCDYOQAYqBKuctGMkxBNmHtHXhqIGjBo4aODwMpEa5SBsXklsOYgMAObQMUUlQtLEAAAAASUVORK5CYII=","13":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAERJREFUOI1jYaAyYGFgYGDwd9f6Tw3DNu68xshCDYOQAYqBG3deYyTHEGQf0taFowaOGjhq4PAwkBrlIm1cSG45iA0AAIGzDFGpLVgOAAAAAElFTkSuQmCC","14":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAENJREFUOI1jYaAyYGFgYGDQ0rrznxqGXbumwshCDYOQAYqB166pMJJjCLIPaevCUQNHDRw1cHgYSI1ykTYuJLccxAYAzBMMUcwsQGUAAAAASUVORK5CYII=","15":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAENJREFUOI1jYaAyYGFgYGDQYvj/nxqGXWNgZGShhkHIAMXAawyMjOQYguxD2rpw1MBRA0cNHB4GUqNcpI0LyS0HsQEAc8gJUViX6UAAAAAASUVORK5CYII=","16":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAEFJREFUOI1jYaAyYGFgYGBg6On5TxXTSkoYWahiEBJANbCkhJEsU5B8SGMXjho4auCogcPDQCqUizRyIbnlIBYAAGV+CVFzr9ueAAAAAElFTkSuQmCC","17":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAENJREFUOI1jYaAyYGFgYGCYNo3hPzUMy8piYGShhkHIAMXArCwGRnIMQfYhbV04auCogaMGDg8DqVEu0saF5JaD2AAAeMYJUeoem4QAAAAASUVORK5CYII=","18":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAERJREFUOI1jYaAyYGFgYGCIior6Tw3Dli1bxshCDYOQAYqBy5YtYyTHEGQf0taFowaOGjhq4PAwkBrlIm1cSG45iA0AALV/DFFz735aAAAAAElFTkSuQmCC","33":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAMBJREFUOI3l0zEKAjEQheF/dC3WYKF4A4/hCbyEB9BWthML6wXZC4iFN7HzIiILFjI2ImNhCpuF7EYLcSCQB5OPCSQJQWUTYA90gQykqOpMQjjnyFXp+5iDbUGujUFV7m/x4VfUhHNVdkAPWIDcokBVOQCjkN4gsE59EzQDkWaMDV+WnD4woc2AAmiBLT9x5TXQ9vtVNOgcZ1UGPl6iwTRlqsoG6DhHFg2WpRyBMYDqj73DPwXNwo5Vf9EkpKlOPQGRKSvyKoW0VwAAAABJRU5ErkJggg==","34":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAEhJREFUOI1jYWBgYJg2bdp/BiqArKwsRhZqGcbAAHEYC7UMgwHaG5iVlcVIigHoQTYEvTxq4KiBw9JASouzIeDlrKwsRmpWAQAapxXTxeOKdwAAAABJRU5ErkJggg==","39":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAABtJREFUOI1jYaAyYBk1cNTAUQNHDRw1cKQaCAAQKwBR5g8A3AAAAABJRU5ErkJggg==","94":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAEZJREFUOI3t1DEOACAIBMEl8d/El2OlkVauMmwFzYSKgbgBEBBVyMAOqCggDCyD7m/anGeUXdhggw3+DF5fQwMWSg92L4oWLbYHV75oq3QAAAAASUVORK5CYII=","95":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE9JREFUOI1jYaAyYGFgYGD4z3D0P6UGMTJYM8INpAb4z3D0PyODNSOKgX83m5NlGLPvSTibai4cNXDUwFEDh7GByKUGVQykBKAUsDAONQAACX4K5HcHM08AAAAASUVORK5CYII=","96":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE1JREFUOI1jYaAyYGFgYGBgKPj/n2KTJjAyIgykBij4/59hAiMjioEHCv+SZZZDPzOcTT0Xjho4auCogcPXQORSgyoGUgRQClgohxoAAPcgC0cLRmFmAAAAAElFTkSuQmCC","97":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE9JREFUOI1jYaAyYGFgYGD4H8rwn1KDGFczMMINpAb4H8rwn3E1AyOKgX+zdpBlGPM0Dzibai4cNXDUwFEDh7GByKUGVQykBKAUsDAONQAADm0LjNDXwnoAAAAASUVORK5CYII=","98":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE1JREFUOI1jYaAyYGFgYGBgeLbyP8UmSYUzIgykBni28j+DVDgjioGbxVzIMsv31R44m3ouHDVw1MBRA4evgcilBlUMpAigFLBQDjUAAK3EDCi4+VvQAAAAAElFTkSuQmCC","99":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE9JREFUOI1jYaAyYGFgYGD4WrXtP6UGcbd5McINpAb4WrXtP3ebFyOKgeyxjmQZ9nPxfjibai4cNXDUwFEDh7GByKUGVQykBKAUsDAONQAAgkcPZFtXdysAAAAASUVORK5CYII=","100":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE9JREFUOI1jYaAyYGFgYGD4v4rhP6UGMYYxMMINpAb4v4rhP2MYAyOKgX8drpNlGPMBTTibai4cNXDUwFEDh7GByKUGVQykBKAUsDAONQAA97UK7R2GvdwAAAAASUVORK5CYII=","101":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE9JREFUOI1jYaAyYGFgYGBIP7v6P6UGzTQOZYQbSA2Qfnb1/5nGoYwoBvrrS5Bl2MaLL+Bsqrlw1MBRA0cNHMYGIpcaVDGQEoBSwMI41AAApeEP/wO5CC4AAAAASUVORK5CYII=","102":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE1JREFUOI1jYaAyYGFgYGBgOPr/P8UmWTMyIgykBjj6/z+DNSMjioHXzf+SZZbmSWY4m3ouHDVw1MBRA4evgcilBlUMpAigFLBQDjUAAPB5CsDCfOrcAAAAAElFTkSuQmCC","103":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE9JREFUOI1jYaAyYGFgYGDoPJv+n1KDyo1nMsINpAboPJv+v9x4JiOKgW76BWQZtuviBDibai4cNXDUwFEDh7GByKUGVQykBKAUsDAONQAAfCkP9OnBN70AAAAASUVORK5CYII=","104":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE9JREFUOI1jYaAyYGFgYGBYlX72P6UGhc00ZoQbSA2wKv3s/7CZxowoBurk6pNl2JXJF+Fsqrlw1MBRA0cNHMYGIpcaVDGQEoBSwMI41AAAhGoPzwTtFGcAAAAASUVORK5CYII=","105":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE9JREFUOI1jYaAyYGFgYGAocO38T6lBE3aXM8INpAYocO38P2F3OSOKgRV1xWQZ1tHUC2dTzYWjBo4aOGrgMDYQudSgioGUAJQCFsahBgAAUGEQbkO7weoAAAAASUVORK5CYII=","106":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE9JREFUOI1jYaAyYGFgYGB45s3wn1KDpLYyMMINpAZ45s3wX2orAyOKgWI9N8gy7FWJBpxNNReOGjhq4KiBw9hA5FKDKgZSAlAKWBiHGgAAi5gMdwOFQ9MAAAAASUVORK5CYII=","107":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE9JREFUOI1jYaAyYGFgYGBYwdDyn1KDIhhqGOEGUgOsYGj5H8FQw4hiYMgBX7IMW+OwGc6mmgtHDRw1cNTAYWwgcqlBFQMpASgFLIxDDQAAmv8MmvafzDkAAAAASUVORK5CYII=","108":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE9JREFUOI1jYaAyYGFgYGD4WrXtP6UGcbd5McINpAb4WrXtP3ebFyOKgeyOpmQZ9nP/aTibai4cNXDUwFEDh7GByKUGVQykBKAUsDAONQAAnUMPjFkMKuEAAAAASUVORK5CYII=","109":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAF5JREFUOI3t1TEKgEAMRNEJzBHEYu7kab3TFuIdtDGwuLCgSZlfpXpdEuKpNVwIJMEAgBmYGxKMGViPMgvzBnBd9k/AcW5zMFqBBRb4C3zvZhiMRgmWdRMlGH3IegE3k+UaP4Ke/sYAAAAASUVORK5CYII=","110":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAFhJREFUOI3t1bEJgFAMRdH78C3jKg7sKk4j38aAKAialLlVqtMlMWcDBokEAnAFFoZArsCuqKuw6AHu2/oJmOblHczWYIMN/gLvu5kGs1mgqpsokGOoegEHSlIRxWLNT0wAAAAASUVORK5CYII=","111":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAEtJREFUOI1jYaAyYGFgYGBgWNHyn2KTImoYEQZSA6xo+c8QUcOIaqCdKnmGHboNZ1LPhaMGjho4auAwNhCp1KCOgZQAlAIWyqEGAABB1guY1jYTsgAAAABJRU5ErkJggg==","112":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE9JREFUOI1jYaAyYGFgYGB4NoPhP6UGSWUwMMINpAZ4NoPhv1QGAyOKgWJ+m8ky7NUmXzibai4cNXDUwFEDh7GByKUGVQykBKAUsDAONQAAsvsMQI/z4JsAAAAASUVORK5CYII=","113":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE9JREFUOI1jYaAyYGFgYGBILz/7n1KDZnYaM8INpAZILz/7f2anMSOKgf7B+mQZtnHtRTibai4cNXDUwFEDh7GByKUGVQykBKAUsDAONQAAkNkQLA8qe60AAAAASUVORK5CYII=","114":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE9JREFUOI1jYaAyYGFgYGAo7nT9T6lBveW7GeEGUgMUd7r+7y3fzYhiYFJxGVmGzevtgrOp5sJRA0cNHDVwGBuIXGpQxUBKAEoBC+NQAwAAYyEQhqfFu2wAAAAASUVORK5CYII=","115":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE9JREFUOI1jYaAyYGFgYGD4eqrqP6UGcZu1McINpAb4eqrqP7dZGyOKgewaAWQZ9vPGBjibai4cNXDUwFEDh7GByKUGVQykBKAUsDAONQAAlHAPYkBoBjYAAAAASUVORK5CYII=","116":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE1JREFUOI1jYaAyYGFgYGBgOPr/P8UmWTMyIgykBjj6/z+DNSMjioE7TP+SZZbHaWY4m3ouHDVw1MBRA4evgcilBlUMpAigFLBQDjUAAAb0CuGWZ+6qAAAAAElFTkSuQmCC","117":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE9JREFUOI1jYaAyYGFgYGAo3vT/P6UG9foxMsINpAYo3vT/f68fIyOKgQ6Wf8ky7MBxZjibai4cNXDUwFEDh7GByKUGVQykBKAUsDAONQAA928Old3e1QAAAAAASUVORK5CYII=","118":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE9JREFUOI1jYaAyYGFgYGBYfTb9P6UGhRrPZIQbSA2w+mz6/1DjmYwoBjroF5Bl2IGLE+Bsqrlw1MBRA0cNHMYGIpcaVDGQEoBSwMI41AAAc+MPtjw4qVkAAAAASUVORK5CYII=","119":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE9JREFUOI1jYaAyYGFgYGBoYVjxn1KDahgiGOEGUgO0MKz4X8MQwYhiYNi2ELIMW+W1Bs6mmgtHDRw1cNTAYWwgcqlBFQMpASgFLIxDDQAAnEEMmxCorjsAAAAASUVORK5CYII=","120":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE9JREFUOI1jYaAyYGFgYGB4xrDyP6UGSTGEM8INpAZ4xrDyvxRDOCOKgWLbdMgy7JXXFTibai4cNXDUwFEDh7GByKUGVQykBKAUsDAONQAAvq4MPYMEk0gAAAAASUVORK5CYII=","121":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAE9JREFUOI1jYaAyYGFgYGC4X/z/P6UGKfYyMsINpAa4X/z/v2IvIyOKgf/D/5JlGONKZjibai4cNXDUwFEDh7GByKUGVQykBKAUsDAONQAAUIANXmqgl6QAAAAASUVORK5CYII=","122":"iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAAXNSR0IB2cksfwAAAAlwSFlzAAAOxAAADsQBlSsOGwAAAF1JREFUOI1jYYAB3xX/GSgBmyMYGRgYGFioYhjMjM0RjCxUMQzJUBaqGQYFGAYWp4aTZEDv7JX4DaQUjBo4auCogWQZiJ43KTaQUsDCsDmCkWpl4uYIRhYYg1pVAAD22xkWydIOaAAAAABJRU5ErkJggg=="};
+      // ── 청약예정 배지 레이어 ────────────────────────────────────────
+      // 데이터는 페이지 로드 시 1회 받아 미리 그려 둔다. 토글은 레이어 트리(아래)가,
+      // 그리기는 여기가 담당 — overlayadd 토글 이벤트에 의존하지 않는다.
+      const subLayer = L.layerGroup();
+      function subPopupHtml(it) {
+        const range = (a, b) => (a || '?') + (b && b !== a ? ' ~ ' + b : '');
+        const rows = [`<b>${esc(it.name)}</b>`, esc(it.addr)];
+        if (it.supply) rows.push(`총 <b>${Number(it.supply).toLocaleString()}</b>세대`);
+        if (it.pblancDe) rows.push(`모집공고일: ${it.pblancDe}`);
+        if (it.spStart) rows.push(`특별공급 접수: ${range(it.spStart, it.spEnd)}`);
+        if (it.rcptStart) rows.push(`일반(1순위) 접수: ${range(it.rcptStart, it.rcptEnd)}`);
+        if (it.url) rows.push(`<a href="${safeUrl(it.url)}" target="_blank" rel="noopener">청약홈 상세 보기</a>`);
+        return rows.join('<br>');
+      }
+      let _subRendered = false;
+      function renderSubscriptions() {
+        if (_subRendered) return;
+        _subRendered = true;
+        loadSubscriptions().then((items) => {
+          let i = 0, active = 0;
+          const MAX = Math.min(3, items.length || 1); // JSONP 지오코딩은 3건 동시까지만
+          const next = () => {
+            while (active < MAX && i < items.length) {
+              const it = items[i++]; active++;
+              vworldAddrToPnu(it.addr, (g) => {
+                active--;
+                if (g && g.lat && g.lng) {
+                  L.marker([g.lat, g.lng], {
+                    icon: L.divIcon({
+                      className: 'sub-badge-wrap',
+                      html: '<span class="sub-badge">분양예정</span>',
+                      iconSize: [58, 20], iconAnchor: [29, 10],
+                    }),
+                    title: it.name,
+                  }).addTo(subLayer).bindPopup(subPopupHtml(it));
+                }
+                next();
+              });
+            }
+          };
+          next();
+        });
+      }
+      renderSubscriptions();
+
       // ── 레이어 트리 (대분류 > 중분류 > 소분류) ─────────────────────────
       // 참조 사이트(서울도시공간포털)의 범례가 3단으로 정리돼 있어 그 구조를 그대로 따른다.
       // Leaflet 기본 레이어 컨트롤은 평평한 목록뿐이라 전용 패널을 만든다.
@@ -1431,6 +1502,9 @@
         ]],
         ['현장 확인', [
           { name: 'CCTV (실시간 도로영상)', layer: cctvLayer },
+        ]],
+        ['청약', [
+          { name: '분양예정 (청약홈)', layer: subLayer },
         ]],
         ['지적·행정경계', [
           { name: '지적도 (필지 경계)', layer: wms('lt_c_landinfobasemap', 0.85) },
@@ -1836,7 +1910,7 @@
         finish(null);
       };
       const s = document.createElement('script');
-      s.src = `https://api.vworld.kr/req/search?service=search&request=search&version=2.0&crs=EPSG:4326&size=1&page=1&query=${encodeURIComponent(addr)}&type=address&format=json&key=${VWORLD_KEY}&callback=${cbName}`;
+      s.src = `https://api.vworld.kr/req/search?service=search&request=search&version=2.0&crs=EPSG:4326&size=1&page=1&query=${encodeURIComponent(addr)}&type=address&category=road&format=json&key=${VWORLD_KEY}&callback=${cbName}`;
       s.onerror = () => finish(null);
       document.head.appendChild(s);
       setTimeout(() => finish(null), 7000);
