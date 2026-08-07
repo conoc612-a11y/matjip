@@ -1991,45 +1991,45 @@
     // Leaflet 의 popup.update() 는 저장된 _content 문자열로 innerHTML 을 다시 그린다.
     // 우리가 DOM 에 직접 꽂아 넣은 내용(토지·건물 정보, 상호 목록)이 그 순간 통째로 지워지고,
     // 붙잡아 둔 노드도 분리돼 이후 렌더가 화면에 영영 반영되지 않는다.
-    // 팝업 높이는 자동이라 내용이 늘어나도 알아서 커진다. 단 _adjustPan() 을 재렌더마다
-    // 부르면 '팝업 전체가 화면에 들어오도록' 지도가 순간이동(animate:false)해, 상세 조회가
-    // 하나씩 쌓이는 동안 지도가 다른 지역으로 훌쩍 옮겨간 것처럼 보인다. 팝업은 내부
-    // 스크롤이 가능하므로 앵커(클릭 지점)가 화면 안에 있는 동안은 지도를 건드리지 않는다.
-    // precise=true 는 좌표가 아니라 팝업 DOM 박스가 실제로 지도 밖으로 나갔는지(픽셀 기준)를 본다.
-    // 줌 직후처럼 '한 번의 명확한 사용자 동작' 뒤에는 정확하게 재배치해야 팝업 하단이
-    // 지도 밖으로 잘리는 문제(예: maxHeight가 커도 앵커가 가장자리 근처면 못 잡아냄)를 막는다.
-    // 반면 상세 조회가 하나씩 쌓일 때(precise 생략)는 좌표 기준의 느슨한 판정을 유지한다 —
-    // 매 렌더마다 정밀 판정을 하면 팝업이 자라날 때마다 지도가 순간이동해 버린다(과거 회귀).
-    // precise 경로는 Leaflet 의 _adjustPan() 을 쓰지 않는다. 그 함수에는 _autopanning
-    // 플래그가 있어 "직전에 자동 패닝을 했으면 이번 호출은 통째로 건너뛰고 플래그만 리셋"
-    // 한다. 팝업이 열릴 때 한 번 패닝되므로 그 다음 줌에서의 호출이 그대로 삼켜져,
-    // 줌해도 팝업이 계속 지도 위쪽으로 잘린 채 남았다(실측: top -52px, 모든 줌 레벨 동일).
-    // 그래서 필요한 이동량을 직접 계산해 panBy 한다 — 잘렸을 때만, 최소 거리로만 움직이므로
-    // 상세 조회가 쌓일 때 지도가 순간이동하던 과거 회귀(3e02fdb)도 재발하지 않는다.
+    // 팝업이 지도 밖으로 넘치면 '지도를 움직여' 팝업을 맞추는 대신, '팝업만 밀어 넣어' 맞춘다.
+    // 과거엔 넘친 만큼 map.panBy([dx,dy], {animate:false}) 로 지도를 즉시 옮겨 팝업을 보여줬는데,
+    // ① 클릭 직후 상세 정보가 차곡차곡 쌓이며 팝업이 자라날 때마다, ② 줌 후에도 지도가 훌쩍
+    // 다른 지역으로 옮겨가 '클릭한 좌표가 다른 곳으로 이동 / 줌하면 다른 화면으로 이동'처럼
+    // 보이는 원인이었다(사용자 제보). 참조 사이트(서울도시공간포털)는 지도를 절대 움직이지 않고
+    // 클릭 정보를 고정 패널에 보여준다 — 여기도 지도는 고정, 팝업만 offset 으로 지도 안에
+    // 끌어 들인다. 지도가 움직이지 않으므로 클릭·줌·드래그 내내 화면이 안정적으로 고정된다.
     const POPUP_PAD = 12;
-    function repanPopup(p, precise) {
+    function clampPopup(p) {
       if (!p || !p.isOpen || !p.isOpen()) return;
       const map = p._map;
-      if (!map) return;
-      if (!precise) {
-        const ll = p.getLatLng ? p.getLatLng() : null;
-        if (!ll || map.getBounds().pad(-0.03).contains(ll)) return;
-        try { if (p._adjustPan) p._adjustPan(); } catch (e) {}
-        return;
-      }
+      if (!map || !p.getElement) return;
       const el = p.getElement();
       if (!el) return;
       const m = map.getContainer().getBoundingClientRect();
       const r = el.getBoundingClientRect();
-      // panBy([dx,dy]) 는 시야를 그 방향으로 옮긴다 = 내용은 반대로 움직인다.
-      // 아래가 넘치면 양수(내용을 위로), 위가 잘리면 음수(내용을 아래로).
+      // 아래가 넘치면 양수, 위가 잘리면 음수. offset 은 화면 이동량과 같은 부호다(panBy 와 반대).
       let dx = 0, dy = 0;
       if (r.bottom > m.bottom - POPUP_PAD) dy = r.bottom - (m.bottom - POPUP_PAD);
       // 위쪽 판정을 나중에 둬서, 팝업이 지도보다 길 때는 상단이 보이도록 한다(내부 스크롤 가능).
       if (r.top - dy < m.top + POPUP_PAD) dy = r.top - (m.top + POPUP_PAD);
       if (r.right > m.right - POPUP_PAD) dx = r.right - (m.right - POPUP_PAD);
       if (r.left - dx < m.left + POPUP_PAD) dx = r.left - (m.left + POPUP_PAD);
-      if (dx || dy) map.panBy([dx, dy], { animate: false });
+      if (!dx && !dy) return;
+      const off = L.point(p.options.offset || [0, 0]);
+      p.options.offset = L.point(off.x - dx, off.y - dy);
+      try { p._updatePosition(); } catch (e) {}
+    }
+    function repanPopup(p, precise) {
+      if (!p || !p.isOpen || !p.isOpen()) return;
+      const map = p._map;
+      if (!map) return;
+      if (!precise) {
+        // 좌표 기준 느슨한 판정: 앵커가 지도 중앙 근처면 건드리지 않는다. 상세 조회가
+        // 하나씩 쌓일 때마다 팝업이 어지럽게 움직이는 걸 막기 위한 완충(과거 회귀 3e02fdb).
+        const ll = p.getLatLng ? p.getLatLng() : null;
+        if (!ll || map.getBounds().pad(-0.03).contains(ll)) return;
+      }
+      clampPopup(p);
     }
     // Leaflet 내부의 _adjustPan 을 위 로직으로 통째로 교체한다.
     // 원본은 _autopanning 플래그로 "직전에 자동 패닝했으면 이번 호출은 건너뛰고 플래그만
@@ -2042,7 +2042,7 @@
     if (L.Popup && L.Popup.prototype) {
       L.Popup.prototype._adjustPan = function () {
         if (!this.options.autoPan) return;
-        repanPopup(this, true);
+        clampPopup(this);
       };
     }
 
