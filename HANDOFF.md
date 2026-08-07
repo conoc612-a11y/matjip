@@ -42,6 +42,11 @@
 ### 손대면 안 되는 것
 - `.nojekyll` 을 지우지 말 것. 이 리포는 정적 사이트라 Jekyll 은 불필요하며, 이 파일이 앞으로의 빌드 멈춤/실패를 원천 차단한다.
 
+### Jekyll 분석 결론 (2026-08-07, 사용자 질문에 답함 — 재조사하지 말 것)
+- **Jekyll 은 이 프로젝트에서 의도적으로 설정된 적이 없다.** git 히스토리 전수 조사: `_config.yml`/Gemfile/layouts/includes **한 번도 없음**, 프론트매터 있는 사이트 파일 0개, Liquid 0건. Jekyll 언급은 오늘 작성한 HANDOFF/TROUBLESHOOTING 문서뿐.
+- Jekyll 이 있던 유일한 이유 = **GitHub Pages 기본 동작**(`.nojekyll` 없으면 legacy 빌드가 아무 저장소나 Jekyll 로 빌드). 프론트매터가 없으니 Jekyll 은 파일을 그대로 복사만 했고, 배포 결과물은 리포와 1:1 동일.
+- Jekyll 이 유일하게 쓸모 있을 곳: 6개 HTML 페이지(index/onboarding/main/ai/land/detail)의 헤더·내비·푸터·CSS **중복 제거**(`_layouts`+`_includes`)뿐. 다만 이는 AGENTS.md 의 "No build tools" 원칙과 충돌 → **도입 보류 확정**. 중복 제거가 필요해지면 빌드 도구 없이(JS 주입 등) 처리하는 방향.
+
 ---
 
 ## 2026-08-07 — Claude Code
