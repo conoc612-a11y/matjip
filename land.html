@@ -619,6 +619,12 @@
       box.style.display = 'block';
       if (!/^[0-9]{10}$/.test(digits)) { box.innerHTML = '<span style="color:var(--c-danger);font-size:14px;">사업자등록번호 10자리를 입력하세요.</span>'; return; }
       const validate = !!(name && startDt);
+      if ((name || startDt) && !validate) {
+        box.innerHTML = '<span style="color:var(--c-danger);font-size:14px;">진위확인은 대표자와 개업일자를 <b>모두</b> 입력해야 합니다. 번호만 입력하면 상태조회만 됩니다.</span>';
+        if (name && $('bizno-date')) $('bizno-date').focus();
+        if (startDt && $('bizno-name')) $('bizno-name').focus();
+        return;
+      }
       box.innerHTML = '<span style="color:var(--muted);font-size:14px;">조회 중…</span>';
       $('bizno-go').disabled = true;
       const url = BIZNO_ENDPOINT + '?op=' + (validate ? 'validate' : 'status');
