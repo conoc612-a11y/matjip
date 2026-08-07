@@ -47,6 +47,30 @@
 - Jekyll 이 있던 유일한 이유 = **GitHub Pages 기본 동작**(`.nojekyll` 없으면 legacy 빌드가 아무 저장소나 Jekyll 로 빌드). 프론트매터가 없으니 Jekyll 은 파일을 그대로 복사만 했고, 배포 결과물은 리포와 1:1 동일.
 - Jekyll 이 유일하게 쓸모 있을 곳: 6개 HTML 페이지(index/onboarding/main/ai/land/detail)의 헤더·내비·푸터·CSS **중복 제거**(`_layouts`+`_includes`)뿐. 다만 이는 AGENTS.md 의 "No build tools" 원칙과 충돌 → **도입 보류 확정**. 중복 제거가 필요해지면 빌드 도구 없이(JS 주입 등) 처리하는 방향.
 
+## 2026-08-07 (4) — opencode (마우스 동작 수정 — 지도 고정, 팝업만 밀어 넣음)
+
+> 사용자 제보: 이동·클릭·줌 시 지도가 다른 곳으로 점프한다. 참조 사이트(서울도시공간포털)는 지도를 절대 움직이지 않고 정보를 고정 패널에 표시한다 — 같은 방식으로 수정.
+
+### 원인 (분석 완료 — 재조사하지 말 것)
+- 뷰 점프의 유일한 원인은 `repanPopup`의 `map.panBy([dx,dy], {animate:false})` 즉시 이동이었다. 팝업이 화면을 벗어나면 지도를 움직여 맞췄는데, ① 상세 정보가 하나씩 쌓여 팝업이 자라날 때마다 ② 줌 후에 지도가 훌쩍 다른 지역으로 옮겨갔다.
+- moveend 핸들러 3개는 전부 debounce된 데이터 로드라 뷰 이동이 없다.
+
+### 적용한 수정 (land.html, `clampPopup()` 신설)
+- `map.panBy` 대신 **`popup.options.offset`을 `L.point(off.x - dx, off.y - dy)`로 줄여 팝업만 지도 안으로 끌어 들이고** `p._updatePosition()` 호출(내용 재렌더 없이 재배치만).
+- `L.Popup.prototype._adjustPan`도 `clampPopup(this)` 호출로 교체(기존 `repanPopup(this, true)` → `clampPopup`). `repanPopup(p, precise)`의 precise 경로는 `clampPopup` 사용, 느슨한 판정 경로 유지(앵커가 `pad(-0.03)` 밖일 때만 — 상세 조회가 쌓일 때 어지럽게 움직이는 걸 막는 완충).
+- 부호: 아래/오른쪽 넘침 → offset 감소(`-dx/-dy`), 위/왼쪽 → 증가. panBy와 반대 부호.
+- Leaflet 1.9.4 `Popup._updatePosition`은 `_zoomAnimated` 분기에 따라 transform/bottom/left 둘 다 재설정 → offset 변경이 화면에 그대로 반영. offset이 배열일 수 있어 반드시 `L.point(offset || [0,0])` 정규화.
+
+### 검증
+- `clamp_test.html` (임시, 커밋 안 함)을 실제 Leaflet+CSS(headless Chrome)에서 실행 — 4케이스 전부 `insideAfter: true`·`centerMoved: false`: top-anchor(위 넘침)/right-edge(우측+하단 넘침)/center/zoom-after-clamp(줌 후에도 지도 고정·팝업 유지).
+- land.html의 `clampPopup` 구현이 테스트 버전과 동일한지 대조 완료.
+- 인라인 스크립트 node --check 통과(UTF-8 명시).
+
+### Next Move
+- 커밋·push → 배포 빌드 `built` 확인 → 배포본 land.html 반영 확인.
+
+---
+
 ## 2026-08-07 (3) — opencode (land.html 로딩 속도 최적화 — 시작 시 2.5MB 절감)
 
 > 사용자 요청: "페이지 로딩 속도 최적화, 최대한 코드 안 건드리면서." **아직 커밋 안 함** (편집만 완료, 문법 검증만 통과).
