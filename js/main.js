@@ -2,7 +2,7 @@
  * 맛집 탐방 — main.html 전용 스크립트
  * 구조: ①상수·상태  ②유틸  ③테마·최근본  ④지도 초기화  ⑤식당 카드·정보창
  *       ⑥지도 도구  ⑦길찾기(출발/도착)  ⑧검색(네이버/카카오)  ⑨추천·목록 렌더
- *       ⑩마커 클러스터링  ⑪정비사업  ⑫데이터 로드  ⑬이벤트·초기화
+ *       ⑩마커 클러스터링  ⑪데이터 로드  ⑫이벤트·초기화
  * ==========================================================================*/
 
 // ── ① 상수·키·상태 ─────────────────────────────────────────────────────────
@@ -584,47 +584,7 @@ function openClusterList(group, la, lo) {
 }
 function setClusterVisible(v) { clusterPool.forEach((m) => m.setMap(v ? map : null)); }
 
-// ── ⑪ 정비사업 (재개발·재건축 1,100여 구역, 정보몽땅 공식자료) ─────────────
-// 대분류 구조는 서울도시공간포털 도시계획사업 메뉴(BZ1xx 정비 / BZ2xx 소규모 / BZ3xx 역세권 / BZ4xx 재정비 / BZ5xx 국토부 / BZ6xx 기타)를 따름
-const JB_COLOR = { '신통': '#e8590c', '재개발': '#e03131', '재건축': '#7048e8', '지역주택': '#1c7ed6', '재정비촉진': '#f08c00', '모아': '#2f9e44', '역세권': '#0c8599', '노후계획도시': '#5c7cfa', '기타': '#868e96' };
-function jbGroup(d) { const bz = (d && d.bz) || ''; const g = (d && d.gubun) || (typeof d === 'string' ? d : '') || ''; const n = (d && d.name) || ''; if (bz) { if (bz.indexOf('BZ101') === 0) return '신통'; if (bz.indexOf('BZ2') === 0) return '모아'; if (bz.indexOf('BZ3') === 0) return '역세권'; if (bz.indexOf('BZ4') === 0) return '재정비촉진'; if (bz.indexOf('BZ5') === 0) return '노후계획도시'; if (bz.indexOf('BZ6') === 0) return '기타'; if (g.indexOf('지역주택') >= 0) return '지역주택'; if (g.indexOf('재건축') >= 0) return '재건축'; return '재개발'; } if (n && /신속통합기획|신통|통합구역/.test(n)) return '신통'; if (g.indexOf('신통') >= 0) return '신통'; if (g.indexOf('가로') >= 0 || g.indexOf('소규모') >= 0 || g.indexOf('모아') >= 0) return '모아'; if (g.indexOf('재건축') >= 0) return '재건축'; if (g.indexOf('재개발') >= 0) return '재개발'; if (g.indexOf('지역주택') >= 0) return '지역주택'; return '기타'; }
-function jbIcon(color) { return { content: `<div style="width:22px;height:22px;background:${color};border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.5);"></div>`, anchor: new naver.maps.Point(11, 11) }; }
-const jbCIcon = (px) => ({ content: `<div style="cursor:pointer;width:${px}px;height:${px}px;line-height:${px - 4}px;background:#495057;border:2px solid #fff;border-radius:50%;color:#fff;text-align:center;font-weight:700;font-size:13px;box-shadow:0 1px 5px rgba(0,0,0,.4);"></div>`, size: new naver.maps.Size(px, px), anchor: new naver.maps.Point(px / 2, px / 2) });
-const jbClusterIcons = [jbCIcon(34), jbCIcon(42), jbCIcon(50), jbCIcon(58)];
-function jbCard(d) {
-  const g = jbGroup(d), c = JB_COLOR[g];
-  return `<div style="min-width:195px;"><span style="display:inline-block;background:${c};color:#fff;font-size:11px;padding:2px 7px;border-radius:10px;">${g}</span> <b style="font-size:11px;color:#555;">${esc(d.stage || '')}</b><div style="font-weight:700;font-size:14px;margin:4px 0 2px;">${esc(d.name)}</div><div style="font-size:12px;color:#8a9099;">${esc(d.gu)} ${esc(d.jibun)}${d.approx ? ' (동 근사)' : ''}</div><div style="font-size:11px;color:#999;margin-top:3px;">사업구분: ${esc(d.gubun)}${d.method ? ' · ' + esc(d.method) : ''}</div>${(d.rc || d.cafe) ? `<div style="display:flex;gap:6px;margin-top:7px;">${d.rc ? `<a href="https://urban.seoul.go.kr/view/map/mapPopup.html?recordCode=${encodeURIComponent(d.rc)}" target="_blank" rel="noopener" style="flex:1;text-align:center;padding:6px;border:1px solid #7048e8;color:#7048e8;border-radius:6px;text-decoration:none;font-size:12px;">🗺️ 경계지도</a>` : ''}${d.cafe ? `<a href="https://cleanup.seoul.go.kr/cafe/mainIndx.do?cafeUrl=${encodeURIComponent(d.cafe)}" target="_blank" rel="noopener" style="flex:1;text-align:center;padding:6px;border:1px solid #1c7ed6;color:#1c7ed6;border-radius:6px;text-decoration:none;font-size:12px;">📂 정보공개</a>` : ''}</div>` : ''}<div style="display:flex;gap:6px;margin-top:8px;"><button onclick="setRoutePt('s',${d.lat},${d.lng})" style="flex:1;font:inherit;font-size:12px;padding:5px 0;border:1px solid #2f9e44;color:#2f9e44;background:#fff;border-radius:6px;cursor:pointer;">🚩 출발</button><button onclick="setRoutePt('e',${d.lat},${d.lng})" style="flex:1;font:inherit;font-size:12px;padding:5px 0;border:1px solid #e03131;color:#e03131;background:#fff;border-radius:6px;cursor:pointer;">🏁 도착</button></div></div>`;
-}
-let jbRows = null, jbClustering = null, jbOn = false, jbPolys = null, jbPolysNaver = [];
-const jbFilter = { '신통': true, '재개발': true, '재건축': true, '지역주택': true, '재정비촉진': true, '모아': true, '역세권': true, '노후계획도시': true, '기타': true };
-function jbBuildNaver() {
-  if (jbClustering) { jbClustering.setMap(null); jbClustering = null; }
-  jbPolysNaver.forEach((p) => p.setMap(null)); jbPolysNaver = [];
-  if (!jbRows || !jbOn) return;
-  const arr = [];
-  jbRows.forEach((d) => {
-    if (d.lat == null || d.lng == null) return;
-    if (!jbFilter[jbGroup(d)]) return;
-    const c = JB_COLOR[jbGroup(d)];
-    if (d.rc && jbPolys && jbPolys[d.rc]) {
-      const paths = jbPolys[d.rc].map((ring) => ring.map((p) => latLng(p[0], p[1])));
-      const poly = new naver.maps.Polygon({ map, paths, fillColor: c, fillOpacity: 0.28, strokeColor: c, strokeWeight: 2, strokeOpacity: 0.9 });
-      naver.maps.Event.addListener(poly, 'click', (e) => { infoWindow.setContent('<div style="padding:7px 11px;font-size:13px;line-height:1.4;">' + jbCard(d) + '</div>'); infoWindow.open(map, e.coord); });
-      jbPolysNaver.push(poly);
-    } else {
-      const m = new naver.maps.Marker({ position: latLng(d.lat, d.lng), icon: jbIcon(c), title: d.name });
-      naver.maps.Event.addListener(m, 'click', () => openInfo(m, jbCard(d)));
-      arr.push(m);
-    }
-  });
-  jbClustering = new MarkerClustering({ minClusterSize: 2, maxZoom: 15, map, markers: arr, disableClickZoom: false, gridSize: 100, icons: jbClusterIcons, indexGenerator: [10, 50, 200], stylingFunction: (cm, count) => { const dv = cm.getElement().querySelector('div'); if (dv) dv.textContent = count; } });
-}
-function initJbCats() {
-  $('jb-cats').innerHTML = Object.keys(JB_COLOR).map((g) => `<button class="fav-cat active" data-g="${g}" style="display:inline-flex;align-items:center;gap:5px;"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${JB_COLOR[g]};"></span>${g}</button>`).join('');
-  $('jb-cats').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => { const g = b.dataset.g; jbFilter[g] = !jbFilter[g]; b.classList.toggle('active', jbFilter[g]); jbBuildNaver(); }));
-}
-
-// ── ⑫ 데이터 로드 (병렬) ──────────────────────────────────────────────────
+// ── ⑪ 데이터 로드 (병렬) ──────────────────────────────────────────────────
 // Supabase는 요청당 1,000행 제한 → 페이지네이션. 2페이지씩 병렬로 로드(왕복 절반).
 async function loadAllRestaurants() {
   const all = [], size = 1000; let from = 0;
@@ -818,16 +778,6 @@ function bindEvents() {
     if (!card || e.relatedTarget?.closest('.rec[data-id]') === card) return;
     highlightCard(card.dataset.id, false);
   });
-
-  // 정비사업 토글
-  $('tool-jb').addEventListener('click', () => {
-    jbOn = !jbOn;
-    $('tool-jb').classList.toggle('on', jbOn);
-    $('jb-cats').style.display = jbOn ? 'flex' : 'none';
-    $('banner').textContent = jbOn ? '🏗️ 정비사업 구역(재개발·재건축 등)을 유형별로 표시 중이에요.' : '';
-    if (jbOn && !jbRows) { Promise.all([fetch('redevelop_seoul.json?v=4').then((r) => r.json()), fetch('redevelop_polygons.json?v=2').then((r) => r.json()).catch(() => ({}))]).then(([rows, polys]) => { jbRows = rows; jbPolys = polys; jbBuildNaver(); }).catch(() => { $('banner').textContent = '정비사업 데이터를 불러오지 못했어요.'; }); }
-    else jbBuildNaver();
-  });
 }
 
 // 자동완성 (입력창 아래). 검색엔진 명은 선택된 엔진 기준으로 표시.
@@ -849,7 +799,6 @@ function renderAC() {
 
 function init() {
   bindEvents();
-  initJbCats();
   applyShareParams();
   loadAll();
 }

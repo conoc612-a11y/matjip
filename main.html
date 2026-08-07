@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="js/auth-guard.js"></script>
   <title>맛집 탐방 — 메인</title>
   <!-- DNS/연결 지연 최소화 -->
   <link rel="preconnect" href="https://oapi.map.naver.com" crossorigin />
@@ -11,7 +12,6 @@
   <link rel="preconnect" href="https://bhgijvaxxjnocgfnaaeu.supabase.co" />
   <!-- 네이버 지도 v3 (ncpKeyId 방식). 인증은 등록된 도메인(https://conoc612-a11y.github.io)에서만 성공 -->
   <script src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=kw4t9xfkhz&submodules=geocoder,panorama"></script>
-  <script src="https://cdn.jsdelivr.net/gh/navermaps/marker-tools.js@master/marker-clustering/src/MarkerClustering.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=725e7ddf965a3ffff3da1f2ac771cc57&libraries=services&autoload=false"></script>
   <script src="js/recommend.js"></script>
@@ -94,16 +94,22 @@
     .skel-m { height:12px; width:82%; margin-bottom:6px; }
     .skel-s { height:11px; width:38%; }
     .sheet-handle { display:none; }
-    .site-footer { flex:0 0 auto; background:var(--card); border-top:2px solid var(--line);
-      padding:10px 24px; display:flex; flex-direction:column; justify-content:center; gap:6px; }
-    .footer-links { display:flex; gap:16px; flex-wrap:wrap; }
+    .site-footer { flex:0 0 auto; position:relative; background:var(--card); border-top:2px solid var(--line);
+      padding:12px 24px; display:flex; flex-direction:column; justify-content:center; gap:6px; }
+    .footer-resize { position:absolute; top:-6px; left:0; right:0; height:12px; cursor:ns-resize; z-index:5; }
+    .footer-resize::after { content:''; position:absolute; top:4px; left:50%; transform:translateX(-50%); width:48px; height:4px; border-radius:2px; background:#c1c4c9; }
+    .footer-top { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+    .footer-links { display:flex; gap:16px; white-space:nowrap; }
     .footer-links a { font-size:12px; color:var(--muted); text-decoration:none; }
     .footer-links a:hover { color:var(--accent); }
-    .footer-stats { display:flex; font-size:12px; color:var(--text); }
-    .footer-stats span { padding:0 12px; border-right:1px solid var(--line); }
+    .footer-stats { display:flex; align-items:center; font-size:12px; color:var(--text); white-space:nowrap; }
+    .footer-stats span { padding:0 10px; border-right:1px solid var(--line); }
     .footer-stats span:first-child { padding-left:0; }
     .footer-stats b { color:var(--accent); }
-    .footer-stats .footer-note { padding:0; border-right:0; color:var(--muted); font-size:11px; }
+    .footer-stats .footer-note { padding:0 0 0 10px; border-right:0; color:var(--muted); font-size:11px; }
+    .footer-admin { flex:none; font-size:12px; font-weight:600; color:var(--accent); text-decoration:none;
+      border:1px solid var(--accent); border-radius:6px; padding:2px 10px; margin-left:8px; white-space:nowrap; }
+    .footer-admin:hover { background:var(--accent); color:#fff; }
     .footer-contact { font-size:12px; color:var(--muted); }
     /* 모바일: 패널을 지도 위로 올라오는 하단 시트로 */
     @media (max-width:640px) {
@@ -149,10 +155,8 @@
         <button id="tool-dist" class="tool-btn">📏 거리</button>
         <button id="tool-radius" class="tool-btn">⭕ 반경</button>
         <button id="tool-share" class="tool-btn">🔗 공유</button>
-        <button id="tool-jb" class="tool-btn">🏗️ 정비사업</button>
         <button id="tool-clear" class="tool-btn" style="display:none;">✖ 지우기</button>
       </div>
-      <div id="jb-cats" style="display:none;gap:5px;flex-wrap:wrap;margin-bottom:10px;"></div>
       <div id="engine-bar" style="display:flex;gap:4px;margin-bottom:6px;">
         <button class="tool-btn on" data-engine="naver">네이버</button>
         <button class="tool-btn" data-engine="kakao">카카오</button>
@@ -180,24 +184,28 @@
       <div id="rec-list"></div>
     </div>
   </div>
-  <footer class="site-footer">
-    <div class="footer-links">
-      <a href="terms.html#terms">이용약관</a>
-      <a href="terms.html#privacy">개인정보처리방침</a>
-      <a href="terms.html#copyright">저작권정책</a>
-      <a href="#">이용안내</a>
-      <a href="#">이용방법 및 장애문의</a>
-    </div>
-    <div class="footer-stats">
-      <span>회원수 <b id="f-members">—</b></span>
-      <span>오늘방문자 <b id="f-today">—</b></span>
-      <span>누적방문자 <b id="f-total">—</b></span>
-      <span class="footer-note">동일 IP는 하루 1회만 집계됩니다</span>
-      <span class="footer-note"><a href="admin.html" style="color:var(--muted);text-decoration:none;">관리자</a></span>
+  <footer class="site-footer" id="site-footer">
+    <div class="footer-resize" id="footer-resize" title="끌어서 세로 크기 조절"></div>
+    <div class="footer-top">
+      <div class="footer-links">
+        <a href="terms.html#terms">이용약관</a>
+        <a href="terms.html#privacy">개인정보처리방침</a>
+        <a href="terms.html#copyright">저작권정책</a>
+        <a href="#">이용안내</a>
+        <a href="#">이용방법 및 장애문의</a>
+      </div>
+      <div class="footer-stats">
+        <span>회원수 <b id="f-members">—</b></span>
+        <span>오늘방문자 <b id="f-today">—</b></span>
+        <span>누적방문자 <b id="f-total">—</b></span>
+        <span class="footer-note">동일 IP는 하루 1회만 집계됩니다</span>
+      </div>
+      <a href="admin.html" class="footer-admin">관리자</a>
     </div>
     <div class="footer-contact">호룡리싱앤리얼리티 &nbsp;·&nbsp; 오재호 010.4353.6501 &nbsp;·&nbsp; conoc@naver.com</div>
   </footer>
 
+  <script src="js/footer-resize.js"></script>
   <script src="js/main.js?v=6"></script>
 </body>
 </html>

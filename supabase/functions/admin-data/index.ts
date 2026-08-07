@@ -111,13 +111,15 @@ Deno.serve(async (req) => {
       admin.auth.admin.listUsers({ page: 1, perPage: 1000 }),
     ]);
     const tByUser = new Map((tRes.data || []).map((t) => [t.user_id, t]));
-    const lastByUser = new Map((aRes.data.users || []).map((u) => [u.id, u.last_sign_in_at]));
+    const authByUser = new Map((aRes.data.users || []).map((u) => [u.id, { last: u.last_sign_in_at ?? null, name: u.user_metadata?.name ?? null }]));
     const members = (pRes.data || []).map((p) => {
       const t = tByUser.get(p.id);
+      const a = authByUser.get(p.id);
       return {
         email: p.email,
+        name: a?.name ?? null,
         joined_at: p.created_at,
-        last_login_at: lastByUser.get(p.id) ?? null,
+        last_login_at: a?.last ?? null,
         spicy_level: t?.spicy_level ?? null,
         flavor_tags: t?.flavor_tags ?? [],
         situation_tags: t?.situation_tags ?? [],
