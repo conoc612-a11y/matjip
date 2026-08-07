@@ -104,9 +104,10 @@ Deno.serve(async (req) => {
     // ── 회원 목록 (취향 + 최종 접속일 포함, 최신순) ──
     // taste_profiles.user_id는 profiles가 아닌 auth.users를 직접 참조하므로
     // PostgREST embed가 안 된다 → profiles/taste_profiles/auth.users 를 따로 조회해 조인한다.
-    // 최종 접속일은 auth.users.last_sign_in_at (Supabase가 자동 기록, 별도 저장 없음).
+    // 최종 접속일은 profiles.last_seen_at (auth-guard.js가 방문마다 기록) 우선,
+    // 미기록 회원은 auth.users.last_sign_in_at(비밀번호 로그인 시각)으로 대체.
     const [pRes, tRes, aRes] = await Promise.all([
-      admin.from("profiles").select("id,email,created_at").order("created_at", { ascending: false }),
+      admin.from("profiles").select("id,email,created_at,last_seen_at").order("created_at", { ascending: false }),
       admin.from("taste_profiles").select("user_id,spicy_level,flavor_tags,situation_tags"),
       admin.auth.admin.listUsers({ page: 1, perPage: 1000 }),
     ]);
@@ -119,7 +120,7 @@ Deno.serve(async (req) => {
         email: p.email,
         name: a?.name ?? null,
         joined_at: p.created_at,
-        last_login_at: a?.last ?? null,
+        last_login_at: p.last_seen_at ?? a?.last ?? null,
         spicy_level: t?.spicy_level ?? null,
         flavor_tags: t?.flavor_tags ?? [],
         situation_tags: t?.situation_tags ?? [],

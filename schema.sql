@@ -4,9 +4,10 @@
 
 -- 1) profiles (auth.users 확장)
 create table if not exists profiles (
-  id         uuid primary key references auth.users(id) on delete cascade,
-  email      text,
-  created_at timestamptz not null default now()
+  id           uuid primary key references auth.users(id) on delete cascade,
+  email        text,
+  created_at   timestamptz not null default now(),
+  last_seen_at timestamptz
 );
 
 create or replace function public.handle_new_user()
