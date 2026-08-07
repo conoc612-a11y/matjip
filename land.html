@@ -362,6 +362,7 @@
     <div class="right">
       <a href="main.html" class="nav-tab">맛집</a>
       <a href="land.html" class="nav-tab active">부동산</a>
+      <button id="bizno-btn" class="nav-tab" title="사업자등록증 조회 (국세청)" aria-label="사업자등록증 조회">사업자조회</button>
       <button id="theme-btn" class="icon-btn" title="다크모드" aria-label="다크모드"></button>
       <div class="profile">
         <button id="profile-btn" class="nav-tab profile-tab">내 정보 <span style="opacity:.6;">▾</span></button>
@@ -518,6 +519,74 @@
         .catch((err) => { _subPromise = null; console.warn('청약예정 불러오기 실패:', err); return []; });
       return _subPromise;
     }
+
+    // ── 사업자등록증 조회 (국세청 사업자등록 상태조회 — Edge Function 프록시 경유) ──
+    // data.go.kr data/15081808. serviceKey는 프론트 금지 → supabase/functions/bizno-proxy가 중계.
+    // ?biznoEndpoint=... 로 로컬 테스트용 엔드포인트를 잠시 바꿀 수 있다.
+    const BIZNO_ENDPOINT = new URLSearchParams(location.search).get('biznoEndpoint')
+      || 'https://bhgijvaxxjnocgfnaaeu.supabase.co/functions/v1/bizno-proxy';
+    function openBiznoModal() {
+      let m = $('bizno-modal');
+      if (!m) {
+        m = document.createElement('div'); m.id = 'bizno-modal';
+        m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:3000;display:flex;align-items:center;justify-content:center;padding:16px;';
+        m.innerHTML = `<div style="background:var(--card);color:var(--text);border-radius:14px;max-width:420px;width:100%;max-height:82vh;overflow:auto;padding:20px;box-shadow:var(--c-shadow-lg);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <b style="font-size:16px;">사업자등록증 조회</b>
+            <button id="bizno-close" style="border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:7px;padding:6px 10px;cursor:pointer;font:inherit;">닫기</button>
+          </div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">사업자등록번호를 입력하면 운영 상태(계속·휴업·폐업)·과세유형·폐업일자를 조회합니다. 국세청 등록 정보와 30분 주기로 갱신됩니다.</div>
+          <input id="bizno-input" inputmode="numeric" maxlength="12" placeholder="예) 123-45-67890"
+            style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text);font:inherit;font-size:14px;margin-bottom:10px;">
+          <button id="bizno-go" style="width:100%;padding:11px;border:none;border-radius:8px;background:var(--c-primary);color:#fff;font:inherit;font-size:14px;font-weight:700;cursor:pointer;">조회하기</button>
+          <div id="bizno-result" style="margin-top:14px;display:none;"></div>
+        </div>`;
+        document.body.appendChild(m);
+        m.addEventListener('click', (e) => { if (e.target === m) m.style.display = 'none'; });
+        $('bizno-close').onclick = () => { m.style.display = 'none'; };
+        $('bizno-go').onclick = lookupBizno;
+        $('bizno-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') lookupBizno(); });
+      }
+      m.style.display = 'flex';
+      setTimeout(() => $('bizno-input').focus(), 50);
+    }
+    function lookupBizno() {
+      const box = $('bizno-result');
+      const digits = ($('bizno-input').value || '').replace(/[^0-9]/g, '');
+      box.style.display = 'block';
+      if (!/^[0-9]{10}$/.test(digits)) { box.innerHTML = '<span style="color:var(--c-danger);font-size:13px;">사업자등록번호 10자리를 입력하세요.</span>'; return; }
+      box.innerHTML = '<span style="color:var(--muted);font-size:13px;">조회 중…</span>';
+      $('bizno-go').disabled = true;
+      fetch(BIZNO_ENDPOINT, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ b_no: [digits] }),
+      })
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error('조회 API HTTP ' + r.status))))
+        .then((j) => {
+          const row = Array.isArray(j && j.data) ? j.data[0] : null;
+          if (!row) throw new Error('응답에 조회 결과가 없습니다.');
+          const stt = row.b_stt;
+          const endDt = row.end_dt ? `${row.end_dt.slice(0, 4)}-${row.end_dt.slice(4, 6)}-${row.end_dt.slice(6, 8)}` : '';
+          const badge = (txt, color) => `<span style="display:inline-block;padding:3px 10px;border-radius:999px;background:${color};color:#fff;font-size:12px;font-weight:700;">${txt}</span>`;
+          const color = stt === '계속사업자' ? '#0ca678' : stt === '휴업자' ? '#f59f00' : stt === '폐업자' ? '#e03131' : '#868e96';
+          const rows = [
+            ['사업자등록번호', `${row.b_no.slice(0, 3)}-${row.b_no.slice(3, 5)}-${row.b_no.slice(5)}`],
+            ['사업 상태', stt || '정보 없음'],
+            ['과세유형', row.tax_type || '정보 없음'],
+            ...(endDt ? [['폐업일자', endDt]] : []),
+          ];
+          box.innerHTML = `<div style="margin-bottom:10px;">${badge(stt || '미등록', color)}</div>
+            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            ${rows.map(([k, v]) => `<tr><td style="padding:6px 4px;color:var(--muted);white-space:nowrap;">${k}</td><td style="padding:6px 4px;font-weight:600;">${v}</td></tr>`).join('')}
+            </table>
+            <div style="margin-top:10px;font-size:11px;color:var(--muted);">출처: 국세청(공공데이터포털), 국세청 등록 정보와 30분 주기로 동기화됩니다.</div>`;
+        })
+        .catch((err) => { box.innerHTML = `<span style="color:var(--c-danger);font-size:13px;">조회 실패: ${esc(String(err.message || err))}</span>`; })
+        .finally(() => { $('bizno-go').disabled = false; });
+    }
+    const _biznoBtn = $('bizno-btn');
+    if (_biznoBtn) _biznoBtn.addEventListener('click', openBiznoModal);
 
     // ── 카카오 실시간 장소검색 (REST API, 도메인 등록 불필요) ──
     const KAKAO_JS_KEY = '725e7ddf965a3ffff3da1f2ac771cc57'; // developers.kakao.com 앱 > 앱키 > JavaScript 키 (Web 도메인 등록 필요). 비우면 버튼 숨김.
