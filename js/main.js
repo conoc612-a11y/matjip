@@ -660,7 +660,7 @@ async function loadAll() {
   $('rec-list').innerHTML = Array(4).fill('<div class="skel-card"><div class="skel skel-h"></div><div class="skel skel-m"></div><div class="skel skel-s"></div></div>').join('');
   const { data: { session } } = await sb.auth.getSession();
   user = session ? session.user : null;
-  if (user) { $('who').textContent = user.email; $('logout').style.display = ''; }
+  if (user) { $('who').textContent = user.email; $('logout').style.display = ''; $('delete-account').style.display = ''; }
   loadFooterStats(); // 푸터 통계는 백그라운드로 병렬 진행
   // 사용자 취향·즐겨찾기 로드와 식당 로드를 동시에 (순차 대기 제거)
   const userJobs = user
@@ -740,6 +740,25 @@ function bindEvents() {
 
   // 로그아웃
   $('logout').addEventListener('click', async () => { await sb.auth.signOut(); location.href = 'index.html'; });
+  // 회원 탈퇴
+  $('delete-account').addEventListener('click', async () => {
+    if (!confirm('정말 탈퇴하시겠습니까?\n회원 정보와 저장한 모든 데이터가 삭제되며 복구할 수 없습니다.')) return;
+    const btn = $('delete-account');
+    btn.disabled = true; btn.textContent = '🗑️ 탈퇴 처리 중…';
+    try {
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) { alert('로그인 정보가 없습니다.'); return; }
+      const r = await fetch(SUPABASE_URL + '/functions/v1/delete-account', {
+        method: 'POST', headers: { 'Authorization': 'Bearer ' + session.access_token, 'Content-Type': 'application/json' },
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+      location.href = 'index.html?deleted=1';
+    } catch (e) {
+      alert('탈퇴 실패: ' + (e.message || e) + '\n잠시 후 다시 시도해 주세요.');
+      btn.disabled = false; btn.textContent = '🗑️ 회원 탈퇴';
+    }
+  });
   // 패널 목록 탭(즐겨찾기/인근추천) 전환
   document.querySelectorAll('.list-tab').forEach((t) => t.addEventListener('click', () => {
     document.querySelectorAll('.list-tab').forEach((x) => x.classList.remove('active'));

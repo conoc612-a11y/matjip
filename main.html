@@ -16,7 +16,7 @@
   <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=725e7ddf965a3ffff3da1f2ac771cc57&libraries=services&autoload=false"></script>
   <script src="js/recommend.js"></script>
   <style>
-    :root { --bg:#f4f5f7; --card:#fff; --line:#e6e8eb; --text:#1c1e21; --muted:#8a9099; --accent:#e8590c; --ok:#2f9e44; }
+    :root { --bg:#f4f5f7; --card:#fff; --line:#e6e8eb; --text:#1c1e21; --muted:#8a9099; --accent:#e8590c; --ok:#2f9e44; --c-danger:#e03131; }
     :root.dark { --bg:#1a1b1e; --card:#25262b; --line:#373a40; --text:#e9ecef; --muted:#909296; }
     .recent-chip { display:inline-block; margin:2px 4px 2px 0; padding:3px 9px; border:1px solid var(--line); border-radius:12px; text-decoration:none; color:var(--text); background:var(--card); }
     .recent-chip:hover { border-color:var(--accent); color:var(--accent); }
@@ -132,6 +132,7 @@
           <a href="onboarding.html">⚙️ 취향 설정</a>
           <a href="#" id="fav-link">⭐ 즐겨찾기</a>
           <button id="logout" style="display:none;">🚪 로그아웃</button>
+          <button id="delete-account" style="display:none;color:var(--c-danger);">🗑️ 회원 탈퇴</button>
         </div>
       </div>
     </div>
