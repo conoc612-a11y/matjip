@@ -148,6 +148,28 @@ console.log('blocks:',i,'fails:',f);
 - serviceKey 는 **절대 프론트에 두지 말 것** → Supabase Edge Function 프록시(`molit-proxy` 패턴).
   - 예외가 된 것은 ITS 뿐이고, 그건 6-3 처럼 물리적으로 불가능해서다.
 
+### 6-6. V-World 주소검색(`req/search`) — `category` 파라미터 필수 (2026-08-07 실측)
+- `land.html` 의 `vworldAddrToPnu()` 가 `type=address` 로 검색할 때 **`category=road` 를 빼면 `PARAM_REQUIRED` 에러**가 난다(V-World 가 필수 파라미터로 추가). 응답이 `ERROR` 로 오니 마커가 한 개도 안 찍힌다.
+- 실측 조합: `type=address&category=road&query=<전체주소>` → OK, `{id: PNU, point:{x,y}}` 반환. `category=road&type=road` 로 도로명만 넣으면 NOT_FOUND, `category=PARCEL` 은 지번형이라 안 맞음.
+- 증상이 "청약 배지만 안 뜨는 게 아니라 지번→좌표가 전부 안 되는 것"이라면 이 파라미터부터 의심할 것(공유 함수라 호출처 전체에 영향).
+- 참고: V-World 타일(`wmts`)과 역지오코딩(`req/address`)은 `category` 없이 정상 동작한다 — 주소검색(`req/search`)만 해당.
+
+### 6-7. 한국부동산원 청약홈 분양정보 (chungak-proxy, 2026-08-07 신규)
+- data.go.kr `data/15098547`, **기술문서의 서버 경로(`B552555/ApplyhomeInfoDetailSvc/...`)는 전부 `NO_OPENAPI_SERVICE_ERROR`** — 이 API 는 odcloud(Infuser) 로 이전됨. **실제 호스트는 `https://api.odcloud.kr/api/ApplyhomeInfoDetailSvc/v1/{op}`** 이다.
+- 오퍼레이션: `getAPTLttotPblancDetail`(분양정보 상세) / `getAPTLttotPblancMdl`(주택형별 모델), OPT/UrbtyOfctl/PblPvtRent/Remndr 동일 세트.
+- 파라미터: `serviceKey`, `page`, `perPage`, `returnType`(JSON/XML), `cond[FIELD::OP]` — FIELD: `HOUSE_MANAGE_NO`/`PBLANC_NO`/`HOUSE_NM`/`HOUSE_SECD`(01 APT 등)/`HOUSE_DTL_SECD`(01 민영·03 공공)/`SUBSCRPT_AREA_CODE_NM`("서울")/`HSSPLY_ADRES`/`RCRIT_PBLANC_DE`(형식 `2026-08-07`), OP: EQ/LIKE/GT/GTE/LT/LTE.
+- 응답: `{currentCount, data:[...], matchCount, totalCount}`. 최신 공고일 순 정렬.
+- **데이터 지연 실측(2026-08-07)**: 서울 최신 공고가 2026-07-16 까지밖에 없다. "접수중·접수예정(`RCEPT_ENDDE >= 오늘`)" 필터를 걸면 **현재 0건이 나오는 게 정상**이다. 배지가 안 보인다고 코드 문제로 단정하지 말 것.
+- `SUBSCRPT_AREA_CODE`/`_NM` 필터는 주소와 별개인 공급지역 개념이다. 좌표는 `HSSPLY_ADRES`(주소)로 변환한다.
+- serviceKey 는 **인코딩된 문자열을 그대로** `serviceKey=<키>` 로 넣는다. `encodeURIComponent` 로 감싸면 `%`→`%25` 이중 인코딩되어 인증이 깨진다(molit-proxy 와 동일한 함정).
+- 프록시는 op/파라미터를 화이트리스트로 검증 후 중계한다(`supabase/functions/chungak-proxy/index.ts`). 시크릿은 `CHUNGAK_API_KEY`.
+
+### 6-8. 국토교통부 건축HUB 상세조회 — molit-proxy 화이트리스트 함정 (2026-08-07 실측)
+- `molit-proxy` 의 `ALLOWED_OPS` 에 **건축물대장 "상세 보기" op 가 빠지면 HTTP 400** 으로 거부되어 상세 조회가 전부 실패한다. 증상: 버튼은 뜨는데(목록 `getBrTitleInfo` 는 허용돼서) 클릭 후 "불러오지 못했어요" 또는 무한 "조회 중…".
+- 필수 op 7개(현재 land.html `LEDGER_DETAIL_OPS` 와 동일하게 유지): `getBrRecapTitleInfo`(총괄표제부) · `getBrBasisOulnInfo`(기본개요) · `getBrFlrOulnInfo`(층별개요) · `getBrAtchJibunInfo`(부속지번) · `getBrExposPubuseAreaInfo`(전유공용면적) · `getBrHsprcInfo`(주택가격 — op명이 `getBrHousePriceInfo` 가 **아님**) · `getBrJijiguInfo`(지역지구구역).
+- **역사**: 2026-08-05 `5347fa2` 에서 키를 프론트 하드코딩 → 프록시로 분리하면서 **화이트리스트에 이 op 들을 빼먹어** 상세보기가 깨졌다. "예전엔 됐는데" 하면 키 분리 커밋 이후의 화이트리스트 누락을 의심할 것. **되돌리기(프론트 직호출)는 금지** — 키 노출 보안 회귀다. 화이트리스트에 op 를 추가해서 복구한다.
+- op 를 새로 추가했다면 **배포 후 반드시 배포본에서 확인**: `https://<ref>.supabase.co/functions/v1/molit-proxy?op=<op>&sigunguCd=...` 가 400 대신 200 을 주는지. (임의 PNU 는 `totalCount=0` 이어도 정상이다 — 400 이 "화이트리스트 거부", 200 이 "통과"의 판별 기준.)
+
 ---
 
 ## 7. 배포 (GitHub Pages)
@@ -195,6 +217,7 @@ console.log('blocks:',i,'fails:',f);
 | MOLIT / NAVER_CLIENT_SECRET / CHUNGAK | **서버 전용** | Supabase Edge Function env 에만. HTML 금지 |
 | DGK | 로컬 도구 전용 | `tools/collect_realprice.js` 가 env 로 읽음 |
 | EXCHANGE_RATE / LOAN_RATE / INT_RATE | 서버 전용 | `eximbank-proxy` |
+| SUPABASE_ACCESS_TOKEN | 환경변수 임시 | `$env:SUPABASE_ACCESS_TOKEN='...'` 로 세션에만. 파일·리포 저장 금지. **채팅에 노출됐으면 대시보드에서 즉시 Revoke** (https://supabase.com/dashboard/account/tokens)
 
 실제 값은 `keys.env`(gitignored)에 있다. **커밋 금지.**
 
@@ -211,9 +234,17 @@ VWORLD_KEY=... node tools/collect_toji.js        # 토지거래허가구역(수 
 node tools/collect_redevelop.js                  # 정비사업 UQ120
 DGK=... node tools/collect_realprice.js          # 실거래가
 
-# Edge Function 배포
-export SUPABASE_ACCESS_TOKEN=<sbp_...>
-supabase functions deploy <name> --no-verify-jwt
+# Edge Function 배포 (npx, 서버에 supabase CLI 설치 불필요 — 이 PC 실측)
+$env:SUPABASE_ACCESS_TOKEN='<sbp_...>'
+npx -y supabase functions deploy molit-proxy   --project-ref bhgijvaxxjnocgfnaaeu --no-verify-jwt
+npx -y supabase functions deploy chungak-proxy --project-ref bhgijvaxxjnocgfnaaeu --no-verify-jwt
+
+# 시크릿 설정/확인
+npx -y supabase secrets set "CHUNGAK_API_KEY=<키>" --project-ref bhgijvaxxjnocgfnaaeu
+npx -y supabase secrets list --project-ref bhgijvaxxjnocgfnaaeu
+
+# 로그인 상태 확인
+npx -y supabase projects list
 
 # 배포 상태
 gh api repos/conoc612-a11y/matjip/pages/builds/latest --jq '{status:.status, commit:.commit}'

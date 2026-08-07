@@ -12,6 +12,28 @@
 
 ---
 
+## 2026-08-07 (3) — opencode (청약 배지 + terms.html + 상세보기 복구 + 문서 정리)
+
+> 전부 커밋(`4693cf7`)·배포·실검증 완료. 이어받는 세션은 **"다음 세션 확인할 것"** 만 보면 된다.
+
+### 한 일
+1. **청약홈 분양예정 배지** (land.html): `subLayer`/`renderSubscriptions`/`subPopupHtml`, 레이어 트리 '청약' 섹션, `.sub-badge` CSS. Supabase Edge Function `chungak-proxy` 신규 배포 + `CHUNGAK_API_KEY` 시크릿 설정. 실검증: 서울 최신 공고 2026-07-16(`RCRIT_PBLANC_DE` 기준)까지 API 가 데이터를 주는지 확인, 접수중·접수예정 필터는 **합성데이터 E2E**로 검증(배지 5개 PASS).
+2. **terms.html** 신규 + land/main 푸터에 `#terms`/`#privacy`/`#copyright` 링크 3개.
+3. **건축물대장 상세보기 복구**: `molit-proxy` `ALLOWED_OPS` 에 상세 op 7개 추가·재배포 (2026-08-05 `5347fa2` 키 분리 커밋에서 화이트리스트 누락 → 상세 조회 400). 배포본에서 전부 200 확인.
+4. **V-World 함정 수정**: `land.html` `vworldAddrToPnu()` 에 `&category=road` 추가 (`PARAM_REQUIRED` 버그).
+5. **TROUBLESHOOTING.md/HANDOFF.md 정리** (이 항목).
+
+### 배포 상태 (전부 확인됨)
+- GitHub Pages 커밋 `4693cf7` `built` — 라이브 `land.html` 에서 terms 링크·`sub-badge`·`category=road`·`chungak-proxy` 엔드포인트 확인.
+- `molit-proxy`·`chungak-proxy` 배포본에서 실검증 완료.
+
+### ⚠️ 다음 세션 확인할 것
+- **Supabase 액세스 토큰(`sbp_86b17faf...`)이 이전 채팅에 노출됨. 대시보드에서 Revoke 권고** — https://supabase.com/dashboard/account/tokens. 배포하려면 새로 발급해서 `$env:SUPABASE_ACCESS_TOKEN` 으로 쓰고 **파일·리포에 저장하지 말 것**.
+- 청약 배지가 "안 보인다"는 문의가 오면: **데이터 지연**(서울 최신 공고 2026-07-16, 접수중 0건이 정상)부터 의심. 로컬 테스트는 `?chungakEndpoint=` 쿼리로 mock 교체.
+- `supabase` CLI 미설치 상태에서 배포 명령은 `npx -y supabase ... --project-ref bhgijvaxxjnocgfnaaeu --no-verify-jwt` (TROUBLESHOOTING §10 참고).
+
+---
+
 ## 2026-08-07 (2) — opencode (배포 복구 시도 — GitHub Pages 빌드 멈춤)
 
 > **이 항목은 "기록만 남기고 안 한 것"이 아니다.** 실제로 push 까지 했고, 배포 결과 확인이 남아 있다.
