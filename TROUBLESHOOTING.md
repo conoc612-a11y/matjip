@@ -383,6 +383,13 @@ npx -y supabase projects list
   - **해결**: `map.on('popupclose')` 핸들러(land.html:1540~1546) — 닫히는 팝업이 `clickMarker.getPopup()`과 같으면 마커를 제거(`clickMarker=null`). 그러면 async 콜백의 `if (!clickMarker) return` 가드(land.html:3598)가 재오픈을 차단한다.
   - **검증**: `%TEMP%\opencode\bug3-user-standalone.cjs`(로컬 CDP) — 클릭→120ms 후 X로 닫기→3.5s 대기: `isOpenAfter3s:false`, `popupInDomAfter:false`, 이벤트에 재오픈 없음. 수정 전엔 `isOpenAfter3s:true`.
 
+- **2026-08-09 IE(인터넷 익스플로러)에서 지도·즐겨찾기 전부 안 됨**:
+  - **증상**: IE에서 land.html 열면 지도가 안 뜨고 즐겨찾기(그리고 사실상 모든 JS 기능)가 죽는다.
+  - **원인(확정)**: IE11은 ES6를 파싱하지 못한다. 인라인 스크립트에 화살표 함수(`=>`, land.html:557)·템플릿 리터럴(`` `${}`, :565)·`fetch()`(:24) 등이 있어 **블록 전체가 파싱 실패** → 아무것도 초기화되지 않는다. 단순 "즐겨찾기 버튼 버그"가 아니라 JS 전체가 죽은 것이다.
+  - **결정(2026-08-09)**: IE는 2022-06 지원 종료(EOL). 이 프로젝트는 빌드 도구 없는 정적 파일이라 Babel 없이는 ES5 변환 불가 → **IE 지원 중단** + IE 방문 시 안내문 표시로 결론. (Babel 도입은 별도 프로젝트급 작업)
+  - **해결**: 각 페이지 `<body>` 직후에 **ES5 문법 + `document.documentMode`(IE 전용 프로퍼티)** 감지 스크립트를 별도 `<script>` 블록으로 추가(land/main/onboarding/ai/detail). IE에서만 고정 상단 배너 "이 사이트는 인터넷 익스플로러(IE)를 지원하지 않습니다..." 표시. **주의: 안내문 스크립트는 IE에서도 실행되어야 하므로 ES5 문법(`var`·`createElement`·`cssText`)만 쓸 것** — 화살표 함수나 템플릿 리터럴을 쓰면 IE에서 그 블록마저 죽어 안내문이 안 보인다.
+  - **검증**: `%TEMP%\opencode\ie-guard-check.cjs`(Chrome CDP) — `documentMode` undefined → 배너 0개, `mapOk:true`(비-IE 영향 없음). IE 실기기는 없어 검증 불가, ES5 문법 + documentMode 사용으로 확실.
+
 # 배포 상태
 gh api repos/conoc612-a11y/matjip/pages/builds/latest --jq '{status:.status, commit:.commit}'
 ```
