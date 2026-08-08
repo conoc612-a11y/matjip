@@ -3445,6 +3445,15 @@
         ovGrip.title = '드래그하여 크기 조절';
         ov.appendChild(ovGrip);
         let ovDrag = null;
+        let ovPanoRaf = 0;
+        // Naver Panorama는 컨테이너 크기 변화를 자동 감지 못한다(Map의 auto resize는
+        // size 옵션을 생략했을 때만 동작). setSize()로 명시적으로 다시 그려야 화면이
+        // 따라온다 — refreshSize()는 Panorama에 없는 메서드(Map 전용)라 무시됐다.
+        const resizePano = () => {
+          if (panorama && typeof panorama.setSize === 'function') {
+            try { panorama.setSize(new nv.maps.Size(ov.clientWidth, ov.clientHeight)); } catch (e) {}
+          }
+        };
         ovGrip.addEventListener('pointerdown', (e) => {
           e.preventDefault(); e.stopPropagation();
           const r = ov.getBoundingClientRect();
@@ -3457,11 +3466,12 @@
           const maxH = Math.min(window.innerHeight - 24, 900);
           ov.style.width = Math.max(360, Math.min(maxW, ovDrag.w + (e.clientX - ovDrag.sx))) + 'px';
           ov.style.height = Math.max(280, Math.min(maxH, ovDrag.h + (e.clientY - ovDrag.sy))) + 'px';
+          if (ovPanoRaf) return;
+          ovPanoRaf = requestAnimationFrame(() => { ovPanoRaf = 0; resizePano(); });
         });
         const endOvDrag = () => {
           ovDrag = null;
-          // Naver panorama 는 컨테이너 크기 변화를 자동 감지 못하므로 종료 시 1회 갱신
-          if (panorama && typeof panorama.refreshSize === 'function') { try { panorama.refreshSize(); } catch (e) {} }
+          resizePano();
         };
         ovGrip.addEventListener('pointerup', endOvDrag);
         ovGrip.addEventListener('pointercancel', endOvDrag);
