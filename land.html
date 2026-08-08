@@ -823,6 +823,12 @@
         size -= 0.5;
         content.style.fontSize = size + 'px';
       }
+      // 8px 바닥까지 줄여도 여전히 넘치면(고정 높이 요소 — 타임라인 등 — 지배) 축소는 무의미하다.
+      // 기본 폰트로 복원해 스크롤에 맡긴다. 그래야 드래그로 키운 크기가 글자 축소로 상쇄되지 않는다.
+      // (실측 2026-08-08: 정비 팝업 목동4단지 드래그 후 scrollH 757 > clientH 554, fs 8px까지 내려감)
+      if (content.scrollHeight > content.clientHeight + 1) {
+        content.style.fontSize = fs + 'px';
+      }
     }
     L.Popup.prototype._updateLayout = function () {
       _origUpdateLayout.call(this);
