@@ -24,7 +24,8 @@
 - TROUBLESHOOTING §4 에 함정 기록.
 
 ### 커밋·배포 상태
-- 커밋·push·GitHub Pages `built` 확인 완료.
+- **커밋 `2ed9710` push 완료** — `land.html`·`HANDOFF.md`·`TROUBLESHOOTING.md` 3개. GitHub Pages `built` 확인(`2ed9710`), 배포본 land.html 에 복원 로직 주석 826행 반영 확인.
+- 미커밋 유지: `_*.txt` 10개(임시), `land.backup-20260808.html`·`redevelop_seoul.backup-20260808.json`, `경쟁사_비교분석_20260808.hwpx`.
 
 ---
 
