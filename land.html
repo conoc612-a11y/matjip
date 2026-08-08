@@ -1636,8 +1636,10 @@
         return d.stage || '';
       }
       function jbPct(stage) { const r = jbRank(stage); return r >= STAGE_SEQ.length ? stagePct(stage) : Math.round((r / (STAGE_SEQ.length - 1)) * 100); }
-      // 진행현황 타임라인 — 정보몽땅 추진경과의 완료 단계(tl)를 STAGE_SEQ 순서에 끼워 맞추고,
-      // 마지막 완료 단계 이후 남은 표준 절차를 "예정"으로 붙인다. tl 이 없는 구역은 stage 기준으로 채운다.
+      // 진행현황 타임라인 — STAGE_SEQ 18단계 전체를 항상 나열한다. 완료된 단계(tl 또는 stage 기준)는 ✓,
+      // 나머지는 "예정"으로. tl 이 없으면 stage 까지를 완료로 가정한다.
+      // (2026-08-09: 이전엔 마지막 완료 단계 뒤만 "예정"으로 붙여 앞쪽 단계가 목록에서 사라졌다 —
+      // 사용자 요구 "입주까지 절차만 나오잖아, 전체 목록이 나오라고".)
       function jbTlHtml(d) {
         const done = (d.tl && d.tl.length) ? d.tl.slice() : [];
         // tl 이 없는 구역: 현재 stage 에 해당하는 표준 단계까지를 완료로 가정
@@ -1648,8 +1650,7 @@
           if (/(취소|중단|해제|실효)/.test(d.stage || '')) return '';
           const si = seqIdx(d.stage);
           if (si < 0) {
-            // 표준 절차 밖 단계(기획완료·관리지역고시·추진위구성 등)는 다음 절차를 예측할 수
-            // 없으므로 현재 단계만 완료 행으로 표시한다. 빈 팝업보다 낫다.
+            // 표준 절차 밖 단계(기획완료 등): 순서 위치를 모르므로 현재 단계만 완료로 표시.
             done.push({ name: d.stage, date: '' });
           } else {
             for (let i = 0; i < si; i++) done.push({ name: STAGE_SEQ[i], date: '' });
@@ -1659,15 +1660,30 @@
         // 완료 단계를 날짜순(실제 완료 순서)으로 정렬. 날짜 없는 항목은 뒤로.
         // rank 정렬은 tl 에 없는 과거 단계가 뒤섞여 실제 흐름과 어긋나는 경우가 있어 사용하지 않는다.
         done.sort((a, b) => (a.date || 'zzz').localeCompare(b.date || 'zzz'));
-        const lastRank = jbRank(done[done.length - 1].name);
-        const doneRanks = new Set(done.map((s) => jbRank(s.name)));
-        const rows = done.map((s) => `<div style="display:flex;align-items:baseline;gap:8px;font-size:12px;"><span style="width:14px;height:14px;border-radius:50%;background:${stageColor(s.name || d.stage)};color:#fff;font-size:9px;display:inline-flex;align-items:center;justify-content:center;flex:none;">✓</span><span style="flex:1;min-width:0;">${esc(s.name || '')}</span><span style="color:var(--c-muted);white-space:nowrap;font-variant-numeric:tabular-nums;">${esc(s.date || '')}</span></div>`);
-        // 마지막 완료 단계 이후의 표준 절차는 "예정"으로. 이미 완료된 단계(날짜 순서가 어긋난 구역)는 건너뛴다.
-        for (let i = lastRank + 1; i < STAGE_SEQ.length; i++) {
-          if (doneRanks.has(i)) continue;
-          rows.push(`<div style="display:flex;align-items:baseline;gap:8px;font-size:12px;color:var(--c-muted);opacity:.7;"><span style="width:14px;height:14px;border-radius:50%;background:transparent;border:2px dashed var(--line);font-size:9px;display:inline-flex;align-items:center;justify-content:center;flex:none;"></span><span style="flex:1;min-width:0;">${esc(STAGE_SEQ[i])}</span><span style="white-space:nowrap;font-variant-numeric:tabular-nums;">예정</span></div>`);
+        const rankOf = (s) => jbRank(s.name);
+        // 표준 절차 밖 완료 단계(기획완료 등)는 맨 위에 현재 단계로 표시
+        const outRows = done.filter((s) => rankOf(s) >= STAGE_SEQ.length)
+          .map((s) => `<div style="display:flex;align-items:baseline;gap:8px;font-size:12px;"><span style="width:14px;height:14px;border-radius:50%;background:${stageColor(s.name || d.stage)};color:#fff;font-size:9px;display:inline-flex;align-items:center;justify-content:center;flex:none;">✓</span><span style="flex:1;min-width:0;">${esc(s.name || '')}</span><span style="color:var(--c-muted);white-space:nowrap;font-variant-numeric:tabular-nums;">${esc(s.date || '')}</span></div>`);
+        // 표준 절차 안 완료 단계를 rank 로 묶는다 — 같은 rank(예: 관리지역고시=정비구역지정)면 여러 행.
+        const byRank = new Map();
+        for (const s of done) {
+          const r = rankOf(s);
+          if (r < STAGE_SEQ.length) {
+            if (!byRank.has(r)) byRank.set(r, []);
+            byRank.get(r).push(s);
+          }
         }
-        return `<div style="margin:8px 0 4px;border-top:1px solid var(--line);padding-top:8px;"><div style="font-size:12px;font-weight:700;color:var(--c-muted);margin-bottom:4px;">진행현황 <span style="font-weight:400;color:var(--c-muted);">· 입주까지 절차</span></div><div style="display:flex;flex-direction:column;gap:2px;">${rows.join('')}</div></div>`;
+        // 전체 18단계를 항상 나열 — 완료면 ✓, 아니면 "예정"
+        const rows = [];
+        for (let i = 0; i < STAGE_SEQ.length; i++) {
+          const hits = byRank.get(i);
+          if (hits && hits.length) {
+            for (const s of hits) rows.push(`<div style="display:flex;align-items:baseline;gap:8px;font-size:12px;"><span style="width:14px;height:14px;border-radius:50%;background:${stageColor(s.name || d.stage)};color:#fff;font-size:9px;display:inline-flex;align-items:center;justify-content:center;flex:none;">✓</span><span style="flex:1;min-width:0;">${esc(s.name || '')}</span><span style="color:var(--c-muted);white-space:nowrap;font-variant-numeric:tabular-nums;">${esc(s.date || '')}</span></div>`);
+          } else {
+            rows.push(`<div style="display:flex;align-items:baseline;gap:8px;font-size:12px;color:var(--c-muted);opacity:.7;"><span style="width:14px;height:14px;border-radius:50%;background:transparent;border:2px dashed var(--line);font-size:9px;display:inline-flex;align-items:center;justify-content:center;flex:none;"></span><span style="flex:1;min-width:0;">${esc(STAGE_SEQ[i])}</span><span style="white-space:nowrap;font-variant-numeric:tabular-nums;">예정</span></div>`);
+          }
+        }
+        return `<div style="margin:8px 0 4px;border-top:1px solid var(--line);padding-top:8px;"><div style="font-size:12px;font-weight:700;color:var(--c-muted);margin-bottom:4px;">진행현황 <span style="font-weight:400;color:var(--c-muted);">· 입주까지 절차</span></div><div style="display:flex;flex-direction:column;gap:2px;">${outRows.join('')}${rows.join('')}</div></div>`;
       }
       function jbPopupHtml(d) {
         const g = jbGroup(d), c = JB_COLOR[g];
