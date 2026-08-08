@@ -12,6 +12,37 @@
 
 ---
 
+## 2026-08-09 (12) — opencode (배경지도 버튼 왼쪽 잘림 + 팝업 재오픈 + IE 안내문 — 커밋 `6caa166`·`2e3d4eb` push/built 완료)
+
+> 사용자 제보 3건: ① "프론트뷰 화면 일부 안 보임"(배경지도 버튼 왼쪽 잘림) ② "팝업 X로 닫아도 재오픈" ③ "IE 즐겨찾기 안 됨". ①·②는 근본 원인 규명·수정·검증 완료(커밋 `6caa166`), ③은 IE EOL로 **지원 중단 + 안내문**으로 결론(커밋 `2e3d4eb`). 둘 다 push·Pages built 확인.
+
+### ① 배경지도 버튼 왼쪽 잘림 ("OSM에서 SM까지만 보임") — 루트 원인은 페이지 가로 오버플로
+- **재현 실측**: 뷰포트 폭·DPR·패널 상태·줌과 무관하게 버튼 자체는 항상 정상(스크롤 0일 때 `leftCut:false`). 원인은 **페이지 전체 `scrollWidth`가 1394px로 고정**되는 것 — `.footer-right`(푸터 연락처+관리자, 574px 고정·`white-space:nowrap`)가 뷰포트가 좁아도 안 줄어든다(vw 1258에서 136px, 900에서 494px, 641에서 753px 초과). 하단 가로 스크롤바가 생기고, 오른쪽으로 스크롤하면 지도 왼쪽(배경지도 버튼 포함)이 화면 밖으로 밀림 → "OSM의 SM만 보임"과 일치.
+- **해결** (land.html:369): `.footer-top { flex-wrap:wrap }` 추가 → 좁은 화면에서 푸터가 2줄로 래핑, 전 폭(641~1394)에서 `scrollWidth == clientWidth` 확인.
+- **검증**: `bug2-scanwidth.cjs`(배포본, 수정 전 1394 고정)·`bug2-local.cjs`(로컬, 수정 후 전 폭 overflow 0)·`bug2-scroll.cjs`(스크롤 시 버튼 잘림 재현)·`bug2-mobile-final.cjs`(모바일 폭 정상). TROUBLESHOOTING §13 기록.
+
+### ② 팝업 X로 닫아도 재오픈 — 비동기 지오코딩 콜백이 원인
+- **재현 실측** (배포본 CDP): 이벤트 타임라인 `open(정보 불러오는 중, d:0) → close(X, d:123) → open(위치 정보, d:224)`. 지오코딩(Naver reverseGeocode, ~100ms) 콜백이 **닫힘 여부와 무관하게** `clickMarker.setPopupContent(...).openPopup()`(land.html:3603)을 실행. "지도 이동 후 재오픈"으로 보였지만 지도 이동과 무관한 **콜백 타이밍** 문제.
+- **계측 함정**: `map.closePopup()` 후에도 `map._popup` 참조는 남음(STILL_SET). `map._popup !== null`로 재오픈 판정하면 오판 — 반드시 `map._popup.isOpen()` 사용.
+- **해결** (land.html:1540~1546): `map.on('popupclose')` 핸들러 — 닫히는 팝업이 `clickMarker.getPopup()`과 같으면 `map.removeLayer(clickMarker); clickMarker = null`. async 콜백의 `if (!clickMarker) return` 가드(3598행)가 재오픈 차단.
+- **검증**: `bug3-user-standalone.cjs`(로컬 CDP) — 클릭→120ms 후 X 닫기→3.5s 대기: `isOpenAfter3s:false`, `popupInDomAfter:false`, 재오픈 이벤트 없음(수정 전엔 `isOpenAfter3s:true`). TROUBLESHOOTING §13 기록.
+
+### ③ IE 즐겨찾기 — IE EOL이라 지원 중단 + 안내문
+- **원인 확정**: IE11은 ES6 미지원(화살표 함수 land.html:557·템플릿 리터럴 :565·`fetch()` :24 등) → 인라인 스크립트 블록 **통째로 파싱 실패** → 지도·즐겨찾기 등 JS 전부 죽음. "즐겨찾기 버튼 버그"가 아니라 스크립트 전체가 안 도는 것.
+- **결정(사용자)**: IE 지원 중단 + IE 방문 시 안내문 표시(사용자가 "안내문만 추가" 선택; Babel 도입은 별도 프로젝트급이라 보류).
+- **해결**: 각 페이지 `<body>` 직후 ES5 문법 + `document.documentMode`(IE 전용) 감지 스크립트 블록 추가(land·onboarding·main·ai·detail.html) — IE에서만 고정 상단 배너. **주의: 이 블록은 IE에서도 실행돼야 하므로 ES5(`var`·`createElement`·`cssText`)만 쓸 것.**
+- **검증**: `ie-guard-check.cjs`(Chrome CDP) — `documentMode` undefined → 배너 0개, `mapOk:true`(비-IE 무영향). IE 실기기 없어 직접 검증은 불가, ES5+documentMode 사용으로 확실. TROUBLESHOOTING §13 기록.
+
+### 커밋·배포 상태
+- `6caa166`(버그 ①·② 수정 + TROUBLESHOOTING) → `2e3d4eb`(IE 안내문 + TROUBLESHOOTING) → push 완료 → Pages `built` 확인(`gh api .../builds/latest` = 2e3d4eb/built).
+- 미커밋 유지: `_*.txt` 10개(임시), `land.backup-20260808.html`·`redevelop_seoul.backup-20260808.json`, `경쟁사_비교분석_20260808.hwpx`.
+
+### 다음 세션 확인할 것
+- 배포본 실사용: ① 좁은 창(900~1100px)에서 배경지도 버튼 4개 완전히 보이는지 + 하단 가로 스크롤바 없음 ② 지도 클릭→X로 닫기→팝업 재오픈 없는지 ③ 비-IE 브라우저에서 배너가 안 뜨는지.
+- (참고) 이번 작업으로 `.footer-top`이 좁은 창에서 2줄로 래핑되므로, 푸터가 한 줄일 때와 레이아웃이 달라 보일 수 있음 — 의도된 것.
+
+---
+
 ## 2026-08-09 (11) — opencode (진행현황 전 구역 표시 + EV·CCTV 아이콘 확대 — 커밋 `bdeae2c` push/built 완료 + 관리지역고시 alias 후속)
 
 > 사용자 지시 "반도미도2차는 왜 진행현황이 없어? 꼭 지정해야만 진행현황이 나오는거야? 다른곳도 다 진행현황 나오게 만들라고!!" + "EV 마커 너무 작어" + "CCTV 아이콘 너무 작어" → 세 건 모두 land.html 수정. ①~③은 커밋 `bdeae2c`로 push/built 완료, **관리지역고시 alias는 후속 미커밋(사용자 동의 대기).**
