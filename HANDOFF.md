@@ -39,8 +39,9 @@
 - 이전 그립/폰트 기능은 손대지 않음(회귀 영향 없음).
 
 ### 커밋·배포 상태
-- **미커밋**: `land.html` M, `redevelop_seoul.json` M(봉천14·반포주공), `HANDOFF.md` M. **사용자 동의 후 커밋·push 예정.**
-- 이전 커밋 `a969543`(그립 2차)는 push·Pages built 완료(이 HANDOFF (9)의 "미커밋" 기록은 2차 강화 확정 시점에 작성돼 실제 커밋 후 갱신 누락 — 정정).
+- **커밋 `c138ca2`** → push 완료 → Pages **built** 확인(`gh api .../builds/latest` = c138ca2/built). 커밋 대상: `land.html`·`redevelop_seoul.json`·`HANDOFF.md`·`TROUBLESHOOTING.md`(§8에 CDP 검증 함정 3건 추가: returnByValue 필수 / setView 시 팝업 유실·재스캔 필요 / PowerShell 인라인 node 깨짐→.cjs 파일로).
+- **배포본 CDP 실측**(`jbtl-deploy-test.cjs`, 배포 URL): 봉천14 — 완료 6단계+예정 8단계(철거업자선정~입주), 진행단계 47%. 반포주공1단지 — 완료 12단계+예정 3행, 배지 `착공신고` 82%. JS 예외 0건.
+- ⚠️ **배포본 레이어 렌더는 로컬보다 느림(실측)**: 로컬은 정비 레이어 켜기 후 2.5초면 폴리곤 렌더 완료지만 배포본은 5~7초 필요. 배포본 검증 스크립트는 레이어 켜기 후 **6초 이상 대기**할 것(짧게 두면 found=false로 오판).
 - 미커밋 유지: `_*.txt` 10개(임시), `land.backup-20260808.html`·`redevelop_seoul.backup-20260808.json`, `경쟁사_비교분석_20260808.hwpx`.
 
 ---
