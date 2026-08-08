@@ -12,6 +12,35 @@
 
 ---
 
+## 2026-08-09 (13) — opencode (팝업 재오픈 전수 QA + 전 페이지×뷰포트 회귀 QA, main.html 푸터 오버플로 재발 수정)
+
+> 사용자 "지금 문제가 너무 많잖아… 건물 클릭→팝업 X 닫기→지도 이동 시 재오픈" 재보고 → 재현 조사 + land.html 레이어 전수 QA + 모바일 QA 진행. **재오픈은 어디서도 재현 안 됨**(이미 `6caa166` 수정·배포 반영). 대신 새 요구사항 "다른 컴퓨터·다른 모니터 규격에서도 정상 표시"로 **페이지 7종 × 뷰포트 7종 전수 회귀 QA** → **main.html 푸터 가로 오버플로 재발 발견·수정**. 커밋 대기(사용자 동의 후).
+
+### QA 결과 (전부 실측, 콘솔 에러 0건)
+- **팝업 재오픈**: 로컬(`bug4-repro.cjs`)·배포본(`bug4-deploy.cjs`·`bug4-search-deploy.cjs`)·모바일 폭(`qa8-mobile.cjs`) 모두 **재현 안 됨** — popupclose 핸들러(land.html:1553~1558)가 닫힌 팝업의 마커를 제거, async 콜백의 `if(!clickMarker) return` 가드(3598)가 재오픈 차단. 사용자 증상은 이전 버전 캐시 가능성.
+- **마커 레이어 8종**(`qa7-all-layers.cjs`): 연립·단독 매매/전월세·오피스텔·CCTV·EV·분양예정 전부 팝업 열림→X 닫기→pan 재오픈 없음.
+- **전 페이지×뷰포트**(`qa9-viewports.cjs`): onboarding/main/land/detail/ai/admin/terms × 320/375/412/768/1280/1920/2560 — **main.html만 1280(푸터)·768(전체)에서 가로 오버플로**. 나머지 전부 정상.
+
+### main.html 푸터 가로 오버플로 재발 — 수정 완료 (1줄)
+- **원인(실측)**: 버그1 해결(`flex-wrap:wrap`)이 land.html(369)에만 적용되고 **main.html `.footer-top`(main.html:101)에 누락** → 1280px에서 `.footer-right` R=1324(44px 초과)·`.footer-admin` R=1324. 페이지 전체 scrollWidth 고정 → 가로 스크롤바 → 지도 왼쪽 밀림.
+- **해결**: main.html:101 `.footer-top`에 `flex-wrap:wrap` 추가.
+- **검증**: `qa10-main-verify.cjs` — 320~2560 전 폭 hOverflow false, `.footer-right` right = vw−24, 콘솔 에러 0. TROUBLESHOOTING 버그1 항목에 재발·재수정 기록.
+
+### 계측 함정 (이번에 알게 된 것)
+- JS `dispatchEvent(click)`는 일반 div 마커엔 전달되지만 **클러스터(`.marker-cluster`)엔 안 먹힘**(popupOpen "n/a") → 실제 동작 재현은 CDP `Input.dispatchMouseEvent` 필요.
+- 클러스터가 `getBoundingClientRect()` 좌표가 **화면 밖(x=-1)**일 수 있음 → 화면 안 요소만 타깃으로 잡을 것(`qa6-realclick.cjs` 보정).
+- QA 스크립트에서 `map.on('popupopen')`을 반복 등록하면 리스너가 누적되어 이벤트가 N배 찍힘(테스트 스크립트 문제, 실제 버그 아님).
+
+### 커밋·배포 상태
+- 미커밋: **main.html(푸터 wrap 수정) + TROUBLESHOOTING(재발 기록) + HANDOFF(본 항목)** — 커밋·push는 사용자 동의 대기.
+- 기존: `6caa166`→`2e3d4eb`→`6b3b6c2` push/built 완료.
+
+### 다음 세션 확인할 것
+- 커밋·push 동의 받기 → main.html 푸터 wrap 배포 후 `qa10-main-verify.cjs`로 배포본 재검증.
+- 사용자 "팝업 재오픈" 재보고가 계속 오면: 브라우저 캐시(Ctrl+Shift+R) 확인 + 재현 단계(브라우저·OS·화면 크기) 요청.
+
+---
+
 ## 2026-08-09 (12) — opencode (배경지도 버튼 왼쪽 잘림 + 팝업 재오픈 + IE 안내문 — 커밋 `6caa166`·`2e3d4eb` push/built 완료)
 
 > 사용자 제보 3건: ① "프론트뷰 화면 일부 안 보임"(배경지도 버튼 왼쪽 잘림) ② "팝업 X로 닫아도 재오픈" ③ "IE 즐겨찾기 안 됨". ①·②는 근본 원인 규명·수정·검증 완료(커밋 `6caa166`), ③은 IE EOL로 **지원 중단 + 안내문**으로 결론(커밋 `2e3d4eb`). 둘 다 push·Pages built 확인.

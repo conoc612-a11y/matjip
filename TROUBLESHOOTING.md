@@ -375,6 +375,7 @@ npx -y supabase projects list
   - **원인(실측)**: `.footer-right`(푸터 우측, 연락처+관리자, 574px 고정, `white-space:nowrap`)가 뷰포트가 좁아도 줄어들지 않아 **페이지 전체 `scrollWidth`가 1394px로 고정**된다(뷰포트 1258에서도 136px, 900에서 494px 초과). 페이지에 가로 스크롤바가 생기고, 오른쪽으로 스크롤하면 지도 왼쪽(버튼 포함)이 화면 밖으로 밀려난다. 피커 자체가 잘리는 게 아니라 **페이지 가로 오버플로**가 원인 — 뷰포트 폭·DPR·패널 상태와 무관하게 재현(641~1394px 전 구간, 스크롤 0이면 항상 정상).
   - **해결**: `.footer-top`(land.html:369)에 `flex-wrap:wrap` 추가 → 좁은 화면에서 푸터가 2줄로 래핑되고 오버플로 제거(전 구간 `scrollWidth == clientWidth` 확인).
   - **검증**: `%TEMP%\opencode\bug2-scanwidth.cjs`·`bug2-local.cjs` — 수정 전 docScrollW 1394(고정)/수정 후 전 폭에서 overflow 0.
+  - **2026-08-09 main.html 재발 및 재수정**: 동일 버그가 main.html에서도 재현 — `.footer-top`(main.html:101)에 `flex-wrap:wrap`이 **누락**돼 있어 1280px 화면에서 `.footer-right` R=1324(44px 초과)·`.footer-admin` R=1324로 가로 스크롤이 생겼다. land.html(369)만 고치고 main.html을 놓친 것이다. **해결**: main.html `.footer-top`에 `flex-wrap:wrap` 동일 적용. **검증**(`%TEMP%\opencode\qa10-main-verify.cjs`): 320~2560 전 폭에서 hOverflow false, `.footer-right` right = vw−24 정상, 콘솔 에러 0. (전수 QA `%TEMP%\opencode\qa9-viewports.cjs` — 페이지 7종×뷰포트 7종에서 main 1280/768만 유일한 오버플로였음)
 
 - **2026-08-09 팝업을 X로 닫아도 지도 이동 후 다시 열린다 (land.html)**:
   - **증상**: 지도 클릭 → 팝업("위치 정보") → X로 닫아도 잠시 후(또는 지도 이동 후) 같은 팝업이 다시 열린다.
