@@ -12,17 +12,27 @@
 
 ---
 
-## 2026-08-08 (9) — opencode (거리뷰 오버레이 그립 드래그 시 파노라마 화면이 안 따라오는 버그 수정)
+## 2026-08-08 (9) — opencode (거리뷰 파노라마 리사이즈 버그 수정 + 그립 시인성 개선)
 
-> 사용자 제보 "거리뷰 레이어 크기 조정은 되는데 실제 거리뷰 화면은 크기 조정은 안되네" → 원인 규명·수정·검증 완료. **커밋·push·배포는 사용자 동의 대기.**
+> 사용자 제보 "거리뷰 레이어 크기 조정은 되는데 실제 거리뷰 화면은 크기 조정은 안되네" + "그립이 안 보여서 리사이즈 가능한지 모르겠다" → 둘 다 수정·검증 완료. **커밋·push·배포는 사용자 동의 대기.**
 
-### 버그 원인 (실측)
+### ① 파노라마 화면이 안 따라오는 버그 (실측)
 - **증상**: `sv-overlay`(land.html 3434)는 우하단 그립으로 리사이즈 되고, 미니맵(CSS `resize:both`)도 크기 조절이 되는데 **실제 거리뷰(파노라마) 화면만 옛 크기로 남는다**.
 - **실측**: `endOvDrag` 가 `panorama.refreshSize()`(land.html 3464)를 호출했는데, **`refreshSize()` 는 Naver Panorama 에 없는 메서드**(Map 전용)다. `typeof panorama.refreshSize === 'function'` 가 false 여서 **드래그 종료 시 갱신이 한 번도 실행되지 않았다**. Naver Panorama 는 컨테이너 크기 변화를 자동 감지하지 못한다(Map 의 auto-resize 는 `size` 옵션 생략 시에만 동작).
 - 미니맵이 되던 이유: 이미 `ResizeObserver` + `miniMap.refresh(true)`(land.html 3524)가 있어서. 파노라마에만 그 갱신이 빠져 있었다.
 - **해결** (land.html 3448-3477): `resizePano()` 를 추가해 `panorama.setSize(new nv.maps.Size(ov.clientWidth, ov.clientHeight))` 호출 — 드래그 중엔 rAF 스로틀로 라이브 갱신, 종료 시(`endOvDrag`) 최종 갱신.
-- **검증** (`%TEMP%\opencode\sv-resize-test.cjs` — naver 스텁 + CDP PointerEvent 드래그): 오버레이 820×560 → 1020×680(드래그 +200/+120 만큼), `panorama.setSize` 호출 2회(드래그 중 + 종료), JS 예외 0건. `tl-test.cjs` 회귀 PASS(fitWorked:false 는 의도된 결과 — 고정 높이 타임라인).
-- TROUBLESHOOTING §4 에 함정 기록.
+
+### ② 리사이즈 그립 시인성 (실측)
+- **증상**: 그립은 있는데 사용자 눈에 안 띈다(16px·`opacity:.5`·`filter:invert(1)`, 어두운 파노라마 위에서 거의 사라짐).
+- **해결** (land.html 327-331 + 3442-3449): 거리뷰 전용 `.sv-grip` 추가 — 26px·opacity 1·`rgba(0,0,0,.6)` 배경·흰색 1px 테두리·3px 흰 코너, `filter` 제거. 호버 시 "드래그로 크기 조절" 힌트(`sv-grip-hint`)가 그립 왼쪽에 표시.
+
+### 검증 (전부 실측)
+- `sv-resize-test.cjs`(naver 스텁 + CDP PointerEvent 드래그): 오버레이 820×560 → 1020×680(+200/+120), `panorama.setSize` 2회, JS 예외 0건.
+- `sv-grip-test.cjs`: 그립 26×26·opacity 1·bg rgba(0,0,0,.6)·filter none, 힌트 "드래그로 크기 조절" 오버레이 내부 배치.
+- `sv-hover-test.cjs`(CDP 마우스 이동): 호버 후 힌트 `opacity 0 → 1` 실측.
+- `tl-test.cjs` 회귀 PASS(fitWorked:false 는 의도된 결과 — 고정 높이 타임라인). 인라인 스크립트 문법 0 오류.
+- 스크린샷: `%TEMP%\opencode\sv-overlay-grip.png`(거리뷰 오버레이 + 그립).
+- TROUBLESHOOTING §4 에 두 함정 모두 기록.
 
 ### 커밋·배포 상태
 - **미커밋**: `land.html` M, `HANDOFF.md` M, `TROUBLESHOOTING.md` M. 사용자 동의 후 커밋·push·Pages `built` 확인 예정.
