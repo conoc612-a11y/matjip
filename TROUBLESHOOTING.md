@@ -90,6 +90,7 @@ V-World/카카오가 필요한 검증은 **배포본에서** 해야 한다.
   - **헤드리스에서 클릭이 지도에 안 전달되는 함정**: CDP `Input.dispatchMouseEvent` 로 클릭 좌표를 정해도 그 좌표가 **다른 DOM 요소**(`.leaflet-control`, `.lc` 레이어 컨트롤 등)에 덮여 있으면 클릭이 canvas 에 닿지 않는다(실측: evCount 전부 0, elementFromPoint 가 `DIV.lc`). 좌표가 컨트롤 밖인지는 `elementFromPoint(x, y)` 가 `.leaflet-overlay-pane canvas` 를 가리키는지로 판정할 것 — `.leaflet-top` 처럼 pointer-events:none 인 스트립을 rect 로 빼는 방식은 오판한다.
   - **setView 직후 검사가 아닌, setView 한 뒤 좌표를 다시 계산**해야 한다(줌이 바뀌면 containerPoint 가 달라진다). 후보 구역을 하나만 보내면 그 구역이 컨트롤 아래로 들어갈 수 있어, 구역을 여럿 준비해 첫 비차단 지점을 쓰는 것이 안정적.
   - 검증 지표: `elementFromPoint → CANVAS`, `canvasClick evCount ≥ 1`, `popupSourceJb`(=`map._popup._source._jb.name`)가 해당 구역 이름이면 통과. 픽셀 채색 검사(`getImageData`)만으로는 팝업 여부를 알 수 없다.
+- **클러스터에 묶인 마커는 `marker.fire('click')` 로 팝업이 안 열린다 (2026-08-08 실측)**. 실거래 마커는 `realpriceCluster`(land.html 1152행) 등 클러스터가 클릭을 가로채기 때문. 팝업 로직(크기 fit·크기 조절 등)을 검증하려면 `L.popup().setLatLng(...).setContent(...).openOn(map)` 으로 팝업을 직접 만들고 `_lpH`/`_lpW` 를 조작해 `_updateLayout()` 을 호출하는 게 안정적이다. fit 검증 내용은 25개 항목 같은 과도한 길이를 넣지 말 것(8px 바닥까지 줄여도 넘쳐 "복원 실패"로 오판) — 현실적 크기(6항목 내외)로.
 
 ---
 

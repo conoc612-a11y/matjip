@@ -12,6 +12,38 @@
 
 ---
 
+## 2026-08-08 (7) — opencode (레이어 체크 상태 저장/복원 + 팝업 높이 fit 폰트 축소 + 정비구역 진행현황 타임라인)
+
+> 커밋 여부는 사용자 확인 후 결정이었으나, 사용자 지시로 **커밋·push 진행**(아래 "커밋·배포 상태" 참고). 백업: `land.backup-20260808.html`, `redevelop_seoul.backup-20260808.json` 로컬 유지.
+
+### 한 일 (land.html)
+1. **레이어 트리 체크 상태 localStorage 저장/복원** (F5 후에도 유지):
+   - `saveLayerState()`·`restoreLayerState()` 추가, 키 `mj_layer_tree_v1`. 섹션>중분류 문자열 키, 소분류는 `data-id` 배열·잎은 `true` 저장.
+   - 세 곳의 onchange 배선: 잎 midCb, 소분류 cb, 소분류 있는 midCb → 각각 `saveLayerState()` 추가.
+   - **CDP 검증 통과**: 정비사업>94 신속통합기획 + 실거래>아파트 leaf 켜고 저장 → 새 탭 재로드 → `jbSub94Restored=true, aptRestored=true, bigChecked=true`.
+2. **팝업 높이 fit — 높이를 줄이면 내용이 넘칠 때 스크롤 대신 폰트 자동 축소**:
+   - `fitPopupText()` + `_updateLayout` 패치에 배선. 매번 기본 폰트에서 시작해 0.5px 단위로 줄여 8px 바닥. 다시 키우면 원래 크기 복원.
+   - CDP 검증: 기본 13px → 높이 160px 강제 시 8px로 축소, 높이 420px로 복원 시 13px 복귀.
+3. **정비구역 팝업에 진행현황 타임라인(`d.tl`) 추가**: `collect_prtnelapse.js`(정보몽땅 추진경과 수집, 미커밋 신규)가 만든 `tl` 필드 348곳 렌더. 현재 단계 원 채우기 + 나머지 빈 원 + 날짜. CDP 검증: 목동4단지(4단계) 팝업에 타임라인·단계바·비교 버튼·경계지도 링크·그립·접기 모두 렌더, 접기→칩→복원 왕복 정상.
+4. **코드 최적화**: `zoneAreaM2()` 데드 코드 제거(호출처 없음, HANDOFF (4) 제거 후보).
+
+### ⚠️ 검증 함정 (재발 방지)
+- **클러스터에 묶인 마커는 `marker.fire('click')` 로 팝업이 안 열린다** — 클릭이 클러스터로 가기 때문. fit 검증은 `L.popup().openOn(map)` 으로 직접 팝업 생성 후 `_lpH` 조작으로 우회.
+- fit 테스트에 25개 항목 같은 과도한 내용을 넣으면 8px 바닥까지 줄여도 넘쳐 "복원도 실패"로 오판. 내용은 현실적 크기(6항목)로.
+- **정비구역 폴리곤은 '정비사업 상세 (matjip)' 레이어를 켜야 생성된다** — overlayadd 핸들러가 jbPolyLayer 를 map 에 붙이고 jbBuild() 를 돈다(1644행). 꺼진 상태로 폴리곤 0개를 "버그"로 오판하지 말 것. 검증은 `_jbRowsGlobal`(전역 노출)로 데이터 접근.
+- 이번 커밋에 포함된 타임라인·그립·접기·배지 링크 기능은 **이전 세션(4~6)에 이미 구현·검증된 것**으로 이 세션에서 신규 검증 추가: 정비 팝업 전체 요소 `hasTl/hasStage/hasCmp/hasBadgeLink/hasGrip/hasMinBtn/chipAfterMin/reopenAfterChip` 전부 true, JS 예외 0건.
+
+### 커밋·배포 상태 (이 세션에서 커밋·push 진행)
+- **커밋 대상**: `land.html`·`redevelop_seoul.json`(tl 348곳)·`HANDOFF.md`·`TROUBLESHOOTING.md`·`tools/collect_prtnelapse.js`.
+- push 후 GitHub Pages `built` 여부 확인 예정.
+- **미커밋 유지**: `_*.txt` 10개(임시 분석 파일 — 삭제해도 무방), `land.backup-20260808.html`·`redevelop_seoul.backup-20260808.json`(로컬 복구용), `경쟁사_비교분석_20260808.hwpx`(분석 보고서 — 커밋 결정 대기, HANDOFF (6) 참고).
+
+### 다음 세션 확인할 것
+- 배포본에서 실사용 확인: F5 후 레이어 체크 유지, 팝업 높이 축소 시 글자 작아지는지, 정비 팝업 타임라인·접기 동작.
+- (6) 이어서: 정비구역 기능 실사용 여부, `_*.txt` 정리.
+
+---
+
 ## 2026-08-08 (6) — opencode (참조사이트 마우스 조사 완료 + 캔버스 폴리곤 클릭→팝업 CDP 실클릭 검증 통과)
 
 > 미커밋 상태는 동일((4)·(5)의 편집). 이 항목은 (5)에서 남긴 마지막 리스크(캔버스 폴리곤 클릭)를 검증으로 해소한 기록 + 참조사이트 조사 결과.
