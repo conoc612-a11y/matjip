@@ -280,7 +280,7 @@
     /* ── CCTV (ITS 국가교통정보센터) ── */
     .cctv-icon { width:26px; height:26px; margin:-26px 0 0 -13px; border-radius:50% 50% 50% 0; background:var(--c-danger); transform:rotate(-45deg); display:flex; align-items:center; justify-content:center; box-shadow:var(--c-shadow); }
     .cctv-icon svg { width:13px; height:13px; color:#fff; transform:rotate(45deg); }
-    .cctv-pc { width:min(320px, calc(100vw - 56px)); padding:0; box-sizing:border-box; overflow:hidden; }
+    .cctv-pc { width:320px; max-width:100%; padding:0; box-sizing:border-box; overflow:hidden; }
     .cctv-pc-head { display:flex; align-items:center; justify-content:space-between; padding:11px 13px; border-bottom:1px solid var(--line); font-weight:700; font-size:14px; }
     .cctv-pc-close { width:24px; height:24px; border-radius:7px; border:none; background:var(--c-hover); color:var(--muted); font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
     .cctv-pc-close:hover { background:var(--line); color:var(--text); }
@@ -315,11 +315,20 @@
        끌어 크기를 조절할 수 있게 한다. overflow 가 visible 이 아니어야 동작한다(아래 auto).
        max-width 는 리사이즈 상한이 되어 '넓히기'를 막으므로 넉넉히 준다(화면 폭까지).
        내용은 .pc 가 width:100% 라 늘어난 폭에 맞춰 자동으로 다시 흐른다. */
-    .leaflet-popup-content { max-height:var(--popup-max-h, min(62vh, 520px)); overflow:auto; overflow-wrap:anywhere; word-break:break-word; min-width:220px; max-width:calc(100vw - 40px); resize:both; }
+    .leaflet-popup-content { max-height:var(--popup-max-h, min(62vh, 520px)); overflow:auto; overflow-wrap:anywhere; word-break:break-word; min-width:220px; max-width:calc(100vw - 40px); }
     /* 리사이즈 그립이 둥근 모서리에 잘리지 않도록 */
     .leaflet-popup-content-wrapper { overflow:visible; }
     .leaflet-popup-tip { background:var(--card); }
     .leaflet-container a.leaflet-popup-close-button { color:var(--muted); }
+    /* ── 팝업 공통 컨트롤 (그립 리사이즈 + 접기) ── */
+    .lp-grip { position:absolute; right:2px; bottom:2px; z-index:1100; width:16px; height:16px; cursor:nwse-resize; opacity:.5; display:flex; align-items:flex-end; justify-content:flex-end; padding:2px; box-sizing:border-box; }
+    .lp-grip:hover, .lp-grip:active { opacity:1; }
+    .lp-grip::after { content:''; width:8px; height:8px; border-right:2px solid var(--muted); border-bottom:2px solid var(--muted); border-radius:0 0 2px; }
+    .lp-min-btn { position:absolute; top:3px; right:30px; z-index:1100; width:24px; height:24px; border:none; background:var(--c-hover); color:var(--muted); border-radius:7px; cursor:pointer; font-size:14px; line-height:1; display:flex; align-items:center; justify-content:center; padding:0; }
+    .lp-min-btn:hover { background:var(--line); color:var(--text); }
+    .lp-restore-chip { position:absolute; right:12px; bottom:12px; z-index:1500; display:flex; align-items:center; gap:6px; max-width:300px; padding:8px 12px; background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:10px; box-shadow:var(--c-shadow-lg); font-size:13px; cursor:pointer; }
+    .lp-restore-chip:hover { border-color:var(--c-primary); }
+    .lp-restore-chip b { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     /* ── 호버 툴팁 (건물 위 커서 정지 시 주소·토지·건물 정보) ── */
     .leaflet-tooltip.hov-tip { background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:8px; padding:7px 10px; box-shadow:var(--c-shadow-lg); font-size:13px; line-height:1.55; }
     .leaflet-tooltip-top.hov-tip::before { border-top-color:var(--card); }
@@ -797,6 +806,107 @@
 
     const map = L.map('map', { wheelPxPerZoomLevel: 120, preferCanvas: true }).setView([37.5665, 126.9780], 12);
 
+    // ── 팝업 공통 컨트롤: 크기 조절(우하단 그립) + 접기 ──────────────────
+    // Leaflet 은 popup._updateLayout() 이 content 폭을 다시 계산해 넣으므로, 리사이즈된
+    // 크기는 팝업 객체(_lpW/_lpH)에 저장해 두고 _updateLayout 끝에 다시 적용한다.
+    // (기존 CSS resize:both 는 그립이 거의 안 보여 명시적 그립으로 교체)
+    const _origUpdateLayout = L.Popup.prototype._updateLayout;
+    // 텍스트 fit — 고정 높이 안에 내용이 넘치면(스크롤 대신) 폰트를 줄여 맞춘다.
+    // fit 은 '그 순간의 고정 높이'에 맞추는 일회성 동작이라, 매번 기본 크기에서 시작해
+    // 좁히면 줄어들고 다시 키우면 원래 크기로 돌아온다. min 8px 아래로는 안 내려간다.
+    function fitPopupText(content) {
+      content.style.fontSize = '';
+      const fs = parseFloat(getComputedStyle(content).fontSize) || 14;
+      content.style.fontSize = fs + 'px';
+      let size = fs, guard = 0;
+      while (size > 8 && content.scrollHeight > content.clientHeight + 1 && guard++ < 24) {
+        size -= 0.5;
+        content.style.fontSize = size + 'px';
+      }
+    }
+    L.Popup.prototype._updateLayout = function () {
+      _origUpdateLayout.call(this);
+      const content = this._contentNode;
+      if (!content) return;
+      const sz = map.getSize();
+      const w = sz.x - 30, h = sz.y - 50;
+      if (this._lpW) { content.style.width = Math.max(220, Math.min(this._lpW, w)) + 'px'; content.style.maxWidth = Math.max(220, Math.min(this._lpW, w)) + 'px'; }
+      if (this._lpH) { content.style.height = Math.max(120, Math.min(this._lpH, h)) + 'px'; content.style.maxHeight = Math.max(120, Math.min(this._lpH, h)) + 'px'; }
+      // 폰트 fit — 리사이즈로 높이가 고정되면 내용을 그 높이에 맞춰 축소하고,
+      // 다시 크게 열었을 때는 원래 폰트로 복원한다.
+      if (this._lpH) fitPopupText(content);
+      else if (content.style.fontSize) content.style.fontSize = '';
+    };
+    let _restoreChip = null;   // 접은 팝업의 복원 칩 — 1개만 유지
+    function attachPopupControls(popup) {
+      const el = popup.getElement();
+      if (!el || el.querySelector('.lp-grip')) return;
+      const content = el.querySelector('.leaflet-popup-content');
+      if (!content) return;
+      // 접은 팝업의 복원 칩이 남아 있으면 치운다 — 새 팝업이 열렸다면 옛 칩은 무의미하다.
+      if (_restoreChip) { _restoreChip.remove(); _restoreChip = null; }
+      // 우하단 크기조절 그립
+      const grip = document.createElement('div');
+      grip.className = 'lp-grip';
+      grip.title = '드래그하여 크기 조절';
+      el.appendChild(grip);
+      let drag = null, dragRaf = 0, autoPanPrev = null;
+      const applyDrag = () => {
+        dragRaf = 0;
+        popup._lpW = Math.max(220, drag.w + drag.dx);
+        popup._lpH = Math.max(120, drag.h + drag.dy);
+        popup._updateLayout(); popup._updatePosition();
+      };
+      grip.addEventListener('pointerdown', (e) => {
+        e.preventDefault(); e.stopPropagation();
+        drag = { sx: e.clientX, sy: e.clientY, w: content.offsetWidth, h: content.offsetHeight, dx: 0, dy: 0 };
+        // 드래그 중엔 autoPan 을 꺼 둬 지도가 함께 밀리지 않게 한다 (원래 값은 종료 시 복원)
+        autoPanPrev = popup.options.autoPan;
+        popup.options.autoPan = false;
+        grip.setPointerCapture(e.pointerId);
+      });
+      grip.addEventListener('pointermove', (e) => {
+        if (!drag) return;
+        drag.dx = e.clientX - drag.sx; drag.dy = e.clientY - drag.sy;
+        // 매 move 마다 레이아웃(offsetWidth) 재계산은 버벅이므로 rAF 로 묶는다
+        if (!dragRaf) dragRaf = requestAnimationFrame(applyDrag);
+      });
+      const endDrag = () => {
+        if (dragRaf) { cancelAnimationFrame(dragRaf); dragRaf = 0; applyDrag(); }
+        if (autoPanPrev != null) { popup.options.autoPan = autoPanPrev; autoPanPrev = null; }
+        drag = null;
+      };
+      grip.addEventListener('pointerup', endDrag);
+      grip.addEventListener('pointercancel', endDrag);
+      // 접기 버튼 — 팝업을 닫고 지도 우하단에 복원 칩을 남긴다 (내용은 그대로 유지)
+      const minBtn = document.createElement('button');
+      minBtn.type = 'button';
+      minBtn.className = 'lp-min-btn';
+      minBtn.title = '팝업 접기';
+      minBtn.innerHTML = '&ndash;';
+      el.appendChild(minBtn);
+      minBtn.onclick = () => {
+        const source = popup._source;
+        const latlng = popup.getLatLng();
+        const titleEl = content.querySelector('.rp-name, .cctv-pc-head span') || content.querySelector('.pc-body > div') || content.querySelector('.pc-head');
+        const srcTitle = (titleEl ? titleEl.textContent.trim() : '팝업').slice(0, 18);
+        map.closePopup();
+        const chip = document.createElement('div');
+        chip.className = 'lp-restore-chip';
+        chip.innerHTML = `<span>📌</span><b>${esc(srcTitle)}</b>`;
+        chip.title = '클릭하여 팝업 복원';
+        map.getContainer().appendChild(chip);
+        if (_restoreChip) { _restoreChip.remove(); }
+        _restoreChip = chip;
+        chip.onclick = () => {
+          chip.remove();
+          if (_restoreChip === chip) _restoreChip = null;
+          if (source && source.openPopup) source.openPopup();
+          else popup.setLatLng(latlng).openOn(map);
+        };
+      };
+    }
+
     // 팝업 최대 높이를 지도 높이에 맞춘다. vh 고정이면 지도가 화면 일부일 때 팝업이 지도 밖으로 넘친다.
     // 내용은 건드리지 않는다 — popup.update() 는 innerHTML 을 다시 그려서 비동기로 채운 내용을 지운다.
     function syncPopupMaxHeight() {
@@ -1230,6 +1340,8 @@
         L.DomEvent.disableClickPropagation(n);
         L.DomEvent.disableScrollPropagation(n);
       });
+      // 팝업 공통 컨트롤 부착 — 모든 Leaflet 팝업(정비·실거래·빌라·CCTV)에 그립 리사이즈 + 접기 적용
+      map.on('popupopen', (e) => { attachPopupControls(e.popup); });
 
       // 실거래가 마커 팝업의 ☆저장 버튼 → localStorage 즐겨찾기 토글
       map.on('popupopen', (e) => {
@@ -1297,6 +1409,10 @@
       function stagePct(s) { s=s||''; for(const [k,v] of Object.entries(STAGE_PCT)) { if(s.includes(k)) return v; } return 15; }
       function jbPopupHtml(d) {
         const g = jbGroup(d), c = JB_COLOR[g];
+        // 배지 클릭 시 해당 구역 경계지도(recordCode)로 이동. rc 없으면 링크 없이 텍스트만.
+        const zoneHref = d.rc ? `https://urban.seoul.go.kr/view/map/mapPopup.html?recordCode=${encodeURIComponent(d.rc)}` : '';
+        const zoneTarget = d.rc ? ' target="_blank" rel="noopener"' : '';
+        const badgeLink = (html) => html && zoneHref ? `<a href="${zoneHref}"${zoneTarget} style="text-decoration:none;display:inline-block;" title="이 구역 경계지도 보기">${html}</a>` : html || '';
         const stageBadge = d.stage ? `<span style="display:inline-block;background:${stageColor(d.stage)};color:#fff;font-size:12px;padding:2px 8px;border-radius:999px;margin-left:4px;">${esc(d.stage)}</span>` : '';
         // 구역 면적: 폴리곤 링에서 실제로 계산 (데이터 위조 아님)
         let areaTxt = '', areaPy = null;
@@ -1323,7 +1439,11 @@
             + '</div>'
           : '';
         const linkBtns = (d.rc || d.cafe) ? `<div class="pc-btn-row">${d.rc ? `<a href="https://urban.seoul.go.kr/view/map/mapPopup.html?recordCode=${encodeURIComponent(d.rc)}" target="_blank" rel="noopener" class="pc-btn pc-btn-outline" style="border-color:#7048e8 !important;color:#7048e8;">경계지도</a>` : ''}${d.cafe ? `<a href="https://cleanup.seoul.go.kr/cafe/mainIndx.do?cafeUrl=${encodeURIComponent(d.cafe)}" target="_blank" rel="noopener" class="pc-btn pc-btn-outline" style="border-color:var(--c-primary) !important;color:var(--c-primary);">정보공개</a>` : ''}</div>` : '';
-        return `<div class="pc"><div class="pc-head"><span style="display:inline-block;background:${c};color:#fff;font-size:12px;padding:2px 8px;border-radius:999px;">${g}</span>${stageBadge}</div><div class="pc-body"><div style="font-weight:700;font-size:15px;margin-bottom:2px;color:var(--c-text);">${esc(d.name)}</div><div>${esc(d.gu)} ${esc(d.jibun)}${areaTxt}${d.approx ? ' <span style="color:var(--c-price);">(동 근사위치)</span>' : ''}</div><div style="font-size:12px;color:var(--c-muted);margin-top:3px;">사업구분: ${esc(d.gubun)}</div>${meta.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:8px;border-top:1px solid var(--line);padding-top:8px;">${meta.join('')}</div>` : ''}<div style="margin:8px 0 4px;"><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--c-muted);margin-bottom:3px;"><span>진행단계</span><span>${stagePct(d.stage)}%</span></div><div style="height:5px;background:var(--line);border-radius:3px;overflow:hidden;"><div style="height:100%;width:${stagePct(d.stage)}%;background:${stageColor(d.stage)};border-radius:3px;transition:width .3s;"></div></div></div>${cmpHtml}<div class="jb-rp-stat rp-stat" style="display:none;padding:5px 0;border-top:1px solid var(--c-border);"></div><div class="jb-community" style="display:none;margin-top:6px;"></div></div><div class="pc-actions">${linkBtns}<button class="jb-rp-filter pc-btn pc-btn-outline" style="border-color:var(--c-price) !important;color:var(--c-price);">🔎 이 구역 실거래 보기</button><button class="jb-community-btn pc-btn pc-btn-outline" style="border-color:#2f9e44 !important;color:#2f9e44;">💬 커뮤니티</button><button class="jb-cmp pc-btn pc-btn-outline" style="border-color:var(--c-primary) !important;color:var(--c-primary);">＋ 비교</button><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline" style="border-color:var(--c-success) !important;color:var(--c-success);">출발</button><button class="rt-end pc-btn pc-btn-outline" style="border-color:var(--c-danger) !important;color:var(--c-danger);">도착</button></div><button class="sv-btn pc-btn pc-btn-outline">거리뷰</button></div></div>`;
+        // 진행현황 타임라인 — 정보몽땅 추진경과에서 수집(collect_prtnelapse.js). 없는 구역은 %바만.
+        const tlHtml = (d.tl && d.tl.length)
+          ? `<div style="margin:8px 0 4px;border-top:1px solid var(--line);padding-top:8px;"><div style="font-size:12px;font-weight:700;color:var(--c-muted);margin-bottom:4px;">진행현황</div><div style="display:flex;flex-direction:column;gap:2px;">${d.tl.map((s, i) => `<div style="display:flex;align-items:baseline;gap:8px;font-size:12px;"><span style="width:14px;height:14px;border-radius:50%;background:${i === d.tl.length - 1 ? stageColor(d.stage) : 'var(--line)'};color:${i === d.tl.length - 1 ? '#fff' : 'transparent'};font-size:9px;display:inline-flex;align-items:center;justify-content:center;flex:none;">✓</span><span style="flex:1;min-width:0;">${esc(s.name)}</span><span style="color:var(--c-muted);white-space:nowrap;font-variant-numeric:tabular-nums;">${esc(s.date)}</span></div>`).join('')}</div></div>`
+          : '';
+        return `<div class="pc"><div class="pc-head">${badgeLink(`<span style="display:inline-block;background:${c};color:#fff;font-size:12px;padding:2px 8px;border-radius:999px;">${g}</span>`)}${badgeLink(stageBadge)}</div><div class="pc-body"><div style="font-weight:700;font-size:15px;margin-bottom:2px;color:var(--c-text);">${esc(d.name)}</div><div>${esc(d.gu)} ${esc(d.jibun)}${areaTxt}${d.approx ? ' <span style="color:var(--c-price);">(동 근사위치)</span>' : ''}</div><div style="font-size:12px;color:var(--c-muted);margin-top:3px;">사업구분: ${esc(d.gubun)}</div>${meta.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:8px;border-top:1px solid var(--line);padding-top:8px;">${meta.join('')}</div>` : ''}<div style="margin:8px 0 4px;"><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--c-muted);margin-bottom:3px;"><span>진행단계</span><span>${stagePct(d.stage)}%</span></div><div style="height:5px;background:var(--line);border-radius:3px;overflow:hidden;"><div style="height:100%;width:${stagePct(d.stage)}%;background:${stageColor(d.stage)};border-radius:3px;transition:width .3s;"></div></div></div>${tlHtml}${cmpHtml}<div class="jb-rp-stat rp-stat" style="display:none;padding:5px 0;border-top:1px solid var(--c-border);"></div><div class="jb-community" style="display:none;margin-top:6px;"></div></div><div class="pc-actions">${linkBtns}<button class="jb-rp-filter pc-btn pc-btn-outline" style="border-color:var(--c-price) !important;color:var(--c-price);">🔎 이 구역 실거래 보기</button><button class="jb-community-btn pc-btn pc-btn-outline" style="border-color:#2f9e44 !important;color:#2f9e44;">💬 커뮤니티</button><button class="jb-cmp pc-btn pc-btn-outline" style="border-color:var(--c-primary) !important;color:var(--c-primary);">＋ 비교</button><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline" style="border-color:var(--c-success) !important;color:var(--c-success);">출발</button><button class="rt-end pc-btn pc-btn-outline" style="border-color:var(--c-danger) !important;color:var(--c-danger);">도착</button></div><button class="sv-btn pc-btn pc-btn-outline">거리뷰</button></div></div>`;
       }
       // ── 정비구역 커뮤니티(익명 방명록형) — Supabase jb_posts, anon insert/select RLS (schema.sql 참고) ──
       async function renderJbCommunity(container, d) {
@@ -1397,14 +1517,6 @@
           if ((a[0] > lat) !== (b[0] > lat) && lng < ((b[1] - a[1]) * (lat - a[0])) / (b[0] - a[0]) + a[1]) inside = !inside;
         }
         return inside;
-      }
-      // 구역 면적(㎡): 폴리곤 실측 우선, 폴리곤 없으면 수집 데이터의 area 필드로 폴백.
-      function zoneAreaM2(z) {
-        if (z.rc && jbPolys && jbPolys[z.rc]) {
-          const rings = usableRings(z.rc, jbPolys[z.rc]);
-          if (rings && rings.length) return rings.reduce((a, r) => a + _ringArea(r), 0);
-        }
-        return z.area ? Number(z.area) : null;
       }
       // 인근 구역 비교표 (1.5km 내 최대 5곳, 거리순) — 재개발닷컴의 '인근 구역 비교' 기능에 대응.
       // 전부 자체 수집 데이터(구역명·유형·진행단계·면적)로 계산하므로 외부 데이터 복제가 없다.
@@ -1772,7 +1884,7 @@
           + `<div class="cctv-pc-head"><span>${esc(it.name || 'CCTV')}</span><button type="button" class="cctv-pc-close" aria-label="닫기">&times;</button></div>`
           + '<div class="cctv-pc-video" id="cctv-video-slot">불러오는 중…</div>'
           + '<div class="cctv-pc-meta">ITS 국가교통정보센터 실시간 도로 영상</div></div>';
-        const popup = L.popup({ closeButton: false, maxWidth: 320 }).setLatLng([it.lat, it.lng]).setContent(html).openOn(map);
+        const popup = L.popup({ closeButton: false, maxWidth: 760 }).setLatLng([it.lat, it.lng]).setContent(html).openOn(map);
         setTimeout(() => {
           const node = popup.getElement();
           if (!node) return;
@@ -1962,6 +2074,7 @@
                 if (midCb.checked) { mid.layer.addTo(map); map.fire('overlayadd', { layer: mid.layer }); }
                 else { map.removeLayer(mid.layer); map.fire('overlayremove', { layer: mid.layer }); }
                 syncBig();
+                saveLayerState();
               };
               return;
             }
@@ -1973,6 +2086,7 @@
               const sw = UPIS_SWATCH[id] ? `<img class="lp-sw" src="data:image/png;base64,${UPIS_SWATCH[id]}" alt="">` : '<span class="lp-sw"></span>';
               s.innerHTML = `<input type="checkbox" class="lp-cb">${sw}<span>${label}</span>`;
               const cb = s.querySelector('input');
+              cb.dataset.id = id;   // 레이어 상태 저장/복원용
               subCbs.push(cb);
               cb.onchange = () => {
                 cb.checked ? mid._on.add(id) : mid._on.delete(id);
@@ -1983,6 +2097,7 @@
                 // 참조 사이트처럼 '전체 선택'이 되도록, 부분선택이었음을 기억해 둔다.
                 midCb.dataset.wasInd = midCb.indeterminate ? '1' : '0';
                 syncBig();
+                saveLayerState();
               };
             });
             row.querySelector('.lp-exp').onclick = () => row.classList.toggle('open');
@@ -1995,6 +2110,7 @@
               midCb.indeterminate = false;
               refreshUpisGroup(mid);
               syncBig();
+              saveLayerState();
             };
           });
 
@@ -2015,8 +2131,56 @@
           };
         });
 
+        // ── 레이어 트리 상태 저장/복원 (F5 후에도 체크 유지) ──
+        // 저장은 체크박스 onchange 시점, 복원은 패널 빌드 직후 한 번.
+        const LS_LAYERS = 'mj_layer_tree_v1';
+        function saveLayerState() {
+          try {
+            const st = {};
+            div.querySelectorAll('.lp-sec').forEach((sec) => {
+              const big = sec.querySelector('.lp-head .lp-name').textContent.trim();
+              sec.querySelectorAll('.lp-mid').forEach((row) => {
+                const mid = row.querySelector('.lp-midhead .lp-name').textContent.trim();
+                const midCb = row.querySelector('.lp-midcb');
+                const subs = [...row.querySelectorAll('.lp-sub input')];
+                const key = big + '>' + mid;
+                if (subs.length) {
+                  const on = subs.filter((c) => c.checked).map((c) => c.dataset.id);
+                  if (on.length) st[key] = on;
+                } else if (midCb.checked) {
+                  st[key] = true;
+                }
+              });
+            });
+            localStorage.setItem(LS_LAYERS, JSON.stringify(st));
+          } catch (e) {}
+        }
+        function restoreLayerState() {
+          let st = null;
+          try { st = JSON.parse(localStorage.getItem(LS_LAYERS) || 'null'); } catch (e) {}
+          if (!st) return;
+          div.querySelectorAll('.lp-sec').forEach((sec) => {
+            const big = sec.querySelector('.lp-head .lp-name').textContent.trim();
+            sec.querySelectorAll('.lp-mid').forEach((row) => {
+              const mid = row.querySelector('.lp-midhead .lp-name').textContent.trim();
+              const v = st[big + '>' + mid];
+              if (v === undefined) return;
+              const midCb = row.querySelector('.lp-midcb');
+              const subs = [...row.querySelectorAll('.lp-sub input')];
+              if (subs.length) {
+                const want = new Set(Array.isArray(v) ? v : []);
+                subs.forEach((cb) => { if (want.has(cb.dataset.id)) { cb.checked = true; cb.onchange(); } });
+              } else if (v === true) {
+                midCb.checked = true;
+                midCb.onchange();
+              }
+            });
+          });
+        }
+
         L.DomEvent.disableClickPropagation(div);
         L.DomEvent.disableScrollPropagation(div);
+        restoreLayerState();
         return div;
       };
       layerPanel.addTo(map);
@@ -3268,6 +3432,33 @@
           + '<div id="sv-minimap" style="position:absolute;bottom:16px;left:16px;width:200px;height:150px;border-radius:8px;overflow:hidden;resize:both;border:2px solid rgba(255,255,255,.85);box-shadow:0 2px 10px rgba(0,0,0,.5);z-index:3001;min-width:100px;min-height:80px;max-width:400px;max-height:300px;background:#e8e8e8;"></div>'
           + '<button id="sv-close" style="position:absolute;top:10px;right:10px;z-index:3002;padding:6px 14px;background:rgba(0,0,0,.65);color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:14px;font-weight:600;">✕ 닫기</button>';
         document.body.appendChild(ov);
+        // 거리뷰 리사이즈 그립 — 우하단 드래그로 오버레이 크기 조절
+        const ovGrip = document.createElement('div');
+        ovGrip.className = 'lp-grip';
+        ovGrip.style.cssText = 'position:absolute;right:6px;bottom:6px;z-index:3003;filter:invert(1);';
+        ovGrip.title = '드래그하여 크기 조절';
+        ov.appendChild(ovGrip);
+        let ovDrag = null;
+        ovGrip.addEventListener('pointerdown', (e) => {
+          e.preventDefault(); e.stopPropagation();
+          const r = ov.getBoundingClientRect();
+          ovDrag = { sx: e.clientX, sy: e.clientY, w: r.width, h: r.height };
+          ovGrip.setPointerCapture(e.pointerId);
+        });
+        ovGrip.addEventListener('pointermove', (e) => {
+          if (!ovDrag) return;
+          const maxW = Math.min(window.innerWidth - 24, 1400);
+          const maxH = Math.min(window.innerHeight - 24, 900);
+          ov.style.width = Math.max(360, Math.min(maxW, ovDrag.w + (e.clientX - ovDrag.sx))) + 'px';
+          ov.style.height = Math.max(280, Math.min(maxH, ovDrag.h + (e.clientY - ovDrag.sy))) + 'px';
+        });
+        const endOvDrag = () => {
+          ovDrag = null;
+          // Naver panorama 는 컨테이너 크기 변화를 자동 감지 못하므로 종료 시 1회 갱신
+          if (panorama && typeof panorama.refreshSize === 'function') { try { panorama.refreshSize(); } catch (e) {} }
+        };
+        ovGrip.addEventListener('pointerup', endOvDrag);
+        ovGrip.addEventListener('pointercancel', endOvDrag);
 
         const close = () => { ov.remove(); backdrop.remove(); };
         ov.querySelector('#sv-close').onclick = close;
