@@ -12,6 +12,24 @@
 
 ---
 
+## 2026-08-08 (9) — opencode (거리뷰 오버레이 그립 드래그 시 파노라마 화면이 안 따라오는 버그 수정)
+
+> 사용자 제보 "거리뷰 레이어 크기 조정은 되는데 실제 거리뷰 화면은 크기 조정은 안되네" → 원인 규명·수정·검증 완료. **커밋·push·배포는 사용자 동의 대기.**
+
+### 버그 원인 (실측)
+- **증상**: `sv-overlay`(land.html 3434)는 우하단 그립으로 리사이즈 되고, 미니맵(CSS `resize:both`)도 크기 조절이 되는데 **실제 거리뷰(파노라마) 화면만 옛 크기로 남는다**.
+- **실측**: `endOvDrag` 가 `panorama.refreshSize()`(land.html 3464)를 호출했는데, **`refreshSize()` 는 Naver Panorama 에 없는 메서드**(Map 전용)다. `typeof panorama.refreshSize === 'function'` 가 false 여서 **드래그 종료 시 갱신이 한 번도 실행되지 않았다**. Naver Panorama 는 컨테이너 크기 변화를 자동 감지하지 못한다(Map 의 auto-resize 는 `size` 옵션 생략 시에만 동작).
+- 미니맵이 되던 이유: 이미 `ResizeObserver` + `miniMap.refresh(true)`(land.html 3524)가 있어서. 파노라마에만 그 갱신이 빠져 있었다.
+- **해결** (land.html 3448-3477): `resizePano()` 를 추가해 `panorama.setSize(new nv.maps.Size(ov.clientWidth, ov.clientHeight))` 호출 — 드래그 중엔 rAF 스로틀로 라이브 갱신, 종료 시(`endOvDrag`) 최종 갱신.
+- **검증** (`%TEMP%\opencode\sv-resize-test.cjs` — naver 스텁 + CDP PointerEvent 드래그): 오버레이 820×560 → 1020×680(드래그 +200/+120 만큼), `panorama.setSize` 호출 2회(드래그 중 + 종료), JS 예외 0건. `tl-test.cjs` 회귀 PASS(fitWorked:false 는 의도된 결과 — 고정 높이 타임라인).
+- TROUBLESHOOTING §4 에 함정 기록.
+
+### 커밋·배포 상태
+- **미커밋**: `land.html` M, `HANDOFF.md` M, `TROUBLESHOOTING.md` M. 사용자 동의 후 커밋·push·Pages `built` 확인 예정.
+- 미커밋 유지: `_*.txt` 10개(임시), `land.backup-20260808.html`·`redevelop_seoul.backup-20260808.json`, `경쟁사_비교분석_20260808.hwpx`.
+
+---
+
 ## 2026-08-08 (8) — opencode (정비 폴리곤 팝업 리사이즈 시 폰트 8px 축소 버그 수정)
 
 > 사용자 제보 "레이어 클릭해서 나오는 팝업 크기 조정 안 되잖아" → 원인 규명·수정 완료. **커밋·push·배포 확인 진행**(사용자 동의).
