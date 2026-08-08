@@ -31,12 +31,14 @@
 - setView 후 다시 containerPoint 계산해야 함(줌 바뀌면 좌표 달라짐). 구역 여러 개 준비 → 첫 비차단 지점 선택.
 - 참고: `jbRows`/`jbPolys`/`jbPolyLayer`(land.html 1290-1291)는 **함수 스코프** → Runtime.evaluate 에서 접근 불가. 검증 프로브에서 `fetch('redevelop_seoul.json?v=4')` 직접 로드로 해결.
 
-### 커밋·배포 상태 (변경 없음)
-- 여전히 **미커밋**: land.html M, HANDOFF.md M, `notices.json`·`tools/collect_notices.js`·`land.backup-20260808.html` untracked. 커밋 여부는 사용자가 결정 대기 중.
-- 로컬 검증 서버 127.0.0.1:8798 실행 중.
+### 커밋·배포 상태 (완료)
+- **커밋 `7f0c2fd` push 완료** — `land.html`·`TROUBLESHOOTING.md`·`HANDOFF.md`·`AGENTS.md`·`notices.json`·`tools/collect_notices.js` 6개. GitHub Pages `built` 확인.
+- 배포본(`?cb=7f0c2fd`) 실측: `jb-near` 7회·`jb-rp-filter` 2·`jb-notices` 2·`pointInRing` 3·`toggleJbRp` 3·`notices.json` 2 — 신기능 전부 반영.
+- 미커밋 잔여: `_*.txt` 10개(grep 분석 임시 — 삭제해도 무방), `land.backup-20260808.html`(로컬 복구용 유지), `경쟁사_비교분석_20260808.hwpx`(분석 보고서 — 커밋 결정 대기).
 
 ### 다음 세션 확인할 것
-- 사용자에게 참조사이트 조사 결론("반영할 마우스 동작 없음, land.html 이 이미 동일") + 캔버스 클릭 검증 통과를 보고하고 **푸시 여부 결정** 받기. 푸시 시: 커밋 → push → `gh api repos/conoc612-a11y/matjip/pages/builds/latest` `built` 확인 → 배포본 land.html 에 `jb-near` 포함 확인.
+- 배포본에서 사용자 실사용 확인(정비구역 팝업 → 실거래·인근 비교 버튼, 정비 소식 피드). 이상 없으면 이 루프 종료.
+- (선택) `zoneAreaM2` 데드 코드 제거 후보(HANDOFF (4) 기록). `_*.txt` 임시 파일 정리.
 
 ---
 
