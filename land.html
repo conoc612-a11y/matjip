@@ -1418,13 +1418,68 @@
       function stageColor(s) { s = s || ''; for (const [k, v] of Object.entries(STAGE_COLOR_MAP)) { if (s.includes(k)) return v; } return '#868e96'; }
       const STAGE_PCT = { '대상지선정':10,'추진위':20,'조합설립':35,'사업시행':50,'관리처분':65,'착공':80,'준공':95,'조합해산':100,'정비구역해제':0,'기획':15 };
       function stagePct(s) { s=s||''; for(const [k,v] of Object.entries(STAGE_PCT)) { if(s.includes(k)) return v; } return 15; }
+      // 정비사업 표준 진행절차 — 완료 단계가 있어도 입주까지 남은 절차를 "예정"으로 보여주기 위한 기준.
+      // 순서만 기준일 뿐 모든 구역이 이 순서를 전부 거치지는 않는다(중간 단계 생략·병행 가능).
+      const STAGE_SEQ = ['대상지선정', '안전진단', '정비구역지정', '조합설립추진위원회승인', '정비사업전문관리업자선정', '설계자선정', '조합설립인가', '건축심의', '사업시행인가', '시공자선정', '철거업자선정', '관리처분인가', '이주', '철거신고', '착공신고', '일반분양승인', '준공인가', '입주'];
+      // stage 문자열이 표준 절차 중 어느 단계에 해당하는지 — 부분일치(준공→준공인가, 구역지정→정비구역지정).
+      function seqIdx(stage) {
+        stage = (stage || '').replace(/\s/g, '');
+        let i = STAGE_SEQ.findIndex((s) => stage.includes(s) || s.includes(stage));
+        if (i >= 0) return i;
+        // 사업시행계획인가→사업시행인가 류: 시퀀스 항목 앞 4글자로 2차 매칭
+        return STAGE_SEQ.findIndex((s) => s.length > 3 && stage.includes(s.slice(0, 4)));
+      }
+      // 표준 순서상의 위치. 시퀀스 밖 이름(취소·해제 등)은 최후 순위로.
+      function jbRank(n) { const i = seqIdx(n); return i < 0 ? STAGE_SEQ.length : i; }
+      // 유효 진행단계 — tl(추진경과 완료 단계) 중 가장 최근 날짜의 단계를 배지/진행% 기준으로 쓴다.
+      // stage 필드가 tl보다 뒤처진 데이터(예: stage=기획완료 인데 시공자선정까지 완료)를 배지에서도 일관되게 보이게.
+      // 날짜가 없는 tl 이면 표준 순서상 가장 뒤인 단계.
+      function jbEffStage(d) {
+        if (d.tl && d.tl.length) {
+          let best = '', bestDate = '';
+          for (const s of d.tl) { if (s.date && s.date > bestDate) { bestDate = s.date; best = s.name; } }
+          if (best) return best;
+          let br = -1, bn = '';
+          for (const s of d.tl) { const r = jbRank(s.name); if (r > br) { br = r; bn = s.name; } }
+          if (bn) return bn;
+        }
+        return d.stage || '';
+      }
+      function jbPct(stage) { const r = jbRank(stage); return r >= STAGE_SEQ.length ? stagePct(stage) : Math.round((r / (STAGE_SEQ.length - 1)) * 100); }
+      // 진행현황 타임라인 — 정보몽땅 추진경과의 완료 단계(tl)를 STAGE_SEQ 순서에 끼워 맞추고,
+      // 마지막 완료 단계 이후 남은 표준 절차를 "예정"으로 붙인다. tl 이 없는 구역은 stage 기준으로 채운다.
+      function jbTlHtml(d) {
+        const done = (d.tl && d.tl.length) ? d.tl.slice() : [];
+        // tl 이 없는 구역: 현재 stage 에 해당하는 표준 단계까지를 완료로 가정
+        if (!done.length) {
+          // 취소·중단·해제 등 사업이 끝난/멈춘 구역은 진행현황을 표시하지 않는다.
+          if (/(취소|중단|해제|실효|완료)/.test(d.stage || '') && !/(준공|입주)/.test(d.stage || '')) return '';
+          const si = seqIdx(d.stage);
+          if (si < 0) return '';  // 시퀀스 밖 단계(기획완료 등)는 %바만
+          for (let i = 0; i < si; i++) done.push({ name: STAGE_SEQ[i], date: '' });
+          done.push({ name: d.stage, date: '' });
+        }
+        // 완료 단계를 날짜순(실제 완료 순서)으로 정렬. 날짜 없는 항목은 뒤로.
+        // rank 정렬은 tl 에 없는 과거 단계가 뒤섞여 실제 흐름과 어긋나는 경우가 있어 사용하지 않는다.
+        done.sort((a, b) => (a.date || 'zzz').localeCompare(b.date || 'zzz'));
+        const lastRank = jbRank(done[done.length - 1].name);
+        const doneRanks = new Set(done.map((s) => jbRank(s.name)));
+        const rows = done.map((s) => `<div style="display:flex;align-items:baseline;gap:8px;font-size:12px;"><span style="width:14px;height:14px;border-radius:50%;background:${stageColor(s.name || d.stage)};color:#fff;font-size:9px;display:inline-flex;align-items:center;justify-content:center;flex:none;">✓</span><span style="flex:1;min-width:0;">${esc(s.name || '')}</span><span style="color:var(--c-muted);white-space:nowrap;font-variant-numeric:tabular-nums;">${esc(s.date || '')}</span></div>`);
+        // 마지막 완료 단계 이후의 표준 절차는 "예정"으로. 이미 완료된 단계(날짜 순서가 어긋난 구역)는 건너뛴다.
+        for (let i = lastRank + 1; i < STAGE_SEQ.length; i++) {
+          if (doneRanks.has(i)) continue;
+          rows.push(`<div style="display:flex;align-items:baseline;gap:8px;font-size:12px;color:var(--c-muted);opacity:.7;"><span style="width:14px;height:14px;border-radius:50%;background:transparent;border:2px dashed var(--line);font-size:9px;display:inline-flex;align-items:center;justify-content:center;flex:none;"></span><span style="flex:1;min-width:0;">${esc(STAGE_SEQ[i])}</span><span style="white-space:nowrap;font-variant-numeric:tabular-nums;">예정</span></div>`);
+        }
+        return `<div style="margin:8px 0 4px;border-top:1px solid var(--line);padding-top:8px;"><div style="font-size:12px;font-weight:700;color:var(--c-muted);margin-bottom:4px;">진행현황 <span style="font-weight:400;color:var(--c-muted);">· 입주까지 절차</span></div><div style="display:flex;flex-direction:column;gap:2px;">${rows.join('')}</div></div>`;
+      }
       function jbPopupHtml(d) {
         const g = jbGroup(d), c = JB_COLOR[g];
         // 배지 클릭 시 해당 구역 경계지도(recordCode)로 이동. rc 없으면 링크 없이 텍스트만.
         const zoneHref = d.rc ? `https://urban.seoul.go.kr/view/map/mapPopup.html?recordCode=${encodeURIComponent(d.rc)}` : '';
         const zoneTarget = d.rc ? ' target="_blank" rel="noopener"' : '';
         const badgeLink = (html) => html && zoneHref ? `<a href="${zoneHref}"${zoneTarget} style="text-decoration:none;display:inline-block;" title="이 구역 경계지도 보기">${html}</a>` : html || '';
-        const stageBadge = d.stage ? `<span style="display:inline-block;background:${stageColor(d.stage)};color:#fff;font-size:12px;padding:2px 8px;border-radius:999px;margin-left:4px;">${esc(d.stage)}</span>` : '';
+        const es = jbEffStage(d);
+        const stageBadge = es ? `<span style="display:inline-block;background:${stageColor(es)};color:#fff;font-size:12px;padding:2px 8px;border-radius:999px;margin-left:4px;">${esc(es)}</span>` : '';
         // 구역 면적: 폴리곤 링에서 실제로 계산 (데이터 위조 아님)
         let areaTxt = '', areaPy = null;
         if (d.rc && jbPolys && jbPolys[d.rc]) {
@@ -1450,11 +1505,9 @@
             + '</div>'
           : '';
         const linkBtns = (d.rc || d.cafe) ? `<div class="pc-btn-row">${d.rc ? `<a href="https://urban.seoul.go.kr/view/map/mapPopup.html?recordCode=${encodeURIComponent(d.rc)}" target="_blank" rel="noopener" class="pc-btn pc-btn-outline" style="border-color:#7048e8 !important;color:#7048e8;">경계지도</a>` : ''}${d.cafe ? `<a href="https://cleanup.seoul.go.kr/cafe/mainIndx.do?cafeUrl=${encodeURIComponent(d.cafe)}" target="_blank" rel="noopener" class="pc-btn pc-btn-outline" style="border-color:var(--c-primary) !important;color:var(--c-primary);">정보공개</a>` : ''}</div>` : '';
-        // 진행현황 타임라인 — 정보몽땅 추진경과에서 수집(collect_prtnelapse.js). 없는 구역은 %바만.
-        const tlHtml = (d.tl && d.tl.length)
-          ? `<div style="margin:8px 0 4px;border-top:1px solid var(--line);padding-top:8px;"><div style="font-size:12px;font-weight:700;color:var(--c-muted);margin-bottom:4px;">진행현황</div><div style="display:flex;flex-direction:column;gap:2px;">${d.tl.map((s, i) => `<div style="display:flex;align-items:baseline;gap:8px;font-size:12px;"><span style="width:14px;height:14px;border-radius:50%;background:${i === d.tl.length - 1 ? stageColor(d.stage) : 'var(--line)'};color:${i === d.tl.length - 1 ? '#fff' : 'transparent'};font-size:9px;display:inline-flex;align-items:center;justify-content:center;flex:none;">✓</span><span style="flex:1;min-width:0;">${esc(s.name)}</span><span style="color:var(--c-muted);white-space:nowrap;font-variant-numeric:tabular-nums;">${esc(s.date)}</span></div>`).join('')}</div></div>`
-          : '';
-        return `<div class="pc"><div class="pc-head">${badgeLink(`<span style="display:inline-block;background:${c};color:#fff;font-size:12px;padding:2px 8px;border-radius:999px;">${g}</span>`)}${badgeLink(stageBadge)}</div><div class="pc-body"><div style="font-weight:700;font-size:15px;margin-bottom:2px;color:var(--c-text);">${esc(d.name)}</div><div>${esc(d.gu)} ${esc(d.jibun)}${areaTxt}${d.approx ? ' <span style="color:var(--c-price);">(동 근사위치)</span>' : ''}</div><div style="font-size:12px;color:var(--c-muted);margin-top:3px;">사업구분: ${esc(d.gubun)}</div>${meta.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:8px;border-top:1px solid var(--line);padding-top:8px;">${meta.join('')}</div>` : ''}<div style="margin:8px 0 4px;"><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--c-muted);margin-bottom:3px;"><span>진행단계</span><span>${stagePct(d.stage)}%</span></div><div style="height:5px;background:var(--line);border-radius:3px;overflow:hidden;"><div style="height:100%;width:${stagePct(d.stage)}%;background:${stageColor(d.stage)};border-radius:3px;transition:width .3s;"></div></div></div>${tlHtml}${cmpHtml}<div class="jb-rp-stat rp-stat" style="display:none;padding:5px 0;border-top:1px solid var(--c-border);"></div><div class="jb-community" style="display:none;margin-top:6px;"></div></div><div class="pc-actions">${linkBtns}<button class="jb-rp-filter pc-btn pc-btn-outline" style="border-color:var(--c-price) !important;color:var(--c-price);">🔎 이 구역 실거래 보기</button><button class="jb-community-btn pc-btn pc-btn-outline" style="border-color:#2f9e44 !important;color:#2f9e44;">💬 커뮤니티</button><button class="jb-cmp pc-btn pc-btn-outline" style="border-color:var(--c-primary) !important;color:var(--c-primary);">＋ 비교</button><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline" style="border-color:var(--c-success) !important;color:var(--c-success);">출발</button><button class="rt-end pc-btn pc-btn-outline" style="border-color:var(--c-danger) !important;color:var(--c-danger);">도착</button></div><button class="sv-btn pc-btn pc-btn-outline">거리뷰</button></div></div>`;
+        // 진행현황 타임라인 — 표준 절차 기반, 입주까지 "예정" 포함. tl 없어도 stage 기준으로 표시.
+        const tlHtml = jbTlHtml(d);
+        return `<div class="pc"><div class="pc-head">${badgeLink(`<span style="display:inline-block;background:${c};color:#fff;font-size:12px;padding:2px 8px;border-radius:999px;">${g}</span>`)}${badgeLink(stageBadge)}</div><div class="pc-body"><div style="font-weight:700;font-size:15px;margin-bottom:2px;color:var(--c-text);">${esc(d.name)}</div><div>${esc(d.gu)} ${esc(d.jibun)}${areaTxt}${d.approx ? ' <span style="color:var(--c-price);">(동 근사위치)</span>' : ''}</div><div style="font-size:12px;color:var(--c-muted);margin-top:3px;">사업구분: ${esc(d.gubun)}</div>${meta.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:8px;border-top:1px solid var(--line);padding-top:8px;">${meta.join('')}</div>` : ''}<div style="margin:8px 0 4px;"><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--c-muted);margin-bottom:3px;"><span>진행단계</span><span>${jbPct(es)}%</span></div><div style="height:5px;background:var(--line);border-radius:3px;overflow:hidden;"><div style="height:100%;width:${jbPct(es)}%;background:${stageColor(es)};border-radius:3px;transition:width .3s;"></div></div></div>${tlHtml}${cmpHtml}<div class="jb-rp-stat rp-stat" style="display:none;padding:5px 0;border-top:1px solid var(--c-border);"></div><div class="jb-community" style="display:none;margin-top:6px;"></div></div><div class="pc-actions">${linkBtns}<button class="jb-rp-filter pc-btn pc-btn-outline" style="border-color:var(--c-price) !important;color:var(--c-price);">🔎 이 구역 실거래 보기</button><button class="jb-community-btn pc-btn pc-btn-outline" style="border-color:#2f9e44 !important;color:#2f9e44;">💬 커뮤니티</button><button class="jb-cmp pc-btn pc-btn-outline" style="border-color:var(--c-primary) !important;color:var(--c-primary);">＋ 비교</button><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline" style="border-color:var(--c-success) !important;color:var(--c-success);">출발</button><button class="rt-end pc-btn pc-btn-outline" style="border-color:var(--c-danger) !important;color:var(--c-danger);">도착</button></div><button class="sv-btn pc-btn pc-btn-outline">거리뷰</button></div></div>`;
       }
       // ── 정비구역 커뮤니티(익명 방명록형) — Supabase jb_posts, anon insert/select RLS (schema.sql 참고) ──
       async function renderJbCommunity(container, d) {
@@ -1535,7 +1588,7 @@
         if (!_jbRowsGlobal || !_jbRowsGlobal.length || d.lat == null) return [];
         return _jbRowsGlobal
           .filter((z) => z.lat != null && (z.name !== d.name || (z.jibun || '') !== (d.jibun || '')))
-          .map((z) => ({ name: z.name, jibun: z.jibun || '', g: jbGroup(z), stage: z.stage || '', pct: stagePct(z.stage), dist: Math.round(kmDist(d.lat, d.lng, z.lat, z.lng) * 100) / 100 }))
+          .map((z) => ({ name: z.name, jibun: z.jibun || '', g: jbGroup(z), stage: z.stage || '', pct: jbPct(jbEffStage(z)), dist: Math.round(kmDist(d.lat, d.lng, z.lat, z.lng) * 100) / 100 }))
           .filter((x) => x.dist <= 1.5)
           .sort((a, b) => a.dist - b.dist)
           .slice(0, limit);
@@ -1556,7 +1609,7 @@
         const dots = [];
         // 줌 14 이상에서만 배지를 상시 노출 — 그 이하에서는 구역이 너무 많아 겹쳐 뭉개진다.
         const showStageBadge = map.getZoom() >= 14;
-        const stageBadgeHtml = (d) => `<span class="jb-perm-badge" style="background:${stageColor(d.stage)}">${esc(d.name)} · ${stagePct(d.stage)}%</span>`;
+        const stageBadgeHtml = (d) => { const e = jbEffStage(d); return `<span class="jb-perm-badge" style="background:${stageColor(e)}">${esc(d.name)} · ${jbPct(e)}%</span>`; };
         jbRows.forEach((d) => {
           if (d.lat == null || d.lng == null) return;  // 좌표 미확보 레코드(수집 데이터 중 소수)는 건너뜀
           if (!jbFilter[jbGroup(d)]) return;

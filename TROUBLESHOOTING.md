@@ -241,6 +241,9 @@ console.log('blocks:',i,'fails:',f);
   ```
 - ArcGIS 레이어에 데이터가 있는지 빠르게 보려면 `/export` 를 호출해 **빈 이미지(약 2.2KB)와 크기 비교**.
 - **헤드리스에서 `window.map` 을 쓰면 안 된다**: `land.html` 은 `<div id="map">` 이 있어 `window.map` 이 **HTMLDivElement 로 노출**되고, 실제 Leaflet 지도는 스크립트의 `const map`(bare `map` 으로만 접근, 전역에도 `realpriceCluster`/`villaCluster` 없음). `window.map._layers` 는 항상 빈 객체로 나와 "레이어가 안 그려졌다"고 오판한다. 검증 스크립트에서는 **`map` 그대로** 쓰고, 레이어 카운트는 `map.eachLayer()` 로 셀 것.
+- **CDP `Runtime.evaluate` 로 값 뽑을 땐 `returnByValue: true` 필수** (2026-08-08 실측): 옵션 없이 실행하면 `result.value` 가 직렬화되지 않아 "undefined"로 나온다. 팝업 DOM·진행현황 행 수·배지 텍스트 등 페이지 내부 상태를 가져올 때마다 넣을 것.
+- **`setView` 로 지도 이동하면 열어둔 팝업이 유실된다** (2026-08-08 실측): moveend → 정비 레이어 재구성(`jbBuild`)이 레이어를 교체해서 기존 `_layer` 의 팝업이 사라진다. CDP 로 팝업 실측 시 **이동 후 지도 위 폴리곤을 다시 스캔**해 `openPopup()` 해야 한다.
+- **PowerShell 인라인 `node -e` 는 깨진다**: 큰따옴표·`$`·백틱 등이 PowerShell 이스케이프와 충돌해 계속 실패(실측 반복). 검증 스크립트는 **`.cjs` 파일로 저장**해서 실행한다.
 
 ---
 
