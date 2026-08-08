@@ -12,6 +12,162 @@
 
 ---
 
+## 2026-08-08 (6) — opencode (참조사이트 마우스 조사 완료 + 캔버스 폴리곤 클릭→팝업 CDP 실클릭 검증 통과)
+
+> 미커밋 상태는 동일((4)·(5)의 편집). 이 항목은 (5)에서 남긴 마지막 리스크(캔버스 폴리곤 클릭)를 검증으로 해소한 기록 + 참조사이트 조사 결과.
+
+### 한 일
+1. **참조사이트 마우스 상호작용 조사 완료** (urban.seoul.go.kr + jaegebal.com) — 결론: **land.html 에 새로 반영할 항목 없음**.
+   - urban (ArcGIS MapView, `tool_fcfecfbe90013pvlC4H2J2E1In`=mainMapInit.js): 휠=줌±1, 드래그=팬(82-98행), **좌클릭은 폴리곤 선택 안 함**, 우클릭(button===2)만 컨텍스트 메뉴→필지 조회(1521-1545행). 팝업 드래그 = 헤더 mousedown + document mousemove/up(`.urbanDrag_{id}`, main.js 548-557행). 호버 하이라이트 핸들러 없음.
+   - jaegebal.com: 홈에 지도 없음(Next.js 카드/리스트), 카드=전체 오버레이 `<a>`(z-index 1) 클릭 이동. 지도 마우스 참고 사항 없음.
+   - land.html 은 이미 폴리곤 bindTooltip(호버)+bindPopup(클릭) 보유 → 참조와 동일하거나 우위.
+2. **캔버스 폴리곤 클릭→팝업 검증 통과** (`%TEMP%\opencode\poly-click-check.js`, CDP 포트 9334, 결과 `poly-click-result.txt`):
+   - 실측: 천호3-2 클릭 → `elementFromPoint = CANVAS.leaflet-zoom-animated`, `evCount.canvasClick = 1`, **`popupSourceJb = "천호3-2"`**, popupContent 에 재개발 정보 정상(진행단계 15%·인근 비교·실거래 버튼 포함). 팝업 1개 열림.
+   - 이로써 (5)의 유일 미검증 항목 해소 — 정비구역 신기능 전부 실사용 경로 검증 완료.
+
+### ⚠️ 검증 함정 (TROUBLESHOOTING §4 신규 기록)
+- `preferCanvas: true` 라 폴리곤이 `<path>` 가 아닌 **canvas 픽셀** → CDP `Input.dispatchMouseEvent` 로 실제 클릭을 보내야 팝업 여부를 알 수 있다.
+- 클릭 좌표가 컨트롤(.lc, .leaflet-control)에 덮이면 클릭이 canvas 에 안 닿는다(실측: evCount 전부 0, elementFromPoint = `DIV.lc`). `elementFromPoint(x,y)` 가 canvas 를 가리키는지로 좌표 유효성 판정. `.leaflet-top`(pointer-events:none 스트립)을 rect 로 빼는 방식은 오판.
+- setView 후 다시 containerPoint 계산해야 함(줌 바뀌면 좌표 달라짐). 구역 여러 개 준비 → 첫 비차단 지점 선택.
+- 참고: `jbRows`/`jbPolys`/`jbPolyLayer`(land.html 1290-1291)는 **함수 스코프** → Runtime.evaluate 에서 접근 불가. 검증 프로브에서 `fetch('redevelop_seoul.json?v=4')` 직접 로드로 해결.
+
+### 커밋·배포 상태 (변경 없음)
+- 여전히 **미커밋**: land.html M, HANDOFF.md M, `notices.json`·`tools/collect_notices.js`·`land.backup-20260808.html` untracked. 커밋 여부는 사용자가 결정 대기 중.
+- 로컬 검증 서버 127.0.0.1:8798 실행 중.
+
+### 다음 세션 확인할 것
+- 사용자에게 참조사이트 조사 결론("반영할 마우스 동작 없음, land.html 이 이미 동일") + 캔버스 클릭 검증 통과를 보고하고 **푸시 여부 결정** 받기. 푸시 시: 커밋 → push → `gh api repos/conoc612-a11y/matjip/pages/builds/latest` `built` 확인 → 배포본 land.html 에 `jb-near` 포함 확인.
+
+---
+
+## 2026-08-08 (5) — opencode (정비구역 신기능 CDP 헤드리스 실브라우저 검증 완료 — 전부 정상)
+
+> 미커밋 상태는 동일((4)의 편집). 이 항목은 **실제 브라우저에서 기능 전수 검증**만 추가한 기록.
+
+### 검증 방법
+- `%TEMP%\opencode\cdp-check.js` — 헤드리스 Chrome CDP 로 land.html(로컬 8798) 로드 → 정비사업 레이어 토글 → 실거래 토글 → 각 상태를 DOM·계측값으로 검사. auth-guard.js 를 Fetch.abort 하여 가입 진입 차단 우회.
+- 이 모델은 스크린샷을 볼 수 없어, 캔버스 픽셀(`getImageData`)을 직접 계측해 폴리곤 렌더를 확인했다(사람이 보는 것과 동일한 근거).
+
+### 검증 결과 (실측)
+| 항목 | 결과 | 근거 |
+|---|---|---|
+| JS 예외 | **0건** | Runtime.exceptionThrown |
+| 데이터 파싱 | ✅ 2,964 / 2,963 / 29건 | 브라우저 fetch().json() 실측 |
+| 정비구역 폴리곤 | ✅ `L.polygon` **1,186회** + `L.circle` 85회 생성 | 지도 생성자 monkeypatch 카운트 |
+| 폴리곤 실제 렌더 | ✅ 캔버스 픽셀 **21.9% 채색**, 좌/우 23,838/26,223 균등 | `getImageData` 계측 |
+| 단계 바·필터 칩 | ✅ 표시·동작 | `#jb-stage-bar` display='' |
+| 정비 소식 피드 | ✅ 5건 렌더 | `#jb-notices` 344자 |
+| 실거래 토글(0건) | ✅ 천호3-1 → "구역 내 실거래 0건" + 토스트 | `#jb-rp-bar` + fitBounds(zoom 16) |
+| 실거래 토글(양성) | ✅ 신사동200번지일대 → "**1건**" | pointInRing 실제 매치 |
+| 콘솔 에러 | favicon.ico 404 1건 (무해) | Network.responseReceived |
+
+### ⚠️ 검증 함정 (재발 방지)
+- **land.html 은 `preferCanvas: true`(798행) 라 폴리곤이 SVG 가 아니라 캔버스 1장에 그려진다.** `.leaflet-overlay-pane svg path` 로 폴리곤 존재를 판단하면 "0개 = 버그"로 오판한다. `overlayCanvas` 존재 + 픽셀 채색 비율로 확인할 것.
+- `markers: 16`(상시 보이는 마커) 은 jb 가 아님 — 토글 후 `L.marker` 호출 0회로 확인(회귀 아님, 기존 상시 레이어).
+
+### 커밋·배포 상태 (변경 없음)
+- 여전히 **미커밋**: land.html M, HANDOFF.md M, `notices.json`·`tools/collect_notices.js`·`land.backup-20260808.html` untracked. 커밋 여부는 사용자가 결정 대기 중.
+
+---
+
+## 2026-08-08 (4) — opencode (정비구역 팝업 고도화: 실거래 필터·인근 구역 비교 + 정비 소식 피드 — 로컬 편집만, 미커밋)
+
+> **커밋·push·배포 안 함.** 로컬 편집만. 사용자가 직접 확인 후 커밋/배포 결정.
+> 백업: `land.backup-20260808.html`(§6 이전 상태, 275,793B, SHA-256 `51AF4990...`)과 별도로,
+> **이번 세션에서 land.html 이 101KB 로 잘리는 사고가 있었고 백업에서 복원 + 편집 전부 재적용**했다.
+> 결과물 land.html 은 292,295B / 3,953줄, 인라인 스크립트 문법 에러 0.
+
+### 한 일 (재개발닷컴 분석 §"구역 상세" 항목의 land.html 실현)
+1. **정비구역 팝업 고도화 (core)** — jbPopupHtml 재작성 (land.html ~1305):
+   - 진행단계 진행률 바 + 단계 배지에 사업구분·면적(폴리곤 링 실측 `_ringArea` 합계, land.html:1306 — 데이터 위조 아님).
+   - **이 구역 실거래** 버튼(`jb-rp-filter`) → `toggleJbRp(d)` (land.html:1652) — 원본 실거래 레이어는 건드리지 않고 **별도 `jbRpLayer`** 에 구역 폴리곤 내부 실거래만 파란 circleMarker 로 표시 + `fitBounds(구역 bbox, maxZoom 16)`. rpRows 미로드 시 `loadRp().then(() => toggleJbRp(d))` 재귀 로드.
+   - **인근 정비구역 비교** 버튼(`jb-near`) → `nearbyZones(d)` (반경 1.5km, 면적·좌표 있는 것만, 최대 6건) 팝업에 인라인 렌더 + `.min` 미니맵 클러스터.
+2. **구역×실거래 교차 필터 (새 로직)** — 선택 구역 폴리곤 내부의 실거래만 격리해 보여주는 토글:
+   - `pointInRing()` (ray-casting, land.html:1393) + `usableRings()`/`_ringArea()`/`_ringCache` 로 구역 폴리곤 내부 실거래 필터.
+   - `toggleJbRp` 는 `rpRows` 전체를 `pointInRing` 으로 필터(거리 기반 필터 아님). 폴리곤 없는 구역(`usableRings` 빈 배열)은 toast 로 안내. 같은 구역 재클릭 → `clearJbRp()`(토글).
+   - **클린업**: `clearJbRp()` — 정비사업 레이어를 끄면(`overlayremove`, land.html:1542) `jbRpLayer` 제거 + `jbRpBar`(건수 바) 숨김. 원본 실거래 레이어는 처음부터 건드리지 않으므로 '복원' 개념이 필요 없음.
+3. **정비 관련 새 소식 피드 (SH공사 공고 RSS)** — jbCtrl 패널 하단 `#jb-notices` 플레이스홀더 + `loadNotices()`/`renderNotices()` (land.html ~586):
+   - `tools/collect_notices.js` 신규 — SH공사 공고 RSS(EUC-KR) → **notices.json** 정적 생성. 브라우저는 정적 JSON fetch 만.
+   - 실행 완료: 29건 수집(2026-08-08 실측), 정비 키워드 매칭 24건. GitHub Pages 에서 CORS 문제 없음.
+   - 왜 RSS 를 직접 안 읽나: EUC-KR 인코딩 + 브라우저 CORS — TROUBLESHOOTING 에 이미 비슷한 함정 기록돼 있음.
+
+### ⚠️ 사고 기록 (되풀이하지 말 것)
+- land.html 이 진행 중 **101,053B 로 잘림**(LastWriteTime 20:32, 줄 3,966→1,706, jbBuild 이후 전부 소실). 징후: `read`/`grep` 출력이 모든 줄을 2번씩 반복해서 표시되는 도구 디스플레이 깨짐이 동반됨. 원인 미상(OneDrive 동기화 충돌 추정, 편집 도구 자체로는 확인 불가).
+- **복구 절차**: `land.backup-20260808.html` 로 복원 → §6 4건 + 이번 기능 편집 전부 재적용 → `node vm.Script` 문법 검사로 검증.
+- **교훈**: 편집은 작은 단위로 나누고 편집 후 매번 크기/문법 확인. 이 프로젝트는 `land.html` 원본 + 백업 2벌을 유지하는 게 안전.
+
+### 검증 (로컬)
+- 인라인 스크립트 1블록 문법 에러 0 (`node vm.Script`). 새 함수 10개(jbPopupHtml·pointInRing·zoneAreaM2·nearbyZones·clearJbRp·renderNotices·loadNotices·rpResetFilter·rpEmptyNotify·toast) 각 1회 정의 — 중복 적용 없음. (`zoneAreaM2` 는 정의만 있고 사용처 없음 — 데드 코드, 제거 후보.)
+- `pointInRing` 단위 테스트 6케이스 PASS(내부/경계 4방향/모서리 내부).
+- `jbPopupHtml`·`nearbyZones` 런타임 하네스(실제 redevelop_seoul.json + polygons 사용): 팝업 HTML 6,028B 생성, 실거래 필터·인근 비교 버튼 포함, 인근 구역 5건/0.16~0.21km 정상.
+- `notices.json` 서빙 확인(로컬 8798, HTTP 200). land.html 서빙 확인(292,295B).
+- **2차 심층 재검토(2026-08-08)**: `pointInRing` 실데이터 전수 검증 — 2,763구역 × 9,030건 스캔 → **1,328 (행,구역) 히트**(은평재정비 34·가재울 21·신정 19 등 실제 히트 확인). 천호3-1 의 0건은 구옥 밀집 신통구역의 정상 결과(구역 중심점 in-ring=true, bbox 모서리=false 로 pointInRing 자체는 정확). 폴리곤 좌표 [lat,lng] — pointInRing 과 일치. overlayadd 4곳·overlayremove 4곳 전부 `e.layer` 가드 확인, jbRpLayer 토글은 overlayadd 를 fire 하지 않아 교차 발화 없음. popupopen 배선은 `onclick=` 재할당 + 신규 노드라 중복 리스너 없음. `vsMarker`(2118)·`cmpSel`(3470) 은 클릭 시점에만 참조 → TDZ 없음.
+- 참고: `realprice_apt.json` 은 현재 **빈 파일(5B, BOM+`[]`)** — `loadRp()` 가 `decodeCompactRp([])` throw → `realprice_seoul_gg.json`(9,030건) 폴백하는 정상 경로(버그 아님). apt 압축 파일 생성/배포 전까지는 legacy 데이터 사용. JSON 파일들의 BOM 은 브라우저 `fetch().json()` 이 제거(Encoding 표준) — 문제 없음.
+- 사용자 로컬 확인 포인트: ① 정비구역 팝업 → "이 구역 실거래" 클릭 → 구역 내부 실거래만 파란 마커 + 상단 건수 바 표시, 구역으로 이동 ② "인근 정비구역 비교" → 인근 목록 + 미니맵 ③ 정비사업 레이어 끄면 실거래 마커·건수 바만 사라짐(원본 실거래 레이어는 영향 없음) ④ jbCtrl 패널 하단에 정비 소식 5건.
+
+### 커밋·배포 상태
+- **커밋 안 함.** 변경: `land.html`(편집), `notices.json`(신규, ~4KB), `tools/collect_notices.js`(신규). 삭제됨: §6 백업 `land.backup-20260808.html` 이 여전히 있음(제거하지 말 것).
+- `git status`: land.html M, HANDOFF.md M, `notices.json`·`tools/collect_notices.js`·`land.backup-20260808.html` untracked.
+- 다음 세션: 사용자 확인 후 커밋 → push → GitHub Pages 빌드 `built` 확인(`gh api .../pages/builds/latest`) → 배포본 land.html 에 `jb-near` 포함 여부로 반영 확인.
+
+---
+
+## 2026-08-08 (3) — opencode (경쟁사 보고서 §6 UX 보완을 land.html 에 적용 — 로컬 편집만, 미배포)
+
+> **커밋·push·배포 안 함.** 사용자가 로컬에서 직접 확인 후 결정. 문제 생기면
+> `land.backup-20260808.html`(백업, 275,793B, SHA-256 `51AF4990A1894A51EDCF3BCAC56107B79D99B661C40B035ADE817516679F88D4`)으로 즉시 복원 가능.
+
+### 한 일 (§6 항목 중 land.html 에 실제 적용 가능한 것만, 최소 diff)
+1. **SEO (경매알리미 §6-8)**: head 에 `description` + `og:type/locale/title/description` 추가 (land.html:8~12). 순수 추가라 리스크 없음.
+2. **비모달 토스트 (경매알리미·재개발닷컴 §6-6)**: `alert()` 2곳을 토스트로 교체 —
+   - V-World 검색 결과 없음 (land.html:1976), 빈 검색어 안내 (land.html:3715).
+   - 헬퍼 `toast(msg, action?)` (land.html:492~511) + CSS `.toast`/`.action` (land.html:186~193).
+   - 카카오 검색 결과 없음(land.html:3761 `rec-list` 인라인 안내)은 이미 비모달이라 그대로 둠.
+3. **실거래 필터 초기화 + 0건 안내 (오늘의경매·경매알리미 §6-1/6-3)**: `rpFilterCtrl` 에 `초기화` 버튼 추가 (land.html:1011), `rpResetFilter()` (land.html:1055), `rpEmptyNotify()` (land.html:1064) — 필터 변경 시 로드된 레이어가 0건이면 토스트+초기화 링크. **데이터 미로드 시 "결과 없음" 오판 방지 가드 포함** (`rpRows`/`villaRows` 로드 확인 후에만 알림).
+4. **목록↔지도 연동 (경매알리미 §6-7)**: 카카오 검색 결과 카드 클릭 → 해당 마커로 이동+팝업 (land.html:3787~3792, `renderKakao`).
+5. **스킵 항목 (이미 구현 or 해당 없음)**: 상태 칩 색상·카드 정보 계층(진행단계/사업구분 배지+진행률 바 이미 존재), 점수 시각화(부동산 스코어 개념 없음), 필터 폭(3단 레이어 패널+실거래 필터 이미 존재), 모바일(이미 대응), 정비 진행단계 칩(8칩 색상 구분 이미 존재).
+
+### 검증 (로컬)
+- 인라인 스크립트 전체 `node vm.Script` 문법 검사: **1개 블록, 에러 0**.
+- 백업·현재 파일 SHA-256 다름 확인 → 백업이 편집 전 상태로 무결.
+- 사용자 로컬 확인 포인트: ① 검색창에 없는 지명 검색 → 토스트(alert 대신) ② 실거래가 레이어 켜고 필터 조작 → 0건이면 토스트+초기화 링크 ③ 카카오 검색 결과 카드 클릭 → 지도 이동+팝업 ④ 다크모드에서도 토스트 가독성.
+
+### 커밋·배포 상태
+- **커밋·배포 안 함.** 변경 파일: `land.html`(편집), `land.backup-20260808.html`(신규 백업), `HANDOFF.md`(이 기록).
+- localhost 서버에서 확인 완료 후 사용자 동의를 받고 push/배포.
+
+---
+
+## 2026-08-08 (2) — opencode (경쟁사 4사이트 분석 + HWPX 보고서 생성)
+
+> 기록·산출물 완료. **기능 구현은 미착수** — 아래 "다음 세션 확인할 것" 중 골라서 진행할 것.
+
+### 한 일 (전부 실측 검증 후 확정)
+1. **경쟁사 4사이트 종합 분석 완료** (경매알리미=2026-08-07, 오늘의경매·재개발닷컴·리치고=2026-08-08 실측):
+   - **today77.com(오늘의경매)**: 구형 PHP(search01.php 서버렌더링). 자체 DB에 법원 데이터 적재, 검색 필터(시도 17종·현재상태 19종·감정가·유찰수)가 courtauction.go.kr 과 1:1 미러. 수익=권리분석리포트 유료+전화상담+유튜브(10만 구독).
+   - **jaegebal.com(재개발닷컴)**: Next.js(App Router). 법인 등록 2026-02-13(bizno.net 실측). 구역별 페이지(진행단계·공급세대·노후도·평당가·실거래·매물·**경매**·커뮤니티). 경매는 "공공데이터 기반 참고용"으로 정비구역과 조인해 집계 — 법원에 직접 안 닿음.
+   - **richgo.ai(리치고)**: SPA 앱(데이터노우즈). ML 가격예측·투자점수·**AI 입찰가 산정+권리분석**(플레이스토어 실측). B2B(MAS 기업용)로 수익화.
+   - 핵심 사실: **법원경매정보는 공식 Open API 가 없다** — 경쟁사 전부 우회 수집(스크래핑/자체DB/공공데이터). TROUBLESHOOTING §6-10 신규 기록.
+2. **HWPX 보고서 생성**: `경쟁사_비교분석_20260808.hwpx` (프로젝트 루트, 4,623자·표 5종·8절). python-hwpx 라이브러리로 생성, `validate_package` OK, 재열람 텍스트 온전 확인. 한글(HOffice)은 이 PC에 없어 실제 열람 확인은 불가 — 한글 2014+ (권장 2018+)에서 열기.
+   - 참고: 사용자 요청 "hwp 파일" → **.hwpx**(KS X 6101 표준, 한글 2014 이상). 레거시 .hwp 바이너리는 라이브러리 지원 없어 미생성. 필요하면 말할 것.
+
+### 핵심 결론 (다음 세션 방향)
+- **가장 닮은 사례 = 재개발닷컴**: matjip land.html 의 정비사업(2,964건)·실거래(9,030건)·청약이 이미 겹침. 재개발닷컴의 "구역 상세 패널 + 구역×실거래/경매 조인 + 고시 피드"가 최고 우선순위.
+- **UX 모델 = 경매알리미**: 상태 칩·목록-지도 연동·로드뷰·뷰포트 증분로딩.
+- **차별점 = matjip 만의 취향 기반 추천**: 경매 4사이트는 전부 "물건/구역" 중심, 사용자 취향 매칭이 없음. taste_profiles+score() 엔진이 유일한 무기.
+
+### 커밋·배포 상태
+- **커밋 안 함** (문서·hwpx 생성만, 사용자 동의 전 커밋 금지 규칙). `git status` 기준 변경: HANDOFF.md, TROUBLESHOOTING.md(§6-10), `경쟁사_비교분석_20260808.hwpx`(신규). 배포 불필요.
+
+### ⚠️ 다음 세션 확인할 것
+- 아래 중 하나 선택해 구현 (분석 보고서 5절 참고):
+  - **정비구역 상세 패널** (권장, land.html 폴리곤 클릭 → 구역 상세)
+  - **영업상태 배지** (main.html 카드에 사업자조회 API 휴업/폐업/계속 3색)
+  - **다중 필터 칩 바** (main.html 가격대/거리/매운맛/영업상태 + 정렬)
+- Supabase 액세스 토큰(`sbp_86b17faf...`) 여전히 미 Revoke → 대시보드에서 Revoke 후 `$env:SUPABASE_ACCESS_TOKEN` 으로만 사용.
+
+---
+
 ## 2026-08-08 (1) — opencode (전면 QA + main.html 지도/패널 높이 버그 수정·배포)
 
 > 커밋·push·배포·실검증 완료. 이어받는 세션은 **"다음 세션 확인할 것"** 만 보면 된다.
