@@ -1613,6 +1613,7 @@
         // 줌 14 이상에서만 배지를 상시 노출 — 그 이하에서는 구역이 너무 많아 겹쳐 뭉개진다.
         const showStageBadge = map.getZoom() >= 14;
         const stageBadgeHtml = (d) => { const e = jbEffStage(d); return `<span class="jb-perm-badge" style="background:${stageColor(e)}">${esc(d.name)} · ${jbPct(e)}%</span>`; };
+        const polys = [];
         jbRows.forEach((d) => {
           if (d.lat == null || d.lng == null) return;  // 좌표 미확보 레코드(수집 데이터 중 소수)는 건너뜀
           if (!jbFilter[jbGroup(d)]) return;
@@ -1635,7 +1636,8 @@
               { sticky: !showStageBadge, permanent: showStageBadge, direction: 'top', className: showStageBadge ? 'jb-perm-tt' : '' }
             );
             poly.bindPopup(() => jbPopupHtml(d));  // 열 때 생성
-            jbPolyLayer.addLayer(poly);
+            poly._area = _ringArea(rings[0]);  // 겹친 구역 클릭 순서용 면적 (작은 정밀 경계가 위)
+            polys.push(poly);
           } else {
             // 폴리곤 데이터가 없는 건(모아·신통·지역주택·리모델링 등)은 대표 좌표 기준
             // 근사 구역(반경 300m 점선 원)으로 표시. 실측 경계가 없어 근사치임을 점선으로 구분.
@@ -1650,7 +1652,10 @@
             dots.push(circle);
           }
         });
+        // 겹친 구역의 클릭이 큰 폴리곤(예: 사당4동 43만㎡가 사당동 305-35 일대 4.13만㎡를 포함)에
+        // 가로채이는 문제 방지: 근사 원(경계 미확보)은 아래에, 폴리곤은 면적 내림차순(큰 것 아래, 작은 정밀 경계가 위)으로.
         jbCluster.addLayers(dots);
+        polys.sort((a, b) => b._area - a._area).forEach((p) => jbPolyLayer.addLayer(p));
         if (openKey) {
           const target = (() => {
             const found = [];
