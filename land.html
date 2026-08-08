@@ -286,16 +286,16 @@
     /* ── CCTV (ITS 국가교통정보센터) ── */
     .cctv-icon { width:34px; height:34px; margin:-34px 0 0 -17px; border-radius:50% 50% 50% 0; background:var(--c-danger); transform:rotate(-45deg); display:flex; align-items:center; justify-content:center; box-shadow:var(--c-shadow); }
     .cctv-icon svg { width:20px; height:20px; color:#fff; transform:rotate(45deg); }
-    .cctv-pc { width:320px; max-width:100%; padding:0; box-sizing:border-box; overflow:hidden; }
-    .cctv-pc-head { display:flex; align-items:center; justify-content:space-between; padding:11px 13px; border-bottom:1px solid var(--line); font-weight:700; font-size:14px; }
+    .cctv-pc { width:100%; min-width:320px; max-width:100%; padding:0; box-sizing:border-box; overflow:hidden; display:flex; flex-direction:column; height:100%; }
+    .cctv-pc-head { display:flex; align-items:center; justify-content:space-between; padding:11px 13px; border-bottom:1px solid var(--line); font-weight:700; font-size:14px; flex:none; }
     .cctv-pc-close { width:24px; height:24px; border-radius:7px; border:none; background:var(--c-hover); color:var(--muted); font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
     .cctv-pc-close:hover { background:var(--line); color:var(--text); }
-    .cctv-pc-video { position:relative; height:180px; background:#12151b; display:flex; align-items:center; justify-content:center; color:#9aa3af; font-size:13px; }
+    .cctv-pc-video { position:relative; flex:1 1 auto; min-height:180px; height:180px; background:#12151b; display:flex; align-items:center; justify-content:center; color:#9aa3af; font-size:13px; }
     .cctv-pc-video video, .cctv-pc-video img { width:100%; height:100%; object-fit:cover; display:block; }
     .cctv-pc-live { position:absolute; top:8px; left:8px; background:var(--c-danger); color:#fff; font-size:12px; font-weight:700; padding:2px 7px; border-radius:5px; display:flex; align-items:center; gap:4px; }
     .cctv-pc-live span { width:5px; height:5px; border-radius:50%; background:#fff; animation:cctv-blink 1.4s infinite; }
     @keyframes cctv-blink { 50%{opacity:.25;} }
-    .cctv-pc-meta { padding:9px 13px 12px; font-size:12px; color:var(--muted); }
+    .cctv-pc-meta { padding:9px 13px 12px; font-size:12px; color:var(--muted); flex:none; }
     /* Leaflet 이 .leaflet-container a { color:#0078A8 } 를 깔아 두어 흰 글씨 버튼이 파란 배경에
        묻힌다(실측 대비 1.02:1). a + 클래스로 상세도를 높여 흰 글씨를 지킨다. */
     a.pc-btn-primary { color:#fff; }
@@ -1611,6 +1611,9 @@
         // 「주택법」 제15조 사업계획승인 = 「도시정비법」 제50조 사업시행계획인가와 동일 위치(역세권·노후계획도시 계열).
         // (근거: 서울시 역세권 활성화사업 운영기준 2-1-1 — 사업계획승인·사업시행계획인가·건축허가 3유형)
         if (stage === '사업계획승인') return STAGE_SEQ.indexOf('사업시행인가');
+        // 모아타운 관리지역고시 = 정비구역지정(2) 위치. 사당동 202-29 등 관리지역 고시 이후
+        // 추진위승인→조합설립→…→입주까지의 절차를 이어 보여주기 위한 alias.
+        if (stage === '관리지역고시') return STAGE_SEQ.indexOf('정비구역지정');
         let i = STAGE_SEQ.findIndex((s) => stage.includes(s) || s.includes(stage));
         if (i >= 0) return i;
         // 사업시행계획인가→사업시행인가 류: 시퀀스 항목 앞 4글자로 2차 매칭

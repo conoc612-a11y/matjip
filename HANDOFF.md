@@ -12,9 +12,9 @@
 
 ---
 
-## 2026-08-09 (11) — opencode (진행현황 전 구역 표시 + EV·CCTV 아이콘 확대 — 로컬 편집만, 미커밋)
+## 2026-08-09 (11) — opencode (진행현황 전 구역 표시 + EV·CCTV 아이콘 확대 — 커밋 `bdeae2c` push/built 완료 + 관리지역고시 alias 후속)
 
-> 사용자 지시 "반도미도2차는 왜 진행현황이 없어? 꼭 지정해야만 진행현황이 나오는거야? 다른곳도 다 진행현황 나오게 만들라고!!" + "EV 마커 너무 작어" + "CCTV 아이콘 너무 작어" → 세 건 모두 land.html 수정 완료. **커밋·push·배포는 미진행(사용자 동의 대기).**
+> 사용자 지시 "반도미도2차는 왜 진행현황이 없어? 꼭 지정해야만 진행현황이 나오는거야? 다른곳도 다 진행현황 나오게 만들라고!!" + "EV 마커 너무 작어" + "CCTV 아이콘 너무 작어" → 세 건 모두 land.html 수정. ①~③은 커밋 `bdeae2c`로 push/built 완료, **관리지역고시 alias는 후속 미커밋(사용자 동의 대기).**
 
 ### ① 진행현황 전 구역 표시 (반도미도2차 등 누락 해결)
 - **원인 (실측)**: `jbTlHtml()`(land.html ~1641)의 tl 없는 구역 처리에서 **두 가지 억제**가 겹쳤다:
@@ -30,7 +30,9 @@
 - CSS(land.html:287~288): `.cctv-icon` **26px→34px**, svg **13px→20px**, margin·iconAnchor 동기화(-34/-17, [17,34]).
 
 ### 커밋·배포 상태
-- **미커밋**: land.html M 만. 커밋·push·Pages 반영은 사용자 동의 후.
+- **커밋 `bdeae2c`** → push 완료 → Pages **built** 확인 (`gh api .../builds/latest` = bdeae2c/built). 커밋 대상: `land.html`·`HANDOFF.md`·`TROUBLESHOOTING.md`.
+- **후속 2026-08-09 (사용자 문의 "사당동 202-29는 관리지역고시만 나오고 입주까지 쭉 나와야지")**: 모아타운 `관리지역고시`를 `seqIdx()`에서 `정비구역지정(2)` 위치로 매핑(land.html:1614~1616) — 이제 관리지역고시 이후 조합설립추진위원회승인→…→입주까지 "예정"으로 이어진다. 근거: 관리지역고시 = 구역 지정의 행정 고시 단계로 일반 정비의 정비구역지정과 동일 위치. 검증: 하네스 시뮬레이션 `si=2`, done=대상지선정·안전진단·관리지역고시, 예정=조합설립추진위원회승인~입주 16행. TROUBLESHOOTING §13에 기록.
+- **후속 2026-08-09 (사용자 문의 "cctv 팝업은 크기조정이 안됨")**: `.cctv-pc`가 `width:320px` 고정(land.html:289)이라 그립 리사이즈에도 안쪽 카드가 안 늘었다 — `.pc`가 겪었던 264px 고정 버그(275~276 주석)의 재발. **해결**: `width:100%`+`min-width:320px`, flex column(`height:100%`), video `flex:1`(min-height 180px)로 변경 — 폭·높이·영상 영역 모두 드래그에 따라 확장. 검증(`cctv-resize-test.cjs`, 로컬 CDP 실측): 콘텐츠 321×263→455×358, video 180→274px. TROUBLESHOOTING §13에 기록.
 - 배포 검증 시: TROUBLESHOOTING §2-6(HANDOFF (10) 참고)대로 배포본 CDP 실측 필요 — 진행현황은 기존 `jbtl-test.cjs` 하네스 회귀, EV/CCTV는 캔버스 픽셀/iconSize 확인.
 - 미커밋 유지: `_*.txt` 10개(임시), `land.backup-20260808.html`·`redevelop_seoul.backup-20260808.json`, `경쟁사_비교분석_20260808.hwpx`.
 
