@@ -178,13 +178,13 @@
        jbCtrl 쪽에 disableScrollPropagation 을 반드시 함께 걸어야 한다. */
     .leaflet-top.leaflet-left { max-height:100%; display:flex; flex-direction:column; }
     .lc { background:var(--card); border:1px solid var(--line); border-radius:10px; box-shadow:var(--c-shadow); font-size:14px; color:var(--text); padding:11px 13px; line-height:1.7; max-width:232px; min-height:0; max-height:calc(100vh - 240px); overflow-y:auto; overscroll-behavior:contain; }
-    .lc-rp { width:190px; min-width:150px; max-width:380px; resize:both; overflow:auto; }
-    /* 정비사업 유형 패널 — 네이티브 resize:both 핸들(우하단 몇 px)은 잡기 어려워
-       명시적 그립(아래 .lc-jb-grip)으로 교체. 드래그로 폭/높이 자유 조절. */
-    .lc-jb { position:relative; width:212px; min-width:170px; max-width:min(440px, calc(100vw - 40px)); height:min(62vh, 560px); min-height:120px; overflow:auto; padding-bottom:26px; }
-    .lc-jb-grip { position:absolute; right:3px; bottom:3px; z-index:1200; width:32px; height:32px; cursor:nwse-resize; background:rgba(0,0,0,.82); border:2px solid rgba(255,255,255,.95); border-radius:9px; display:flex; align-items:flex-end; justify-content:flex-end; padding:5px; box-sizing:border-box; box-shadow:0 1px 6px rgba(0,0,0,.5); }
-    .lc-jb-grip::after { content:''; width:13px; height:13px; border-right:4px solid #fff; border-bottom:4px solid #fff; border-radius:0 0 4px; }
-    .lc-jb-grip:hover { background:rgba(0,0,0,.95); }
+    .lc-rp { position:relative; width:190px; min-width:150px; max-width:380px; min-height:120px; overflow:auto; padding-bottom:28px; }
+    /* 레이어 컨트롤 공용 크기조절 그립 — 네이티브 resize:both 핸들(우하단 몇 px)은 잡기 어려워
+       명시적 그립(.lc-grip)으로 교체. 드래그로 폭/높이 자유 조절. 팝업(.lp-grip)·거리뷰(.sv-grip)와 동일 24px */
+    .lc-jb { position:relative; width:212px; min-width:170px; max-width:min(440px, calc(100vw - 40px)); height:min(62vh, 560px); min-height:120px; overflow:auto; padding-bottom:28px; }
+    .lc-grip { position:absolute; right:3px; bottom:3px; z-index:1200; width:24px; height:24px; cursor:nwse-resize; background:rgba(0,0,0,.82); border:2px solid rgba(255,255,255,.95); border-radius:9px; display:flex; align-items:flex-end; justify-content:flex-end; padding:3px; box-sizing:border-box; box-shadow:0 1px 6px rgba(0,0,0,.5); }
+    .lc-grip::after { content:''; width:10px; height:10px; border-right:3px solid #fff; border-bottom:3px solid #fff; border-radius:0 0 4px; }
+    .lc-grip:hover { background:rgba(0,0,0,.95); }
     .lc::-webkit-scrollbar { width:5px; background-color:var(--line); border-radius:2.5px; }
     .lc::-webkit-scrollbar-thumb { border-radius:2.5px; background-color:#c1c1c1; background-clip:padding-box; }
     .lc-title { font-weight:700; font-size:14px; margin-bottom:7px; color:var(--text); letter-spacing:-.1px; }
@@ -327,12 +327,12 @@
     .leaflet-popup-tip { background:var(--card); }
     .leaflet-container a.leaflet-popup-close-button { color:var(--muted); }
     /* ── 팝업 공통 컨트롤 (그립 리사이즈 + 접기) ── */
-    .lp-grip { position:absolute; right:2px; bottom:2px; z-index:1100; width:16px; height:16px; cursor:nwse-resize; opacity:.5; display:flex; align-items:flex-end; justify-content:flex-end; padding:2px; box-sizing:border-box; }
+    .lp-grip { position:absolute; right:2px; bottom:2px; z-index:1100; width:24px; height:24px; cursor:nwse-resize; opacity:.5; display:flex; align-items:flex-end; justify-content:flex-end; padding:3px; box-sizing:border-box; }
     .lp-grip:hover, .lp-grip:active { opacity:1; }
-    .lp-grip::after { content:''; width:8px; height:8px; border-right:2px solid var(--muted); border-bottom:2px solid var(--muted); border-radius:0 0 2px; }
+    .lp-grip::after { content:''; width:10px; height:10px; border-right:3px solid var(--muted); border-bottom:3px solid var(--muted); border-radius:0 0 2px; }
     /* 거리뷰 오버레이 그립 — 어두운 파노라마 위에서도 항상 「」 표시가 보이게 */
-    .sv-grip { width:32px; height:32px; opacity:1; background:rgba(0,0,0,.78); border:2px solid rgba(255,255,255,.95); border-radius:9px; padding:5px; box-shadow:0 1px 6px rgba(0,0,0,.5); }
-    .sv-grip::after { content:''; width:13px; height:13px; border-right:4px solid #fff; border-bottom:4px solid #fff; border-radius:0 0 4px; }
+    .sv-grip { width:24px; height:24px; opacity:1; background:rgba(0,0,0,.78); border:2px solid rgba(255,255,255,.95); border-radius:9px; padding:3px; box-shadow:0 1px 6px rgba(0,0,0,.5); }
+    .sv-grip::after { content:''; width:10px; height:10px; border-right:3px solid #fff; border-bottom:3px solid #fff; border-radius:0 0 4px; }
     .sv-grip:hover, .sv-grip:active { opacity:1; background:rgba(0,0,0,.92); border-color:#fff; }
     .sv-grip-hint { position:absolute; right:calc(100% + 8px); bottom:2px; white-space:nowrap; font-size:12px; font-weight:600; color:#fff; background:rgba(0,0,0,.8); padding:6px 10px; border-radius:8px; pointer-events:none; opacity:1; box-shadow:0 1px 6px rgba(0,0,0,.5); }
     .lp-min-btn { position:absolute; top:3px; right:30px; z-index:1100; width:24px; height:24px; border:none; background:var(--c-hover); color:var(--muted); border-radius:7px; cursor:pointer; font-size:14px; line-height:1; display:flex; align-items:center; justify-content:center; padding:0; }
@@ -1195,6 +1195,7 @@
           + '<label style="display:block;">건축년도 <select id="rp-age" style="font:inherit;font-size:13px;"><option value="all">전체</option><option value="new">2015~ 신축</option><option value="mid">2000~2014</option><option value="old">2000 이전</option></select></label>'
           + '<button id="rp-reset" type="button" style="width:100%;margin-top:8px;font:inherit;font-size:13px;padding:5px 0;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--c-primary);cursor:pointer;">초기화</button>';
         L.DomEvent.disableClickPropagation(div);
+        lcGrip(div);
         return div;
       };
       const rpLegend = L.control({ position: 'topleft' });
@@ -1205,6 +1206,7 @@
         div.innerHTML = '<div class="lc-title">건축년도 (노후도)</div>' + row('#2f9e44', '신축 2015~') + row('#94d82d', '2005~2014') + row('#fab005', '1995~2004') + row('#fd7e14', '1985~1994') + row('#e03131', '노후 ~1984') + row('#868e96', '미상');
         // 코너 드래그로 크기 조절할 때 mousedown이 지도까지 전파돼 지도가 함께 팬되는 것 방지
         L.DomEvent.disableClickPropagation(div);
+        lcGrip(div);
         return div;
       };
       // 가격·건축년도 필터와 노후도 범례는 아파트/연립다세대 두 레이어가 공용으로 쓴다.
@@ -1692,31 +1694,40 @@
           + '<div id="jb-notices" style="font-size:12px;color:var(--c-muted);">불러오는 중…</div>';
         L.DomEvent.disableClickPropagation(div);
         L.DomEvent.disableScrollPropagation(div);  // 메뉴 스크롤이 지도 줌으로 새지 않도록
-        // 우하단 크기조절 그립 (32px — 마우스로 잡기 쉽게). 드래그로 폭/높이 자유 조절.
-        const jbGrip = document.createElement('div');
-        jbGrip.className = 'lc-jb-grip';
-        jbGrip.title = '드래그하여 크기 조절';
-        div.appendChild(jbGrip);
-        let jbGripDrag = null;
-        const jbGripApply = () => {
-          div.style.width = Math.max(170, Math.min(jbGripDrag.w + jbGripDrag.dx, window.innerWidth - 40)) + 'px';
-          div.style.height = Math.max(120, Math.min(jbGripDrag.h + jbGripDrag.dy, window.innerHeight - 120)) + 'px';
-        };
-        jbGrip.addEventListener('pointerdown', (e) => {
-          e.preventDefault(); e.stopPropagation();
-          jbGripDrag = { sx: e.clientX, sy: e.clientY, w: div.offsetWidth, h: div.offsetHeight, dx: 0, dy: 0 };
-          jbGrip.setPointerCapture(e.pointerId);
-        });
-        jbGrip.addEventListener('pointermove', (e) => {
-          if (!jbGripDrag) return;
-          jbGripDrag.dx = e.clientX - jbGripDrag.sx;
-          jbGripDrag.dy = e.clientY - jbGripDrag.sy;
-          jbGripApply();
-        });
-        jbGrip.addEventListener('pointerup', () => { jbGripDrag = null; });
-        jbGrip.addEventListener('pointercancel', () => { jbGripDrag = null; });
+        // 우하단 크기조절 그립 (공용 lcGrip — 팝업·거리뷰와 동일 24px). 드래그로 폭/높이 자유 조절.
+        lcGrip(div);
         return div;
       };
+      // 레이어 컨트롤 공용 크기조절 그립 — jbCtrl·실거래 필터·범례가 같은 함수로 부착.
+      function lcGrip(el) {
+        const grip = document.createElement('div');
+        grip.className = 'lc-grip';
+        grip.title = '드래그하여 크기 조절';
+        el.appendChild(grip);
+        let drag = null;
+        const apply = () => {
+          const cs = getComputedStyle(el);
+          const minW = parseFloat(cs.minWidth) || 150;
+          const maxW = parseFloat(cs.maxWidth) || window.innerWidth - 40;
+          const minH = parseFloat(cs.minHeight) || 120;
+          const maxH = window.innerHeight - 120;
+          el.style.width = Math.max(minW, Math.min(drag.w + drag.dx, maxW)) + 'px';
+          el.style.height = Math.max(minH, Math.min(drag.h + drag.dy, maxH)) + 'px';
+        };
+        grip.addEventListener('pointerdown', (e) => {
+          e.preventDefault(); e.stopPropagation();
+          drag = { sx: e.clientX, sy: e.clientY, w: el.offsetWidth, h: el.offsetHeight, dx: 0, dy: 0 };
+          grip.setPointerCapture(e.pointerId);
+        });
+        grip.addEventListener('pointermove', (e) => {
+          if (!drag) return;
+          drag.dx = e.clientX - drag.sx;
+          drag.dy = e.clientY - drag.sy;
+          apply();
+        });
+        grip.addEventListener('pointerup', () => { drag = null; });
+        grip.addEventListener('pointercancel', () => { drag = null; });
+      }
       // ── Stage chip bar (bottom-center, shown when JB layer is active) ──
       const jbStageBar = document.createElement('div');
       jbStageBar.id = 'jb-stage-bar';
