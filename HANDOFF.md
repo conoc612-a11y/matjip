@@ -14,7 +14,7 @@
 
 ## 2026-08-08 (9) — opencode (거리뷰 파노라마 리사이즈 버그 수정 + 그립 시인성 개선)
 
-> 사용자 제보 "거리뷰 레이어 크기 조정은 되는데 실제 거리뷰 화면은 크기 조정은 안되네" + "그립이 안 보여서 리사이즈 가능한지 모르겠다" → 둘 다 수정·검증 완료. **커밋·push·배포는 사용자 동의 대기.**
+> 사용자 제보 "거리뷰 레이어 크기 조정은 되는데 실제 거리뷰 화면은 크기 조정은 안되네" + "그립이 안 보여서 리사이즈 가능한지 모르겠다" + "팝업 우하단 '」' 표시처럼 나오게 해달라" → 전부 수정·검증 완료.
 
 ### ① 파노라마 화면이 안 따라오는 버그 (실측)
 - **증상**: `sv-overlay`(land.html 3434)는 우하단 그립으로 리사이즈 되고, 미니맵(CSS `resize:both`)도 크기 조절이 되는데 **실제 거리뷰(파노라마) 화면만 옛 크기로 남는다**.
@@ -22,20 +22,22 @@
 - 미니맵이 되던 이유: 이미 `ResizeObserver` + `miniMap.refresh(true)`(land.html 3524)가 있어서. 파노라마에만 그 갱신이 빠져 있었다.
 - **해결** (land.html 3448-3477): `resizePano()` 를 추가해 `panorama.setSize(new nv.maps.Size(ov.clientWidth, ov.clientHeight))` 호출 — 드래그 중엔 rAF 스로틀로 라이브 갱신, 종료 시(`endOvDrag`) 최종 갱신.
 
-### ② 리사이즈 그립 시인성 (실측)
+### ② 리사이즈 그립 시인성 — 2차 강화까지 완료 (실측)
 - **증상**: 그립은 있는데 사용자 눈에 안 띈다(16px·`opacity:.5`·`filter:invert(1)`, 어두운 파노라마 위에서 거의 사라짐).
-- **해결** (land.html 327-331 + 3442-3449): 거리뷰 전용 `.sv-grip` 추가 — 26px·opacity 1·`rgba(0,0,0,.6)` 배경·흰색 1px 테두리·3px 흰 코너, `filter` 제거. 호버 시 "드래그로 크기 조절" 힌트(`sv-grip-hint`)가 그립 왼쪽에 표시.
+- **1차 해결** (커밋 `6563e91`): 거리뷰 전용 `.sv-grip` 추가 — 26px·opacity 1·`rgba(0,0,0,.6)` 배경·흰색 1px 테두리·3px 흰 코너, `filter` 제거, 호버 시 힌트.
+- **사용자 재제보 "아직도 그래" → 2차 강화** (land.html 327-331): 그립 **32px**·흰색 **2px** 테두리·**4px** 흰 코너·배경 `rgba(0,0,0,.78)`·hover 시 더 진해짐. 그리고 **"드래그로 크기 조절" 힌트(`sv-grip-hint`)를 호버에 의존하지 않고 항상 표시(opacity 1)** — 사용자가 크기 조절 가능함을 모르는 게 반복 제보의 근본 원인이라, 감추는 것보다 항상 알려주는 걸 선택(커밋 대기 중).
 
 ### 검증 (전부 실측)
-- `sv-resize-test.cjs`(naver 스텁 + CDP PointerEvent 드래그): 오버레이 820×560 → 1020×680(+200/+120), `panorama.setSize` 2회, JS 예외 0건.
-- `sv-grip-test.cjs`: 그립 26×26·opacity 1·bg rgba(0,0,0,.6)·filter none, 힌트 "드래그로 크기 조절" 오버레이 내부 배치.
-- `sv-hover-test.cjs`(CDP 마우스 이동): 호버 후 힌트 `opacity 0 → 1` 실측.
+- `sv-resize-test.cjs`(naver 스텁 + CDP PointerEvent 드래그): 오버레이 820×560 → 1020×680(+200/+120), `panorama.setSize` 2회, JS 예외 0건 — **2차 강화 후 재실행 통과**.
+- `sv-grip-test.cjs`: 그립 **32×32**·opacity 1·bg rgba(0,0,0,.78)·filter none, 힌트 "드래그로 크기 조절" 오버레이 내부 배치, **힌트 opacity 1(항상 표시)**.
 - `tl-test.cjs` 회귀 PASS(fitWorked:false 는 의도된 결과 — 고정 높이 타임라인). 인라인 스크립트 문법 0 오류.
-- 스크린샷: `%TEMP%\opencode\sv-overlay-grip.png`(거리뷰 오버레이 + 그립).
+- 스크린샷: `%TEMP%\opencode\sv-overlay-grip.png`(스텁 환경), `sv-live-overlay.png`(배포본 + 실제 Naver 파노라마 로드 상태).
+- 배포본 라이브 실측(`sv-live-test.cjs`): 그립 존재·`elementFromPoint` 가 그립을 가리킴(가려짐 없음)·파노라마 820×560 정상 로드·JS 예외 0건.
 - TROUBLESHOOTING §4 에 두 함정 모두 기록.
 
 ### 커밋·배포 상태
-- **미커밋**: `land.html` M, `HANDOFF.md` M, `TROUBLESHOOTING.md` M. 사용자 동의 후 커밋·push·Pages `built` 확인 예정.
+- **배포됨**: `2ed9710` → `071fbb7` → `d480ba3` → `6563e91`(1차 그립 개선) 전부 push·Pages built 완료.
+- **미커밋**: `land.html` M(2차 그립 강화), `HANDOFF.md` M, `TROUBLESHOOTING.md` M. **사용자 동의 후 커밋·push 예정.**
 - 미커밋 유지: `_*.txt` 10개(임시), `land.backup-20260808.html`·`redevelop_seoul.backup-20260808.json`, `경쟁사_비교분석_20260808.hwpx`.
 
 ---
