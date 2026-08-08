@@ -57,9 +57,7 @@
 - **해결** (land.html, 로컬 편집만): 폴리곤을 `polys` 배열에 모았다가 **면적 내림차순**으로 정렬 후 `jbPolyLayer.addLayer`(1658) — 큰 폴리곤이 아래, 작은 정밀 경계가 위. 근사 원(`dots`)은 `jbCluster.addLayers(dots)`(1657)로 폴리곤보다 **아래**. `poly._area = _ringArea(rings[0])`.
 - **검증(전부 실측, CDP 실클릭)**: A 중심·A 남서(A∩B → 작은 A)·A 동쪽(B 단독 → B)·북쪽(B∩남성역B → 남성역B)·B 단독 → 사당4동·기타사업 WMS ON 상태에서도 A 팝업 유지(UPIS 레이어는 tilePane 아래라 matjip 클릭을 가로채지 않음). 전부 pointInRing 포함 구역과 일치, JS 예외 0.
 - **TROUBLESHOOTING §4 추가**: 겹친 폴리곤 클릭 함정 + **내림차순 주의**(오름차순으로 쓰면 역효과 — 실제 1회 실수).
-
-### 커밋·배포 대기 (사용자 동의 후 진행)
-- 미커밋: `land.html`(폴리곤 면적 내림차순 정렬), `TROUBLESHOOTING.md`(§4 겹침 함정), `HANDOFF.md`(본 세션).
+- **커밋 `af6b700`** → push → Pages **built** 확인 → **배포본 CDP 실측**(`jbtl-click-deploy-test.cjs`): 사당동 305-35 중심·남서 → `사당동 305-35 일대`(신통/대상지선정), A 동쪽·B 단독 → `사당4동`, 북쪽(B∩남성역B) → `남성역B`, **기타사업(UPIS) ON 상태에서도 A 팝업 유지**, JS 예외 0. 로컬 결과와 동일 — 반영 완료.
 
 ---
 
