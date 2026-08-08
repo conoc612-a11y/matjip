@@ -324,12 +324,11 @@
     .lp-grip { position:absolute; right:2px; bottom:2px; z-index:1100; width:16px; height:16px; cursor:nwse-resize; opacity:.5; display:flex; align-items:flex-end; justify-content:flex-end; padding:2px; box-sizing:border-box; }
     .lp-grip:hover, .lp-grip:active { opacity:1; }
     .lp-grip::after { content:''; width:8px; height:8px; border-right:2px solid var(--muted); border-bottom:2px solid var(--muted); border-radius:0 0 2px; }
-    /* 거리뷰 오버레이 그립 — 어두운 파노라마 위에서도 눈에 띄게 (lp-grip 의 opacity:.5 + invert 필터로는 잘 안 보임) */
-    .sv-grip { width:26px; height:26px; opacity:1; background:rgba(0,0,0,.6); border:1px solid rgba(255,255,255,.7); border-radius:7px; padding:5px; }
-    .sv-grip::after { width:11px; height:11px; border-right:3px solid #fff; border-bottom:3px solid #fff; border-radius:0 0 3px; }
-    .sv-grip:hover, .sv-grip:active { opacity:1; background:rgba(0,0,0,.8); border-color:#fff; }
-    .sv-grip-hint { position:absolute; right:calc(100% + 8px); bottom:2px; white-space:nowrap; font-size:12px; font-weight:600; color:#fff; background:rgba(0,0,0,.72); padding:5px 9px; border-radius:7px; pointer-events:none; opacity:0; transition:opacity .15s; }
-    .sv-grip:hover .sv-grip-hint, .sv-grip:active .sv-grip-hint { opacity:1; }
+    /* 거리뷰 오버레이 그립 — 어두운 파노라마 위에서도 항상 「」 표시가 보이게 */
+    .sv-grip { width:32px; height:32px; opacity:1; background:rgba(0,0,0,.78); border:2px solid rgba(255,255,255,.95); border-radius:9px; padding:5px; box-shadow:0 1px 6px rgba(0,0,0,.5); }
+    .sv-grip::after { content:''; width:13px; height:13px; border-right:4px solid #fff; border-bottom:4px solid #fff; border-radius:0 0 4px; }
+    .sv-grip:hover, .sv-grip:active { opacity:1; background:rgba(0,0,0,.92); border-color:#fff; }
+    .sv-grip-hint { position:absolute; right:calc(100% + 8px); bottom:2px; white-space:nowrap; font-size:12px; font-weight:600; color:#fff; background:rgba(0,0,0,.8); padding:6px 10px; border-radius:8px; pointer-events:none; opacity:1; box-shadow:0 1px 6px rgba(0,0,0,.5); }
     .lp-min-btn { position:absolute; top:3px; right:30px; z-index:1100; width:24px; height:24px; border:none; background:var(--c-hover); color:var(--muted); border-radius:7px; cursor:pointer; font-size:14px; line-height:1; display:flex; align-items:center; justify-content:center; padding:0; }
     .lp-min-btn:hover { background:var(--line); color:var(--text); }
     .lp-restore-chip { position:absolute; right:12px; bottom:12px; z-index:1500; display:flex; align-items:center; gap:6px; max-width:300px; padding:8px 12px; background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:10px; box-shadow:var(--c-shadow-lg); font-size:13px; cursor:pointer; }
