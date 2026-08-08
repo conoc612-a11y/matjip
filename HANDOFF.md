@@ -33,6 +33,7 @@
 - **커밋 `bdeae2c`** → push 완료 → Pages **built** 확인 (`gh api .../builds/latest` = bdeae2c/built). 커밋 대상: `land.html`·`HANDOFF.md`·`TROUBLESHOOTING.md`.
 - **후속 2026-08-09 (사용자 문의 "사당동 202-29는 관리지역고시만 나오고 입주까지 쭉 나와야지")**: 모아타운 `관리지역고시`를 `seqIdx()`에서 `정비구역지정(2)` 위치로 매핑(land.html:1614~1616) — 이제 관리지역고시 이후 조합설립추진위원회승인→…→입주까지 "예정"으로 이어진다. 근거: 관리지역고시 = 구역 지정의 행정 고시 단계로 일반 정비의 정비구역지정과 동일 위치. 검증: 하네스 시뮬레이션 `si=2`, done=대상지선정·안전진단·관리지역고시, 예정=조합설립추진위원회승인~입주 16행. TROUBLESHOOTING §13에 기록.
 - **후속 2026-08-09 (사용자 문의 "cctv 팝업은 크기조정이 안됨")**: `.cctv-pc`가 `width:320px` 고정(land.html:289)이라 그립 리사이즈에도 안쪽 카드가 안 늘었다 — `.pc`가 겪었던 264px 고정 버그(275~276 주석)의 재발. **해결**: `width:100%`+`min-width:320px`, flex column(`height:100%`), video `flex:1`(min-height 180px)로 변경 — 폭·높이·영상 영역 모두 드래그에 따라 확장. 검증(`cctv-resize-test.cjs`, 로컬 CDP 실측): 콘텐츠 321×263→455×358, video 180→274px. TROUBLESHOOTING §13에 기록.
+- **후속 2026-08-09 (사용자 문의 "진행현황에 입주까지 절차만 나오잖아, 전체 목록이 나오라고")**: `jbTlHtml()`이 **STAGE_SEQ 18단계 전체를 항상 나열**하도록 재작성(land.html:1639~1695) — 완료(tl 또는 stage 기준)는 ✓, 나머지는 "예정". 이전엔 "마지막 완료 단계 뒤만 예정으로 붙여" tl에 없는 앞쪽 단계가 목록에서 사라졌다(예: tl=[사업시행인가]면 대상지선정~건축심의 미표시). 표준 밖 단계(기획완료 등)는 맨 위 OUT 행 + 전체 18단계. 검증(`jbtl-full-test.cjs`, 로컬 CDP 실측): 사당동 202-29=18행(완료 3), 반포미도2차=19행(OUT1+18), 상계주공5단지=18행(완료 3), 전부 입주 표시. TROUBLESHOOTING §13에 기록.
 - 배포 검증 시: TROUBLESHOOTING §2-6(HANDOFF (10) 참고)대로 배포본 CDP 실측 필요 — 진행현황은 기존 `jbtl-test.cjs` 하네스 회귀, EV/CCTV는 캔버스 픽셀/iconSize 확인.
 - 미커밋 유지: `_*.txt` 10개(임시), `land.backup-20260808.html`·`redevelop_seoul.backup-20260808.json`, `경쟁사_비교분석_20260808.hwpx`.
 
