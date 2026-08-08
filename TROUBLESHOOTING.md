@@ -83,8 +83,13 @@ V-World/카카오가 필요한 검증은 **배포본에서** 해야 한다.
 
 - **캔버스 렌더러의 스테일 transform**: 팬/줌 후 이전 `scale/translate` 가 남아 폴리곤이 지도와 어긋나 보였다 → 정비사업·토지거래 폴리곤은 `renderer: L.svg()` 강제.
   (단, 9천 개 마커 계열은 성능 때문에 캔버스 유지)
+- **land.html 전체는 `preferCanvas: true`(798행)** — 검증 때 `.leaflet-overlay-pane svg path` 로 폴리곤 존재를 판단하면 "0개 = 버그"로 **오판**한다(2026-08-08 실제 겪음). 폴리곤 렌더는 `overlayCanvas` 존재 + `getImageData` 픽셀 채색 비율(실측 21.9%)로 확인할 것.
 - **`noClip: true`** 없으면 줌인 시 뷰포트 밖 폴리곤이 `M0 0` 으로 접힌다.
 - **헤드리스 브라우저에서 `map.zoomIn()` 이 동작하지 않는다.** 애니메이션 줌이 `transitionend` 에 의존하는데 그 이벤트가 안 온다. 순정 Leaflet 지도로 대조 실험까지 해서 확인함 → **테스트에서는 `map.setZoom(z, { animate: false })` 를 쓸 것.**
+- **캔버스 폴리곤 클릭 검증 시 CDP 로 직접 이벤트를 보내야 한다 (2026-08-08 실측)**. `preferCanvas: true` 면 폴리곤은 `<path>` 가 아니라 **canvas 픽셀**이라 SVG 셀렉터·`.fire('click')` 로는 팝업 여부를 검증할 수 없다.
+  - **헤드리스에서 클릭이 지도에 안 전달되는 함정**: CDP `Input.dispatchMouseEvent` 로 클릭 좌표를 정해도 그 좌표가 **다른 DOM 요소**(`.leaflet-control`, `.lc` 레이어 컨트롤 등)에 덮여 있으면 클릭이 canvas 에 닿지 않는다(실측: evCount 전부 0, elementFromPoint 가 `DIV.lc`). 좌표가 컨트롤 밖인지는 `elementFromPoint(x, y)` 가 `.leaflet-overlay-pane canvas` 를 가리키는지로 판정할 것 — `.leaflet-top` 처럼 pointer-events:none 인 스트립을 rect 로 빼는 방식은 오판한다.
+  - **setView 직후 검사가 아닌, setView 한 뒤 좌표를 다시 계산**해야 한다(줌이 바뀌면 containerPoint 가 달라진다). 후보 구역을 하나만 보내면 그 구역이 컨트롤 아래로 들어갈 수 있어, 구역을 여럿 준비해 첫 비차단 지점을 쓰는 것이 안정적.
+  - 검증 지표: `elementFromPoint → CANVAS`, `canvasClick evCount ≥ 1`, `popupSourceJb`(=`map._popup._source._jb.name`)가 해당 구역 이름이면 통과. 픽셀 채색 검사(`getImageData`)만으로는 팝업 여부를 알 수 없다.
 
 ---
 
@@ -187,6 +192,14 @@ console.log('blocks:',i,'fails:',f);
 - status_code 가 `OK` 가 아니면 인증/활용승인 문제. `Unauthorized`(키 오류)·`Forbidden`(활용신청 없음).
 - serviceKey 는 인코딩된 문자열 그대로 query 로(`%`→`%25` 이중인코딩 금지, 타 프록시와 동일). land.html 은 `bizno-proxy` 경유 — 시크릿 `NTS_API_KEY`.
 - land.html 헤더 '사업자등록증조회' 버튼 → 모달. 사업자번호는 **하이픈 자동 입력**(`_bizFmt`). 대표자·개업일 입력하면 validate, 번호만 입력하면 status 로 자동 분기. 로컬 테스트는 `?biznoEndpoint=` 로 mock 교체.
+
+### 6-10. 법원경매정보 — 공식 Open API 가 없다 (2026-08-08 경쟁사 4곳 실측)
+- **대한민국 법원경매정보는 공식 Open API 가 존재하지 않는다.** 경쟁사 4곳(경매알리미·오늘의경매·재개발닷컴·리치고)이 전부 courtauction.go.kr 화면 데이터를 우회 수집한다.
+- 우회 방식 3종(경쟁사 실측):
+  ① **서버 스크래핑**(경매알리미): 자체 백엔드가 courtauction 목록/필터를 긁어 자체 API(`/server/api/?c=Auction&m=getAuctionList`)로 서빙. 이미지는 공식사이트 **핫링크**, 권리/현황/배당은 **`.laf` 딥링크**(새 탭), 감정평가서 PDF는 **자체 프록시**(`pdf-proxy.php`). 4층 하이브리드가 최소 IP 부담.
+  ② **자체 DB 적재**(오늘의경매): 법원 등록 중개업체가 직접 적재, 검색 필터가 courtauction 과 1:1 미러(시도 17종·현재상태 19종).
+  ③ **공공데이터 재집계**(재개발닷컴): 법원을 직접 안 부르고 "공공데이터 기반 참고용"으로 경매를 정비구역과 조인해 집계.
+- matjip 에 경매를 붙일 땐 이 지식이 필수다: 직스크래핑은 **IP 차단 리스크**(공식 사이트 운영 정책)가 있어 Edge Function 프록시(경매알리미 `pdf-proxy` 패턴)로 우회하거나, 재개발닷컴처럼 법원에 직접 안 닿는 공공데이터(실거래·고시) 기반으로 머물 것. 상세 분석은 `경쟁사_비교분석_20260808.hwpx`(프로젝트 루트) 3절 참고.
 
 ---
 

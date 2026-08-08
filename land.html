@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="js/auth-guard.js"></script>
   <title>맛집 탐방 — 부동산 지도</title>
+  <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="ko_KR" />
+  <meta property="og:title" content="맛집 탐방 — 부동산 지도" />
+  <meta property="og:description" content="서울 정비사업·실거래가·주제도 통합 지도. 진행단계와 노후도부터 실거래가까지 한 화면에서." />
   <link rel="preconnect" href="https://unpkg.com" crossorigin />
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <link rel="preconnect" href="https://api.vworld.kr" crossorigin />
@@ -182,8 +187,21 @@
     .lc-sep { margin:9px 0 6px; padding-top:8px; border-top:1px solid var(--line); }
     .lc-sub { font-weight:600; font-size:14px; margin-bottom:6px; }
     .lc-dot { display:inline-block; width:9px; height:9px; border-radius:50%; vertical-align:middle; margin-right:5px; }
+    /* ── 비모달 토스트 ──
+       검색 실패·필터 결과 0건처럼 사용자 액션의 결과를 브라우저 alert() 대신
+       화면 상단에서 잠깐 보여주고 사라지게 한다 (경매알리미 스타일). */
+    .toast { position:fixed; top:14px; left:50%; transform:translateX(-50%) translateY(-8px); z-index:5000; background:#1f2937; color:#fff; font-size:14px; padding:9px 16px; border-radius:999px; box-shadow:var(--c-shadow-lg); display:flex; align-items:center; gap:8px; opacity:0; pointer-events:none; transition:opacity .2s, transform .2s; max-width:90vw; }
+    .toast.on { opacity:1; transform:translateX(-50%) translateY(0); pointer-events:auto; }
+    .toast .action { color:#ffd43b; font-weight:700; cursor:pointer; text-decoration:underline; white-space:nowrap; }
     .jb-stage { font:inherit; font-size:13px; padding:3px 9px; border:1px solid var(--line); border-radius:999px; background:var(--card); color:var(--muted); cursor:pointer; }
     .jb-stage.active { background:var(--c-primary); border-color:var(--c-primary); color:#fff; }
+    /* 정비구역 상세 팝업: 기본 정보 키/값 칩 + 인근 구역 비교표 미니 배지 */
+    .jb-meta-k { font-size:11px; color:var(--c-muted); }
+    .jb-meta-v { font-size:13px; font-weight:600; color:var(--c-text); }
+    .jb-mini { display:inline-block; font-size:10px; color:#fff; padding:1px 5px; border-radius:7px; }
+    /* 구역×실거래 교차 필터 결과 바 (진행단계 칩 바 위에 겹치지 않게 bottom 64px) */
+    #jb-rp-bar { position:absolute; bottom:64px; left:50%; transform:translateX(-50%); display:none; align-items:center; gap:8px; padding:8px 12px; background:var(--card); border:1px solid var(--line); border-radius:999px; box-shadow:var(--c-shadow-lg); z-index:901; font-size:13px; color:var(--text); max-width:90vw; white-space:nowrap; }
+    #jb-rp-bar-close { border:none; background:var(--c-hover); color:var(--muted); border-radius:999px; width:22px; height:22px; cursor:pointer; font-size:12px; line-height:1; }
     /* 배경지도 선택 — 네이버지도처럼 썸네일 3종을 나란히 보여준다.
        썸네일은 실제 V-World 타일이라 각 지도가 어떤 모습인지 그대로 미리 보인다. */
     .bm-picker { display:flex; gap:6px; background:var(--card); border:1px solid var(--line); border-radius:10px; padding:6px; box-shadow:var(--c-shadow); }
@@ -477,6 +495,28 @@
       return _sbPromise;
     }
     const $ = (id) => document.getElementById(id);
+    // 비모달 토스트. action = { label, fn } 이면 우측에 클릭 가능한 초기화 링크를 붙인다.
+    function toast(msg, action) {
+      let t = $('app-toast');
+      if (!t) {
+        t = document.createElement('div');
+        t.id = 'app-toast';
+        t.className = 'toast';
+        document.body.appendChild(t);
+      }
+      t.innerHTML = '';
+      t.appendChild(document.createTextNode(msg));
+      if (action) {
+        const b = document.createElement('b');
+        b.className = 'action';
+        b.textContent = action.label;
+        b.addEventListener('click', () => { t.classList.remove('on'); action.fn(); });
+        t.appendChild(b);
+      }
+      t.classList.add('on');
+      clearTimeout(t._h);
+      t._h = setTimeout(() => t.classList.remove('on'), 3200);
+    }
 
     // ── 다크모드 (localStorage 저장, 맛집 지도와 동일 키) ──
     const ICON_SUN = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>';
@@ -541,6 +581,29 @@
         })
         .catch((err) => { _subPromise = null; console.warn('청약예정 불러오기 실패:', err); return []; });
       return _subPromise;
+    }
+
+    // ── 정비 관련 새 소식 (SH공사 공고 RSS — tools/collect_notices.js 로 생성한 notices.json) ──
+    // RSS 는 EUC-KR 인코딩 + 브라우저 CORS 로 직접 못 읽는다. 수집 스크립트가 정적 JSON 으로
+    // 미리 만들어 두면 GitHub Pages 같은 출처에서 그대로 fetch 할 수 있다 (청약 배지가 Edge
+    // Function 을 쓰는 것과 달리 키가 필요 없는 공개 RSS 라 서버 중계 없이 정적 파일로 충분).
+    const NOTICE_KEYWORDS = /재개발|재건축|정비|주택|입주|조합|청약|모집|공급|구역|지구|리모델링|신속통합기획|도시개발|공공정비|SH/;
+    let _noticePromise = null;
+    function loadNotices() {
+      if (!_noticePromise) _noticePromise = fetch('notices.json?v=1')
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error('notices HTTP ' + r.status))))
+        .then((j) => (Array.isArray(j && j.items) ? j.items : []))
+        .catch((err) => { _noticePromise = null; console.warn('정비 소식 불러오기 실패:', err); return []; });
+      return _noticePromise;
+    }
+    function renderNotices() {
+      const box = document.getElementById('jb-notices');
+      if (!box) return;
+      loadNotices().then((items) => {
+        const hit = items.filter((it) => NOTICE_KEYWORDS.test(it.title)).slice(0, 5);
+        if (!hit.length) { box.innerHTML = '<div style="font-size:12px;color:var(--c-muted);">정비 관련 새 소식이 없어요.</div>'; return; }
+        box.innerHTML = hit.map((it) => `<div style="font-size:12px;padding:4px 0;border-bottom:1px solid var(--line);"><a href="${safeUrl(it.link)}" target="_blank" rel="noopener" style="text-decoration:none;color:var(--text);display:block;line-height:1.45;">${esc(it.title)}</a><span style="font-size:11px;color:var(--c-muted);">${esc(it.source || '')}${it.date ? ' · ' + esc(it.date) : ''}</span></div>`).join('');
+      });
     }
 
     // ── 사업자등록증 조회 (국세청 진위확인·상태조회 — Edge Function 프록시 경유) ──
@@ -1002,7 +1065,8 @@
         div.className = 'lc lc-rp';
         div.innerHTML = '<div class="lc-title">실거래가 필터</div>'
           + '<label style="display:block;margin-bottom:6px;">실거래가 <select id="rp-price" style="font:inherit;font-size:13px;"><option value="all">전체</option><option value="u10">10억 이하</option><option value="10_20">10~20억</option><option value="20_30">20~30억</option><option value="o30">30억+</option></select></label>'
-          + '<label style="display:block;">건축년도 <select id="rp-age" style="font:inherit;font-size:13px;"><option value="all">전체</option><option value="new">2015~ 신축</option><option value="mid">2000~2014</option><option value="old">2000 이전</option></select></label>';
+          + '<label style="display:block;">건축년도 <select id="rp-age" style="font:inherit;font-size:13px;"><option value="all">전체</option><option value="new">2015~ 신축</option><option value="mid">2000~2014</option><option value="old">2000 이전</option></select></label>'
+          + '<button id="rp-reset" type="button" style="width:100%;margin-top:8px;font:inherit;font-size:13px;padding:5px 0;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--c-primary);cursor:pointer;">초기화</button>';
         L.DomEvent.disableClickPropagation(div);
         return div;
       };
@@ -1018,13 +1082,31 @@
       };
       // 가격·건축년도 필터와 노후도 범례는 아파트/연립다세대 두 레이어가 공용으로 쓴다.
       // 레이어별로 배선 코드를 복사하면 또 갈라지므로 한 곳에 모아둔다.
+      function rpResetFilter() {
+        rpFilter.price = 'all'; rpFilter.age = 'all';
+        const ps = document.getElementById('rp-price'), ag = document.getElementById('rp-age');
+        if (ps) ps.value = 'all';
+        if (ag) ag.value = 'all';
+        rpBuild(); villaBuild();
+      }
+      // 필터 변경 시 0건이면 토스트로 안내 + 초기화 바로가기. 데이터가 아직 안 받아진 상태의
+      // 빈 지도를 "결과 없음"으로 오판하지 않도록 로드된 레이어가 있을 때만 알린다.
+      function rpEmptyNotify() {
+        if (rpFilter.price === 'all' && rpFilter.age === 'all') return;
+        let total = 0, loaded = false;
+        if (rpRows) { loaded = true; total += realpriceCluster.getLayers().length; }
+        if (villaRows) { loaded = true; total += villaCluster.getLayers().length; }
+        if (loaded && total === 0) toast('조건에 맞는 실거래가 없어요.', { label: ' 초기화', fn: rpResetFilter });
+      }
       function showPriceFilter() {
         rpFilterCtrl.addTo(map);
         rpLegend.addTo(map);
         setTimeout(() => {
           const ps = document.getElementById('rp-price'), ag = document.getElementById('rp-age');
-          if (ps && !ps._w) { ps._w = 1; ps.value = rpFilter.price; ps.addEventListener('change', () => { rpFilter.price = ps.value; rpBuild(); villaBuild(); }); }
-          if (ag && !ag._w) { ag._w = 1; ag.value = rpFilter.age; ag.addEventListener('change', () => { rpFilter.age = ag.value; rpBuild(); villaBuild(); }); }
+          if (ps && !ps._w) { ps._w = 1; ps.value = rpFilter.price; ps.addEventListener('change', () => { rpFilter.price = ps.value; rpBuild(); villaBuild(); rpEmptyNotify(); }); }
+          if (ag && !ag._w) { ag._w = 1; ag.value = rpFilter.age; ag.addEventListener('change', () => { rpFilter.age = ag.value; rpBuild(); villaBuild(); rpEmptyNotify(); }); }
+          const rs = document.getElementById('rp-reset');
+          if (rs && !rs._w) { rs._w = 1; rs.addEventListener('click', rpResetFilter); }
         }, 60);
       }
       map.on('overlayadd', (e) => {
@@ -1217,16 +1299,31 @@
         const g = jbGroup(d), c = JB_COLOR[g];
         const stageBadge = d.stage ? `<span style="display:inline-block;background:${stageColor(d.stage)};color:#fff;font-size:12px;padding:2px 8px;border-radius:999px;margin-left:4px;">${esc(d.stage)}</span>` : '';
         // 구역 면적: 폴리곤 링에서 실제로 계산 (데이터 위조 아님)
-        let areaTxt = '';
+        let areaTxt = '', areaPy = null;
         if (d.rc && jbPolys && jbPolys[d.rc]) {
           const rings = usableRings(d.rc, jbPolys[d.rc]);
           if (rings && rings.length) {
             const m2 = rings.reduce((a, r) => a + _ringArea(r), 0);
             areaTxt = ` · <b>${(m2 / 10000).toFixed(1)}만㎡</b>`;
+            areaPy = Math.round(m2 / 3.3058);
           }
         }
+        // 기본 정보 — 공공데이터에 있는 값만 표시한다. 공급세대·평당가 등 없는 값은
+        // 인위적으로 만들지 않는다(외부 사이트가 보여주는 항목이라도 데이터가 없으면 '—' 처리).
+        const meta = [];
+        if (d.method) meta.push(`<div style="flex:1 1 38%;"><span class="jb-meta-k">시행방식</span><div class="jb-meta-v">${esc(d.method)}</div></div>`);
+        if (d.create) meta.push(`<div style="flex:1 1 38%;"><span class="jb-meta-k">공고일</span><div class="jb-meta-v">${esc(d.create)}</div></div>`);
+        if (areaPy) meta.push(`<div style="flex:1 1 38%;"><span class="jb-meta-k">대지면적</span><div class="jb-meta-v">${areaPy.toLocaleString()}평</div></div>`);
+        // 인근 구역 비교표 (1.5km 내 최대 5곳) — 기본 접힘, '인근 구역 비교' 버튼으로 펼침
+        const near = nearbyZones(d);
+        const cmpHtml = near.length
+          ? `<button class="jb-near-btn pc-btn pc-btn-outline" style="width:100%;justify-content:center;border-color:var(--line) !important;color:var(--c-muted);">인근 구역 비교 (${near.length}) ▾</button>`
+            + `<div class="jb-near" style="display:none;margin-top:6px;border:1px solid var(--line);border-radius:8px;overflow:hidden;"><div style="display:flex;font-size:11px;color:var(--c-muted);padding:5px 8px;background:var(--c-hover);"><div style="flex:1;">구역</div><div style="width:58px;">유형</div><div style="width:40px;text-align:right;">진행</div><div style="width:44px;text-align:right;">거리</div></div>`
+            + near.map((z) => `<a href="#" class="jb-near-row" data-name="${esc(z.name)}" data-jibun="${esc(z.jibun)}" style="display:flex;align-items:center;gap:4px;padding:5px 8px;border-top:1px solid var(--line);text-decoration:none;color:var(--text);font-size:12px;"><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(z.name)}</span><span style="width:58px;"><span class="jb-mini" style="background:${JB_COLOR[z.g]}">${esc(z.g)}</span></span><span style="width:40px;text-align:right;color:${stageColor(z.stage)};">${z.pct}%</span><span style="width:44px;text-align:right;color:var(--c-muted);">${z.dist}km</span></a>`).join('')
+            + '</div>'
+          : '';
         const linkBtns = (d.rc || d.cafe) ? `<div class="pc-btn-row">${d.rc ? `<a href="https://urban.seoul.go.kr/view/map/mapPopup.html?recordCode=${encodeURIComponent(d.rc)}" target="_blank" rel="noopener" class="pc-btn pc-btn-outline" style="border-color:#7048e8 !important;color:#7048e8;">경계지도</a>` : ''}${d.cafe ? `<a href="https://cleanup.seoul.go.kr/cafe/mainIndx.do?cafeUrl=${encodeURIComponent(d.cafe)}" target="_blank" rel="noopener" class="pc-btn pc-btn-outline" style="border-color:var(--c-primary) !important;color:var(--c-primary);">정보공개</a>` : ''}</div>` : '';
-        return `<div class="pc"><div class="pc-head"><span style="display:inline-block;background:${c};color:#fff;font-size:12px;padding:2px 8px;border-radius:999px;">${g}</span>${stageBadge}</div><div class="pc-body"><div style="font-weight:700;font-size:15px;margin-bottom:2px;color:var(--c-text);">${esc(d.name)}</div><div>${esc(d.gu)} ${esc(d.jibun)}${areaTxt}${d.approx ? ' <span style="color:var(--c-price);">(동 근사위치)</span>' : ''}</div><div style="font-size:12px;color:var(--c-muted);margin-top:3px;">사업구분: ${esc(d.gubun)}${d.method ? ' · ' + esc(d.method) : ''}</div><div style="margin:8px 0 4px;"><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--c-muted);margin-bottom:3px;"><span>진행단계</span><span>${stagePct(d.stage)}%</span></div><div style="height:5px;background:var(--line);border-radius:3px;overflow:hidden;"><div style="height:100%;width:${stagePct(d.stage)}%;background:${stageColor(d.stage)};border-radius:3px;transition:width .3s;"></div></div></div><div class="jb-rp-stat rp-stat" style="display:none;padding:5px 0;border-top:1px solid var(--c-border);"></div><div class="jb-community" style="display:none;margin-top:6px;"></div></div><div class="pc-actions">${linkBtns}<button class="jb-community-btn pc-btn pc-btn-outline" style="border-color:#2f9e44 !important;color:#2f9e44;">💬 커뮤니티</button><button class="jb-cmp pc-btn pc-btn-outline" style="border-color:var(--c-primary) !important;color:var(--c-primary);">＋ 비교</button><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline" style="border-color:var(--c-success) !important;color:var(--c-success);">출발</button><button class="rt-end pc-btn pc-btn-outline" style="border-color:var(--c-danger) !important;color:var(--c-danger);">도착</button></div><button class="sv-btn pc-btn pc-btn-outline">거리뷰</button></div></div>`;
+        return `<div class="pc"><div class="pc-head"><span style="display:inline-block;background:${c};color:#fff;font-size:12px;padding:2px 8px;border-radius:999px;">${g}</span>${stageBadge}</div><div class="pc-body"><div style="font-weight:700;font-size:15px;margin-bottom:2px;color:var(--c-text);">${esc(d.name)}</div><div>${esc(d.gu)} ${esc(d.jibun)}${areaTxt}${d.approx ? ' <span style="color:var(--c-price);">(동 근사위치)</span>' : ''}</div><div style="font-size:12px;color:var(--c-muted);margin-top:3px;">사업구분: ${esc(d.gubun)}</div>${meta.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:8px;border-top:1px solid var(--line);padding-top:8px;">${meta.join('')}</div>` : ''}<div style="margin:8px 0 4px;"><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--c-muted);margin-bottom:3px;"><span>진행단계</span><span>${stagePct(d.stage)}%</span></div><div style="height:5px;background:var(--line);border-radius:3px;overflow:hidden;"><div style="height:100%;width:${stagePct(d.stage)}%;background:${stageColor(d.stage)};border-radius:3px;transition:width .3s;"></div></div></div>${cmpHtml}<div class="jb-rp-stat rp-stat" style="display:none;padding:5px 0;border-top:1px solid var(--c-border);"></div><div class="jb-community" style="display:none;margin-top:6px;"></div></div><div class="pc-actions">${linkBtns}<button class="jb-rp-filter pc-btn pc-btn-outline" style="border-color:var(--c-price) !important;color:var(--c-price);">🔎 이 구역 실거래 보기</button><button class="jb-community-btn pc-btn pc-btn-outline" style="border-color:#2f9e44 !important;color:#2f9e44;">💬 커뮤니티</button><button class="jb-cmp pc-btn pc-btn-outline" style="border-color:var(--c-primary) !important;color:var(--c-primary);">＋ 비교</button><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline" style="border-color:var(--c-success) !important;color:var(--c-success);">출발</button><button class="rt-end pc-btn pc-btn-outline" style="border-color:var(--c-danger) !important;color:var(--c-danger);">도착</button></div><button class="sv-btn pc-btn pc-btn-outline">거리뷰</button></div></div>`;
       }
       // ── 정비구역 커뮤니티(익명 방명록형) — Supabase jb_posts, anon insert/select RLS (schema.sql 참고) ──
       async function renderJbCommunity(container, d) {
@@ -1290,6 +1387,35 @@
         }
         _ringCache.set(key, out);
         return out;
+      }
+      // 점이 링(위도·경도 배열) 안에 있는지 — 구역×실거래 교차 필터용 ray-casting.
+      // Leaflet 1.9 에는 폴리곤 점 포함 판정이 없어 따로 둔다.
+      function pointInRing(lat, lng, ring) {
+        let inside = false;
+        for (let i = 0, n = ring.length; i < n; i++) {
+          const a = ring[i], b = ring[(i + 1) % n];
+          if ((a[0] > lat) !== (b[0] > lat) && lng < ((b[1] - a[1]) * (lat - a[0])) / (b[0] - a[0]) + a[1]) inside = !inside;
+        }
+        return inside;
+      }
+      // 구역 면적(㎡): 폴리곤 실측 우선, 폴리곤 없으면 수집 데이터의 area 필드로 폴백.
+      function zoneAreaM2(z) {
+        if (z.rc && jbPolys && jbPolys[z.rc]) {
+          const rings = usableRings(z.rc, jbPolys[z.rc]);
+          if (rings && rings.length) return rings.reduce((a, r) => a + _ringArea(r), 0);
+        }
+        return z.area ? Number(z.area) : null;
+      }
+      // 인근 구역 비교표 (1.5km 내 최대 5곳, 거리순) — 재개발닷컴의 '인근 구역 비교' 기능에 대응.
+      // 전부 자체 수집 데이터(구역명·유형·진행단계·면적)로 계산하므로 외부 데이터 복제가 없다.
+      function nearbyZones(d, limit = 5) {
+        if (!_jbRowsGlobal || !_jbRowsGlobal.length || d.lat == null) return [];
+        return _jbRowsGlobal
+          .filter((z) => z.lat != null && (z.name !== d.name || (z.jibun || '') !== (d.jibun || '')))
+          .map((z) => ({ name: z.name, jibun: z.jibun || '', g: jbGroup(z), stage: z.stage || '', pct: stagePct(z.stage), dist: Math.round(kmDist(d.lat, d.lng, z.lat, z.lng) * 100) / 100 }))
+          .filter((x) => x.dist <= 1.5)
+          .sort((a, b) => a.dist - b.dist)
+          .slice(0, limit);
       }
       function jbBuild() {
         if (!jbRows) return;
@@ -1371,7 +1497,9 @@
           + '<div class="lc-sep lc-sub">진행단계</div>'
           + '<div style="display:flex;flex-wrap:wrap;gap:4px;">'
           + ['전체','기획','추진위','조합설립','사업시행','관리처분','착공','준공'].map((s) => `<button class="jb-stage${s === '전체' ? ' active' : ''}" data-s="${s}">${s}</button>`).join('')
-          + '</div>';
+          + '</div>'
+          + '<div class="lc-sep lc-sub" style="margin-top:8px;">📰 정비 관련 새 소식</div>'
+          + '<div id="jb-notices" style="font-size:12px;color:var(--c-muted);">불러오는 중…</div>';
         L.DomEvent.disableClickPropagation(div);
         L.DomEvent.disableScrollPropagation(div);  // 메뉴 스크롤이 지도 줌으로 새지 않도록
         return div;
@@ -1395,6 +1523,7 @@
       map.on('overlayadd', (e) => {
         if (e.layer !== jbCluster) return;
         jbCtrl.addTo(map); jbPolyLayer.addTo(map); jbStageBar.style.display = '';
+        renderNotices();
         setTimeout(() => {
           document.querySelectorAll('.jb-f').forEach((cb) => { if (cb._w) return; cb._w = 1; cb.addEventListener('change', () => { jbFilter[cb.dataset.g] = cb.checked; jbBuild(); }); });
           document.querySelectorAll('.jb-stage').forEach((btn) => {
@@ -1410,7 +1539,7 @@
         if (jbRows) return;
         Promise.all([fetch('redevelop_seoul.json?v=4').then((r) => r.json()), fetch('redevelop_polygons.json?v=2').then((r) => r.json()).catch(() => ({}))]).then(([rows, polys]) => { jbRows = rows; jbPolys = polys; _jbRowsGlobal = rows; jbBuild(); }).catch(() => {});
       });
-      map.on('overlayremove', (e) => { if (e.layer === jbCluster) { map.removeControl(jbCtrl); map.removeLayer(jbPolyLayer); jbStageBar.style.display = 'none'; } });
+      map.on('overlayremove', (e) => { if (e.layer === jbCluster) { map.removeControl(jbCtrl); map.removeLayer(jbPolyLayer); jbStageBar.style.display = 'none'; clearJbRp(); } });
       // 정비구역 폴리곤 뷰포트 갱신 (debounce) — jbPolyLayer/jbBuild 는 이 함수 스코프 변수라 여기서 등록해야 한다.
       let _jbRebuildTimer = null;
       map.on('moveend', () => {
@@ -1452,6 +1581,31 @@
           updateCmpBar();
           m.closePopup();
         };
+        // 인근 구역 비교표 펼침/접힘 + 행 클릭 → 해당 구역으로 이동
+        const nearBtn = node.querySelector('.jb-near-btn'), nearBox = node.querySelector('.jb-near');
+        if (nearBtn && nearBox) {
+          nearBtn.onclick = () => {
+            const show = nearBox.style.display === 'none';
+            nearBox.style.display = show ? 'block' : 'none';
+            nearBtn.textContent = `인근 구역 비교 (${nearBox.querySelectorAll('.jb-near-row').length}) ${show ? '▴' : '▾'}`;
+          };
+          nearBox.querySelectorAll('.jb-near-row').forEach((row) => {
+            row.addEventListener('click', (ev) => {
+              ev.preventDefault();
+              const z = (_jbRowsGlobal || []).find((x) => x.name === row.dataset.name && (x.jibun || '') === row.dataset.jibun);
+              if (!z || z.lat == null) return;
+              m.closePopup();
+              map.setView([z.lat, z.lng], 16);
+              if (vsMarker) map.removeLayer(vsMarker);
+              vsMarker = L.marker([z.lat, z.lng]).addTo(map);
+              vsMarker._jb = z;   // popupopen 핸들러가 같은 경로로 출발/도착/실거래 등을 배선
+              vsMarker.bindPopup(() => jbPopupHtml(z)).openPopup();
+            });
+          });
+        }
+        // 이 구역 실거래 보기 → 구역 폴리곤 내부 실거래만 교차 필터
+        const rpFilterBtn = node.querySelector('.jb-rp-filter');
+        if (rpFilterBtn) rpFilterBtn.onclick = () => toggleJbRp(d);
         // 인근 실거래 통계 (500m)
         if (rpRows && rpRows.length) {
           let cnt=0, sum=0, sumCnt=0, minP=Infinity, maxP=-Infinity;
@@ -1469,6 +1623,56 @@
           }
         }
       });
+
+      // ── 구역×실거래 교차 필터 (선택 구역 폴리곤 내부의 아파트 실거래만) ──────────
+      // 재개발닷컴의 '구역×실거래 교차 필터'에 대응. Leaflet contains 가 없어서
+      // pointInRing 으로 직접 판정한다. 원본 실거래 레이어는 건드리지 않고 별도 레이어로 띄운다.
+      let _jbRpZone = null;
+      const jbRpLayer = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 60 });
+      jbRpLayer.on('click', (e) => {
+        const m = e.layer;
+        if (!m || !m._rp) return;
+        if (!m.getPopup() && m._pop) m.bindPopup(m._pop());
+        m.openPopup();
+      });
+      const jbRpBar = document.createElement('div');
+      jbRpBar.id = 'jb-rp-bar';
+      jbRpBar.style.display = 'none';
+      jbRpBar.innerHTML = '<span id="jb-rp-bar-txt"></span><button id="jb-rp-bar-close" title="닫기">✕</button>';
+      document.getElementById('map').appendChild(jbRpBar);
+      L.DomEvent.disableClickPropagation(jbRpBar);
+      L.DomEvent.disableScrollPropagation(jbRpBar);
+      jbRpBar.addEventListener('click', (e) => { if (e.target.closest('#jb-rp-bar-close')) clearJbRp(); });
+      function clearJbRp() {
+        _jbRpZone = null;
+        jbRpLayer.clearLayers();
+        if (map.hasLayer(jbRpLayer)) map.removeLayer(jbRpLayer);
+        jbRpBar.style.display = 'none';
+      }
+      function toggleJbRp(d) {
+        if (_jbRpZone && _jbRpZone.name === d.name && (_jbRpZone.jibun || '') === (d.jibun || '')) { clearJbRp(); return; }
+        if (!rpRows) { loadRp().then(() => toggleJbRp(d)); return; }
+        const rings = (d.rc && jbPolys && jbPolys[d.rc]) ? usableRings(d.rc, jbPolys[d.rc]) : null;
+        if (!rings || !rings.length) { toast('경계 폴리곤 데이터가 없는 구역이라 실거래를 필터할 수 없어요.'); return; }
+        const ms = [];
+        rpRows.forEach((r) => {
+          if (r.lat == null) return;
+          if (!rings.some((ring) => pointInRing(r.lat, r.lng, ring))) return;
+          const m = L.circleMarker([r.lat, r.lng], { radius: 6, color: '#fff', weight: 1, fillColor: '#1971c2', fillOpacity: 0.85 });
+          m._rp = r;
+          m._pop = (() => `<b>${esc(r.name)}</b><br>매매 ${r.priceEok == null ? '-' : r.priceEok + '억'} · ${esc(r.gu)} ${esc(r.dong)}<br><a href="https://map.naver.com/p/search/${encodeURIComponent(r.name + ' ' + (r.dong || r.gu || ''))}" target="_blank" rel="noopener">네이버 부동산</a>`);
+          ms.push(m);
+        });
+        _jbRpZone = { name: d.name, jibun: d.jibun || '' };
+        jbRpLayer.clearLayers();
+        jbRpLayer.addLayers(ms);
+        if (!map.hasLayer(jbRpLayer)) jbRpLayer.addTo(map);
+        const box = rings.reduce((b, ring) => { ring.forEach(([la, ln]) => b.extend([la, ln])); return b; }, L.latLngBounds([]));
+        map.fitBounds(box, { padding: [40, 40], maxZoom: 16 });
+        jbRpBar.style.display = 'flex';
+        jbRpBar.querySelector('#jb-rp-bar-txt').textContent = `◼ ${d.name} — 구역 내 실거래 ${ms.length}건`;
+        if (!ms.length) toast('이 구역 폴리곤 안에 실거래 데이터가 없어요.');
+      }
 
       // ── CCTV (ITS 국가교통정보센터) — 켰을 때만 지도 중심 반경으로 조회한다 ──
       const cctvLayer = L.layerGroup();
@@ -1921,7 +2125,7 @@
         const items = (data.response && data.response.result && data.response.result.items) || [];
         if (!items.length) {
           if (type === 'place') { vworldSearch(q, 'address'); return; } // 장소 없으면 주소로 재검색
-          alert('검색 결과가 없어요: ' + q); return;
+          toast('검색 결과가 없어요: ' + q); return;
         }
         const it = items[0], x = Number(it.point.x), y = Number(it.point.y);
         map.setView([y, x], 16);
@@ -3660,7 +3864,7 @@
     // ── 통합 검색 (검색엔진 선택에 따라 분기) ──
     function runSearch() {
       var q = $('search').value.trim();
-      if (!q) { alert('검색어를 입력해 주세요.'); return; }
+      if (!q) { toast('검색어를 입력해 주세요.'); return; }
       $('ac').className = 'ac';
       if (searchEngine === 'vworld') vworldSearch(q, 'place');
       else runKakaoSearch(q);
@@ -3732,6 +3936,13 @@
         kakaoMarkers.push(m); pts.push([Number(p.y), Number(p.x)]);
       });
       if (pts.length) map.fitBounds(pts, { padding: [40, 40], maxZoom: 16 });
+      // 목록↔지도 연동: 결과 카드를 누르면 해당 마커로 이동 + 팝업 연다
+      document.querySelectorAll('#rec-list .rec').forEach((el) => {
+        el.addEventListener('click', () => {
+          const m = kakaoMarkers[Number(el.dataset.i)];
+          if (m) { map.setView(m.getLatLng(), Math.max(map.getZoom(), 15)); m.openPopup(); }
+        });
+      });
       var sbe = document.getElementById('s-back'); if (sbe) sbe.addEventListener('click', render);
     }
 

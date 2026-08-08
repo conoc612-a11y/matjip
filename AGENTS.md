@@ -57,6 +57,7 @@ Static HTML/JS Seoul restaurant finder. No build tools, no bundler, no framework
 - `js/recommend.js` — browser용 공유 추천 로직 (`<script src="js/recommend.js">`로 포함)
 - `tools/recommend.js` — Node.js용 공유 추천 로직 (CommonJS, canonical; mcp/server.js가 import). 점수 로직 변경 시 양쪽 동기화 필요
 - `tools/matjip-cli.js` — CLI for recommendations
+- `tools/collect_notices.js` — SH공사 공고 RSS(EUC-KR) → `notices.json` 정적 생성. `node tools/collect_notices.js` 재실행 시 갱신. land.html의 '정비 관련 새 소식' 피드(#jb-notices)가 이 JSON을 fetch (브라우저 CORS 우회용)
 
 ## main.html 성능/구조 요점
 
