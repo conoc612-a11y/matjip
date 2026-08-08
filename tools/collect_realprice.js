@@ -287,8 +287,105 @@ async function geocodeAll(addrs) {
   console.log(`  [지오코딩] 완료 ${done}건 중 성공 ${hit}건 (${(hit / done * 100).toFixed(1)}%) · 끝내 차단 ${blockedCnt}건`);
 }
 
+// ── RENT_ONLY 모드 ──────────────────────────────────────────
+// RENT_ONLY=1 로 실행하면 매매(연립·아파트·단독)를 다시 수집하지 않고
+// ① 단독·다가구 전월세(동 단위) ② 기존 단독 매매 house.json 에 동 좌표 보강
+// ③ 오피스텔 전월세(건물 단위) 만 처리한다. 동/건물 좌표는 V-World 로 지오코딩한다.
+async function collectRentOnly() {
+  console.log(`수집 기간: 최근 ${MONTHS_BACK}개월 · 서울 ${Object.keys(GU).length}개 구 (전월세 전용)\n`);
+
+  // ① 단독·다가구 전월세 — 지번이 마스킹돼 동 단위 집계만 가능하다 (매매와 같은 이유)
+  console.log('[1/3] 단독·다가구 전월세 수집 (동 단위 집계)');
+  const shr = await fetchAll('RTMSDataSvcSHRent/getRTMSDataSvcSHRent', '단독다가구 전월세');
+  const dong = new Map();
+  for (const r of shr) {
+    const k = `${r._gu}|${r.umdNm}`;
+    let d = dong.get(k);
+    if (!d) { d = { gu: r._gu, dong: r.umdNm, jd: [], rd: [], rm: [] }; dong.set(k, d); }
+    const dep = eok(r.deposit);
+    const mon = Math.round(Number(String(r.monthlyRent).replace(/[,\s]/g, '')));
+    if (mon > 0) { if (dep > 0) d.rd.push(dep); d.rm.push(mon); }
+    else if (dep > 0) d.jd.push(dep);
+  }
+  const dAddrs = [...dong.values()].map((d) => `서울특별시 ${d.gu} ${d.dong}`);
+  console.log(`  동 ${dong.size}개 · 지오코딩`);
+  await geocodeAll(dAddrs);
+  const hr = {};
+  for (const d of dong.values()) {
+    const pt = geoCache.get(`서울특별시 ${d.gu} ${d.dong}`);
+    hr[`${d.gu} ${d.dong}`] = {
+      jc: d.jd.length, jmed: median(d.jd), jmin: d.jd.length ? Math.min(...d.jd) : 0, jmax: d.jd.length ? Math.max(...d.jd) : 0,
+      rc: d.rd.length, rmed: median(d.rm), rdep: median(d.rd),
+      ...(pt ? { lat: Number(pt[0].toFixed(5)), lng: Number(pt[1].toFixed(5)) } : {}),
+    };
+  }
+  fs.writeFileSync(path.join(OUT_DIR, `realprice_house_rent${SUFFIX}.json`), JSON.stringify(hr));
+  console.log(`  realprice_house_rent.json 저장 — ${Object.keys(hr).length}개 동 / ${(fs.statSync(path.join(OUT_DIR, `realprice_house_rent${SUFFIX}.json`)).size / 1024).toFixed(0)}KB`);
+
+  // ② 기존 단독 매매 house.json 에 동 좌표 보강 — 키 형식이 ① 과 같아 레이어에서 좌표를 쓸 수 있다
+  const housePath = path.join(OUT_DIR, `realprice_house${SUFFIX}.json`);
+  if (fs.existsSync(housePath)) {
+    const house = JSON.parse(fs.readFileSync(housePath, 'utf8'));
+    const hAddrs = Object.keys(house).map((k) => `서울특별시 ${k}`);
+    console.log('\n[2/3] 단독·다가구 매매 동 좌표 보강');
+    await geocodeAll(hAddrs);
+    for (const k of Object.keys(house)) {
+      const pt = geoCache.get(`서울특별시 ${k}`);
+      if (pt) { house[k].lat = Number(pt[0].toFixed(5)); house[k].lng = Number(pt[1].toFixed(5)); }
+    }
+    fs.writeFileSync(housePath, JSON.stringify(house));
+    console.log(`  realprice_house.json 좌표 보강 — ${Object.values(house).filter((h) => h.lat).length}/${Object.keys(house).length} 동`);
+  } else {
+    console.log('\n[2/3] realprice_house.json 없음 — 건너뜀 (먼저 매매 수집 실행 필요)');
+  }
+
+  // ③ 오피스텔 전월세 — 지번이 마스킹되지 않아 건물(지번) 단위로 지오코딩한다
+  console.log('\n[3/3] 오피스텔 전월세 수집 (건물 단위)');
+  const offi = await fetchAll('RTMSDataSvcOffiRent/getRTMSDataSvcOffiRent', '오피스텔 전월세');
+  const bld = new Map();
+  for (const r of offi) {
+    if (!r.jibun || /\*/.test(r.jibun)) continue;
+    const addr = `서울특별시 ${r._gu} ${r.umdNm} ${r.jibun}`;
+    let b = bld.get(addr);
+    if (!b) { b = { addr, name: r.offiNm || r.umdNm, gu: r._gu, dong: r.umdNm, deals: [] }; bld.set(addr, b); }
+    b.deals.push({
+      dep: eok(r.deposit), mon: Math.round(Number(String(r.monthlyRent).replace(/[,\s]/g, ''))),
+      a: Number(r.excluUseAr) || 0, f: Number(r.floor) || 0, y: Number(r.buildYear) || 0,
+      ym: `${r.dealYear}.${r.dealMonth}`,
+    });
+  }
+  console.log(`  고유 건물 ${bld.size.toLocaleString()}개`);
+  console.log('  지오코딩');
+  await geocodeAll(new Set([...bld.values()].map((b) => b.addr)));
+  const F = ['name', 'gu', 'dong', 'lat', 'lng', 'dep', 'mon', 'area', 'floor', 'build', 'ymd', 'cnt', 'depMin', 'depMax'];
+  const gus = [], dongs = [];
+  const idx = (arr, v) => { let i = arr.indexOf(v); if (i < 0) { i = arr.length; arr.push(v); } return i; };
+  const rows = [];
+  for (const b of bld.values()) {
+    const pt = geoCache.get(b.addr);
+    if (!pt) continue;
+    b.deals.sort((x, y) => (y.ym > x.ym ? 1 : -1));
+    const latest = b.deals[0];
+    const ds = b.deals.map((d) => d.dep).filter((d) => d > 0);
+    rows.push([
+      b.name, idx(gus, b.gu), idx(dongs, b.dong),
+      Number(pt[0].toFixed(5)), Number(pt[1].toFixed(5)),
+      latest.dep, latest.mon, Math.round(latest.a * 10) / 10, latest.f, latest.y, latest.ym,
+      b.deals.length, ds.length ? Math.min(...ds) : 0, ds.length ? Math.max(...ds) : 0,
+    ]);
+  }
+  fs.writeFileSync(path.join(OUT_DIR, `realprice_officel${SUFFIX}.json`), JSON.stringify({ fields: F, gus, dongs, rows }));
+  console.log(`  realprice_officel.json 저장 — ${rows.length.toLocaleString()}건 / ${(fs.statSync(path.join(OUT_DIR, `realprice_officel${SUFFIX}.json`)).size / 1048576).toFixed(2)}MB`);
+
+  console.log('\n완료.');
+}
+
 // ── 3) 메인 ─────────────────────────────────────────────────
 (async () => {
+  if (process.env.RENT_ONLY === '1') {
+    await collectRentOnly();
+    return;
+  }
   console.log(`수집 기간: 최근 ${MONTHS_BACK}개월 · 서울 ${Object.keys(GU).length}개 구\n`);
 
   // 연립다세대 — 건물(지번) 단위로 묶는다

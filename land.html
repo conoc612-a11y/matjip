@@ -1348,6 +1348,182 @@
         map.removeControl(rpLegend);
       });
 
+      // ── 단독·다가구 매매/전월세 (동 단위) ──────────────────────────
+      // 국토부가 지번을 '1***' 로 마스킹해서 개별 좌표는 없다. tools/collect_realprice.js 가
+      // '서울특별시 OO구 OO동' 을 V-World 로 지오코딩해 각 동의 대표 좌표를 파일에 넣는다.
+      // 동 대표 좌표는 어디까지나 동 중심 근처지 건물 좌표가 아님을 팝업에 밝힌다.
+      const houseCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 50 });
+      let houseRows = null, _houseRowsPromise = null;
+      function loadHouseRows() {
+        if (!_houseRowsPromise) {
+          _houseRowsPromise = fetch('realprice_house.json').then((r) => r.json()).then((j) => {
+            houseRows = Object.entries(j)
+              .map(([key, v]) => {
+                if (!v.lat || !v.lng) return null;
+                const m = String(key).match(/^(\S+구) (.+)$/);
+                return { gu: m ? m[1] : '', dong: m ? m[2] : key, lat: v.lat, lng: v.lng, ...v };
+              })
+              .filter(Boolean);
+            return houseRows;
+          }).catch(() => null);
+        }
+        return _houseRowsPromise;
+      }
+      function housePopupHtml(d) {
+        const range = d.max > d.min ? ` · <span style="color:var(--c-muted);">${d.min}~${d.max}억</span>` : '';
+        const ar = [];
+        if (d.plot) ar.push(`대지 ${d.plot}㎡`);
+        if (d.area) ar.push(`연면적 ${d.area}㎡`);
+        if (d.build) ar.push(`건축년도 중앙값 ${d.build}년`);
+        return `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--c-primary);flex-shrink:0;"></span><span class="rp-name">${esc(d.gu)} ${esc(d.dong)}</span><span style="font-size:12px;background:#f08c00;color:#fff;padding:1px 8px;border-radius:999px;">단독·다가구</span></div><div class="pc-body"><div style="margin-bottom:4px;">동 단위 집계 · 최근 12개월</div><div class="pc-price">매매 중앙값 ${d.med}억</div><div style="margin-top:3px;font-size:12px;color:var(--c-muted);">${d.cnt}건${range}</div>${ar.length ? `<div style="margin-top:3px;font-size:12px;color:var(--c-muted);">${ar.join(' · ')}</div>` : ''}<div style="margin-top:6px;font-size:12px;color:var(--c-muted);">※ 동 대표 좌표 (건물 위치 아님)</div></div></div>`;
+      }
+      function houseBuild() {
+        if (!houseRows) return;
+        houseCluster.clearLayers();
+        houseCluster.addLayers(houseRows.map((d) => {
+          const m = L.circleMarker([d.lat, d.lng], { radius: 5, color: '#fff', weight: 1, fillColor: '#f08c00', fillOpacity: 0.85 });
+          m.bindPopup(housePopupHtml(d));
+          return m;
+        }));
+      }
+      map.on('overlayadd', (e) => {
+        if (e.layer !== houseCluster) return;
+        loadHouseRows().then(() => houseBuild());
+      });
+
+      // 단독·다가구 전월세 — 동 단위. 전세(jc·jmed)와 월세(rc·rmed)를 나눠 보여준다.
+      const houseRentCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 50 });
+      let houseRentRows = null, _houseRentRowsPromise = null;
+      function loadHouseRentRows() {
+        if (!_houseRentRowsPromise) {
+          _houseRentRowsPromise = fetch('realprice_house_rent.json').then((r) => r.json()).then((j) => {
+            houseRentRows = Object.entries(j)
+              .map(([key, v]) => {
+                if (!v.lat || !v.lng) return null;
+                const m = String(key).match(/^(\S+구) (.+)$/);
+                return { gu: m ? m[1] : '', dong: m ? m[2] : key, lat: v.lat, lng: v.lng, ...v };
+              })
+              .filter(Boolean);
+            return houseRentRows;
+          }).catch(() => null);
+        }
+        return _houseRentRowsPromise;
+      }
+      function houseRentPopupHtml(d) {
+        const jeonse = d.jc ? `전세 <b>${d.jmed}억</b> <span style="color:var(--c-muted);">${d.jc}건</span>` : '';
+        const monthly = d.rc ? `월세 보증금 <b>${d.rdep}억</b> · 월세 <b>${d.rmed}만원</b> <span style="color:var(--c-muted);">${d.rc}건</span>` : '';
+        return `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--c-primary);flex-shrink:0;"></span><span class="rp-name">${esc(d.gu)} ${esc(d.dong)}</span><span style="font-size:12px;background:#339af0;color:#fff;padding:1px 8px;border-radius:999px;">단독·다가구 전월세</span></div><div class="pc-body"><div style="margin-bottom:4px;">동 단위 집계 · 최근 12개월</div>${jeonse ? `<div class="pc-price">${jeonse}</div>` : ''}${monthly ? `<div style="margin-top:3px;">${monthly}</div>` : ''}<div style="margin-top:6px;font-size:12px;color:var(--c-muted);">※ 동 대표 좌표 (건물 위치 아님)</div></div></div>`;
+      }
+      function houseRentBuild() {
+        if (!houseRentRows) return;
+        houseRentCluster.clearLayers();
+        houseRentCluster.addLayers(houseRentRows.map((d) => {
+          const m = L.circleMarker([d.lat, d.lng], { radius: 5, color: '#fff', weight: 1, fillColor: '#339af0', fillOpacity: 0.85 });
+          m.bindPopup(houseRentPopupHtml(d));
+          return m;
+        }));
+      }
+      map.on('overlayadd', (e) => {
+        if (e.layer !== houseRentCluster) return;
+        loadHouseRentRows().then(() => houseRentBuild());
+      });
+
+      // ── 오피스텔 전월세 (건물 단위) ────────────────────────────────
+      // 연립다세대처럼 지번(jibun)이 마스킹되지 않아 건물 단위로 지오코딩된다.
+      // 전용면적(area)·층수(floor)·건축년도(build)는 최근 거래 기준이고,
+      // dep(보증금)·mon(월세) 도 최근 거래 기준, cnt 는 12개월 누적 거래 수다.
+      const officelCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 60 });
+      officelCluster.on('click', (e) => {
+        const m = e.layer;
+        if (!m || !m._pop) return;
+        if (!m.getPopup() && m._pop) m.bindPopup(m._pop());
+        m.openPopup();
+      });
+      let officelRows = null, _officelPromise = null;
+      function loadOfficel() {
+        if (!_officelPromise) {
+          _officelPromise = fetch('realprice_officel.json').then((r) => r.json()).then((j) => {
+            const F = {};
+            j.fields.forEach((f, i) => { F[f] = i; });
+            officelRows = j.rows.map((r) => ({
+              name: r[F.name], gu: j.gus[r[F.gu]], dong: j.dongs[r[F.dong]],
+              lat: r[F.lat], lng: r[F.lng], dep: r[F.dep], mon: r[F.mon], area: r[F.area],
+              floor: r[F.floor], build: r[F.build], ymd: r[F.ymd], cnt: r[F.cnt],
+              depMin: r[F.depMin], depMax: r[F.depMax],
+            }));
+            return officelRows;
+          }).catch(() => null);
+        }
+        return _officelPromise;
+      }
+      function officelPopupHtml(d) {
+        const dep = d.dep > 0 ? `보증금 ${d.dep}억` : '';
+        const mon = d.mon > 0 ? `월세 ${d.mon}만원` : '';
+        const rent = [dep, mon].filter(Boolean).join(' + ');
+        const range = d.cnt > 1 && d.depMax > d.depMin
+          ? `<div style="margin-top:3px;font-size:12px;color:var(--c-muted);">12개월 ${d.cnt}건 · 보증금 ${d.depMin}~${d.depMax}억</div>`
+          : `<div style="margin-top:3px;font-size:12px;color:var(--c-muted);">12개월 ${d.cnt}건</div>`;
+        return `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--c-primary);flex-shrink:0;"></span><span class="rp-name">${esc(d.name)}</span><span style="font-size:12px;background:var(--c-primary);color:#fff;padding:1px 8px;border-radius:999px;">오피스텔</span></div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div><div class="pc-price">${rent || '—'}</div><div style="margin-top:3px;">전용 ${esc(d.area)}㎡ · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="margin-top:3px;">${esc(d.build)}년 건축</div>${range}</div></div>`;
+      }
+      function officelBuild() {
+        if (!officelRows) return;
+        officelCluster.clearLayers();
+        officelCluster.addLayers(officelRows.map((d) => {
+          const m = L.circleMarker([d.lat, d.lng], { radius: 4, color: '#fff', weight: 1, fillColor: '#7048e8', fillOpacity: 0.9 });
+          m._pop = (() => officelPopupHtml(d));
+          return m;
+        }));
+      }
+      map.on('overlayadd', (e) => {
+        if (e.layer !== officelCluster) return;
+        loadOfficel().then(() => officelBuild());
+      });
+
+      // ── 전기차 충전소 ──────────────────────────────────────────────
+      // tools/collect_evcharger.js 산출물. 좌표는 충전기 단위 API 를 충전소(statId)로 묶은 것.
+      // cnt 는 충전기 수, fast 는 급속(50kW 이상) 수. 상태(stat)는 실시간이라 정적 파일엔 없다.
+      const evCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 60 });
+      evCluster.on('click', (e) => {
+        const m = e.layer;
+        if (!m || !m._pop) return;
+        if (!m.getPopup() && m._pop) m.bindPopup(m._pop());
+        m.openPopup();
+      });
+      let evRows = null, _evPromise = null;
+      function loadEv() {
+        if (!_evPromise) {
+          _evPromise = fetch('evcharger.json').then((r) => r.json()).then((j) => {
+            const F = {};
+            j.fields.forEach((f, i) => { F[f] = i; });
+            evRows = j.rows.map((r) => ({
+              name: r[F.name], addr: r[F.addr], lat: r[F.lat], lng: r[F.lng],
+              useTime: r[F.useTime], parkingFree: r[F.parkingFree], kind: r[F.kind],
+              cnt: r[F.cnt], fast: r[F.fast],
+            }));
+            return evRows;
+          }).catch(() => null);
+        }
+        return _evPromise;
+      }
+      function evPopupHtml(d) {
+        const fast = d.fast ? `급속 <b>${d.fast}</b> · ` : '';
+        const parking = d.parkingFree ? '<span style="margin-left:4px;background:#2f9e44;color:#fff;font-size:12px;padding:1px 6px;border-radius:9px;">주차 무료</span>' : '';
+        return `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#2f9e44;flex-shrink:0;"></span><span class="rp-name">${esc(d.name)}</span><span style="font-size:12px;background:#2f9e44;color:#fff;padding:1px 8px;border-radius:999px;">충전소</span></div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.addr)}</div><div class="pc-price">충전기 ${d.cnt}대 · ${fast}완속 ${d.cnt - d.fast}</div><div style="margin-top:3px;font-size:12px;color:var(--c-muted);">${esc(d.useTime)}</div><div style="margin-top:3px;font-size:12px;color:var(--c-muted);">이용 현황은 실시간이라 표시하지 않음</div>${parking}</div></div>`;
+      }
+      function evBuild() {
+        if (!evRows) return;
+        evCluster.clearLayers();
+        evCluster.addLayers(evRows.map((d) => {
+          const m = L.circleMarker([d.lat, d.lng], { radius: 4, color: '#fff', weight: 1, fillColor: '#2f9e44', fillOpacity: 0.9 });
+          m._pop = (() => evPopupHtml(d));
+          return m;
+        }));
+      }
+      map.on('overlayadd', (e) => {
+        if (e.layer !== evCluster) return;
+        loadEv().then(() => evBuild());
+      });
+
       // 팝업 안의 클릭이 지도로 새어나가지 않게 막는다.
       // 이게 없으면 '건축물대장 상세 보기' 같은 팝업 내부 버튼을 누를 때
       // map click 이 한 번 더 발생해, 버튼이 놓인 화면 지점의 좌표로 새 팝업이 열린다.
@@ -2114,9 +2290,13 @@
         ['실거래', [
           { name: '아파트 실거래가·노후도', layer: realpriceCluster },
           { name: '연립·다세대 실거래가', layer: villaCluster },
+          { name: '단독·다가구 매매 (동 단위)', layer: houseCluster },
+          { name: '단독·다가구 전월세 (동 단위)', layer: houseRentCluster },
+          { name: '오피스텔 전월세', layer: officelCluster },
         ]],
         ['현장 확인', [
           { name: 'CCTV (실시간 도로영상)', layer: cctvLayer },
+          { name: '전기차 충전소', layer: evCluster },
         ]],
         ['청약', [
           { name: '분양예정 (청약홈)', layer: subLayer },
