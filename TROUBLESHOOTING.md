@@ -370,6 +370,19 @@ npx -y supabase projects list
 - **2026-08-09 CCTV 팝업 리사이즈 무시 (사용자 문의 "cctv 팝업은 크기조정이 안됨")**: `.cctv-pc`(land.html:289)가 `width:320px` **고정**이라 그립으로 팝업을 키워도 안쪽 카드가 안 늘었다. 다른 팝업의 `.pc`는 `width:100%`(277)로 리사이즈에 따라 다시 흐르게 되어 있는데 CCTV만 빠졌다(264px 고정 시절 `.pc`가 겪었던 버그의 재발, 275~276 주석). **해결**: `width:100%`+`min-width:320px`, flex column(`height:100%`), video `flex:1 1 auto`(min-height 180px) — 폭·높이·영상 영역 모두 드래그에 확장. **검증**(`%TEMP%\opencode\cctv-resize-test.cjs`, 로컬 CDP 실측): 그립 드래그 시 콘텐츠 321×263→455×358, `.cctv-pc` 동일 확장, video 180→274px(`videoGrew=true`).
 - **2026-08-09 진행현황 앞쪽 단계 누락 (사용자 문의 "입주까지 절차만 나오잖아, 전체 목록이 나오라고")**: `jbTlHtml()`이 **"마지막 완료 단계 뒤만 예정으로 붙이는"** 구조라 tl에 없는 앞쪽 표준 단계가 목록에서 통째로 사라졌다(예: tl=[사업시행인가]면 대상지선정~건축심의 미표시). **해결**(land.html:1639~1695): STAGE_SEQ 18단계 **전체를 항상 나열** — 완료(✓) 또는 "예정". 표준 절차 밖 단계(기획완료 등)는 맨 위 OUT 행 + 전체 18단계를 별도 표시. tl 없는 구역은 stage까지 완료로 가정(기존 유지). **검증**(`%TEMP%\opencode\jbtl-full-test.cjs`, 로컬 CDP 실측): 사당동 202-29(관리지역고시)=18행·완료 3, 반포미도2차(기획완료)=19행·OUT 1+18, 상계주공5단지(tl=사업시행인가)=18행·완료 3, 전부 입주 행 표시. 주의: 이제 행 수가 데이터와 무관하게 18 이상 고정이므로 행 수 기반 기존 하네스 기대값이 바뀐다.
 
+- **2026-08-09 배경지도 버튼이 왼쪽으로 잘림 ("OSM에서 SM까지만 보임", land.html)**: 
+  - **증상**: 지도 좌상단 배경지도 피커(일반지도·위성지도·위성+라벨·OSM)의 왼쪽 부분이 화면 밖으로 밀려나 OSM 버튼의 오른쪽 일부("SM")만 보인다.
+  - **원인(실측)**: `.footer-right`(푸터 우측, 연락처+관리자, 574px 고정, `white-space:nowrap`)가 뷰포트가 좁아도 줄어들지 않아 **페이지 전체 `scrollWidth`가 1394px로 고정**된다(뷰포트 1258에서도 136px, 900에서 494px 초과). 페이지에 가로 스크롤바가 생기고, 오른쪽으로 스크롤하면 지도 왼쪽(버튼 포함)이 화면 밖으로 밀려난다. 피커 자체가 잘리는 게 아니라 **페이지 가로 오버플로**가 원인 — 뷰포트 폭·DPR·패널 상태와 무관하게 재현(641~1394px 전 구간, 스크롤 0이면 항상 정상).
+  - **해결**: `.footer-top`(land.html:369)에 `flex-wrap:wrap` 추가 → 좁은 화면에서 푸터가 2줄로 래핑되고 오버플로 제거(전 구간 `scrollWidth == clientWidth` 확인).
+  - **검증**: `%TEMP%\opencode\bug2-scanwidth.cjs`·`bug2-local.cjs` — 수정 전 docScrollW 1394(고정)/수정 후 전 폭에서 overflow 0.
+
+- **2026-08-09 팝업을 X로 닫아도 지도 이동 후 다시 열린다 (land.html)**:
+  - **증상**: 지도 클릭 → 팝업("위치 정보") → X로 닫아도 잠시 후(또는 지도 이동 후) 같은 팝업이 다시 열린다.
+  - **원인(실측)**: 지오코딩은 비동기다. 클릭 직후 `buildClickPopup()`의 역지오코딩 콜백이 **닫힘 여부와 무관하게** `clickMarker.setPopupContent(...).openPopup()`(land.html:3603)을 실행해 닫은 팝업을 재오픈한다. 이벤트 타임라인 실측: `open(정보 불러오는 중, d:0) → close(X, d:123) → open(위치 정보, d:224)`. "지도 이동 후"로 보였던 건 지도 이동과 무관한 **콜백 타이밍** 문제.
+  - **주의(계측 함정)**: `map.closePopup()` 후에도 `map._popup` 참조는 남는다(STILL_SET). `map._popup !== null`로 재오픈을 판정하면 오판 — 반드시 `map._popup.isOpen()` 사용.
+  - **해결**: `map.on('popupclose')` 핸들러(land.html:1540~1546) — 닫히는 팝업이 `clickMarker.getPopup()`과 같으면 마커를 제거(`clickMarker=null`). 그러면 async 콜백의 `if (!clickMarker) return` 가드(land.html:3598)가 재오픈을 차단한다.
+  - **검증**: `%TEMP%\opencode\bug3-user-standalone.cjs`(로컬 CDP) — 클릭→120ms 후 X로 닫기→3.5s 대기: `isOpenAfter3s:false`, `popupInDomAfter:false`, 이벤트에 재오픈 없음. 수정 전엔 `isOpenAfter3s:true`.
+
 # 배포 상태
 gh api repos/conoc612-a11y/matjip/pages/builds/latest --jq '{status:.status, commit:.commit}'
 ```

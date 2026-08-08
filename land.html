@@ -366,7 +366,7 @@
       padding:9px 18px; display:flex; flex-direction:column; justify-content:center; gap:4px; }
     .footer-resize { position:absolute; top:-6px; left:0; right:0; height:12px; cursor:ns-resize; z-index:5; }
     .footer-resize::after { content:''; position:absolute; top:4px; left:50%; transform:translateX(-50%); width:48px; height:4px; border-radius:2px; background:#c1c4c9; }
-    .footer-top { display:flex; align-items:center; gap:16px; }
+    .footer-top { display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
     .footer-links { flex:1; display:flex; gap:14px; white-space:nowrap; }
     .footer-links a { font-size:13px; color:var(--muted); text-decoration:none; }
     .footer-links a:hover { color:var(--c-primary); }
@@ -1537,6 +1537,15 @@
       });
       // 팝업 공통 컨트롤 부착 — 모든 Leaflet 팝업(정비·실거래·빌라·CCTV)에 그립 리사이즈 + 접기 적용
       map.on('popupopen', (e) => { attachPopupControls(e.popup); });
+      // X 버튼·경로 버튼으로 팝업을 닫으면 클릭 마커도 제거한다.
+      // 지오코딩은 비동기라 닫은 뒤에야 buildClickPopup()(3603)이 setPopupContent+openPopup 을 실행해
+      // 팝업이 다시 열리는 문제가 있었다 — 마커를 지우면 3598행의 if(!clickMarker) 가드로 재오픈이 차단된다.
+      map.on('popupclose', (e) => {
+        if (clickMarker && e.popup === clickMarker.getPopup()) {
+          map.removeLayer(clickMarker);
+          clickMarker = null;
+        }
+      });
 
       // 실거래가 마커 팝업의 ☆저장 버튼 → localStorage 즐겨찾기 토글
       map.on('popupopen', (e) => {
