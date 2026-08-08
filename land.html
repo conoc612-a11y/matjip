@@ -1414,7 +1414,7 @@
       let jbRows = null, jbPolys = null;
       const jbFilter = { '신통': true, '재개발': true, '재건축': true, '지역주택': true, '재정비촉진': true, '모아': true, '역세권': true, '노후계획도시': true, '기타': true };
       let jbActiveStage = 'all';
-      const STAGE_COLOR_MAP = { '착공': '#2f9e44', '준공': '#1c7ed6', '관리처분': '#7048e8', '사업시행': '#e8590c', '조합설립': '#f08c00', '추진위': '#aaa', '기획': '#e8590c', '대상지선정': '#f08c00' };
+      const STAGE_COLOR_MAP = { '착공': '#2f9e44', '준공': '#1c7ed6', '관리처분': '#7048e8', '사업시행': '#e8590c', '사업계획': '#e8590c', '조합설립': '#f08c00', '추진위': '#aaa', '기획': '#e8590c', '대상지선정': '#f08c00' };
       function stageColor(s) { s = s || ''; for (const [k, v] of Object.entries(STAGE_COLOR_MAP)) { if (s.includes(k)) return v; } return '#868e96'; }
       const STAGE_PCT = { '대상지선정':10,'추진위':20,'조합설립':35,'사업시행':50,'관리처분':65,'착공':80,'준공':95,'조합해산':100,'정비구역해제':0,'기획':15 };
       function stagePct(s) { s=s||''; for(const [k,v] of Object.entries(STAGE_PCT)) { if(s.includes(k)) return v; } return 15; }
@@ -1424,6 +1424,9 @@
       // stage 문자열이 표준 절차 중 어느 단계에 해당하는지 — 부분일치(준공→준공인가, 구역지정→정비구역지정).
       function seqIdx(stage) {
         stage = (stage || '').replace(/\s/g, '');
+        // 「주택법」 제15조 사업계획승인 = 「도시정비법」 제50조 사업시행계획인가와 동일 위치(역세권·노후계획도시 계열).
+        // (근거: 서울시 역세권 활성화사업 운영기준 2-1-1 — 사업계획승인·사업시행계획인가·건축허가 3유형)
+        if (stage === '사업계획승인') return STAGE_SEQ.indexOf('사업시행인가');
         let i = STAGE_SEQ.findIndex((s) => stage.includes(s) || s.includes(stage));
         if (i >= 0) return i;
         // 사업시행계획인가→사업시행인가 류: 시퀀스 항목 앞 4글자로 2차 매칭
