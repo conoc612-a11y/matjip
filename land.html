@@ -284,8 +284,8 @@
     .pc-btn-primary { background:var(--c-primary); color:#fff; border:1px solid var(--c-primary); }
     .pc-btn-primary:hover { background:#1a63a8; color:#fff; }
     /* ── CCTV (ITS 국가교통정보센터) ── */
-    .cctv-icon { width:26px; height:26px; margin:-26px 0 0 -13px; border-radius:50% 50% 50% 0; background:var(--c-danger); transform:rotate(-45deg); display:flex; align-items:center; justify-content:center; box-shadow:var(--c-shadow); }
-    .cctv-icon svg { width:13px; height:13px; color:#fff; transform:rotate(45deg); }
+    .cctv-icon { width:34px; height:34px; margin:-34px 0 0 -17px; border-radius:50% 50% 50% 0; background:var(--c-danger); transform:rotate(-45deg); display:flex; align-items:center; justify-content:center; box-shadow:var(--c-shadow); }
+    .cctv-icon svg { width:20px; height:20px; color:#fff; transform:rotate(45deg); }
     .cctv-pc { width:320px; max-width:100%; padding:0; box-sizing:border-box; overflow:hidden; }
     .cctv-pc-head { display:flex; align-items:center; justify-content:space-between; padding:11px 13px; border-bottom:1px solid var(--line); font-weight:700; font-size:14px; }
     .cctv-pc-close { width:24px; height:24px; border-radius:7px; border:none; background:var(--c-hover); color:var(--muted); font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
@@ -1514,7 +1514,7 @@
         if (!evRows) return;
         evCluster.clearLayers();
         evCluster.addLayers(evRows.map((d) => {
-          const m = L.circleMarker([d.lat, d.lng], { radius: 4, color: '#fff', weight: 1, fillColor: '#2f9e44', fillOpacity: 0.9 });
+          const m = L.circleMarker([d.lat, d.lng], { radius: 7, color: '#fff', weight: 2, fillColor: '#2f9e44', fillOpacity: 0.9 });
           m._pop = (() => evPopupHtml(d));
           return m;
         }));
@@ -1639,12 +1639,19 @@
         const done = (d.tl && d.tl.length) ? d.tl.slice() : [];
         // tl 이 없는 구역: 현재 stage 에 해당하는 표준 단계까지를 완료로 가정
         if (!done.length) {
-          // 취소·중단·해제 등 사업이 끝난/멈춘 구역은 진행현황을 표시하지 않는다.
-          if (/(취소|중단|해제|실효|완료)/.test(d.stage || '') && !/(준공|입주)/.test(d.stage || '')) return '';
+          // 취소·중단·해제·실효 등 사업이 끝난/멈춘 구역은 진행현황을 표시하지 않는다.
+          // '완료'는 빼야 한다 — '기획완료'·'입주자 모집공고 완료'처럼 진행 중 단계에도 붙는다.
+          // (실측: 반포미도2차 stage='기획완료' 가 이 정규식에 걸려 진행현황이 통째로 사라졌다.)
+          if (/(취소|중단|해제|실효)/.test(d.stage || '')) return '';
           const si = seqIdx(d.stage);
-          if (si < 0) return '';  // 시퀀스 밖 단계(기획완료 등)는 %바만
-          for (let i = 0; i < si; i++) done.push({ name: STAGE_SEQ[i], date: '' });
-          done.push({ name: d.stage, date: '' });
+          if (si < 0) {
+            // 표준 절차 밖 단계(기획완료·관리지역고시·추진위구성 등)는 다음 절차를 예측할 수
+            // 없으므로 현재 단계만 완료 행으로 표시한다. 빈 팝업보다 낫다.
+            done.push({ name: d.stage, date: '' });
+          } else {
+            for (let i = 0; i < si; i++) done.push({ name: STAGE_SEQ[i], date: '' });
+            done.push({ name: d.stage, date: '' });
+          }
         }
         // 완료 단계를 날짜순(실제 완료 순서)으로 정렬. 날짜 없는 항목은 뒤로.
         // rank 정렬은 tl 에 없는 과거 단계가 뒤섞여 실제 흐름과 어긋나는 경우가 있어 사용하지 않는다.
@@ -2079,7 +2086,7 @@
       const cctvIcon = L.divIcon({
         className: '',
         html: '<div class="cctv-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8l5 3v-2l5-3v8l-5-3v-2l-5 3z"/><rect x="14" y="6" width="8" height="10" rx="2"/></svg></div>',
-        iconSize: [26, 26], iconAnchor: [13, 26],
+        iconSize: [34, 34], iconAnchor: [17, 34],
       });
       // ITS 는 Supabase Edge Function 의 아웃바운드 IP 를 사실상 막고 있다
       // (실측: 내 PC 직접 호출 1.5초 / Edge Function 20초 초과 타임아웃, 간헐적으로만 성공).
