@@ -2498,6 +2498,24 @@
       //   { name, subs:[[id,이름]…] } — UPIS 레이어 id 별 소분류. 켠 것만 합쳐 한 장으로 그린다.
       // 소분류의 색 견본은 MapServer 의 /legend 에서 받은 실제 범례 이미지라 참조와 같다.
       const LAYER_TREE = [
+        ['법원경매', [
+          { name: '진행 물건(서울/경기)', layer: auctionCluster },
+        ]],
+        ['청약', [
+          { name: '분양예정 (청약홈)', layer: subLayer },
+        ]],
+        ['실거래', [
+          { name: '아파트 실거래가·노후도', layer: realpriceCluster },
+          { name: '연립·다세대 실거래가', layer: villaCluster },
+          { name: '단독·다가구 매매 (동 단위)', layer: houseCluster },
+          { name: '단독·다가구 전월세 (동 단위)', layer: houseRentCluster },
+          { name: '오피스텔 전월세', layer: officelCluster },
+        ]],
+        ['지적·행정경계', [
+          { name: '지적도 (필지 경계)', layer: wms('lt_c_landinfobasemap', 0.85) },
+          { name: '행정구역 (시군구)', layer: wms('lt_c_adsigg', 0.85) },
+          { name: '행정동 경계', layer: wms('lt_c_ademd', 0.7) },
+        ]],
         ['도시계획사업', [
           { name: '정비사업', subs: [[94, '신속통합기획'], [95, '재개발(도시정비형)'], [96, '재개발(주택정비형)'], [97, '재건축(단독)'], [98, '재건축(공동)'], [99, '주거환경개선(관리형)'], [100, '주거환경개선(정비형)']] },
           { name: '정비사업 상세', layer: jbCluster },
@@ -2540,27 +2558,9 @@
           { name: '기후환경 공간유형', subs: [[339, '기후'], [340, '열환경'], [341, '바람'], [342, '바람길']] },
           { name: '생태현황도 (2025)', subs: [[162, '비오톱 유형'], [163, '비오톱 유형(세부)'], [164, '개별 비오톱']] },
         ]],
-        ['실거래', [
-          { name: '아파트 실거래가·노후도', layer: realpriceCluster },
-          { name: '연립·다세대 실거래가', layer: villaCluster },
-          { name: '단독·다가구 매매 (동 단위)', layer: houseCluster },
-          { name: '단독·다가구 전월세 (동 단위)', layer: houseRentCluster },
-          { name: '오피스텔 전월세', layer: officelCluster },
-        ]],
         ['현장 확인', [
           { name: 'CCTV (실시간 도로영상)', layer: cctvLayer },
           { name: '전기차 충전소', layer: evCluster },
-        ]],
-        ['법원경매', [
-          { name: '진행 물건(서울/경기)', layer: auctionCluster },
-        ]],
-        ['청약', [
-          { name: '분양예정 (청약홈)', layer: subLayer },
-        ]],
-        ['지적·행정경계', [
-          { name: '지적도 (필지 경계)', layer: wms('lt_c_landinfobasemap', 0.85) },
-          { name: '행정구역 (시군구)', layer: wms('lt_c_adsigg', 0.85) },
-          { name: '행정동 경계', layer: wms('lt_c_ademd', 0.7) },
         ]],
       ];
 
