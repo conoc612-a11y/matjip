@@ -4344,7 +4344,9 @@
         if (!mErr) set('f-members', Number(m));
       } catch (e) {}
       try {
-        const v = await (await fetch(SUPABASE_URL + '/functions/v1/visit-count?page=land')).json();
+        let hdr = {};
+        try { const s2 = await s.auth.getSession(); if (s2.data.session) hdr = { Authorization: 'Bearer ' + s2.data.session.access_token }; } catch (e) {}
+        const v = await (await fetch(SUPABASE_URL + '/functions/v1/visit-count?page=land', { headers: hdr })).json();
         set('f-today', v.today);
         set('f-total', v.total);
       } catch (e) {}

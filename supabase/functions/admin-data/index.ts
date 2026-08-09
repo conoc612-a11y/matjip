@@ -106,15 +106,16 @@ Deno.serve(async (req) => {
 
     // ── 방문자 IP 위치 (최근 200건, 위치 컬럼 포함) ──
     // IP 는 익명 처리(앞 3옥텟만 표시) — 개인정보 최소화. 관리자만 볼 수 있는 데이터라도 원본 IP 는 노출하지 않는다.
+    // 로그인 회원 방문은 user_id 로 연결해 아래에서 이메일을 매핑한다 (비회원은 email null).
     const locRows = (await admin.from("visits")
-      .select("ip,country,region,city,visit_date")
+      .select("ip,country,region,city,visit_date,user_id")
       .not("ip", "is", null)
       .order("visit_date", { ascending: false })
       .order("id", { ascending: false })
       .limit(200)).data || [];
     const maskIp = (ip: string) => ip.includes(".") ? ip.split(".").slice(0, 3).join(".") + ".*" : ip;
     const locations = locRows.map((r) => ({
-      ip: r.ip ? maskIp(r.ip) : null, country: r.country, region: r.region, city: r.city, date: r.visit_date,
+      ip: r.ip ? maskIp(r.ip) : null, country: r.country, region: r.region, city: r.city, date: r.visit_date, user_id: r.user_id ?? null,
     }));
 
     // ── 회원 목록 (취향 + 최종 접속일 포함, 최신순) ──
@@ -129,6 +130,7 @@ Deno.serve(async (req) => {
     ]);
     const tByUser = new Map((tRes.data || []).map((t) => [t.user_id, t]));
     const authByUser = new Map((aRes.data.users || []).map((u) => [u.id, { last: u.last_sign_in_at ?? null, name: u.user_metadata?.name ?? null }]));
+    const emailByUser = new Map((pRes.data || []).map((p) => [p.id, p.email]));
     const members = (pRes.data || []).map((p) => {
       const t = tByUser.get(p.id);
       const a = authByUser.get(p.id);
@@ -155,10 +157,16 @@ Deno.serve(async (req) => {
       memberDaily.push({ d, c: mpMap[d] || 0 });
     }
 
+    // ── 방문 위치 목록에 회원 이메일 병합 (user_id는 노출하지 않고 이메일로만) ──
+    const locOut = locations.map((l) => ({
+      ip: l.ip, country: l.country, region: l.region, city: l.city, date: l.date,
+      email: l.user_id ? emailByUser.get(l.user_id) ?? null : null,
+    }));
+
     return json({
       today: todayCount, total, uniqueIps, memberCount,
       daily, hourly, weekday, byPage, memberDaily,
-      members, locations,
+      members, locations: locOut,
     });
   } catch (e) {
     return json({ error: "데이터 조회 실패", detail: String(e) }, 500);
