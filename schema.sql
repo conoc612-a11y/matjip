@@ -23,6 +23,47 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
+-- ── 신규 가입 → 관리자 이메일 알림 (admin-notify Edge Function 호출) ──
+-- 검증 시크릿은 app_secrets 테이블에 보관한다 (RLS: postgres 역할만 읽음, 리포에 평문 없음):
+--   INSERT INTO app_secrets(key,value) VALUES ('admin_notify_secret','<ADMIN_NOTIFY_SECRET과 동일>');
+create extension if not exists pg_net;
+
+create table if not exists app_secrets (
+  key   text primary key,
+  value text not null
+);
+alter table app_secrets enable row level security;
+drop policy if exists "app_secrets owner read" on app_secrets;
+create policy "app_secrets owner read" on app_secrets for select to postgres using (true);
+
+create or replace function public.notify_admin_new_user()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  notify_secret text;
+  u_name text;
+  u_email text;
+begin
+  select value into notify_secret from app_secrets where key = 'admin_notify_secret';
+  if notify_secret is null or notify_secret = '' then
+    raise warning 'app_secrets.admin_notify_secret 미설정 — 알림 전송 생략';
+    return new;
+  end if;
+  select raw_user_meta_data->>'name', email into u_name, u_email
+  from auth.users where id = new.id;
+  perform net.http_post(
+    url := 'https://bhgijvaxxjnocgfnaaeu.supabase.co/functions/v1/admin-notify',
+    headers := jsonb_build_object('Content-Type', 'application/json', 'x-notify-secret', notify_secret),
+    body := jsonb_build_object('email', u_email, 'name', u_name)
+  );
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_notify_admin_new_user on profiles;
+create trigger trg_notify_admin_new_user
+  after insert on profiles
+  for each row execute function public.notify_admin_new_user();
+
 -- 2) taste_profiles (취향, 1인 1개)
 create table if not exists taste_profiles (
   id             bigint generated always as identity primary key,
