@@ -400,7 +400,7 @@ function exportStats() {
 function exportLocations() {
   const d = new Date().toISOString().slice(0, 10);
   download('방문자위치_' + d + '.csv', csv([['방문일', 'IP', '국가', '지역', '도시']]
-    .concat((data.locations || []).map((l) => [(l.date || '').slice(0, 10), l.ip, l.country, l.region, l.city])));
+    .concat((data.locations || []).map((l) => [(l.date || '').slice(0, 10), l.ip, l.country, l.region, l.city]))));
 }
 
 // 초기화: 토큰이 있으면 바로 대시보드 / 이메일 링크(?reset=)면 새 비밀번호 화면
