@@ -33,6 +33,21 @@ function clientIp(req: Request): string {
   return fwd.split(",")[0].trim() || "unknown";
 }
 
+// IP → 국가/지역/도시 조회. ipwho.is 는 무료·키 불필요·HTTPS.
+// 조회 실패해도 방문 기록 자체는 계속되어야 하므로 실패 시 null 반환.
+async function lookupGeo(ip: string): Promise<{ country: string | null; region: string | null; city: string | null }> {
+  const empty = { country: null, region: null, city: null };
+  if (!ip || ip === "unknown") return empty;
+  try {
+    const res = await fetch(`https://ipwho.is/${encodeURIComponent(ip)}`, { signal: AbortSignal.timeout(5000) });
+    const geo = await res.json();
+    if (geo && geo.success !== false) {
+      return { country: geo.country ?? null, region: geo.region ?? null, city: geo.city ?? null };
+    }
+  } catch { /* 위치 조회 실패는 무시 */ }
+  return empty;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "GET") return json({ error: "GET만 허용합니다." }, 405);
@@ -52,8 +67,9 @@ Deno.serve(async (req) => {
 
   try {
     // 같은 IP는 하루 1건만 (unique index visits_ip_date_uniq 덕에 중복 무시)
+    const geo = await lookupGeo(ip);
     await admin.from("visits").upsert(
-      { page, ip, visit_date: today },
+      { page, ip, visit_date: today, country: geo.country, region: geo.region, city: geo.city },
       { onConflict: "ip,visit_date", ignoreDuplicates: true }
     );
     const [tRes, totRes] = await Promise.all([
