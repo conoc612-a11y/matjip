@@ -30,6 +30,12 @@
 - 커밋 `e067009`: admin.html(위치 탭) + schema.sql(알림 트리거) + admin-data(위치 반환) + admin-notify(신규) + 마이그레이션 `20260809000001_admin_notify.sql`. **push 완료**, admin-data 함수 배포 완료.
 - 기존: `2784629` → `e067009` (부모 2건 미커밋 없음).
 
+### 후속 수정 (같은 날) — 방문자 위치에 회원 이메일 연결 (커밋 `ae58b0a` push + 함수/마이그레이션 배포 완료)
+- 사용자 요청: 방문자 위치에 IP·국가·지역·도시 + **회원 이메일** 표시.
+- **방법**: ① `visits.user_id` 컬럼 추가(마이그레이션 `20260809000002`, FK `on delete cascade` + 인덱스) ② `visit-count`가 `Authorization` JWT를 `admin.auth.getUser()`로 검증해 user_id 저장(비회원은 null — 기존 집계 영향 없음) ③ 호출부(main.js:611·land.html:4347)에서 로그인 세션의 access_token을 헤더로 전달 ④ `admin-data`가 profiles 이메일 매핑(기존 pRes 재사용), 응답에서 user_id 대신 email만 노출 ⑤ admin.html 위치 표·CSV에 "회원" 컬럼.
+- **배포**: db push(마이그레이션 1건) + visit-count·admin-data 함수 배포 + push(`ae58b0a`). 문법 검사 admin/land/main 전부 OK.
+- **검증 필요**: 사용자가 로그인 상태로 main/land 재방문 → 방문자 위치 탭에 이메일 표시되는지 실화면 확인(같은 IP 하루 1건 dedup이라 기존 행에는 user_id 없음 — 다음 날부터 누적됨).
+
 ### 다음 세션 확인할 것
 - 관리자 대시보드 → 방문자 위치 탭 실화면 확인(배포 반영은 GitHub Pages 캐시 고려).
 - `@example.com` 계정 삭제 시 QA 계정 유지(§11-8).
