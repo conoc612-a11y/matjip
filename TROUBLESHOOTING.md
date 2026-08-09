@@ -317,6 +317,20 @@ console.log('blocks:',i,'fails:',f);
 - `admin-apply-reset`: 토큰 해시 조회 → 만료/사용 여부 확인 → Management API로 ADMIN_PASSWORD secret 교체(11-3) → `used_at` 표시. 새 비밀번호는 6자 이상.
 - 인증 메일 링크는 GitHub Pages 정적 주소 `?reset=` 쿼리로 열리고, admin.html 이 초기화 시 토큰을 읽어 새 비밀번호 화면을 띄운다.
 
+### 11-7. 네이버 SMTP 앱 비밀번호 → 535 인증 실패 (admin-notify, 2026-08-09)
+- **증상**: `nodemailer`(SMTP 465/SSL)로 conoc@naver.com 발송 시 `535 5.7.8 Username and Password not accepted`.
+- **원인(실측)**: 네이버 일반 비밀번호가 아니라 **앱 비밀번호(2단계 인증 시 생성한 16자리)** 를 써야 한다. 첫 발급 키 `RYVVWS6PQDEX`는 프로토콜/SMTP용 아님 → 535.
+- **해결**: 네이버 메일 → 환경설정 → **내 정보 → 앱 비밀번호 → SMTP/POP3용** 새로 발급(`LZEJRR1VZ5G9`). Edge Function secret `NAVER_SMTP_PASS` 교체 후 재배포, 직접 POST 호출로 `{"ok":true,messageId:...}` 확인.
+- **검증**: 2026-08-09 트리거(`trg_notify_admin_new_user`)로 신규 가입 2건 → conoc@naver.com 수신 확인.
+- **보안**: 키는 리포/HTML에 넣지 말고 `supabase functions secrets set`으로 등록(이 PC에선 CLI secrets 오류 시 11-2·11-3 참조).
+
+### 11-8. 테스트 계정 삭제 = Management API `database/query` (서비스 롤 키 없이, 2026-08-09)
+- **상황**: QA·트리거 검증용 `*@example.com` 계정을 지울 때 서비스 롤 키가 로컬에 없음. `admin-delete-user`는 관리자 토큰이 필요해 간편하지 않음.
+- **해결**: `sbp_` access token(DPAPI: `~/.supabase/access-token.enc` → `ProtectedData.Unprotect`)으로 **Management API `POST /v1/projects/{ref}/database/query`** 호출 → 원하는 SQL 실행.
+  - 조회: `select id, email from auth.users where email like '%@example.com';`
+  - 삭제: `delete from auth.users where email in (...);` — profiles/taste_profiles/saved_restaurants/feedbacks 는 전부 `on delete cascade`(schema.sql:7·70·93·104)라 별도 정리 불필요.
+- **주의**: `@example.com` 계정은 QA용으로 유지 중인 것도 있어(`qa.matjip.20260808@example.com`) **삭제 전 반드시 id/email 로 확인**하고 지울 것. 토큰은 배포 시에만 해독해 쓰고 평문 파일·리포 저장 금지.
+
 ---
 
 ## 12. 자주 쓰는 명령 (관리자 관련 추가)
@@ -342,6 +356,7 @@ npx -y supabase functions deploy admin-delete-user    --project-ref bhgijvaxxjno
 npx -y supabase functions deploy admin-request-reset  --project-ref bhgijvaxxjnocgfnaaeu --no-verify-jwt
 npx -y supabase functions deploy admin-apply-reset    --project-ref bhgijvaxxjnocgfnaaeu --no-verify-jwt
 npx -y supabase functions deploy delete-account       --project-ref bhgijvaxxjnocgfnaaeu --no-verify-jwt
+npx -y supabase functions deploy admin-notify         --project-ref bhgijvaxxjnocgfnaaeu --no-verify-jwt
 
 # 관리자 시크릿
 npx -y supabase secrets set "ADMIN_PASSWORD=<pw>"   --project-ref bhgijvaxxjnocgfnaaeu

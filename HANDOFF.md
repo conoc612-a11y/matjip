@@ -12,6 +12,30 @@
 
 ---
 
+## 2026-08-09 (14) — opencode (방문자 위치 탭 + 신규 가입 관리자 알림 배포 — 커밋 `e067009` push/built 완료)
+
+> 사용자 "관리자모드에서 회원 IP로 위치 파악하는 메뉴 어딨어?" → 위치 목록이 아직 없음을 확인(위치 컬럼은 직전 세션에서 추가 시작) → "방문자 위치" 탭 신설 + 관리자 가입 알림 최종 배포 완료. 테스트 계정 2개 삭제.
+
+### 완료
+- **admin.html "방문자 위치" 탭**: 최근 200건의 방문일·IP(앞 3옥텟만 마스킹)·국가·지역·도시 표 + 위치 CSV. `showTab('loc')` 분기 추가.
+- **admin-data**: `locations` 배열 반환 — `visits` 최신순 200건(`country/region/city/visit_date`), IP 마스킹 `maskIp()`(개인정보 최소화 사유). 배포 완료.
+- **신규 가입 알림**: `admin-notify`(네이버 SMTP) + `trg_notify_admin_new_user`(pg_net) — 직전 세션 작업물을 커밋에 포함(`e067009`). **메일 수신 확인됨**.
+- **테스트 계정 삭제**: `notifytest1786287998@example.com`·`trigtest1786288092@example.com` → Management API `database/query`로 삭제(profiles 등 CASCADE). QA 계정(`qa.matjip.20260808@example.com`)은 유지.
+
+### 함정 기록 (TROUBLESHOOTING §11-7·11-8)
+- 네이버 SMTP: 일반 비밀번호 → **535** → 앱 비밀번호(SMTP/POP3용) `LZEJRR1VZ5G9` 사용.
+- 서비스 롤 키 없이 테스트 계정 삭제 = DPAPI 해독(`~/.supabase/access-token.enc`) → `POST /v1/projects/{ref}/database/query`.
+
+### 커밋·배포 상태
+- 커밋 `e067009`: admin.html(위치 탭) + schema.sql(알림 트리거) + admin-data(위치 반환) + admin-notify(신규) + 마이그레이션 `20260809000001_admin_notify.sql`. **push 완료**, admin-data 함수 배포 완료.
+- 기존: `2784629` → `e067009` (부모 2건 미커밋 없음).
+
+### 다음 세션 확인할 것
+- 관리자 대시보드 → 방문자 위치 탭 실화면 확인(배포 반영은 GitHub Pages 캐시 고려).
+- `@example.com` 계정 삭제 시 QA 계정 유지(§11-8).
+
+---
+
 ## 2026-08-09 (13) — opencode (팝업 재오픈 전수 QA + 전 페이지×뷰포트 회귀 QA, main.html 푸터 오버플로 재발 수정)
 
 > 사용자 "지금 문제가 너무 많잖아… 건물 클릭→팝업 X 닫기→지도 이동 시 재오픈" 재보고 → 재현 조사 + land.html 레이어 전수 QA + 모바일 QA 진행. **재오픈은 어디서도 재현 안 됨**(이미 `6caa166` 수정·배포 반영). 대신 새 요구사항 "다른 컴퓨터·다른 모니터 규격에서도 정상 표시"로 **페이지 7종 × 뷰포트 7종 전수 회귀 QA** → **main.html 푸터 가로 오버플로 재발 발견·수정**. 커밋 대기(사용자 동의 후).
