@@ -56,7 +56,8 @@
 - 경매 `cn` 필드 = `"서울중앙지방법원 2023타경2726"` 형식(법원명 포함) → 패널 행에서는 `d.court` 접두어 제거해 표시.
 
 ### 커밋·배포 상태
-- **커밋·push·배포 완료** (사용자 "기록하고 배포해줄래"): `land.html`(사이드 패널·wonEok), `tools/collect_auction.js`(--sched), `auction.json`(2,949건), `TROUBLESHOOTING.md`, `HANDOFF.md`.
+- **커밋·push·배포 완료** (사용자 "기록하고 배포해줄래"): `land.html`(사이드 패널·wonEok), `tools/collect_auction.js`(--sched), `auction.json`(2,949건), `TROUBLESHOOTING.md`, `HANDOFF.md` → `0a18d49`.
+- **후속 커밋 `518d534` push/built 완료** (사용자 현장 확인 반영): 전기차 충전소 마커 ⚡·법원경매 마커 ⚖️(유찰 빨강/그 외 주황 배경) divIcon 화, 법원경매 명칭 "진행중 물건 (서울·경기)" → **"진행 물건(서울/경기)"**. 실서버 반영 확인(명칭/아이콘 모두). 검증 시 페이지에러 2건은 auth-guard·kakao dapi 의도적 차단 결과(무해).
 
 ### 다음 세션 확인할 것
 - 배포본에서 실화면 확인: 레이어 체크 → 패널 표시 → 행 클릭 팝업 → 즐겨찾기 → 법원 링크 2종.
