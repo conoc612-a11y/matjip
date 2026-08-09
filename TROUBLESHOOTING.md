@@ -29,6 +29,7 @@
 | OSM 배경지도 | ✅ 됨 | 키 불필요 |
 | UPIS 주제도(서울 ArcGIS) | ✅ 됨 | 프록시 경유, 키 불필요 |
 | Supabase Edge Function | ✅ 됨 | CORS 열려 있음 |
+| land.html·main.html 자체 접속 | ❌ onboarding.html 로 리다이렉트 | `js/auth-guard.js` — 로그인 세션 없으면 `?next=` 로 이동 |
 
 **대응**: 로컬에서 지도를 봐야 하면 **배경지도를 OSM 으로 바꾸고** 테스트한다.
 V-World/카카오가 필요한 검증은 **배포본에서** 해야 한다.
@@ -36,6 +37,12 @@ V-World/카카오가 필요한 검증은 **배포본에서** 해야 한다.
 ```js
 // 로컬 테스트 시 OSM 으로 전환하는 코드
 [...document.querySelectorAll('.bm-item')].find(b => b.querySelector('.bm-label').textContent === 'OSM').click();
+```
+
+**헤드리스 검증용**: 로그인 없이 land.html 을 열려면 auth-guard 스크립트만 차단하면 된다 (2026-08-09 실측). 차단하지 않으면 헤드리스에서도 `onboarding.html?next=land.html` 로 리다이렉트되어 "DOM 에 #map 이 없다"는 오판을 낸다.
+
+```js
+await page.route('**/js/auth-guard.js', (route) => route.abort());
 ```
 
 ---
@@ -211,6 +218,27 @@ console.log('blocks:',i,'fails:',f);
   ② **자체 DB 적재**(오늘의경매): 법원 등록 중개업체가 직접 적재, 검색 필터가 courtauction 과 1:1 미러(시도 17종·현재상태 19종).
   ③ **공공데이터 재집계**(재개발닷컴): 법원을 직접 안 부르고 "공공데이터 기반 참고용"으로 경매를 정비구역과 조인해 집계.
 - matjip 에 경매를 붙일 땐 이 지식이 필수다: 직스크래핑은 **IP 차단 리스크**(공식 사이트 운영 정책)가 있어 Edge Function 프록시(경매알리미 `pdf-proxy` 패턴)로 우회하거나, 재개발닷컴처럼 법원에 직접 안 닿는 공공데이터(실거래·고시) 기반으로 머물 것. 상세 분석은 `경쟁사_비교분석_20260808.hwpx`(프로젝트 루트) 3절 참고.
+
+### 6-11. courtauction.go.kr 수집 — WebSquare5 SPA라 직접 요청 불가, 클릭 기반만 동작 (2026-08-09 실측)
+- **직접 HTTP POST는 전부 실패**: 목록 API(`/pgj/pgjsearch/searchControllerMain.on`)를 fetch 로 그대로 쏘면 `"DB에서 자료를 불러오는 중 파라미터가 없습니다"` 오류. 페이지 요청을 반복하면 **IP 차단**(`"해당 IP는 비정상적인 접속으로 보안정책에의하여 차단되었습니다"`). 실측으로 확인된 함정.
+- **정상 경로는 WebSquare5 검색 버튼 클릭뿐**: `PGJ151F00.xml`(물건상세검색·진행중) 화면에서 법원 select(`#mf_wfm_mainFrame_sbx_rletCortOfc`, option.value 는 **법원명 텍스트 그대로**) → 검색 버튼(`#mf_wfm_mainFrame_btn_gdsDtlSrch`, `<input type=button>`) 클릭 → `searchControllerMain.on` POST (JSON `dma_pageInfo` + `dma_srchGdsDtlSrchInfo`{cortOfcCd, pgmId:'PGJ151F01', cortStDvs:1, statNum:1}). 기간 조건 없이 클릭하면 진행중 물건 전체.
+- **구현**: `tools/collect_auction.js` (playwright-core + system Chrome, 헤드리스). 결과 그리드는 rowspan 2단 구조라 직접 파싱 — 물건행 `[전체|사건번호|물건번호|소재지|지도|비고|감정평가액|담당계 매각기일]`, 상세행 `[·|·|용도|·|·|·|최저매각가격|진행상태]`. 그리드 셀엔 `a[href]` 링크가 **없어** 사건번호만 확보(상세 URL 미확보).
+- **IP 차단 리스크가 실재**하므로 요청 간 GAP_MS=1000 필수. 서울+경기 14개 법원 2,949건 수집에 수십 분 소요(법원당 평균 ~1~2분, 페이지 40건씩).
+- playwright `evaluate` 는 문자열을 **표현식으로 eval** 한다 — 함수 표현식만 두면 undefined, `(() => {...})()` 형태 필수.
+- **V-World 지오코딩 함정(경매 주소)**: 법원 소재지는 `남현7길 51 5층502호`처럼 층/호가 붙는다. `type=PARCEL`(지번)로는 **도로명 주소가 매칭 안 됨** — `type=ROAD` 필요. 또 층/호 상세가 붙으면 둘 다 실패하므로 `\d+층 이후`·`비동/가동` 정제(cleanAddr) 후 재시도. 실측: `서울특별시 관악구 남현7길 51 5층502호` PARCEL 실패 → cleanAddr+ROAD 성공. 실패(null) 캐시는 재시도 대상으로 두고 `--regeo` 모드로 보강(좌표 72.7% → 98.2%).
+
+### 6-12. courtauction 문서 열람(감정평가서·현황조사서) — SPA 라 직접 URL 이 없고, 물건 상세 화면의 클릭으로만 열림 (2026-08-09 실측)
+- **사건번호 → 문서 로 가는 직접 URL 은 구조적으로 없다**: 물건상세 화면에 진입해도 URL 이 `index.on?w2xPath=/pgj/ui/pgj100/PGJ159M00.xml` 그대로다(화면 전환이 전부 SPA 내부). 사건번호 셀·사건행에 링크/이벤트 없음(클릭해도 이동 안 됨), "열람" 버튼은 등기열람소 팝업(`rgstRdngPopUp(문서ID)`).
+- **문서 열람 경로(클릭 기반)**: 사건검색 화면 `PGJ159M00.xml`(연도 셀렉트 기본 2026 → 검색할 연도로 변경 필수, 사건번호 입력) → 결과 그리드에서 `input[value='물건상세조회']` 클릭(**종결·취하 사건은 disabled**) → 물건 상세 화면의 `감정평가서`·`현황조사서`·`매각물건명세서` 버튼 → 인라인 dialog(+iframe, 감정평가서·현황) 또는 팝업(명세서). 2025타경102901(진행중)에서 3종 버튼 모두 활성 실측.
+- **참고 오픈소스**: `BYM117/court-auction-crawler`(GitHub)의 `detail_crawler.py` 가 동일 클릭 경로를 구현함(물건상세조회·문서 버튼 셀렉터·dialog iframe 구조 참고 가능). 코드를 배껴 넣지 말고 화면 동작 파악용으로만.
+- **결과**: land.html 법원경매 사이드 패널의 문서 접근은 **사건검색(PGJ159M00)·물건상세검색(PGJ151F00) 화면 링크**로 유도한다(사용자 승인 2026-08-09).
+
+### 6-13. 진행중 vs 매각예정 화면 분담 + PGJ157 재방문 로드 불안정 (2026-08-09 실측)
+- **PGJ151(진행중) = "진행중 전체"가 아니라 매각기일 '오늘~+2주'만 담당한다.** auction.json 2,949건의 매각기일(sale)을 전수 확인한 결과 전부 `2026.08.10~08.21`(수집일 08-09 기준). 기간 조건 없이 검색해도 화면 기본 조건이 2주로 잡힌다.
+- **PGJ157(매각예정) = 예정매각기간 기본 '오늘~+2개월'** (실측: `2026.08.24 ~ 2026.10.08`). 두 범위가 사실상 안 겹치므로, 예정 수집분은 진행중과 중복 없는 신규 물건이다.
+- **PGJ157 그리드는 PGJ151과 동일한 rowspan 2단 구조** — `collect_auction.js` 의 EXTRACT_JS 를 그대로 재사용한다(열 배치·진행상태 컬럼 동일 실측).
+- **PGJ157 재방문 로드가 비결정적**: 같은 headless Chrome 로 첫 probe 2회는 성공했으나, 이후 반복 방문에서는 90초 폴링(1초×30, 재로드 3회)에도 법원 셀렉트가 나타나지 않았다. blocked 메시지도, PGJ151 은 정상이었다. → **동일 IP 의 반복 요청이 쌓이면 로드가 죽는다. 실패 시 무한 재시도 금지.** 잠시 두고 재실행.
+- **대응**: `collect_auction.js` 에 `--sched` 모드 추가(PGJ157 → `auction_sched.json`, kind=1). 진행중은 kind=0. 화면 로드는 셀렉트 폴링(최대 15초×3회) 후 재로드. 수집 실행은 IP 안정 후(사용자 동의 2026-08-09).
 
 ---
 

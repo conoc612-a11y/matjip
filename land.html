@@ -90,7 +90,7 @@
        min-height:0 은 플렉스 자식이 내용 때문에 줄어들지 않는 기본값을 풀어 준다. */
     .stat-bar { display:flex; gap:16px; align-items:center; height:34px; padding:0 18px; background:var(--c-primary-soft); color:var(--c-primary); font-size:13px; font-weight:600; flex-shrink:0; }
     .stat-bar b { font-weight:800; }
-    .layout { display:flex; flex-wrap:nowrap; align-items:stretch; flex:9.4; min-height:0; overflow:hidden; }
+    .layout { display:flex; flex-wrap:nowrap; align-items:stretch; flex:9.4; min-height:0; overflow:hidden; position:relative; }
     #map { flex:9 1 0; min-width:0; min-height:0; }
     .panel { flex:1 1 0; min-width:280px; min-height:0; overflow-y:auto; padding:14px 16px; transition:min-width .15s, padding .15s; }
     /* 패널 왼쪽 가장자리를 끌어 폭을 조절한다. 폭이 바뀌면 안쪽 카드는 %/flex 기반이라
@@ -102,6 +102,39 @@
     .panel.collapsed + .panel-resizer, .panel.collapsed ~ .panel-resizer { display:none; }
     @media (max-width:820px) { .panel-resizer { display:none; } }
     .panel.collapsed { flex:0 0 0; min-width:0; width:0; padding:0; overflow:hidden; border:none; }
+    /* ── 법원경매 사이드 패널 ── (레이어 on/off와 연동, 왼쪽 오버레이) */
+    .auction-panel { position:absolute; left:0; top:0; bottom:0; width:340px; min-width:200px; max-width:640px;
+      z-index:2000; background:var(--card); border-right:1px solid var(--line); box-shadow:var(--c-shadow-lg);
+      display:flex; flex-direction:column; font-size:13px; }
+    .auction-panel[hidden] { display:none; }
+    .ap-head { display:flex; align-items:center; gap:6px; padding:9px 12px; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+    .ap-title { font-size:14px; }
+    .ap-count { color:var(--muted); font-size:12px; }
+    .ap-links { display:flex; gap:4px; margin-left:auto; }
+    .ap-links a { font-size:12px; color:var(--c-primary); text-decoration:none; padding:3px 9px; border:1px solid var(--line); border-radius:999px; white-space:nowrap; }
+    .ap-links a:hover { background:var(--c-hover); }
+    .ap-fav, .ap-close { border:1px solid var(--line); background:var(--card); color:var(--muted); border-radius:999px; padding:3px 9px; font-size:12px; cursor:pointer; white-space:nowrap; }
+    .ap-fav.on { color:#f08c00; border-color:#f08c00; }
+    .ap-fav:hover, .ap-close:hover { color:var(--text); background:var(--c-hover); }
+    .ap-hint { padding:6px 12px; font-size:11px; color:var(--muted); border-bottom:1px solid var(--line); line-height:1.5; }
+    .ap-list { flex:1; overflow-y:auto; padding:6px; min-height:0; }
+    .ap-list::-webkit-scrollbar { width:14px; }
+    .ap-list::-webkit-scrollbar-track { background:var(--line); border-radius:7px; }
+    .ap-list::-webkit-scrollbar-thumb { border-radius:7px; background-color:#c1c1c1; border:4px solid var(--card); }
+    .ap-row { padding:8px 10px; border-radius:8px; cursor:pointer; margin-bottom:4px; }
+    .ap-row:hover { background:var(--c-hover); }
+    .ap-row-top { display:flex; align-items:flex-start; gap:6px; }
+    .ap-badge { flex-shrink:0; font-size:11px; color:#fff; padding:1px 7px; border-radius:999px; margin-top:1px; }
+    .ap-addr { flex:1; min-width:0; font-weight:600; overflow-wrap:anywhere; }
+    .ap-star { flex-shrink:0; border:none; background:none; cursor:pointer; color:var(--muted); font-size:15px; line-height:1; padding:2px 0 0 2px; }
+    .ap-star.on { color:#f08c00; }
+    .ap-cn { text-align:left; border:none; background:none; color:var(--c-primary); cursor:pointer; font-size:12px; padding:0; text-decoration:underline; }
+    .ap-court { color:var(--muted); font-size:12px; }
+    .ap-meta { margin-top:3px; color:var(--muted); font-size:12px; overflow-wrap:anywhere; }
+    .ap-resizer { position:absolute; right:-4px; top:0; bottom:0; width:8px; cursor:col-resize; z-index:2001; background:transparent; }
+    .ap-resizer:hover { background:var(--line); }
+    .ap-resizer:active { background:var(--c-primary); }
+    body.ap-resizing { cursor:col-resize; -webkit-user-select:none; user-select:none; }
     /* ── Panel widgets ── */
     .engine-bar { display:flex; gap:4px; margin-bottom:10px; background:var(--c-hover); padding:4px; border-radius:10px; }
     .tool-btn { flex:1; font:inherit; font-size:13px; font-weight:600; padding:7px 10px; border:none; background:transparent; color:var(--muted); border-radius:7px; cursor:pointer; transition:all .15s; }
@@ -445,6 +478,21 @@
   </div>
 
   <div class="layout">
+    <aside id="auction-panel" class="auction-panel" hidden aria-label="법원경매 물건 목록">
+      <div class="ap-head">
+        <b class="ap-title">법원경매</b>
+        <span class="ap-count" id="ap-count"></span>
+        <div class="ap-links">
+          <a href="https://www.courtauction.go.kr/pgj/index.on?w2xPath=/pgj/ui/pgj100/PGJ159M00.xml" target="_blank" rel="noopener" title="courtauction.go.kr 사건검색 — 사건번호로 검색">사건검색</a>
+          <a href="https://www.courtauction.go.kr/pgj/index.on?w2xPath=/pgj/ui/pgj100/PGJ151F00.xml" target="_blank" rel="noopener" title="courtauction.go.kr 물건상세검색 — 주소·지역으로 검색">물건검색</a>
+        </div>
+        <button id="ap-fav" class="ap-fav" title="즐겨찾기한 물건만 보기">☆즐겨찾기</button>
+        <button id="ap-close" class="ap-close" title="패널 닫기 (레이어는 유지)" aria-label="패널 닫기">✕</button>
+      </div>
+      <div class="ap-hint">감정평가서·현황조사서·매각물건명세서는 courtauction.go.kr에서 사건번호로 조회됩니다. 행 클릭 = 지도 이동, 사건번호 클릭 = 법원 사이트 검색.</div>
+      <div class="ap-list" id="ap-list"></div>
+      <div class="ap-resizer" id="ap-resizer" title="드래그해서 너비 조절"></div>
+    </aside>
     <div id="map"></div>
     <div class="panel-resizer" id="panel-resizer" title="드래그해서 목록 너비 조절"></div>
     <div class="panel" id="panel">
@@ -1534,6 +1582,156 @@
         loadEv().then(() => evBuild());
       });
 
+      // ── 법원경매 물건 ─────────────────────────────────────────────
+      // tools/collect_auction.js 산출물 (auction.json, 서울+경기 진행중 물건).
+      // 압축 포맷: fields/rows, court 는 courts[인덱스]. appr(감정평가액)·low(최저매각가격)는 만원 단위.
+      const auctionCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 60 });
+      auctionCluster.on('click', (e) => {
+        const m = e.layer;
+        if (!m || !m._pop) return;
+        if (!m.getPopup() && m._pop) m.bindPopup(m._pop());
+        m.openPopup();
+      });
+      let auctionRows = null, _auctionPromise = null;
+      function loadAuction() {
+        if (!_auctionPromise) {
+          _auctionPromise = fetch('auction.json').then((r) => r.json()).then((j) => {
+            const F = {};
+            j.fields.forEach((f, i) => { F[f] = i; });
+            auctionRows = j.rows.map((r) => ({
+              court: j.courts[r[F.court]], cn: r[F.cn], no: r[F.no], addr: r[F.addr], note: r[F.note],
+              appr: r[F.appr], dept: r[F.dept], sale: r[F.sale], use: r[F.use], low: r[F.low],
+              status: r[F.status], lat: r[F.lat], lng: r[F.lng],
+            })).filter((d) => d.lat && d.lng);
+            return auctionRows;
+          }).catch(() => null);
+        }
+        return _auctionPromise;
+      }
+      const wonEok = (v) => v ? v.toLocaleString('ko-KR', { maximumFractionDigits: 2 }) + '억원' : '';
+      const aucColor = (s) => (s || '').includes('유찰') ? '#fa5252' : '#f08c00';
+      function auctionPopupHtml(d) {
+        const rows = [
+          ['법원', d.court], ['사건번호', d.cn], ['물건번호', d.no], ['용도', d.use],
+          ['감정평가액', wonEok(d.appr)], ['최저매각가격', wonEok(d.low)],
+          ['진행상태', d.status], ['담당계 매각기일', d.sale], ['비고', d.note],
+        ].filter(([, v]) => v != null && v !== '').map(([k, v]) => `<div style="display:flex;justify-content:space-between;gap:10px;"><span style="color:var(--c-muted);flex-shrink:0;">${k}</span><b style="text-align:right;">${esc(v)}</b></div>`).join('');
+        return `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${aucColor(d.status)};flex-shrink:0;"></span><span class="rp-name">${esc(d.addr)}</span><span style="font-size:12px;background:${aucColor(d.status)};color:#fff;padding:1px 8px;border-radius:999px;">경매</span></div><div class="pc-body">${rows}<div style="margin-top:3px;font-size:12px;color:var(--c-muted);">상세 내역은 courtauction.go.kr 에서 사건번호로 조회</div></div></div>`;
+      }
+      function auctionBuild() {
+        if (!auctionRows) return;
+        auctionCluster.clearLayers();
+        auctionCluster.addLayers(auctionRows.map((d, i) => {
+          const m = L.circleMarker([d.lat, d.lng], { radius: 7, color: '#fff', weight: 2, fillColor: aucColor(d.status), fillOpacity: 0.9 });
+          m._pop = (() => auctionPopupHtml(d));
+          m._idx = i;
+          return m;
+        }));
+      }
+      map.on('overlayadd', (e) => {
+        if (e.layer !== auctionCluster) return;
+        loadAuction().then(() => { auctionBuild(); auctionRenderList(); auctionPanel.hidden = false; });
+      });
+      map.on('overlayremove', (e) => {
+        if (e.layer === auctionCluster) auctionPanel.hidden = true;
+      });
+
+      // ── 법원경매 왼쪽 사이드 패널 ─────────────────────────────────
+      // 경매 레이어를 켜면 나타나는 물건 목록. 즐겨찾기는 localStorage.
+      // 법원 사이트는 SPA(직접 URL 불가)라 감정평가서 등 문서 열람은
+      // 사건검색(PGJ159M00)·물건상세검색(PGJ151F00) 화면 링크로 유도한다.
+      const AUCT_FAV_KEY = 'land_auction_fav';
+      const auctionPanel = $('auction-panel');
+      const auctionList = $('ap-list');
+      let auctionFavOnly = false;
+      const auctionFavKey = (d) => d.cn + '|' + d.no + '|' + d.addr;
+      function auctionFavLoad() {
+        try { return JSON.parse(localStorage.getItem(AUCT_FAV_KEY) || '[]'); } catch (e) { return []; }
+      }
+      function auctionFavToggle(key) {
+        const list = auctionFavLoad();
+        const i = list.indexOf(key);
+        if (i >= 0) list.splice(i, 1); else list.push(key);
+        localStorage.setItem(AUCT_FAV_KEY, JSON.stringify(list));
+        return i < 0;
+      }
+      function auctionRowHtml(d, fav, idx) {
+        const rows = [
+          ['감정', wonEok(d.appr)], ['최저', wonEok(d.low)], ['용도', d.use], ['매각기일', d.sale],
+        ].filter(([, v]) => v != null && v !== '').map(([k, v]) => `${k} ${esc(v)}`).join(' · ');
+        return `<div class="ap-row" data-i="${idx}">
+          <div class="ap-row-top">
+            <span class="ap-badge" style="background:${aucColor(d.status)};">${esc(d.status)}</span>
+            <b class="ap-addr">${esc(d.addr)}</b>
+            <button type="button" class="ap-star${fav ? ' on' : ''}" title="즐겨찾기">${fav ? '★' : '☆'}</button>
+          </div>
+          <div class="ap-row-mid" style="margin-top:3px;"><button type="button" class="ap-cn" title="법원 사이트 사건검색에서 조회">${esc((d.cn || '').replace(d.court || '', '').trim())}</button> <span class="ap-court">${esc(d.court)} · 물건${esc(d.no)}</span></div>
+          ${rows ? `<div class="ap-meta">${rows}</div>` : ''}
+        </div>`;
+      }
+      function auctionRenderList() {
+        if (!auctionRows) { auctionList.innerHTML = ''; return; }
+        const favs = new Set(auctionFavLoad());
+        $('ap-count').textContent = auctionRows.length + '건';
+        auctionList.innerHTML = auctionRows.map((d, i) => ({ d, i, fav: favs.has(auctionFavKey(d)) }))
+          .filter((x) => !auctionFavOnly || x.fav)
+          .map((x) => auctionRowHtml(x.d, x.fav, x.i)).join('');
+      }
+      auctionList.onclick = (e) => {
+        const star = e.target.closest('.ap-star');
+        const cn = e.target.closest('.ap-cn');
+        const row = e.target.closest('.ap-row');
+        if (!row) return;
+        const d = auctionRows[+row.dataset.i];
+        if (!d) return;
+        if (star) {
+          e.stopPropagation();
+          const on = auctionFavToggle(auctionFavKey(d));
+          star.classList.toggle('on', on);
+          star.textContent = on ? '★' : '☆';
+          return;
+        }
+        if (cn) { e.stopPropagation(); window.open('https://www.courtauction.go.kr/pgj/index.on?w2xPath=/pgj/ui/pgj100/PGJ159M00.xml', '_blank', 'noopener'); return; }
+        // 행 클릭 = 지도에서 해당 물건으로 이동 + 팝업
+        let m = null;
+        auctionCluster.eachLayer((l) => { if (!m && l._idx === +row.dataset.i) m = l; });
+        if (m && m._pop) {
+          auctionCluster.zoomToShowLayer(m, () => {
+            if (!m.getPopup()) m.bindPopup(m._pop());
+            m.openPopup();
+          });
+        } else {
+          map.setView([d.lat, d.lng], 16);
+        }
+      };
+      $('ap-fav').onclick = () => {
+        auctionFavOnly = !auctionFavOnly;
+        const b = $('ap-fav');
+        b.classList.toggle('on', auctionFavOnly);
+        b.textContent = auctionFavOnly ? '★즐겨찾기' : '☆즐겨찾기';
+        auctionRenderList();
+      };
+      $('ap-close').onclick = () => { auctionPanel.hidden = true; };
+      (() => {
+        const grip = $('ap-resizer');
+        let x = null;
+        grip.addEventListener('pointerdown', (e) => {
+          e.preventDefault();
+          x = e.clientX;
+          grip.setPointerCapture(e.pointerId);
+          document.body.classList.add('ap-resizing');
+        });
+        grip.addEventListener('pointermove', (e) => {
+          if (x == null) return;
+          const w = Math.max(200, Math.min(640, auctionPanel.clientWidth + (x - e.clientX)));
+          auctionPanel.style.width = w + 'px';
+          x = e.clientX;
+        });
+        const end = () => { x = null; document.body.classList.remove('ap-resizing'); };
+        grip.addEventListener('pointerup', end);
+        grip.addEventListener('pointercancel', end);
+      })();
+
       // 팝업 안의 클릭이 지도로 새어나가지 않게 막는다.
       // 이게 없으면 '건축물대장 상세 보기' 같은 팝업 내부 버튼을 누를 때
       // map click 이 한 번 더 발생해, 버튼이 놓인 화면 지점의 좌표로 새 팝업이 열린다.
@@ -2342,6 +2540,9 @@
         ['현장 확인', [
           { name: 'CCTV (실시간 도로영상)', layer: cctvLayer },
           { name: '전기차 충전소', layer: evCluster },
+        ]],
+        ['법원경매', [
+          { name: '진행중 물건 (서울·경기)', layer: auctionCluster },
         ]],
         ['청약', [
           { name: '분양예정 (청약홈)', layer: subLayer },

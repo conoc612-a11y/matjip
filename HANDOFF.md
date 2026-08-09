@@ -12,6 +12,59 @@
 
 ---
 
+## 2026-08-09 (15) — opencode (법원경매 수집 파이프라인 + land.html 경매 레이어 — 로컬 편집만, 커밋 대기)
+
+> 법원경매 물건을 지도에 반영. courtauction.go.kr(WebSquare5 SPA)을 playwright 기반으로 수집해 `auction.json` 생성, land.html에 '법원경매' 레이어로 표시. **커밋·push·배포는 사용자 동의 대기 중.**
+
+### 완료
+- **`tools/collect_auction.js` 신규** (playwright-core + system Chrome, 헤드리스): 법원 select 변경 → WebSquare5 검색 클릭 → 결과 그리드 파싱 → 페이지네이션(40건/페이지) → VWorld 지오코딩 → `auction.json` 압축 포맷 저장. 서울+경기 **14개 법원, 진행중 물건 2,949건** (auction.json 926.9KB).
+- **지오코딩 개선 + `--regeo` 모드**: 도로명 주소는 `type=PARCEL`로 실패 → `cleanAddr()`(층/호·비동 제거) + `type=ROAD` 재시도 추가. 실패(null) 캐시는 재시도 대상으로 두고 `--regeo`로 보강 — 좌표 확보율 **72.7% → 98.2%** (2,896/2,949건).
+- **land.html '법원경매' 레이어**: LAYER_TREE에 대분류 추가(전기차 충전소 옆). evCluster와 동일 패턴으로 `auctionCluster`(markerClusterGroup) 구현 — 진행중 물건 2,896개 마커, 진행상태별 색(유찰=빨강 `#fa5252`, 그 외=주황 `#f08c00`), 팝업(법원·사건번호·소재지·용도·감정평가액·최저매각가격·진행상태·담당계 매각기일·비고).
+- **검증** (로컬 서버 + 헤드리스 Chrome 실측): 레이어 체크 → `auction.json` fetch 200 → 클러스터 **214개 DOM 렌더**, 콘솔 에러 0. (참고: land.html은 클로저라 `window.auctionCluster` 접근 불가 — DOM 기반 검증.) 스크린샷 `%TEMP%\opencode\auc_layer.png`.
+- **TROUBLESHOOTING §6-11 신규 기록**: courtauction 직접 요청 불가(파라미터 오류·IP 차단 실측), 클릭 기반 수집 경로, playwright evaluate IIFE 필수, VWorld 지오코딩 함정(PARCEL→ROAD, 층/호 정제).
+
+### 함정 (TROUBLESHOOTING §6-11 참고)
+- courtauction.go.kr: 직접 fetch = `"파라미터가 없습니다"` 오류, 반복 시 **IP 차단** — WebSquare5 클릭 요청만 유효. 요청 간 GAP_MS=1000 필수.
+- 그리드에 `a[href]` 링크 없음 → 사건번호(cn)만 확보, **상세 URL 미확보**(추후 과제).
+- 지오코딩 캐시: 실패(null) 항목은 `collect_realprice.js`와 공유하는 `.geocache.json`에 남는다 — `--regeo`가 재시도.
+
+### 커밋·배포 상태
+- **미커밋**: `tools/collect_auction.js`(신규), `auction.json`(신규, 926.9KB), `land.html`(경매 레이어), `TROUBLESHOOTING.md`(§6-11), `HANDOFF.md`(본 항목). 커밋·push는 사용자 동의 대기.
+- 기존: `ae58b0a` → `9607cc5` push/built 완료.
+
+### 다음 세션 확인할 것
+- 커밋·push 동의 받기 → 배포 후 land.html '법원경매' 레이어 실화면 확인(클러스터 → 줌인 → 개별 마커 → 팝업).
+- (선택 과제) 경매 상세 URL(사건번호 기반) 확보, 매각예정물건(PGJ157M00) 추가, `land.backup-20260808.html`·`_*.txt` 정리.
+
+---
+
+## 2026-08-09 (16) — opencode (법원경매 왼쪽 사이드 패널 + 표시 버그 수정 + 매각예정 수집 확장 — 커밋·push·배포 완료)
+
+> 사용자 신고 "경매 팝업에 사건번호 등 정보 없음"은 재현 불가(팝업 정상)였고, 대신 **감정평가액·최저가가 "0억원"으로 표시되는 실제 버그**를 찾아 수정했다. 이어 사용자 요구로 **법원경매 레이어 전용 왼쪽 사이드 패널**(리사이즈·사건 목록·즐겨찾기·법원 링크 2종)을 구현했다. 사용자 "예정물건도 있으면 해" → PGJ157 실측 후 `--sched` 수집 모드 확장(수집 실행은 IP 안정 후).
+
+### 완료
+- **표시 버그 수정** (`land.html` wonEok): 감정평가액·최저매각가격이 항상 "0억원"으로 나옴 → 원인은 `v/10000` 이중 변환. `auction.json` 의 appr/low 는 이미 억 단위(실측: 4.1 → 4.1억원)라 `/10000` 제거. 검증: 명륜4가 팝업 감정평가액 7.8억원·최저매각가격 4억원 정상 표시.
+- **courtauction 문서 직접 URL 실측 완료** → **결론: 구조적으로 불가능**(SPA). 문서는 물건 상세 화면의 버튼 클릭으로만 열림. **사용자 승인으로 사건검색(PGJ159M00)·물건상세검색(PGJ151F00) 2종 화면 링크로 절충.** 상세는 TROUBLESHOOTING §6-12.
+- **법원경매 왼쪽 사이드 패널** (`land.html`): 레이어 켜면 왼쪽 오버레이 패널 표시, 끄면 숨김. 오른쪽 엣지 드래그 리사이즈(200~640px). 사건 목록 2,896건(행 = 상태 배지·주소·사건번호·법원·물건번호·감정/최저/용도/매각기일). **행 클릭 = 지도 이동 + 팝업**, **사건번호 클릭 = 법원 사건검색 새 탭**, **☆ = localStorage 즐겨찾기**(`land_auction_fav`) + "즐겨찾기만" 필터. 헤더에 사건검색·물건검색 링크 2종.
+- **매각예정(PGJ157) 실측 + `--sched` 확장**: PGJ151=오늘~+2주, PGJ157=기본 오늘~+2개월임을 실측(auction.json 2,949건 전부 8.10~8.21 이 두 화면 분담을 확증). PGJ157 그리드가 PGJ151과 동일 구조라 EXTRACT_JS 재사용. `collect_auction.js --sched` → `auction_sched.json`(kind=1, 진행중 kind=0). 화면 로드 폴링+재시도 추가. **수집 실행은 IP 차단 리스크로 보류 — 사용자 동의 "스크립트 확장 후 나중에 수집"**.
+- **검증**: 사이드 패널 CDP 실측 7항목 전부 통과. `--sched` 는 문법 검사만(화면 수집은 IP 안정 후).
+- **TROUBLESHOOTING §1·§6-12·§6-13 기록**: auth-guard 함정, 문서 열람 경로, 화면 분담+PGJ157 로드 불안정.
+
+### 함정 (TROUBLESHOOTING §1·§6-12·§6-13 참고)
+- land.html 을 헤드리스로 그냥 열면 `js/auth-guard.js` 가 onboarding 로 리다이렉트 → **가드 스크립트만 abort** 하면 지도 로직 전체를 로컬에서 검증 가능.
+- PGJ157 재방문 로드가 비결정적(첫 probe 성공 후 반복 방문부터 90초 폴링에도 빈 화면) — **반복 요청 금지, 실패 시 잠시 후 재실행**. IP 차단은 blocked 메시지 없이 "화면만 안 뜨는" 형태도 있음.
+- 경매 `cn` 필드 = `"서울중앙지방법원 2023타경2726"` 형식(법원명 포함) → 패널 행에서는 `d.court` 접두어 제거해 표시.
+
+### 커밋·배포 상태
+- **커밋·push·배포 완료** (사용자 "기록하고 배포해줄래"): `land.html`(사이드 패널·wonEok), `tools/collect_auction.js`(--sched), `auction.json`(2,949건), `TROUBLESHOOTING.md`, `HANDOFF.md`.
+
+### 다음 세션 확인할 것
+- 배포본에서 실화면 확인: 레이어 체크 → 패널 표시 → 행 클릭 팝업 → 즐겨찾기 → 법원 링크 2종.
+- **매각예정 수집 실행** (IP 안정 후): `node tools/collect_auction.js --sched` → `auction_sched.json` 생성 → **land.html 에 예정 표시 추가**(kind=1 구분, 레이어/패널 병합).
+- (선택) 팝업에도 사건번호를 법원명 없는 형태로 정리할지, 패널 폭을 localStorage 에 저장할지.
+
+---
+
 ## 2026-08-09 (14) — opencode (방문자 위치 탭 + 신규 가입 관리자 알림 배포 — 커밋 `e067009` push/built 완료)
 
 > 사용자 "관리자모드에서 회원 IP로 위치 파악하는 메뉴 어딨어?" → 위치 목록이 아직 없음을 확인(위치 컬럼은 직전 세션에서 추가 시작) → "방문자 위치" 탭 신설 + 관리자 가입 알림 최종 배포 완료. 테스트 계정 2개 삭제.
