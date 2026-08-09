@@ -606,9 +606,11 @@ async function loadAllRestaurants() {
 // 회원수는 member_count() RPC(security definer, 개인정보 미노출)로 집계.
 // Edge Function 미배포/미설정 시 조용히 넘어가고 '—'로 남는다.
 async function loadFooterStats() {
+  const { data: { session } } = await sb.auth.getSession();
+  const headers = session ? { Authorization: 'Bearer ' + session.access_token } : {};
   const [mRes, vRes] = await Promise.allSettled([
     sb.rpc('member_count'),
-    fetch(`${SUPABASE_URL}/functions/v1/visit-count?page=main`).then((r) => r.json()),
+    fetch(`${SUPABASE_URL}/functions/v1/visit-count?page=main`, { headers }).then((r) => r.json()),
   ]);
   const el = document.getElementById('f-members'); if (el && mRes.status === 'fulfilled' && !mRes.value.error && mRes.value.data != null) el.textContent = Number(mRes.value.data).toLocaleString();
   const et = document.getElementById('f-today'); if (et && vRes.status === 'fulfilled' && vRes.value.today != null) et.textContent = Number(vRes.value.today).toLocaleString();

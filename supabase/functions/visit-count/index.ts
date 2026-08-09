@@ -54,6 +54,9 @@ Deno.serve(async (req) => {
 
   const page = new URL(req.url).searchParams.get("page") || "land";
   const ip = clientIp(req);
+  // 로그인 사용자면 Authorization(JWT)로 user_id 를 식별해 방문 기록에 남긴다.
+  // 토큰이 없거나 만료면 비회원 방문으로 기록 (방문 집계 자체는 계속되어야 함).
+  const token = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
   // "오늘"은 항상 한국시간 00:00(24:00 경계) 기준 — UTC 날짜로 쓰면 자정~09시에 전날 숫자로 보인다.
   const KST = 9 * 3600e3;
   const today = new Date(Date.now() + KST).toISOString().slice(0, 10);               // 한국 날짜
@@ -68,8 +71,13 @@ Deno.serve(async (req) => {
   try {
     // 같은 IP는 하루 1건만 (unique index visits_ip_date_uniq 덕에 중복 무시)
     const geo = await lookupGeo(ip);
+    let userId: string | null = null;
+    if (token) {
+      const { data: u } = await admin.auth.getUser(token);
+      if (u?.user) userId = u.user.id;
+    }
     await admin.from("visits").upsert(
-      { page, ip, visit_date: today, country: geo.country, region: geo.region, city: geo.city },
+      { page, ip, visit_date: today, country: geo.country, region: geo.region, city: geo.city, user_id: userId },
       { onConflict: "ip,visit_date", ignoreDuplicates: true }
     );
     const [tRes, totRes] = await Promise.all([

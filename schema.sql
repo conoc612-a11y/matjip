@@ -154,7 +154,9 @@ alter table visits add column if not exists visit_date date;
 alter table visits add column if not exists country text;
 alter table visits add column if not exists region text;
 alter table visits add column if not exists city text;
+alter table visits add column if not exists user_id uuid references auth.users(id) on delete cascade;
 create unique index if not exists visits_ip_date_uniq on visits (ip, visit_date);
+create index if not exists visits_user_id_idx on visits (user_id);
 alter table visits enable row level security;
 -- 기록·집계는 전부 visit-count Edge Function(service role)이 담당하므로
 -- anon 직접 INSERT/SELECT는 막아 같은 IP 당일 중복 기록으로 숫자가 부풀리는 것을 차단한다.
