@@ -27,6 +27,7 @@
     .btn:disabled { opacity:.5; cursor:default; }
     .switch { text-align:center; font-size:13px; color:var(--muted); margin-top:14px; }
     .switch a { color:var(--accent); cursor:pointer; }
+    .notice { font-size:12px; color:var(--muted); background:#fff4e6; border:1px solid #ffe0c2; border-radius:8px; padding:8px 10px; margin:0 0 4px; line-height:1.5; }
     .msg { font-size:13px; margin-top:12px; min-height:18px; }
     .msg.err { color:#e03131; } .msg.ok { color:var(--ok); }
     .chips { display:flex; flex-wrap:wrap; gap:8px; }
@@ -82,6 +83,7 @@
       <p class="sub">취향을 알려주시면 딱 맞는 서울 맛집을 추천해 드려요. 먼저 로그인해 주세요.</p>
       <div class="card">
         <h2 id="auth-title" style="margin:0 0 4px;font-size:18px;">로그인</h2>
+        <p class="notice">회원가입 시 실명이 필수이며, 허가 외 인원은 가입·탈퇴가 적용됩니다.</p>
         <div id="name-fld" class="hidden">
           <label class="fld">이름 (필수)</label>
           <input type="text" id="name" placeholder="홍길동" autocomplete="name" />
