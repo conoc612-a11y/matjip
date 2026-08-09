@@ -119,6 +119,7 @@
       <div class="tabs">
         <button id="tab-member" class="on" onclick="showTab('member')">회원관리</button>
         <button id="tab-stat" onclick="showTab('stat')">방문자 통계</button>
+        <button id="tab-loc" onclick="showTab('loc')">방문자 위치</button>
       </div>
 
       <!-- 회원관리 -->
@@ -147,6 +148,20 @@
           <div class="chartbox"><h3>시간대별 방문 (최근 7일)</h3><canvas id="ch-hour"></canvas></div>
           <div class="chartbox"><h3>요일별 방문 (최근 7일)</h3><canvas id="ch-wd"></canvas></div>
           <div class="chartbox"><h3>페이지 분포</h3><canvas id="ch-page"></canvas></div>
+        </div>
+      </div>
+
+      <!-- 방문자 위치 -->
+      <div id="view-loc" class="hidden">
+        <div class="row">
+          <div class="sub" style="margin:0;">IP 위치는 ipwho.is 로 조회한 값입니다. IP는 개인정보 보호를 위해 앞 3옥텟만 표시합니다.</div>
+          <button class="btn" onclick="exportLocations()">위치 CSV</button>
+        </div>
+        <div class="tablebox">
+          <table>
+            <thead><tr><th>방문일</th><th>IP</th><th>국가</th><th>지역</th><th>도시</th></tr></thead>
+            <tbody id="loc-rows"></tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -245,6 +260,7 @@ function render() {
   $('c-member').textContent = data.memberCount.toLocaleString();
   renderChips();
   renderMembers();
+  renderLocations();
   renderCharts();
 }
 
@@ -252,8 +268,22 @@ function logout() { sessionStorage.removeItem('admin_token'); token = null; loca
 function showTab(t) {
   $('tab-member').classList.toggle('on', t === 'member');
   $('tab-stat').classList.toggle('on', t === 'stat');
+  $('tab-loc').classList.toggle('on', t === 'loc');
   $('view-member').classList.toggle('hidden', t !== 'member');
   $('view-stat').classList.toggle('hidden', t !== 'stat');
+  $('view-loc').classList.toggle('hidden', t !== 'loc');
+}
+
+// ── 방문자 위치 ──
+function renderLocations() {
+  $('loc-rows').innerHTML = (data.locations || []).map((l) => `
+    <tr>
+      <td>${(l.date || '').slice(0, 10)}</td>
+      <td>${l.ip || '—'}</td>
+      <td>${l.country || '—'}</td>
+      <td>${l.region || '—'}</td>
+      <td>${l.city || '—'}</td>
+    </tr>`).join('') || '<tr><td colspan="5" style="color:var(--muted);text-align:center;">위치 정보가 아직 없습니다. 방문이 쌓이면 표시됩니다.</td></tr>';
 }
 
 // ── 회원관리 ──
@@ -366,6 +396,11 @@ function exportStats() {
     ...Object.entries(data.byPage),
   ];
   download('방문자통계_' + d + '.csv', csv(lines));
+}
+function exportLocations() {
+  const d = new Date().toISOString().slice(0, 10);
+  download('방문자위치_' + d + '.csv', csv([['방문일', 'IP', '국가', '지역', '도시']]
+    .concat((data.locations || []).map((l) => [(l.date || '').slice(0, 10), l.ip, l.country, l.region, l.city])));
 }
 
 // 초기화: 토큰이 있으면 바로 대시보드 / 이메일 링크(?reset=)면 새 비밀번호 화면

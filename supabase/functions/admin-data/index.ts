@@ -104,6 +104,19 @@ Deno.serve(async (req) => {
     const byPage: Record<string, number> = {};
     pageRows.forEach((r) => { byPage[r.page] = (byPage[r.page] || 0) + 1; });
 
+    // ── 방문자 IP 위치 (최근 200건, 위치 컬럼 포함) ──
+    // IP 는 익명 처리(앞 3옥텟만 표시) — 개인정보 최소화. 관리자만 볼 수 있는 데이터라도 원본 IP 는 노출하지 않는다.
+    const locRows = (await admin.from("visits")
+      .select("ip,country,region,city,visit_date")
+      .not("ip", "is", null)
+      .order("visit_date", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(200)).data || [];
+    const maskIp = (ip: string) => ip.includes(".") ? ip.split(".").slice(0, 3).join(".") + ".*" : ip;
+    const locations = locRows.map((r) => ({
+      ip: r.ip ? maskIp(r.ip) : null, country: r.country, region: r.region, city: r.city, date: r.visit_date,
+    }));
+
     // ── 회원 목록 (취향 + 최종 접속일 포함, 최신순) ──
     // taste_profiles.user_id는 profiles가 아닌 auth.users를 직접 참조하므로
     // PostgREST embed가 안 된다 → profiles/taste_profiles/auth.users 를 따로 조회해 조인한다.
@@ -145,7 +158,7 @@ Deno.serve(async (req) => {
     return json({
       today: todayCount, total, uniqueIps, memberCount,
       daily, hourly, weekday, byPage, memberDaily,
-      members,
+      members, locations,
     });
   } catch (e) {
     return json({ error: "데이터 조회 실패", detail: String(e) }, 500);
