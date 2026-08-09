@@ -1571,8 +1571,13 @@
       function evBuild() {
         if (!evRows) return;
         evCluster.clearLayers();
+        const evIcon = L.divIcon({
+          className: '',
+          html: '<div style="width:26px;height:26px;background:#2f9e44;border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;font-size:14px;line-height:1;">⚡</div>',
+          iconSize: [26, 26], iconAnchor: [13, 13],
+        });
         evCluster.addLayers(evRows.map((d) => {
-          const m = L.circleMarker([d.lat, d.lng], { radius: 7, color: '#fff', weight: 2, fillColor: '#2f9e44', fillOpacity: 0.9 });
+          const m = L.marker([d.lat, d.lng], { icon: evIcon });
           m._pop = (() => evPopupHtml(d));
           return m;
         }));
@@ -1622,7 +1627,12 @@
         if (!auctionRows) return;
         auctionCluster.clearLayers();
         auctionCluster.addLayers(auctionRows.map((d, i) => {
-          const m = L.circleMarker([d.lat, d.lng], { radius: 7, color: '#fff', weight: 2, fillColor: aucColor(d.status), fillOpacity: 0.9 });
+          const icon = L.divIcon({
+            className: '',
+            html: `<div style="width:26px;height:26px;background:${aucColor(d.status)};border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;font-size:13px;line-height:1;">⚖️</div>`,
+            iconSize: [26, 26], iconAnchor: [13, 13],
+          });
+          const m = L.marker([d.lat, d.lng], { icon });
           m._pop = (() => auctionPopupHtml(d));
           m._idx = i;
           return m;
@@ -2542,7 +2552,7 @@
           { name: '전기차 충전소', layer: evCluster },
         ]],
         ['법원경매', [
-          { name: '진행중 물건 (서울·경기)', layer: auctionCluster },
+          { name: '진행 물건(서울/경기)', layer: auctionCluster },
         ]],
         ['청약', [
           { name: '분양예정 (청약홈)', layer: subLayer },
