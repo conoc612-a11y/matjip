@@ -110,6 +110,9 @@ create table if not exists visits (
 -- 기존 DB(테이블 생성 이후)에 컬럼/인덱스를 추가하는 마이그레이션:
 alter table visits add column if not exists ip text;
 alter table visits add column if not exists visit_date date;
+alter table visits add column if not exists country text;
+alter table visits add column if not exists region text;
+alter table visits add column if not exists city text;
 create unique index if not exists visits_ip_date_uniq on visits (ip, visit_date);
 alter table visits enable row level security;
 -- 기록·집계는 전부 visit-count Edge Function(service role)이 담당하므로
