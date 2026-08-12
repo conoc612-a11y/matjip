@@ -28,7 +28,9 @@
 - redevelop_seoul.json 재작성 시 포맷 주의: 원본이 2-space pretty-print. `JSON.stringify(rows)`(압축)로 저장하면 전체 파일 diff 폭주.
 
 ### 커밋·배포 상태
-- **미커밋**: `redevelop_seoul.json`(이번 작업) + 기존 미커밋 `land.html`·`ai.html`·`detail.html`·`onboarding.html`·`main.html`·`admin.html`(이전 세션, 인라인/정적), `css/buttons.css`(untracked). 커밋·push는 사용자 동의 대기.
+- **커밋 3건 push 완료** (사용자 "웅 진행해"): `e968ada`(css/buttons.css + HTML 6종 링크) → `6646779`(redevelop_seoul.json 취소현황) → `699e8ff`(HANDOFF·API 정보). 세션 전 blob(1,411,871B) 대비 **83+/3- 정확히 일치, 데이터 손실 없음**(`git cat-file -s`·numstat 실측).
+- ⚠️ **배포 차단 발견·해소**: 저장소가 private이라 Pages 비활성(`has_pages=false`, 실사이트 404) — 사용자 선택으로 **public 전환**(`gh repo edit --visibility public`) + `POST /pages`로 재활성화 → **built 699e8ff** 확인.
+- **배포 검증 완료**: `redevelop_seoul.json` 200 (1,413,471B, 로컬과 byte 동일), 파싱 2,969행, 신당동 122-3 등 5건 취소·자양2동 취소·면목동 관리지역고시 전부 반영. `css/buttons.css` 200.
 
 ### 다음 세션 확인할 것
 - 사용자 동의 → 커밋·push → 배포 후 land.html에서 취소구역(회색) 11곳·면목3·8동 `관리지역고시` 표시 확인.
