@@ -279,6 +279,9 @@ console.log('blocks:',i,'fails:',f);
 - **CDP `Runtime.evaluate` 로 값 뽑을 땐 `returnByValue: true` 필수** (2026-08-08 실측): 옵션 없이 실행하면 `result.value` 가 직렬화되지 않아 "undefined"로 나온다. 팝업 DOM·진행현황 행 수·배지 텍스트 등 페이지 내부 상태를 가져올 때마다 넣을 것.
 - **`setView` 로 지도 이동하면 열어둔 팝업이 유실된다** (2026-08-08 실측): moveend → 정비 레이어 재구성(`jbBuild`)이 레이어를 교체해서 기존 `_layer` 의 팝업이 사라진다. CDP 로 팝업 실측 시 **이동 후 지도 위 폴리곤을 다시 스캔**해 `openPopup()` 해야 한다.
 - **PowerShell 인라인 `node -e` 는 깨진다**: 큰따옴표·`$`·백틱 등이 PowerShell 이스케이프와 충돌해 계속 실패(실측 반복). 검증 스크립트는 **`.cjs` 파일로 저장**해서 실행한다.
+- **`makeResizable`(js/ui-resize.js)은 로드 순서에 민감** (2026-08-12 실측): `footer-resize.js` 가 top-level 에서 `makeResizable` 을 호출하므로 반드시 **`ui-resize.js` 를 `footer-resize.js` 보다 먼저** 로드해야 한다. 순서가 바뀌면 `ReferenceError: makeResizable is not defined` 로 푸터 드래그가 죽는다(실측, `footer-resize.js:11`). main.html·land.html 두 곳 모두 ui-resize → footer-resize 순서.
+- **합성 PointerEvent 로 드래그를 흉내낼 땐 `setPointerCapture` 가 던진다** (2026-08-12 실측): `dispatchEvent` 한 가짜 포인터는 활성 포인터가 아니라 `NotFoundError`(InvalidPointerId) 발생 → `makeResizable` 은 capture 를 try/catch 로 감싸 실사용(실제 포인터)은 캡처 유지, 테스트는 조용히 스킵. 이걸 감싸지 않으면 capture 뒤의 `bodyClass`/`gripClass` 추가가 통째로 사라진다.
+- **ui-resize 단위·실화면 회귀 하네스** (2026-08-12): `%TEMP%\opencode\ui-resize-test.cjs <repo경로>` — 헤드리스 Chrome(CDP)로 `js/ui-resize.js` 단위 테스트 5종 + land.html 에서 `.lp-midcb` '정비사업 상세' 체크박스를 실제 클릭해 `.lc-jb` 그립 드래그까지 검증. Chrome 은 `--remote-allow-origins=*` 없으면 CDP 거부, `/json/new` 는 **PUT** 요청이어야 함(두 가지 다 실측으로 겪음).
 
 ---
 

@@ -12,6 +12,34 @@
 
 ---
 
+## 2026-08-12 (18) — opencode (리사이즈/버튼 UI 통일: makeResizable 헬퍼 — 로컬 편집만, 커밋 대기)
+
+> 사용자 지시 "버튼까지 통일" → Leaflet 팝업·레이어 컨트롤·경매/목록 패널·거리뷰·푸터의 **6개 중복 리사이즈 구현을 `js/ui-resize.js`의 `makeResizable()` 1개로 통일**하고, 그립·스크롤바·팝업 버튼 CSS를 `css/buttons.css` 공용 섹션으로 모음. **커밋·push·배포는 사용자 동의 대기 중.**
+
+### 완료
+- **`js/ui-resize.js` 신규**: `window.makeResizable(grip, target, opts)` — pointer events + setPointerCapture(try/catch), rAF 배칭, min/max(옵션 또는 computed style 폴백), reverseW/H, applyStyle, bodyClass/gripClass, onStart/onResize/onEnd.
+- **6개 리사이즈 전부 이관**: Leaflet 팝업(land.html `ap-resizer`·`lcGrip`·`panel-resizer`·거리뷰 `ovGrip` → makeResizable), 레이어 컨트롤(jb/rp/범례), 푸터(`js/footer-resize.js` 재작성, axis h + reverseH + minH 24 + maxH innerHeight*0.6 + onEnd 저장).
+- **CSS 통일**(`css/buttons.css`): `.ui-scroll`(스크롤바 8px)·`.ui-grip`+`.ui-grip-corner`(그립 24px)·`.ui-pop-btn`(팝업 버튼)·`.footer-resize`. land.html의 스크롤바 3세트·그립 3세트·`.cctv-pc-close`·`.lp-min-btn` 중복 제거, main.html `.footer-resize` 중복 제거.
+- **net**: land.html `-238줄`, main.html `-1줄`, buttons.css `+26`, ui-resize.js 신규.
+
+### 함정 (TROUBLESHOOTING §8 참고)
+- **로드 순서**: `ui-resize.js`는 반드시 `footer-resize.js`보다 먼저. 순서 뒤집으면 `ReferenceError: makeResizable is not defined`(`footer-resize.js:11`)로 푸터 드래그 사망 — 실측으로 발견해 수정(land.html 531-532 교체, main.html은 원래 순서 맞음).
+- **합성 PointerEvent**는 `setPointerCapture`가 NotFoundError를 던져 그 뒤 bodyClass/gripClass 추가가 누락됨 → 헬퍼가 try/catch로 감싸 해결.
+
+### 검증 (회귀 하네스 `%TEMP%\opencode\ui-resize-test.cjs`)
+- 단위 5/5(클램프 양축, reverseW, applyStyle:false, 클래스 토글+클릭 무변화), CSS 존재 확인, **land.html 실화면**: `.lp-midcb` '정비사업 상세' 체크박스 클릭 → `.lc-jb` 생성 → 그립 드래그 212→332×497→522 증가 확인, JS 예외 0건. 헤드리스 제약상 Chrome은 `--remote-allow-origins=*` 필요, `/json/new`는 PUT.
+- 발견된 **잠재 버그(보류)**: `ap-resizer`(경매 패널, 좌측 패널 우측 가장자리)가 드래그 방향 반대 — `reverseW:true`로 기존 동작 보존. 자연스러운 방향 원하면 reverseW 제거.
+
+### 커밋·배포 상태
+- 로컬 편집 완료, **커밋 대기**. 변경 파일: `css/buttons.css`·`js/ui-resize.js`(신규)·`js/footer-resize.js`·`land.html`·`main.html`·`TROUBLESHOOTING.md`·`HANDOFF.md`.
+
+### 다음 세션 확인할 것
+- 사용자 동의 → 커밋(ui-resize+CSS → land/main 이관 → 문서 순서로 분할 가능) → push → 배포 후 각 패널 드래그·푸터 높이 조절 수동 확인.
+- ap-resizer 방향 보정 여부(사용자 선택).
+- 회귀 하네스 `ui-resize-test.cjs`를 리포에 커밋할지(현재 %TEMP%에만 존재).
+
+---
+
 ## 2026-08-12 (17) — opencode (모아타운 취소현황 정합성 + 면목3·8동 관리지역고시 반영 — 로컬 편집만, 커밋 대기)
 
 > 사용자 "취소현황 처리했어?" 확인 → 2026-08-06 뉴스(면목3·8동 관리계획 승인·고시)와 정보몽땅 취소현황(2026-06-19 기준 11건)을 대조해 `redevelop_seoul.json` 정합성 처리. **커밋·push·배포는 사용자 동의 대기 중.**
