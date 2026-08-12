@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="css/buttons.css" />
 <style>
   :root { --bg:#0f1520; --card:#1a2332; --line:#2a3564; --text:#e8eef7; --muted:#8b9bb4; --accent:#4da3ff; }
-  * { box-sizing:border-box; margin:0; }
+  * { margin:0; }
   body { font-family:'Malgun Gothic',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
   .wrap { max-width:1100px; margin:0 auto; padding:24px 16px 60px; }
   h1 { font-size:22px; margin-bottom:4px; }
@@ -168,14 +168,13 @@
     </div>
   </div>
 
+<script src="js/common.js"></script>
 <script>
-const FN = 'https://bhgijvaxxjnocgfnaaeu.supabase.co/functions/v1';
+const FN = SUPABASE_URL + '/functions/v1';
 let token = sessionStorage.getItem('admin_token');
 let data = null;
 let charts = {};
 const ACCENT = '#4da3ff';
-
-const $ = (id) => document.getElementById(id);
 
 async function doLogin() {
   const err = $('login-err');

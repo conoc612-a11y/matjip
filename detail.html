@@ -11,7 +11,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <style>
     :root { --bg:#f4f5f7; --card:#fff; --line:#e6e8eb; --text:#1c1e21; --muted:#8a9099; --accent:#e8590c; --ok:#2f9e44; }
-    * { box-sizing:border-box; }
     body { margin:0; background:var(--bg); color:var(--text);
       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic",sans-serif; }
     header { display:flex; justify-content:space-between; align-items:center; padding:12px 16px;
@@ -41,15 +40,7 @@
   </style>
 </head>
 <body>
-  <script>
-    // IE 는 ES6 를 파싱하지 못해 인라인 스크립트가 죽으므로, ES5 + documentMode 로 감지해 안내문만 띄운다. (2026-08-09)
-    if (document.documentMode) {
-      var el = document.createElement('div');
-      el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:2147483647;background:#e8590c;color:#fff;text-align:center;padding:8px 12px;font-size:13px;line-height:1.5;font-family:sans-serif;';
-      el.textContent = '이 사이트는 인터넷 익스플로러(IE)를 지원하지 않습니다. Chrome·Edge·Safari 등 최신 브라우저를 이용해 주세요.';
-      document.body.appendChild(el);
-    }
-  </script>
+  <script src="js/ie-guard.js"></script>
   <header>
     <a href="main.html" style="color:inherit;font-weight:700;font-size:16px;">맛집 탐방 🍜</a>
     <div style="display:flex;gap:5px;align-items:center;">
@@ -63,14 +54,9 @@
     <div class="card">불러오는 중…</div>
   </div>
 
+  <script src="js/common.js"></script>
   <script>
-    const SUPABASE_URL = 'https://bhgijvaxxjnocgfnaaeu.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_rYaGd3kk5UuFBe3TSpFA8g_uGHWwkqM';
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    const VWORLD_KEY = 'B2CDEEDD-D622-311B-883B-CC7890E50822'; // V-World 지도
-    const ODSAY_KEY = 'H4Vo/z04g/E+AUShnTQIiQ'; // ODsay 대중교통(웹 도메인 잠금 키 → 프론트 노출 안전)
-    const $ = (id) => document.getElementById(id);
-    const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 
     const id = new URLSearchParams(location.search).get('id');
     let user = null, r = null, map = null, destMarker = null, userMarker = null, line = null;

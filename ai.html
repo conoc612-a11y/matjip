@@ -10,7 +10,6 @@
   <script src="js/recommend.js"></script>
   <style>
     :root { --bg:#f4f5f7; --card:#fff; --line:#e6e8eb; --text:#1c1e21; --muted:#8a9099; --accent:#e8590c; --ok:#2f9e44; }
-    * { box-sizing:border-box; }
     body { margin:0; background:var(--bg); color:var(--text);
       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic",sans-serif;
       display:flex; justify-content:center; padding:32px 16px; }
@@ -37,15 +36,7 @@
   </style>
 </head>
 <body>
-  <script>
-    // IE 는 ES6 를 파싱하지 못해 인라인 스크립트가 죽으므로, ES5 + documentMode 로 감지해 안내문만 띄운다. (2026-08-09)
-    if (document.documentMode) {
-      var el = document.createElement('div');
-      el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:2147483647;background:#e8590c;color:#fff;text-align:center;padding:8px 12px;font-size:13px;line-height:1.5;font-family:sans-serif;';
-      el.textContent = '이 사이트는 인터넷 익스플로러(IE)를 지원하지 않습니다. Chrome·Edge·Safari 등 최신 브라우저를 이용해 주세요.';
-      document.body.appendChild(el);
-    }
-  </script>
+  <script src="js/ie-guard.js"></script>
   <div class="app">
     <header style="display:flex;gap:6px;margin-bottom:14px;">
       <a href="main.html" class="nav-tab active">🍜 맛집</a>
@@ -78,13 +69,9 @@
     <p class="note">※ 취향 키워드(매콤·담백·혼밥 등)가 있으면 DB 추천, 상호/브랜드면 카카오 실시간 장소검색으로 자동 분기합니다. 더 똑똑한 자연어 이해는 실제 LLM(Supabase Edge Function + Claude API)으로 확장 가능해요.</p>
   </div>
 
+  <script src="js/common.js"></script>
   <script>
-    const sb = window.supabase.createClient(
-      'https://bhgijvaxxjnocgfnaaeu.supabase.co',
-      'sb_publishable_rYaGd3kk5UuFBe3TSpFA8g_uGHWwkqM'
-    );
-    const $ = (id) => document.getElementById(id);
-    const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     // ── 카카오 장소검색 SDK ──
     const KAKAO_JS_KEY = '725e7ddf965a3ffff3da1f2ac771cc57';
