@@ -39,7 +39,6 @@
       --c-text:#e8ecf2; --c-muted:#8b93a3;
       --c-shadow:0 1px 3px rgba(0,0,0,.4); --c-shadow-lg:0 10px 30px rgba(0,0,0,.5);
     }
-    * { box-sizing:border-box; }
     html, body { height:100%; }
     body { margin:0; background:var(--bg); color:var(--text);
       font-family:"Pretendard",-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR","Malgun Gothic",sans-serif;
@@ -193,7 +192,6 @@
     .rec .actions a[href^="tel:"] { -webkit-user-select:text; user-select:text; }
     /* 지도 위에서 드래그할 때 커서가 텍스트 선택 모양으로 바뀌지 않도록 */
     .leaflet-container { -webkit-user-select:none; user-select:none; }
-    .sheet-handle { display:none; }
     /* ── Leaflet custom controls ── */
     /* 폰트 크기는 서울도시공간포털(urban.seoul.go.kr) 실측 기준에 맞춘다 —
        대분류 13px/w500, 중분류 13px/w400. 지도 위 작은 글씨는 가독성이 급격히 떨어져
@@ -373,49 +371,16 @@
     .jb-chip { padding:6px 14px; border-radius:999px; border:1px solid var(--line); background:var(--card); font-size:13px; cursor:pointer; font-family:inherit; color:var(--muted); transition:all .15s; }
     .jb-chip:hover { border-color:var(--c-primary); color:var(--c-primary); }
     .jb-chip.active { border-color:var(--c-primary); background:var(--c-primary); color:#fff; }
-    /* ── Footer (푸터 크기조절 핸들 .footer-resize 는 css/buttons.css 공용으로 이동) ── */
-    .site-footer { flex:0 0 auto; position:relative; background:var(--card); border-top:1px solid var(--line);
-      padding:9px 18px; display:flex; flex-direction:column; justify-content:center; gap:4px; }
-    .footer-top { display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
-    .footer-links { flex:1; display:flex; gap:14px; white-space:nowrap; }
-    .footer-links a { font-size:13px; color:var(--muted); text-decoration:none; }
-    .footer-links a:hover { color:var(--c-primary); }
-    .footer-right { flex:1; display:flex; justify-content:flex-end; align-items:center; gap:16px; }
-    .footer-stats { flex:0 0 auto; }
-    .footer-stats { display:flex; gap:14px; align-items:center; font-size:13px; color:var(--muted); white-space:nowrap; }
-    .footer-stats b { font-weight:600; color:var(--text); }
-    .footer-stats .footer-note { color:var(--muted); font-size:11px; }
-    .footer-admin { flex:none; font-size:12px; font-weight:600; color:var(--accent); text-decoration:none;
-      border:1px solid var(--accent); border-radius:6px; padding:2px 10px; margin-left:8px; white-space:nowrap; }
-    .footer-admin:hover { background:var(--accent); color:#fff; }
-    .footer-contact { font-size:13px; color:var(--muted); white-space:nowrap; }
+    /* ── Footer (CSS 는 css/buttons.css 공용으로 이동 — 푸터 크기조절 핸들 .footer-resize 와 함께) ── */
     .build-tag { opacity:.55; }
     @media (max-width:640px) {
-      .layout { display:block; flex:none; }
-      #map { height:100vh; min-height:0; }
-      .panel { position:fixed; left:0; right:0; bottom:0; max-height:84vh; height:auto; z-index:1200;
-        background:var(--card); border-radius:18px 18px 0 0; box-shadow:0 -6px 24px rgba(0,0,0,.18);
-        transform:translateY(calc(100% - 138px)); transition:transform .28s ease; }
-      .panel.sheet-open { transform:translateY(0); }
-      .sheet-handle { display:block; text-align:center; padding:8px 0 6px; position:sticky; top:0; background:var(--card); border-radius:18px 18px 0 0; cursor:pointer; z-index:2; }
-      .sheet-handle::before { content:''; display:inline-block; width:42px; height:5px; border-radius:3px; background:#c1c4c9; }
-      .site-footer { display:none; }
       header { padding:0 12px; }
       .brand-title { font-size:16px; }
     }
   </style>
 </head>
 <body>
-  <script>
-    // IE 는 ES6 를 파싱하지 못해 아래 인라인 스크립트가 통째로 죽으므로(즐겨찾기·지도 실패),
-    // ES5 문법 + document.documentMode(IE 전용) 로 감지해 안내문만 띄운다. (2026-08-09)
-    if (document.documentMode) {
-      var el = document.createElement('div');
-      el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:2147483647;background:#e8590c;color:#fff;text-align:center;padding:8px 12px;font-size:13px;line-height:1.5;font-family:sans-serif;';
-      el.textContent = '이 사이트는 인터넷 익스플로러(IE)를 지원하지 않습니다. Chrome·Edge·Safari 등 최신 브라우저를 이용해 주세요.';
-      document.body.appendChild(el);
-    }
-  </script>
+  <script src="js/ie-guard.js"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -528,29 +493,13 @@
       </div>
     </div>
   </footer>
+  <script src="js/common.js"></script>
   <script src="js/ui-resize.js"></script>
   <script src="js/footer-resize.js"></script>
-
+  <script src="js/footer-stats.js"></script>
   <script>
-    const SUPABASE_URL = 'https://bhgijvaxxjnocgfnaaeu.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_rYaGd3kk5UuFBe3TSpFA8g_uGHWwkqM';
-    // supabase SDK는 무겁고 초기 지도 렌더와 무관하므로(푸터 통계·로그아웃 전용) 첫 필요 시 로드한다.
-    let sb = null;
-    let _sbPromise = null;
-    function ensureSb() {
-      if (_sbPromise) return _sbPromise;
-      if (window.supabase) { sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY); _sbPromise = Promise.resolve(sb); return _sbPromise; }
-      _sbPromise = new Promise((resolve) => {
-        const s = document.createElement('script');
-        s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
-        s.async = true;
-        s.onload = () => { try { sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY); } catch (e) { sb = null; } resolve(sb); };
-        s.onerror = () => resolve(null);
-        document.head.appendChild(s);
-      });
-      return _sbPromise;
-    }
-    const $ = (id) => document.getElementById(id);
+    // supabase SDK 는 무겁고 초기 지도 렌더와 무관하므로(푸터 통계·로그아웃 전용)
+    // 첫 필요 시 로드한다. ensureSb·상수·$·esc 는 js/common.js 공용.
     // 비모달 토스트. action = { label, fn } 이면 우측에 클릭 가능한 초기화 링크를 붙인다.
     function toast(msg, action) {
       let t = $('app-toast');
@@ -600,15 +549,14 @@
       const cl = el.querySelector('.recent-clear'); if (cl) cl.addEventListener('click', (e) => { e.preventDefault(); try { localStorage.removeItem(RECENT_KEY); } catch (er) {} renderRecent(); });
     }
 
-    // ── V-World 인증키: 발급받으면 아래에 넣으세요. 비어 있으면 OSM 지도로 자동 대체 ──
-    const VWORLD_KEY = 'B2CDEEDD-D622-311B-883B-CC7890E50822';
+    // ── V-World 인증키: js/common.js 공용 (비어 있으면 OSM 지도로 자동 대체) ──
 
     // ── 청약예정 배지 (한국부동산원 청약홈 분양정보 — Edge Function 프록시 경유) ──
     // data.go.kr serviceKey는 프론트에 두지 않는다. supabase/functions/chungak-proxy가
     // 중계하고 키는 서버 secret(CHUNGAK_API_KEY)에만 둔다.
     // ?chungakEndpoint=... 로 로컬 테스트용 엔드포인트를 잠시 바꿀 수 있다.
     const SUBSCRIPTION_ENDPOINT = new URLSearchParams(location.search).get('chungakEndpoint')
-      || 'https://bhgijvaxxjnocgfnaaeu.supabase.co/functions/v1/chungak-proxy';
+      || SUPABASE_URL + '/functions/v1/chungak-proxy';
     let _subPromise = null;
     function loadSubscriptions() {
       if (!SUBSCRIPTION_ENDPOINT) return Promise.resolve([]);
@@ -666,7 +614,7 @@
     // data.go.kr data/15081808. serviceKey는 프론트 금지 → supabase/functions/bizno-proxy가 중계.
     // ?biznoEndpoint=... 로 로컬 테스트용 엔드포인트를 잠시 바꿀 수 있다.
     const BIZNO_ENDPOINT = new URLSearchParams(location.search).get('biznoEndpoint')
-      || 'https://bhgijvaxxjnocgfnaaeu.supabase.co/functions/v1/bizno-proxy';
+      || SUPABASE_URL + '/functions/v1/bizno-proxy';
     const _bizFmt = (v) => { const d = v.replace(/[^0-9]/g, '').slice(0, 10); return d.length > 5 ? d.slice(0, 3) + '-' + d.slice(3, 5) + '-' + d.slice(5) : d.length > 3 ? d.slice(0, 3) + '-' + d.slice(3) : d; };
     function openBiznoModal() {
       let m = $('bizno-modal');
@@ -2801,9 +2749,9 @@
     // 금리·환율은 하루 단위로만 바뀜) 클릭/최초 로드 시점에만 호출한다.
     // 주의: 아래에서 곧바로 loadRates()/loadWeather()를 호출하므로(TDZ), 이 상수들은
     // MOLIT_PROXY 근처가 아니라 반드시 사용 지점보다 앞에 선언돼 있어야 한다.
-    const KMA_PROXY = 'https://bhgijvaxxjnocgfnaaeu.supabase.co/functions/v1/kma-weather-proxy';
-    const EXIM_PROXY = 'https://bhgijvaxxjnocgfnaaeu.supabase.co/functions/v1/eximbank-proxy';
-    const CCTV_PROXY = 'https://bhgijvaxxjnocgfnaaeu.supabase.co/functions/v1/its-cctv-proxy';
+    const KMA_PROXY = SUPABASE_URL + '/functions/v1/kma-weather-proxy';
+    const EXIM_PROXY = SUPABASE_URL + '/functions/v1/eximbank-proxy';
+    const CCTV_PROXY = SUPABASE_URL + '/functions/v1/its-cctv-proxy';
     let _weatherReq = 0;
     function loadWeather(lat, lng) {
       const reqId = ++_weatherReq;
@@ -2999,7 +2947,7 @@
     // 키가 노출되면 남용으로 소진될 수 있기 때문.
     // 주의 1) 구버전 BldRgstService_v2 는 응답이 비어 있다. BldRgstHubService 를 써야 한다.
     // 주의 2) platGbCd 를 빠뜨리면 조회되지 않는다.
-    const MOLIT_PROXY = 'https://bhgijvaxxjnocgfnaaeu.supabase.co/functions/v1/molit-proxy';
+    const MOLIT_PROXY = SUPABASE_URL + '/functions/v1/molit-proxy';
     // 헤더 날씨·금리·환율, CCTV 프록시 상수(KMA_PROXY/EXIM_PROXY/CCTV_PROXY)는
     // 위쪽 "헤더 정보" 섹션에서 이미 선언했다(그 자리에서 곧바로 호출하므로 TDZ상 여기보다 앞이어야 함).
     // PNU(19자리) = 시군구5 + 법정동5 + 산여부1 + 본번4 + 부번4
@@ -3863,8 +3811,7 @@
     // 기준 판정을 써서 고친다.
     map.on('zoomend', () => repanPopup(map._popup, true));
 
-    // ── 길찾기: 출발/도착 + 도보(OSRM)·대중교통(ODsay)·자차(OSRM) ──
-    const ODSAY_KEY = 'H4Vo/z04g/E+AUShnTQIiQ';
+    // ── 길찾기: 출발/도착 + 도보(OSRM)·대중교통(ODsay·ODSAY_KEY는 js/common.js)·자차(OSRM) ──
     const NAVER_KEY = 'kw4t9xfkhz';
     // 네이버 지도 SDK는 무겁고(panorama+geocoder) 초기 렌더에 필요 없다.
     // 단지명 보정·거리뷰 같은 사용자 동작 시점에 로드하고, 한가할 때 미리 받아 둔다.
@@ -4064,8 +4011,7 @@
       } catch (e) { if (info) info.textContent = '경로 계산 실패(네트워크).'; }
     }
 
-    // ── 공통 이스케이프 ──
-    function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+    // ── 공통 이스케이프 (esc 는 js/common.js 공용) ──
     // 외부 URL은 http/https만 허용(javascript:·data: 스킴 차단)
     function safeUrl(u) { u = String(u || ''); return /^https?:\/\//i.test(u) ? esc(u) : '#'; }
 
@@ -4448,26 +4394,7 @@
       }
     });
 
-    // ── 푸터 통계 ──
-    // 회원수 = member_count() RPC(security definer, 개인정보 미노출),
-    // 방문자 = visit-count Edge Function(같은 IP 하루 1회 집계, x-forwarded-for 사용).
-    // Edge Function 미배포/미설정 시 조용히 넘어가고 '—'로 남는다.
-    async function loadFooterStats() {
-      const set = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.textContent = v.toLocaleString(); };
-      const s = await ensureSb();
-      if (!s) return;
-      try {
-        const { data: m, error: mErr } = await s.rpc('member_count');
-        if (!mErr) set('f-members', Number(m));
-      } catch (e) {}
-      try {
-        let hdr = {};
-        try { const s2 = await s.auth.getSession(); if (s2.data.session) hdr = { Authorization: 'Bearer ' + s2.data.session.access_token }; } catch (e) {}
-        const v = await (await fetch(SUPABASE_URL + '/functions/v1/visit-count?page=land', { headers: hdr })).json();
-        set('f-today', v.today);
-        set('f-total', v.total);
-      } catch (e) {}
-    }
+    // ── 푸터 통계 (js/footer-stats.js 공용) ──
 
     // ── 데이터 로드 ──
     async function loadAll() {
@@ -4480,7 +4407,7 @@
         $('logout').style.display = '';
         $('delete-account').style.display = '';
       }
-      loadFooterStats();
+      loadFooterStats('land');
       render();
       renderRecent();
       refreshStatBar();

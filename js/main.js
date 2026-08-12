@@ -6,16 +6,13 @@
  * ==========================================================================*/
 
 // ── ① 상수·키·상태 ─────────────────────────────────────────────────────────
-const SUPABASE_URL = 'https://bhgijvaxxjnocgfnaaeu.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_rYaGd3kk5UuFBe3TSpFA8g_uGHWwkqM';
-const ODSAY_KEY = 'H4Vo/z04g/E+AUShnTQIiQ'; // ODsay 대중교통(웹 도메인 잠금 키)
+// SUPABASE_URL/KEY·ODSAY_KEY·$·esc 는 js/common.js 공용
 // 네이버 실시간 장소검색은 Supabase Edge Function(quick-handler)이 서버에서 중계
 // (네이버 지역검색 API는 Client Secret+CORS 때문에 브라우저 직접 호출 불가).
 const NAVER_SEARCH_FN = 'https://bhgijvaxxjnocgfnaaeu.supabase.co/functions/v1/quick-handler';
 const RECENT_KEY = 'mj_recent';
 
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-const $ = (id) => document.getElementById(id);
 
 let searchEngine = 'naver';               // 'naver' | 'kakao'
 let kakaoReady = false;
@@ -33,7 +30,6 @@ let savedRev = 0;                         // 즐겨찾기 변경 감지용 (rend
 let lastRenderKey = null;
 
 // ── ② 유틸 ─────────────────────────────────────────────────────────────────
-const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 const stripB = (s) => String(s || '').replace(/<\/?b>/g, '');
 const latLng = (lat, lng) => new naver.maps.LatLng(Number(lat), Number(lng));
 const hav = (a, b) => { // 두 지점 거리(m) — 좌표는 naver LatLng
@@ -602,26 +598,13 @@ async function loadAllRestaurants() {
   }
   return all;
 }
-// 푸터 통계 — 방문자는 visit-count Edge Function(같은 IP 하루 1회 집계)으로 가져온다.
-// 회원수는 member_count() RPC(security definer, 개인정보 미노출)로 집계.
-// Edge Function 미배포/미설정 시 조용히 넘어가고 '—'로 남는다.
-async function loadFooterStats() {
-  const { data: { session } } = await sb.auth.getSession();
-  const headers = session ? { Authorization: 'Bearer ' + session.access_token } : {};
-  const [mRes, vRes] = await Promise.allSettled([
-    sb.rpc('member_count'),
-    fetch(`${SUPABASE_URL}/functions/v1/visit-count?page=main`, { headers }).then((r) => r.json()),
-  ]);
-  const el = document.getElementById('f-members'); if (el && mRes.status === 'fulfilled' && !mRes.value.error && mRes.value.data != null) el.textContent = Number(mRes.value.data).toLocaleString();
-  const et = document.getElementById('f-today'); if (et && vRes.status === 'fulfilled' && vRes.value.today != null) et.textContent = Number(vRes.value.today).toLocaleString();
-  const etot = document.getElementById('f-total'); if (etot && vRes.status === 'fulfilled' && vRes.value.total != null) etot.textContent = Number(vRes.value.total).toLocaleString();
-}
+// 푸터 통계 — js/footer-stats.js 공용 (방문자는 visit-count Edge Function, 회원수는 member_count RPC)
 async function loadAll() {
   $('rec-list').innerHTML = Array(4).fill('<div class="skel-card"><div class="skel skel-h"></div><div class="skel skel-m"></div><div class="skel skel-s"></div></div>').join('');
   const { data: { session } } = await sb.auth.getSession();
   user = session ? session.user : null;
   if (user) { $('who').textContent = user.email; $('logout').style.display = ''; $('delete-account').style.display = ''; }
-  loadFooterStats(); // 푸터 통계는 백그라운드로 병렬 진행
+  loadFooterStats('main'); // 푸터 통계는 백그라운드로 병렬 진행
   // 사용자 취향·즐겨찾기 로드와 식당 로드를 동시에 (순차 대기 제거)
   const userJobs = user
     ? Promise.all([

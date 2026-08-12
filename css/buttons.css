@@ -68,3 +68,43 @@ button,
 
 .footer-resize { position:absolute; top:-6px; left:0; right:0; height:12px; cursor:ns-resize; z-index:5; }
 .footer-resize::after { content:''; position:absolute; top:4px; left:50%; transform:translateX(-50%); width:48px; height:4px; border-radius:2px; background:#c1c4c9; }
+
+/* ── 공용 기반 (2026-08-12) ──
+   box-sizing: 6개 페이지 인라인 중복, .hidden: onboarding·admin 바이트 동일 중복 → 여기로. */
+* { box-sizing:border-box; }
+.hidden { display:none !important; }
+
+/* ── 공용 푸터 (2026-08-12, land 디자인 기준으로 통일) ──
+   land.html:377-392 ↔ main.html:98-114 의 중복. 값 차이가 있어 한쪽(land)으로
+   통일했다 — main 푸터는 테두리 2→1px·패딩 12/24→9/18·글자 12→13·통계 구분선→gap 으로
+   미세 변화. 색은 항상 var(--*) 로 참조해 두 페이지 테마(주황/파랑)를 그대로 따른다. */
+.site-footer { flex:0 0 auto; position:relative; background:var(--card); border-top:1px solid var(--line);
+  padding:9px 18px; display:flex; flex-direction:column; justify-content:center; gap:4px; }
+.footer-top { display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+.footer-links { flex:1; display:flex; gap:14px; white-space:nowrap; }
+.footer-links a { font-size:13px; color:var(--muted); text-decoration:none; }
+.footer-links a:hover { color:var(--accent); }
+.footer-right { flex:1; display:flex; justify-content:flex-end; align-items:center; gap:16px; }
+.footer-stats { flex:0 0 auto; display:flex; gap:14px; align-items:center; font-size:13px; color:var(--muted); white-space:nowrap; }
+.footer-stats b { font-weight:600; color:var(--text); }
+.footer-stats .footer-note { color:var(--muted); font-size:11px; }
+.footer-admin { flex:none; font-size:12px; font-weight:600; color:var(--accent); text-decoration:none;
+  border:1px solid var(--accent); border-radius:6px; padding:2px 10px; margin-left:8px; white-space:nowrap; }
+.footer-admin:hover { background:var(--accent); color:#fff; }
+.footer-contact { font-size:13px; color:var(--muted); white-space:nowrap; }
+
+/* ── 모바일 하단 시트 (2026-08-12, land 디자인 기준) ──
+   main.html:116-126 ↔ land.html:393-405 중복. 82vh/16px/-4px20px 였던 main 은
+   84vh/18px/-6px24px(land)로 통일. land 전용(header·brand-title) 오버라이드는 land 에 남김. */
+.sheet-handle { display:none; }
+@media (max-width:640px) {
+  .layout { display:block; flex:none; }
+  #map { height:100vh; min-height:0; }
+  .panel { position:fixed; left:0; right:0; bottom:0; max-height:84vh; height:auto; z-index:1200;
+    background:var(--card); border-radius:18px 18px 0 0; box-shadow:0 -6px 24px rgba(0,0,0,.18);
+    transform:translateY(calc(100% - 138px)); transition:transform .28s ease; }
+  .panel.sheet-open { transform:translateY(0); }
+  .sheet-handle { display:block; text-align:center; padding:8px 0 6px; position:sticky; top:0; background:var(--card); border-radius:18px 18px 0 0; cursor:pointer; z-index:2; }
+  .sheet-handle::before { content:''; display:inline-block; width:42px; height:5px; border-radius:3px; background:#c1c4c9; }
+  .site-footer { display:none; }
+}
