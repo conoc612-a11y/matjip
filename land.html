@@ -1634,11 +1634,11 @@
       };
       $('ap-close').onclick = () => { auctionPanel.hidden = true; };
       // 경매 패널 폭 조절 — 드래그 로직은 공용 makeResizable() (js/ui-resize.js)
-      // reverseW: 현재 동작(왼쪽으로 끌면 넓어짐)을 그대로 보존한다.
-      // ponytail: ap-resizer 는 좌측 패널의 '우측 가장자리'인데 드래그 방향이 반대다(우측으로 끌면 줄어듦).
-      //   자연스러운 방향(우측으로 끌면 넓어짐)으로 고치려면 reverseW 를 지우면 된다 — 동작 변경이라 보류.
+      // reverseW 를 쓰지 않음: 좌측 앵커(left:0) 패널의 우측 가장자리 그립이므로
+      // 오른쪽으로 끌면 넓어진다. (원래 손코딩이 `clientWidth + (x - clientX)`로 방향이
+      // 뒤집혀 있었고, 마이그레이션 때 reverseW:true 로 보존 — 2026-08-12 사용자 보고로 교정.)
       makeResizable($('ap-resizer'), auctionPanel, {
-        axis: 'w', reverseW: true, minW: 200, maxW: 640,
+        axis: 'w', minW: 200, maxW: 640,
         bodyClass: 'ap-resizing'
       });
 
