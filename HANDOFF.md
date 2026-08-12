@@ -12,9 +12,36 @@
 
 ---
 
-## 2026-08-12 (18) — opencode (리사이즈/버튼 UI 통일: makeResizable 헬퍼 — 로컬 편집만, 커밋 대기)
+## 2026-08-12 (19) — opencode (상수·유틸 공용화: js/common.js — 커밋 `1c36943` push 완료)
 
-> 사용자 지시 "버튼까지 통일" → Leaflet 팝업·레이어 컨트롤·경매/목록 패널·거리뷰·푸터의 **6개 중복 리사이즈 구현을 `js/ui-resize.js`의 `makeResizable()` 1개로 통일**하고, 그립·스크롤바·팝업 버튼 CSS를 `css/buttons.css` 공용 섹션으로 모음. **커밋·push·배포는 사용자 동의 대기 중.**
+> 사용자 "What did we do so far?" → 진행 중이던 공용화 작업을 이어서 마무리·커밋. **상수·유틸이 6개 페이지에 복붙돼 있던 것을 `js/common.js` 한 곳으로 모음.** push까지 완료. Edge Function 배포 없음(프론트만).
+
+### 완료
+- **`js/common.js` 신규**: `SUPABASE_URL/KEY`·`ODSAY_KEY`·`VWORLD_KEY`·`$`·`esc`·`ensureSb()`(지연 로드). 키 정책은 TROUBLESHOOTING §9 그대로(프론트 허용 발행키만, 도메인 잠금).
+- **`js/ie-guard.js` 신규**: IE 차단 배너(ES5+documentMode)를 5개 페이지 인라인 블록에서 공용 파일로.
+- **`js/footer-stats.js` 신규**: 푸터 통계(member_count RPC + visit-count Edge Function)를 main·land 공용으로. `loadFooterStats('main'|'land')`.
+- **CSS 공용화**(`css/buttons.css`): `* {box-sizing}`(6페이지 인라인 중복)·`.hidden`·푸터 클래스(.site-footer·.footer-top·.footer-stats 등, land 기준 통일)·모바일 하단 시트 → common 섹션으로. main 푸터는 테두리·패딩·글자 크기가 미세 변화(댓글에 명시).
+- **페이지 전환**: main/land/onboarding/detail/ai/admin 전부 common.js 기반. land.html의 `ODSAY_KEY`·`VWORLD_KEY`·`esc`·`loadFooterStats()` 중복 제거 + **Edge Function 프록시 URL 7곳(chungak/bizno/KMA/EXIM/CCTV/MOLIT)**을 `SUPABASE_URL + '/functions/v1/...'`로 치환. admin.html의 `FN`도 동일.
+- **순 오차**: +128/−200줄(공용화로 6개 페이지 키·유틸 복붙 제거).
+
+### 함정 (기록용)
+- **top-level `const` 재선언은 같은 페이지에서 SyntaxError**: ai.html이 common.js 로딩 후 `const $`·`const esc`를 다시 선언 → 인라인 스크립트 전체가 죽는 문제를 발견·제거(처음 common.js 전환 시 발생 가능). `node --check`는 외부 js만 잡으므로 HTML 인라인 블록은 `<script src>` 제외 정규식으로 추출해 검사해야 함(PS5.1은 `Get-Content` 기본 인코딩이 ANSI → `-Encoding UTF8` 필수, 아니면 한글 리터럴이 깨져 오판).
+- auth-guard.js의 `const SUPABASE_URL/KEY`는 IIFE 안이라 스코프 충돌 없음 — 확인만 하고 놔둠.
+
+### 커밋·배포 상태
+- **커밋 `1c36943` push 완료** (사용자 "웅" 동의): `js/common.js`·`js/footer-stats.js`·`js/ie-guard.js`(신규) + main/land/onboarding/detail/ai/admin.html + `js/main.js` + `css/buttons.css`, 11파일 +128/−200.
+- 배포 반영은 GitHub Pages가 자동으로 새 커밋을 build — 실서버에서 푸터·지도·검색 정상 동작만 확인하면 됨.
+
+### 다음 세션 확인할 것
+- 배포본 실화면: 6개 페이지(특히 main·land)에서 푸터 통계·로그아웃·지도 키(V-World/ODsay/네이버) 정상 동작 확인.
+- `NAVER_SEARCH_FN`(js/main.js)은 여전히 하드코딩 URL — SUPABASE_URL 치환 후보로 남김(동작엔 무관).
+- 스크래치 파일(`_*.txt` 10개·`land.backup-20260808.html`·`redevelop_seoul.backup-20260808.json`·`package.json`/`package-lock.json`·hwpx) 미커밋 유지.
+
+---
+
+## 2026-08-12 (18) — opencode (리사이즈/버튼 UI 통일: makeResizable 헬퍼 — 커밋 `a5a34b8`·`52b046c`·`eb331e3` push 완료)
+
+> 사용자 지시 "버튼까지 통일" → Leaflet 팝업·레이어 컨트롤·경매/목록 패널·거리뷰·푸터의 **6개 중복 리사이즈 구현을 `js/ui-resize.js`의 `makeResizable()` 1개로 통일**하고, 그립·스크롤바·팝업 버튼 CSS를 `css/buttons.css` 공용 섹션으로 모음.
 
 ### 완료
 - **`js/ui-resize.js` 신규**: `window.makeResizable(grip, target, opts)` — pointer events + setPointerCapture(try/catch), rAF 배칭, min/max(옵션 또는 computed style 폴백), reverseW/H, applyStyle, bodyClass/gripClass, onStart/onResize/onEnd.
@@ -31,10 +58,10 @@
 - 발견된 **잠재 버그(보류)**: `ap-resizer`(경매 패널, 좌측 패널 우측 가장자리)가 드래그 방향 반대 — `reverseW:true`로 기존 동작 보존. 자연스러운 방향 원하면 reverseW 제거.
 
 ### 커밋·배포 상태
-- 로컬 편집 완료, **커밋 대기**. 변경 파일: `css/buttons.css`·`js/ui-resize.js`(신규)·`js/footer-resize.js`·`land.html`·`main.html`·`TROUBLESHOOTING.md`·`HANDOFF.md`.
+- **커밋·push 완료** (사용자 "웅 진행해"): `52b046c`(ui-resize + CSS)·`a5a34b8`(land/main 이관)·`eb331e3`(TROUBLESHOOTING §8 + 본 HANDOFF). Pages built 확인.
 
 ### 다음 세션 확인할 것
-- 사용자 동의 → 커밋(ui-resize+CSS → land/main 이관 → 문서 순서로 분할 가능) → push → 배포 후 각 패널 드래그·푸터 높이 조절 수동 확인.
+- (완료) 배포 후 각 패널 드래그·푸터 높이 조절 수동 확인 — `1c36943`(19) 이후 배포본에서 확인.
 - ap-resizer 방향 보정 여부(사용자 선택).
 - 회귀 하네스 `ui-resize-test.cjs`를 리포에 커밋할지(현재 %TEMP%에만 존재).
 

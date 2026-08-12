@@ -289,7 +289,7 @@ console.log('blocks:',i,'fails:',f);
 
 | 키 | 위치 | 비고 |
 |---|---|---|
-| VWORLD / KAKAO_JS / NAVER_MAPS / ODSAY | 프론트 허용 | 도메인 잠금이 방어 수단. 콘솔에 도메인 등록 필수 |
+| VWORLD / KAKAO_JS / NAVER_MAPS / ODSAY | 프론트 허용 — **`js/common.js` 공용 상수** | 도메인 잠금이 방어 수단. 콘솔에 도메인 등록 필수 |
 | **ITS_CCTV_KEY** | **프론트 허용(정책 변경)** | 서버 경유 불가(6-3). 남용 시 its.go.kr 재발급 |
 | MOLIT / NAVER_CLIENT_SECRET / CHUNGAK / NTS | **서버 전용** | Supabase Edge Function env 에만. HTML 금지 |
 | ADMIN_PASSWORD / ADMIN_EMAIL / ADMIN_BACKUP_EMAIL / RESEND_API_KEY / ADMIN_MGMT_TOKEN | **서버 전용** | 관리자 인증·메일용. HTML·DB에 두지 말 것. ADMIN_MGMT_TOKEN 은 Edge Function 이 비밀번호를 바꿀 때 사용(11-3) |
@@ -442,6 +442,12 @@ npx -y supabase projects list
   - **결정(2026-08-09)**: IE는 2022-06 지원 종료(EOL). 이 프로젝트는 빌드 도구 없는 정적 파일이라 Babel 없이는 ES5 변환 불가 → **IE 지원 중단** + IE 방문 시 안내문 표시로 결론. (Babel 도입은 별도 프로젝트급 작업)
   - **해결**: 각 페이지 `<body>` 직후에 **ES5 문법 + `document.documentMode`(IE 전용 프로퍼티)** 감지 스크립트를 별도 `<script>` 블록으로 추가(land/main/onboarding/ai/detail). IE에서만 고정 상단 배너 "이 사이트는 인터넷 익스플로러(IE)를 지원하지 않습니다..." 표시. **주의: 안내문 스크립트는 IE에서도 실행되어야 하므로 ES5 문법(`var`·`createElement`·`cssText`)만 쓸 것** — 화살표 함수나 템플릿 리터럴을 쓰면 IE에서 그 블록마저 죽어 안내문이 안 보인다.
   - **검증**: `%TEMP%\opencode\ie-guard-check.cjs`(Chrome CDP) — `documentMode` undefined → 배너 0개, `mapOk:true`(비-IE 영향 없음). IE 실기기는 없어 검증 불가, ES5 문법 + documentMode 사용으로 확실.
+
+## 14. 공용화(js/common.js) 함정 — 2026-08-12 실측
+
+- **top-level `const` 재선언 = 같은 페이지 SyntaxError**: 6개 페이지가 `SUPABASE_URL/KEY`·`$`·`esc`를 각자 복붙하고 있어 `js/common.js`로 통합. 이때 페이지가 common.js 로딩 후 **자기 인라인 스크립트에서 `const $`·`const esc`를 다시 선언하면**(ai.html 실측) 두 번째 스크립트 전체가 파싱 실패로 죽는다. 글로벌 lexical 환경은 스크립트 태그를 가로질러 공유되므로 **상수는 한 곳에서만 선언**할 것. auth-guard.js는 IIFE 내부라 충돌 없음(형태 확인만).
+- **HTML 인라인 스크립트 문법 검사**: `node --check`는 외부 `.js`만 검사한다. 인라인 블록은 `<script(?![^>]*src=)>` 정규식으로 추출해 임시 파일로 검사할 것. **PowerShell 5.1은 `Get-Content` 기본 인코딩이 ANSI**라 UTF-8 한글 파일이 깨져 "Invalid regular expression"으로 오판한다 — `-Encoding UTF8`로 읽고 UTF8(BOM)로 저장해야 정확하다.
+- **프록시 URL도 중복 제거 가능**: Edge Function 프록시(chungak/bizno/KMA/EXIM/CCTV/MOLIT) URL 7곳이 하드코딩돼 있었는데, common.js 로딩 후(land.html 스크립트 상단)에는 `SUPABASE_URL + '/functions/v1/...'`로 참조 가능 — 키가 한 곳으로 모이면 URL도 함께 모이는지 함께 확인할 것.
 
 # 배포 상태
 gh api repos/conoc612-a11y/matjip/pages/builds/latest --jq '{status:.status, commit:.commit}'
