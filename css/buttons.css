@@ -1,0 +1,44 @@
+/* ── 공용 버튼 애니메이션 (2026-08-12) ──
+   목적: 어떤 요소가 버튼인지 한눈에 알아보도록 한다.
+   - hover: 살짝 떠오르며 그림자 → "누를 수 있는 것"
+   - active: 눌림 축소 → 클릭 즉각 피드백
+   - .btn(주요 액센트 버튼)·.tool-btn.on: 부드러운 글로우 펄스 → 눈에 먼저 들어옴
+   왜 공용 파일인가: 모든 페이지(주소·상세·부동산·ai·관리자)에 같은 애니메이션을
+   한 곳에서 관리하기 위해. 페이지마다 인라인 중복 작성 시 유지보수가 어긋난다. */
+button,
+.btn, .route-btn, .nav-tab, .icon-btn, .tool-btn, .list-tab, .fav-cat,
+.chip, .gps-btn, .kakao-btn, .kakao-back, .ap-fav, .ap-close, .ap-star,
+.ap-cn, .jb-stage, .jb-chip, .pc-btn, .bm-item, .agree, .layer-toggle,
+.logout, .psave, .rec .actions a, .rec .actions button {
+  transition: transform .12s ease, box-shadow .2s ease, background .2s ease,
+    border-color .2s ease, color .2s ease;
+}
+:is(button, .btn, .route-btn, .nav-tab, .icon-btn, .tool-btn, .list-tab,
+    .fav-cat, .chip, .gps-btn, .kakao-btn, .kakao-back, .ap-fav, .ap-close,
+    .ap-star, .ap-cn, .jb-stage, .jb-chip, .pc-btn, .bm-item, .agree,
+    .layer-toggle, .logout, .psave, .rec .actions a, .rec .actions button):not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(0,0,0,.16);
+}
+:is(button, .btn, .route-btn, .nav-tab, .icon-btn, .tool-btn, .list-tab,
+    .fav-cat, .chip, .gps-btn, .kakao-btn, .kakao-back, .ap-fav, .ap-close,
+    .ap-star, .ap-cn, .jb-stage, .jb-chip, .pc-btn, .bm-item, .agree,
+    .layer-toggle, .logout, .psave, .rec .actions a, .rec .actions button):not(:disabled):active {
+  transform: translateY(0) scale(.95);
+  box-shadow: none;
+}
+@keyframes btn-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
+  50%      { box-shadow: 0 0 0 5px rgba(255,255,255,.28); }
+}
+.btn:not(.sec):not(.del):not(:disabled),
+.tool-btn.on,
+#login-view button {
+  animation: btn-glow 2.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+  }
+}
