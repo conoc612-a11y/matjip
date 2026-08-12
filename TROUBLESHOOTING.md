@@ -282,6 +282,7 @@ console.log('blocks:',i,'fails:',f);
 - **`makeResizable`(js/ui-resize.js)은 로드 순서에 민감** (2026-08-12 실측): `footer-resize.js` 가 top-level 에서 `makeResizable` 을 호출하므로 반드시 **`ui-resize.js` 를 `footer-resize.js` 보다 먼저** 로드해야 한다. 순서가 바뀌면 `ReferenceError: makeResizable is not defined` 로 푸터 드래그가 죽는다(실측, `footer-resize.js:11`). main.html·land.html 두 곳 모두 ui-resize → footer-resize 순서.
 - **합성 PointerEvent 로 드래그를 흉내낼 땐 `setPointerCapture` 가 던진다** (2026-08-12 실측): `dispatchEvent` 한 가짜 포인터는 활성 포인터가 아니라 `NotFoundError`(InvalidPointerId) 발생 → `makeResizable` 은 capture 를 try/catch 로 감싸 실사용(실제 포인터)은 캡처 유지, 테스트는 조용히 스킵. 이걸 감싸지 않으면 capture 뒤의 `bodyClass`/`gripClass` 추가가 통째로 사라진다.
 - **ui-resize 단위·실화면 회귀 하네스** (2026-08-12): `%TEMP%\opencode\ui-resize-test.cjs <repo경로>` — 헤드리스 Chrome(CDP)로 `js/ui-resize.js` 단위 테스트 5종 + land.html 에서 `.lp-midcb` '정비사업 상세' 체크박스를 실제 클릭해 `.lc-jb` 그립 드래그까지 검증. Chrome 은 `--remote-allow-origins=*` 없으면 CDP 거부, `/json/new` 는 **PUT** 요청이어야 함(두 가지 다 실측으로 겪음).
+- **경매 패널(ap-resizer) 드래그 방향이 반대였다** (2026-08-12 실측·수정): 좌측 앵커(`left:0`) 패널의 **우측 가장자리** 그립인데 원래 손코딩이 `auctionPanel.clientWidth + (x - e.clientX)` 로 써서 **오른쪽으로 끌면 줄어들었다**. 마이그레이션(a5a34b8)이 `reverseW:true` 로 보존. 좌측 앵커+우측 그립이면 오른쪽으로 끌수록 넓어지는 게 맞으므로 **`reverseW` 제거**로 교정(land.html:1636). 방향 판단 기준: `reverseW/reverseH` 가 필요한 건 **오른쪽/하단이 고정된(축 반대쪽이 고정된) 대상**일 때뿐 — 좌측 고정 패널은 `reverseW:false`(기본)가 자연 방향.
 
 ---
 
