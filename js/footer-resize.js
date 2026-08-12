@@ -1,4 +1,5 @@
 // 푸터 위아래 세로 크기 조절 — 상단 손잡이를 드래그. 크기는 localStorage에 저장.
+// 드래그 로직은 js/ui-resize.js 의 공용 makeResizable() 을 쓴다 (리사이즈 버그 수정 지점 통일).
 (function () {
   var footer = document.getElementById('site-footer');
   var handle = document.getElementById('footer-resize');
@@ -7,20 +8,13 @@
   var saved = parseInt(localStorage.getItem(KEY), 10);
   if (saved >= 24 && saved <= window.innerHeight * 0.6) footer.style.height = saved + 'px';
 
-  handle.addEventListener('mousedown', function (e) {
-    e.preventDefault();
-    var startY = e.clientY, startH = footer.offsetHeight;
-    function onMove(ev) {
-      var h = startH + (startY - ev.clientY);
-      h = Math.max(24, Math.min(h, window.innerHeight * 0.6));
-      footer.style.height = h + 'px';
+  makeResizable(handle, footer, {
+    axis: 'h',
+    reverseH: true,        // 핸들이 위쪽에 있으므로 위로 끌면 커진다
+    minH: 24,
+    maxH: function () { return window.innerHeight * 0.6; },
+    onEnd: function () {
+      try { localStorage.setItem(KEY, String(footer.offsetHeight)); } catch (e) {}
     }
-    function onUp() {
-      localStorage.setItem(KEY, String(footer.offsetHeight));
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
-    }
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
   });
 })();

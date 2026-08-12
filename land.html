@@ -119,9 +119,6 @@
     .ap-fav:hover, .ap-close:hover { color:var(--text); background:var(--c-hover); }
     .ap-hint { padding:6px 12px; font-size:11px; color:var(--muted); border-bottom:1px solid var(--line); line-height:1.5; }
     .ap-list { flex:1; overflow-y:auto; padding:6px; min-height:0; }
-    .ap-list::-webkit-scrollbar { width:14px; }
-    .ap-list::-webkit-scrollbar-track { background:var(--line); border-radius:7px; }
-    .ap-list::-webkit-scrollbar-thumb { border-radius:7px; background-color:#c1c1c1; border:4px solid var(--card); }
     .ap-row { padding:8px 10px; border-radius:8px; cursor:pointer; margin-bottom:4px; }
     .ap-row:hover { background:var(--c-hover); }
     .ap-row-top { display:flex; align-items:flex-start; gap:6px; }
@@ -213,14 +210,9 @@
     .leaflet-top.leaflet-left { max-height:100%; display:flex; flex-direction:column; }
     .lc { background:var(--card); border:1px solid var(--line); border-radius:10px; box-shadow:var(--c-shadow); font-size:14px; color:var(--text); padding:11px 13px; line-height:1.7; max-width:232px; min-height:0; max-height:calc(100vh - 240px); overflow-y:auto; overscroll-behavior:contain; }
     .lc-rp { position:relative; width:190px; min-width:150px; max-width:380px; min-height:120px; overflow:auto; padding-bottom:28px; }
-    /* 레이어 컨트롤 공용 크기조절 그립 — 네이티브 resize:both 핸들(우하단 몇 px)은 잡기 어려워
-       명시적 그립(.lc-grip)으로 교체. 드래그로 폭/높이 자유 조절. 팝업(.lp-grip)·거리뷰(.sv-grip)와 동일 24px */
+    /* 레이어 컨트롤·팝업·거리뷰의 코너 리사이즈 그립은 css/buttons.css 의 .ui-grip 공용으로 통일
+       (예전 .lc-grip/.lp-grip/.sv-grip 3종 제거). 드래그 로직도 js/ui-resize.js 의 makeResizable() 한 곳. */
     .lc-jb { position:relative; width:212px; min-width:170px; max-width:min(440px, calc(100vw - 40px)); height:min(62vh, 560px); min-height:120px; overflow:auto; padding-bottom:28px; }
-    .lc-grip { position:absolute; right:3px; bottom:3px; z-index:1200; width:24px; height:24px; cursor:nwse-resize; background:rgba(0,0,0,.82); border:2px solid rgba(255,255,255,.95); border-radius:9px; display:flex; align-items:flex-end; justify-content:flex-end; padding:3px; box-sizing:border-box; box-shadow:0 1px 6px rgba(0,0,0,.5); }
-    .lc-grip::after { content:''; width:10px; height:10px; border-right:3px solid #fff; border-bottom:3px solid #fff; border-radius:0 0 4px; }
-    .lc-grip:hover { background:rgba(0,0,0,.95); }
-    .lc::-webkit-scrollbar { width:5px; background-color:var(--line); border-radius:2.5px; }
-    .lc::-webkit-scrollbar-thumb { border-radius:2.5px; background-color:#c1c1c1; background-clip:padding-box; }
     .lc-title { font-weight:700; font-size:14px; margin-bottom:7px; color:var(--text); letter-spacing:-.1px; }
     .lc-check { display:block; cursor:pointer; font-size:14px; font-weight:400; }
     .lc-check input { vertical-align:middle; margin-right:5px; accent-color:var(--c-primary); }
@@ -263,10 +255,6 @@
       border:1px solid var(--line); border-radius:10px; box-shadow:var(--c-shadow-lg); padding:6px 4px;
       max-height:calc(100vh - 220px); overflow-y:auto; overscroll-behavior:contain; font-size:14px; }
     .lp.open .lp-body { display:block; }
-    .lp-body::-webkit-scrollbar { width:14px; }
-    .lp-body::-webkit-scrollbar-track { background:var(--line); border-radius:7px; }
-    .lp-body::-webkit-scrollbar-thumb { border-radius:7px; background-color:#c1c1c1; border:4px solid var(--card); }
-    .lp-body::-webkit-scrollbar-thumb:hover { background-color:#a8a8a8; }
     .lp-sec + .lp-sec { border-top:1px solid var(--line); margin-top:4px; padding-top:4px; }
     .lp-head { display:flex; align-items:center; gap:6px; padding:5px 8px; font-weight:700; cursor:pointer; border-radius:6px; }
     .lp-head:hover { background:var(--c-hover); }
@@ -322,8 +310,6 @@
     .cctv-icon svg { width:20px; height:20px; color:#fff; transform:rotate(45deg); }
     .cctv-pc { width:100%; min-width:320px; max-width:100%; padding:0; box-sizing:border-box; overflow:hidden; display:flex; flex-direction:column; height:100%; }
     .cctv-pc-head { display:flex; align-items:center; justify-content:space-between; padding:11px 13px; border-bottom:1px solid var(--line); font-weight:700; font-size:14px; flex:none; }
-    .cctv-pc-close { width:24px; height:24px; border-radius:7px; border:none; background:var(--c-hover); color:var(--muted); font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-    .cctv-pc-close:hover { background:var(--line); color:var(--text); }
     .cctv-pc-video { position:relative; flex:1 1 auto; min-height:180px; height:180px; background:#12151b; display:flex; align-items:center; justify-content:center; color:#9aa3af; font-size:13px; }
     .cctv-pc-video video, .cctv-pc-video img { width:100%; height:100%; object-fit:cover; display:block; }
     .cctv-pc-live { position:absolute; top:8px; left:8px; background:var(--c-danger); color:#fff; font-size:12px; font-weight:700; padding:2px 7px; border-radius:5px; display:flex; align-items:center; gap:4px; }
@@ -360,17 +346,9 @@
     .leaflet-popup-content-wrapper { overflow:visible; }
     .leaflet-popup-tip { background:var(--card); }
     .leaflet-container a.leaflet-popup-close-button { color:var(--muted); }
-    /* ── 팝업 공통 컨트롤 (그립 리사이즈 + 접기) ── */
-    .lp-grip { position:absolute; right:2px; bottom:2px; z-index:1100; width:24px; height:24px; cursor:nwse-resize; opacity:.5; display:flex; align-items:flex-end; justify-content:flex-end; padding:3px; box-sizing:border-box; }
-    .lp-grip:hover, .lp-grip:active { opacity:1; }
-    .lp-grip::after { content:''; width:10px; height:10px; border-right:3px solid var(--muted); border-bottom:3px solid var(--muted); border-radius:0 0 2px; }
-    /* 거리뷰 오버레이 그립 — 어두운 파노라마 위에서도 항상 「」 표시가 보이게 */
-    .sv-grip { width:24px; height:24px; opacity:1; background:rgba(0,0,0,.78); border:2px solid rgba(255,255,255,.95); border-radius:9px; padding:3px; box-shadow:0 1px 6px rgba(0,0,0,.5); }
-    .sv-grip::after { content:''; width:10px; height:10px; border-right:3px solid #fff; border-bottom:3px solid #fff; border-radius:0 0 4px; }
-    .sv-grip:hover, .sv-grip:active { opacity:1; background:rgba(0,0,0,.92); border-color:#fff; }
-    .sv-grip-hint { position:absolute; right:calc(100% + 8px); bottom:2px; white-space:nowrap; font-size:12px; font-weight:600; color:#fff; background:rgba(0,0,0,.8); padding:6px 10px; border-radius:8px; pointer-events:none; opacity:1; box-shadow:0 1px 6px rgba(0,0,0,.5); }
-    .lp-min-btn { position:absolute; top:3px; right:30px; z-index:1100; width:24px; height:24px; border:none; background:var(--c-hover); color:var(--muted); border-radius:7px; cursor:pointer; font-size:14px; line-height:1; display:flex; align-items:center; justify-content:center; padding:0; }
-    .lp-min-btn:hover { background:var(--line); color:var(--text); }
+    /* ── 팝업 공통 컨트롤 (그립 리사이즈 + 접기) — 그립은 css/buttons.css .ui-grip 공용 ── */
+    /* 접기 버튼 위치만 잡고, 24px 아이콘 버튼 외형은 .ui-pop-btn 공용 */
+    .lp-min-btn { position:absolute; top:3px; right:30px; z-index:1100; }
     .lp-restore-chip { position:absolute; right:12px; bottom:12px; z-index:1500; display:flex; align-items:center; gap:6px; max-width:300px; padding:8px 12px; background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:10px; box-shadow:var(--c-shadow-lg); font-size:13px; cursor:pointer; }
     .lp-restore-chip:hover { border-color:var(--c-primary); }
     .lp-restore-chip b { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -395,11 +373,9 @@
     .jb-chip { padding:6px 14px; border-radius:999px; border:1px solid var(--line); background:var(--card); font-size:13px; cursor:pointer; font-family:inherit; color:var(--muted); transition:all .15s; }
     .jb-chip:hover { border-color:var(--c-primary); color:var(--c-primary); }
     .jb-chip.active { border-color:var(--c-primary); background:var(--c-primary); color:#fff; }
-    /* ── Footer ── */
+    /* ── Footer (푸터 크기조절 핸들 .footer-resize 는 css/buttons.css 공용으로 이동) ── */
     .site-footer { flex:0 0 auto; position:relative; background:var(--card); border-top:1px solid var(--line);
       padding:9px 18px; display:flex; flex-direction:column; justify-content:center; gap:4px; }
-    .footer-resize { position:absolute; top:-6px; left:0; right:0; height:12px; cursor:ns-resize; z-index:5; }
-    .footer-resize::after { content:''; position:absolute; top:4px; left:50%; transform:translateX(-50%); width:48px; height:4px; border-radius:2px; background:#c1c4c9; }
     .footer-top { display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
     .footer-links { flex:1; display:flex; gap:14px; white-space:nowrap; }
     .footer-links a { font-size:13px; color:var(--muted); text-decoration:none; }
@@ -491,7 +467,7 @@
         <button id="ap-close" class="ap-close" title="패널 닫기 (레이어는 유지)" aria-label="패널 닫기">✕</button>
       </div>
       <div class="ap-hint">감정평가서·현황조사서·매각물건명세서는 courtauction.go.kr에서 사건번호로 조회됩니다. 행 클릭 = 지도 이동, 사건번호 클릭 = 법원 사이트 검색.</div>
-      <div class="ap-list" id="ap-list"></div>
+      <div class="ap-list ui-scroll" id="ap-list"></div>
       <div class="ap-resizer" id="ap-resizer" title="드래그해서 너비 조절"></div>
     </aside>
     <div id="map"></div>
@@ -552,6 +528,7 @@
       </div>
     </div>
   </footer>
+  <script src="js/ui-resize.js"></script>
   <script src="js/footer-resize.js"></script>
 
   <script>
@@ -916,48 +893,33 @@
     let _restoreChip = null;   // 접은 팝업의 복원 칩 — 1개만 유지
     function attachPopupControls(popup) {
       const el = popup.getElement();
-      if (!el || el.querySelector('.lp-grip')) return;
+      if (!el || el.querySelector('.ui-grip')) return;
       const content = el.querySelector('.leaflet-popup-content');
       if (!content) return;
+      // 팝업 내부 스크롤바도 공용 스타일(.ui-scroll)을 쓴다
+      content.classList.add('ui-scroll');
       // 접은 팝업의 복원 칩이 남아 있으면 치운다 — 새 팝업이 열렸다면 옛 칩은 무의미하다.
       if (_restoreChip) { _restoreChip.remove(); _restoreChip = null; }
-      // 우하단 크기조절 그립
+      // 우하단 크기조절 그립 — 드래그 로직은 js/ui-resize.js 의 makeResizable() 공용
       const grip = document.createElement('div');
-      grip.className = 'lp-grip';
+      grip.className = 'ui-grip ui-grip-corner';
       grip.title = '드래그하여 크기 조절';
       el.appendChild(grip);
-      let drag = null, dragRaf = 0, autoPanPrev = null;
-      const applyDrag = () => {
-        dragRaf = 0;
-        popup._lpW = Math.max(220, drag.w + drag.dx);
-        popup._lpH = Math.max(120, drag.h + drag.dy);
-        popup._updateLayout(); popup._updatePosition();
-      };
-      grip.addEventListener('pointerdown', (e) => {
-        e.preventDefault(); e.stopPropagation();
-        drag = { sx: e.clientX, sy: e.clientY, w: content.offsetWidth, h: content.offsetHeight, dx: 0, dy: 0 };
+      let autoPanPrev = null;
+      makeResizable(grip, content, {
+        applyStyle: false,
+        minW: 220, minH: 120,
+        maxW: () => map.getSize().x - 30,
+        maxH: () => map.getSize().y - 50,
         // 드래그 중엔 autoPan 을 꺼 둬 지도가 함께 밀리지 않게 한다 (원래 값은 종료 시 복원)
-        autoPanPrev = popup.options.autoPan;
-        popup.options.autoPan = false;
-        grip.setPointerCapture(e.pointerId);
+        onStart: () => { autoPanPrev = popup.options.autoPan; popup.options.autoPan = false; },
+        onResize: (w, h) => { popup._lpW = w; popup._lpH = h; popup._updateLayout(); popup._updatePosition(); },
+        onEnd: () => { if (autoPanPrev != null) { popup.options.autoPan = autoPanPrev; autoPanPrev = null; } }
       });
-      grip.addEventListener('pointermove', (e) => {
-        if (!drag) return;
-        drag.dx = e.clientX - drag.sx; drag.dy = e.clientY - drag.sy;
-        // 매 move 마다 레이아웃(offsetWidth) 재계산은 버벅이므로 rAF 로 묶는다
-        if (!dragRaf) dragRaf = requestAnimationFrame(applyDrag);
-      });
-      const endDrag = () => {
-        if (dragRaf) { cancelAnimationFrame(dragRaf); dragRaf = 0; applyDrag(); }
-        if (autoPanPrev != null) { popup.options.autoPan = autoPanPrev; autoPanPrev = null; }
-        drag = null;
-      };
-      grip.addEventListener('pointerup', endDrag);
-      grip.addEventListener('pointercancel', endDrag);
       // 접기 버튼 — 팝업을 닫고 지도 우하단에 복원 칩을 남긴다 (내용은 그대로 유지)
       const minBtn = document.createElement('button');
       minBtn.type = 'button';
-      minBtn.className = 'lp-min-btn';
+      minBtn.className = 'lp-min-btn ui-pop-btn';
       minBtn.title = '팝업 접기';
       minBtn.innerHTML = '&ndash;';
       el.appendChild(minBtn);
@@ -1248,7 +1210,7 @@
       const rpFilterCtrl = L.control({ position: 'topleft' });
       rpFilterCtrl.onAdd = () => {
         const div = L.DomUtil.create('div');
-        div.className = 'lc lc-rp';
+        div.className = 'lc lc-rp ui-scroll';
         div.innerHTML = '<div class="lc-title">실거래가 필터</div>'
           + '<label style="display:block;margin-bottom:6px;">실거래가 <select id="rp-price" style="font:inherit;font-size:13px;"><option value="all">전체</option><option value="u10">10억 이하</option><option value="10_20">10~20억</option><option value="20_30">20~30억</option><option value="o30">30억+</option></select></label>'
           + '<label style="display:block;">건축년도 <select id="rp-age" style="font:inherit;font-size:13px;"><option value="all">전체</option><option value="new">2015~ 신축</option><option value="mid">2000~2014</option><option value="old">2000 이전</option></select></label>'
@@ -1260,7 +1222,7 @@
       const rpLegend = L.control({ position: 'topleft' });
       rpLegend.onAdd = () => {
         const div = L.DomUtil.create('div');
-        div.className = 'lc lc-rp';
+        div.className = 'lc lc-rp ui-scroll';
         const row = (c, t) => `<div><span class="lc-dot" style="background:${c};"></span>${t}</div>`;
         div.innerHTML = '<div class="lc-title">건축년도 (노후도)</div>' + row('#2f9e44', '신축 2015~') + row('#94d82d', '2005~2014') + row('#fab005', '1995~2004') + row('#fd7e14', '1985~1994') + row('#e03131', '노후 ~1984') + row('#868e96', '미상');
         // 코너 드래그로 크기 조절할 때 mousedown이 지도까지 전파돼 지도가 함께 팬되는 것 방지
@@ -1723,25 +1685,14 @@
         auctionRenderList();
       };
       $('ap-close').onclick = () => { auctionPanel.hidden = true; };
-      (() => {
-        const grip = $('ap-resizer');
-        let x = null;
-        grip.addEventListener('pointerdown', (e) => {
-          e.preventDefault();
-          x = e.clientX;
-          grip.setPointerCapture(e.pointerId);
-          document.body.classList.add('ap-resizing');
-        });
-        grip.addEventListener('pointermove', (e) => {
-          if (x == null) return;
-          const w = Math.max(200, Math.min(640, auctionPanel.clientWidth + (x - e.clientX)));
-          auctionPanel.style.width = w + 'px';
-          x = e.clientX;
-        });
-        const end = () => { x = null; document.body.classList.remove('ap-resizing'); };
-        grip.addEventListener('pointerup', end);
-        grip.addEventListener('pointercancel', end);
-      })();
+      // 경매 패널 폭 조절 — 드래그 로직은 공용 makeResizable() (js/ui-resize.js)
+      // reverseW: 현재 동작(왼쪽으로 끌면 넓어짐)을 그대로 보존한다.
+      // ponytail: ap-resizer 는 좌측 패널의 '우측 가장자리'인데 드래그 방향이 반대다(우측으로 끌면 줄어듦).
+      //   자연스러운 방향(우측으로 끌면 넓어짐)으로 고치려면 reverseW 를 지우면 된다 — 동작 변경이라 보류.
+      makeResizable($('ap-resizer'), auctionPanel, {
+        axis: 'w', reverseW: true, minW: 200, maxW: 640,
+        bodyClass: 'ap-resizing'
+      });
 
       // 팝업 안의 클릭이 지도로 새어나가지 않게 막는다.
       // 이게 없으면 '건축물대장 상세 보기' 같은 팝업 내부 버튼을 누를 때
@@ -2112,7 +2063,7 @@
       const jbCtrl = L.control({ position: 'topleft' });
       jbCtrl.onAdd = () => {
         const div = L.DomUtil.create('div');
-        div.className = 'lc lc-jb';
+        div.className = 'lc lc-jb ui-scroll';
         div.innerHTML = '<div class="lc-title">정비사업 유형</div>'
           + JB_SEC.map(([sec, groups]) => `<div class="lc-sep lc-sub">${sec}</div>` + groups.map((g) => `<label class="lc-check"><input type="checkbox" class="jb-f" data-g="${g}" checked> <span class="lc-dot" style="background:${JB_COLOR[g]};"></span> ${g}<span class="jb-cnt" data-g="${g}" style="float:right;opacity:.6;font-size:12px;"></span></label>`).join('')).join('')
           + '<div class="lc-sub" style="margin-top:6px;font-size:12px;color:#888;">점선 원 = 경계 미확보 근사 구역(반경 300m)</div>'
@@ -2131,32 +2082,11 @@
       // 레이어 컨트롤 공용 크기조절 그립 — jbCtrl·실거래 필터·범례가 같은 함수로 부착.
       function lcGrip(el) {
         const grip = document.createElement('div');
-        grip.className = 'lc-grip';
+        grip.className = 'ui-grip ui-grip-corner';
         grip.title = '드래그하여 크기 조절';
         el.appendChild(grip);
-        let drag = null;
-        const apply = () => {
-          const cs = getComputedStyle(el);
-          const minW = parseFloat(cs.minWidth) || 150;
-          const maxW = parseFloat(cs.maxWidth) || window.innerWidth - 40;
-          const minH = parseFloat(cs.minHeight) || 120;
-          const maxH = window.innerHeight - 120;
-          el.style.width = Math.max(minW, Math.min(drag.w + drag.dx, maxW)) + 'px';
-          el.style.height = Math.max(minH, Math.min(drag.h + drag.dy, maxH)) + 'px';
-        };
-        grip.addEventListener('pointerdown', (e) => {
-          e.preventDefault(); e.stopPropagation();
-          drag = { sx: e.clientX, sy: e.clientY, w: el.offsetWidth, h: el.offsetHeight, dx: 0, dy: 0 };
-          grip.setPointerCapture(e.pointerId);
-        });
-        grip.addEventListener('pointermove', (e) => {
-          if (!drag) return;
-          drag.dx = e.clientX - drag.sx;
-          drag.dy = e.clientY - drag.sy;
-          apply();
-        });
-        grip.addEventListener('pointerup', () => { drag = null; });
-        grip.addEventListener('pointercancel', () => { drag = null; });
+        // 최소/최대 제약은 대상의 computed style(min-width/max-width 등)에서 읽는다 (공용 헬퍼 기본값)
+        makeResizable(grip, el);
       }
       // ── Stage chip bar (bottom-center, shown when JB layer is active) ──
       const jbStageBar = document.createElement('div');
@@ -2423,7 +2353,7 @@
       // 팝업 자체 닫기 버튼(닫기 버튼 요구사항) — Leaflet 기본 우상단 X 대신 우리 스타일로 통일한다.
       function openCctvPopup(it) {
         const html = '<div class="cctv-pc">'
-          + `<div class="cctv-pc-head"><span>${esc(it.name || 'CCTV')}</span><button type="button" class="cctv-pc-close" aria-label="닫기">&times;</button></div>`
+          + `<div class="cctv-pc-head"><span>${esc(it.name || 'CCTV')}</span><button type="button" class="cctv-pc-close ui-pop-btn" aria-label="닫기">&times;</button></div>`
           + '<div class="cctv-pc-video" id="cctv-video-slot">불러오는 중…</div>'
           + '<div class="cctv-pc-meta">ITS 국가교통정보센터 실시간 도로 영상</div></div>';
         const popup = L.popup({ closeButton: false, maxWidth: 760 }).setLatLng([it.lat, it.lng]).setContent(html).openOn(map);
@@ -2588,7 +2518,7 @@
         const div = L.DomUtil.create('div', 'lp');
         div.innerHTML = '<button type="button" class="lp-toggle" title="레이어" aria-label="레이어">'
           + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l9 5-9 5-9-5 9-5z"/><path d="M3 12l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg></button>'
-          + '<div class="lp-body"></div>';
+          + '<div class="lp-body ui-scroll"></div>';
         const body = div.querySelector('.lp-body');
         const toggle = div.querySelector('.lp-toggle');
         toggle.onclick = () => div.classList.toggle('open');
@@ -2738,41 +2668,31 @@
       // ── 오른쪽 목록 패널 너비 조절 ────────────────────────────────────
       // 팝업처럼 목록도 고정 폭이라 답답하다는 지적. 가장자리를 끌어 넓히면
       // 안쪽 카드는 %/flex 기반이라 글자가 저절로 그 폭에 맞춰 다시 흐른다.
-      (() => {
+      // 드래그 로직은 공용 makeResizable() (js/ui-resize.js).
+      // 우측 패널은 '왼쪽 가장자리'를 끌므로 왼쪽으로 끌면 넓어진다(reverseW).
+      {
         const rz = document.getElementById('panel-resizer');
         const pnl = document.getElementById('panel');
-        if (!rz || !pnl) return;
-        let startX = 0, startW = 0;
-        const onMove = (e) => {
-          const dx = startX - e.clientX;                 // 왼쪽으로 끌면 넓어진다
-          const max = Math.max(320, window.innerWidth - 360);   // 지도도 최소 폭은 남긴다
-          const w = Math.min(max, Math.max(260, startW + dx));
-          pnl.style.flex = `0 0 ${w}px`;
-          pnl.style.minWidth = w + 'px';
-        };
-        const onUp = () => {
-          document.removeEventListener('mousemove', onMove);
-          document.removeEventListener('mouseup', onUp);
-          document.body.classList.remove('panel-resizing');
-          rz.classList.remove('dragging');
-          try { localStorage.setItem('mj_panel_w', pnl.getBoundingClientRect().width); } catch (e) {}
-          map.invalidateSize();   // 지도 크기가 바뀌었으니 타일·팝업 기준을 다시 잡는다
-        };
-        rz.addEventListener('mousedown', (e) => {
-          e.preventDefault();
-          startX = e.clientX;
-          startW = pnl.getBoundingClientRect().width;
-          document.addEventListener('mousemove', onMove);
-          document.addEventListener('mouseup', onUp);
-          document.body.classList.add('panel-resizing');
-          rz.classList.add('dragging');
-        });
-        // 지난번 폭 복원
-        try {
-          const saved = Number(localStorage.getItem('mj_panel_w'));
-          if (saved >= 260) { pnl.style.flex = `0 0 ${saved}px`; pnl.style.minWidth = saved + 'px'; }
-        } catch (e) {}
-      })();
+        if (rz && pnl) {
+          makeResizable(rz, pnl, {
+            axis: 'w', reverseW: true, applyStyle: false,
+            minW: 260,
+            maxW: () => Math.max(320, window.innerWidth - 360),   // 지도도 최소 폭은 남긴다
+            bodyClass: 'panel-resizing',
+            gripClass: 'dragging',
+            onResize: (w) => { pnl.style.flex = `0 0 ${w}px`; pnl.style.minWidth = w + 'px'; },
+            onEnd: () => {
+              try { localStorage.setItem('mj_panel_w', pnl.getBoundingClientRect().width); } catch (e) {}
+              map.invalidateSize();   // 지도 크기가 바뀌었으니 타일·팝업 기준을 다시 잡는다
+            }
+          });
+          // 지난번 폭 복원
+          try {
+            const saved = Number(localStorage.getItem('mj_panel_w'));
+            if (saved >= 260) { pnl.style.flex = `0 0 ${saved}px`; pnl.style.minWidth = saved + 'px'; }
+          } catch (e) {}
+        }
+      }
 
       // 배경지도 선택 (일반/위성/위성+라벨) — 예전엔 '항공' 토글 버튼 하나뿐이라
       // 어떤 지도가 있는지 알 수 없었다. 네이버지도처럼 썸네일로 셋을 나란히 보여준다.
@@ -3982,9 +3902,9 @@
           + '<div id="sv-minimap" style="position:absolute;bottom:16px;left:16px;width:200px;height:150px;border-radius:8px;overflow:hidden;resize:both;border:2px solid rgba(255,255,255,.85);box-shadow:0 2px 10px rgba(0,0,0,.5);z-index:3001;min-width:100px;min-height:80px;max-width:400px;max-height:300px;background:#e8e8e8;"></div>'
           + '<button id="sv-close" style="position:absolute;top:10px;right:10px;z-index:3002;padding:6px 14px;background:rgba(0,0,0,.65);color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:14px;font-weight:600;">✕ 닫기</button>';
         document.body.appendChild(ov);
-        // 거리뷰 리사이즈 그립 — 우하단 드래그로 오버레이 크기 조절
+        // 거리뷰 리사이즈 그립 — 공용 .ui-grip + makeResizable() (js/ui-resize.js)
         const ovGrip = document.createElement('div');
-        ovGrip.className = 'lp-grip sv-grip';
+        ovGrip.className = 'ui-grip';
         ovGrip.style.cssText = 'position:absolute;right:12px;bottom:12px;z-index:3003;';
         ovGrip.title = '드래그하여 크기 조절';
         const ovHint = document.createElement('span');
@@ -3992,8 +3912,6 @@
         ovHint.textContent = '드래그로 크기 조절';
         ovGrip.appendChild(ovHint);
         ov.appendChild(ovGrip);
-        let ovDrag = null;
-        let ovPanoRaf = 0;
         // Naver Panorama는 컨테이너 크기 변화를 자동 감지 못한다(Map의 auto resize는
         // size 옵션을 생략했을 때만 동작). setSize()로 명시적으로 다시 그려야 화면이
         // 따라온다 — refreshSize()는 Panorama에 없는 메서드(Map 전용)라 무시됐다.
@@ -4002,27 +3920,13 @@
             try { panorama.setSize(new nv.maps.Size(ov.clientWidth, ov.clientHeight)); } catch (e) {}
           }
         };
-        ovGrip.addEventListener('pointerdown', (e) => {
-          e.preventDefault(); e.stopPropagation();
-          const r = ov.getBoundingClientRect();
-          ovDrag = { sx: e.clientX, sy: e.clientY, w: r.width, h: r.height };
-          ovGrip.setPointerCapture(e.pointerId);
+        makeResizable(ovGrip, ov, {
+          minW: 360, minH: 280,
+          maxW: () => Math.min(window.innerWidth - 24, 1400),
+          maxH: () => Math.min(window.innerHeight - 24, 900),
+          onResize: resizePano,   // 헬퍼가 rAF 배칭을 하므로 프레임당 1회 setSize
+          onEnd: resizePano
         });
-        ovGrip.addEventListener('pointermove', (e) => {
-          if (!ovDrag) return;
-          const maxW = Math.min(window.innerWidth - 24, 1400);
-          const maxH = Math.min(window.innerHeight - 24, 900);
-          ov.style.width = Math.max(360, Math.min(maxW, ovDrag.w + (e.clientX - ovDrag.sx))) + 'px';
-          ov.style.height = Math.max(280, Math.min(maxH, ovDrag.h + (e.clientY - ovDrag.sy))) + 'px';
-          if (ovPanoRaf) return;
-          ovPanoRaf = requestAnimationFrame(() => { ovPanoRaf = 0; resizePano(); });
-        });
-        const endOvDrag = () => {
-          ovDrag = null;
-          resizePano();
-        };
-        ovGrip.addEventListener('pointerup', endOvDrag);
-        ovGrip.addEventListener('pointercancel', endOvDrag);
 
         const close = () => { ov.remove(); backdrop.remove(); };
         ov.querySelector('#sv-close').onclick = close;
@@ -4086,7 +3990,7 @@
       routeCtrl = L.control({ position: 'topleft' });
       routeCtrl.onAdd = () => {
         const div = L.DomUtil.create('div');
-        div.className = 'lc';
+        div.className = 'lc ui-scroll';
         div.style.minWidth = '170px';
         const mbtn = (m, t) => `<button class="rt-mode" data-m="${m}" style="flex:1;font:inherit;font-size:12px;font-weight:600;padding:5px 2px;border:1px solid var(--line);border-radius:6px;background:var(--card);cursor:pointer;color:var(--text);">${t}</button>`;
         div.innerHTML = '<div class="lc-title">길찾기</div>'
