@@ -8,9 +8,9 @@ name: 법원경매 목록 자동 갱신
 
 on:
   schedule:
-    # 매일 04:00 KST(=19:00 UTC 전날). 법원 업무시간과 무관하게 하루 한 번이면 충분하고,
+    # 매일 07:00 KST(=22:00 UTC 전날). 법원 업무시간과 무관하게 하루 한 번이면 충분하고,
     # IP 차단 위험을 낮추려면 잦은 빈도로 돌리지 않는 게 안전하다(TROUBLESHOOTING §6-11).
-    - cron: '0 19 * * *'
+    - cron: '0 22 * * *'
   workflow_dispatch: {} # 필요하면 Actions 탭에서 수동 실행도 가능
 
 permissions:
