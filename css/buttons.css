@@ -70,7 +70,9 @@ button,
 .ui-pop-btn:hover { background:var(--line); color:var(--text); }
 
 .footer-resize { position:absolute; top:-6px; left:0; right:0; height:12px; cursor:ns-resize; z-index:5; }
-.footer-resize::after { content:''; position:absolute; top:4px; left:50%; transform:translateX(-50%); width:48px; height:4px; border-radius:2px; background:#c1c4c9; }
+/* 좌·우 패널 리사이저 손잡이(land.html .ap-resizer/.side-resizer/.panel-resizer ::after)와
+   같은 크기(굵기 5px, 길이 64px)로 통일 — 방향만 가로/세로 다르다(2026-08-13 사용자 요청). */
+.footer-resize::after { content:''; position:absolute; top:3px; left:50%; transform:translateX(-50%); width:64px; height:5px; border-radius:3px; background:#c1c4c9; }
 
 /* ── 공용 기반 (2026-08-12) ──
    box-sizing: 6개 페이지 인라인 중복, .hidden: onboarding·admin 바이트 동일 중복 → 여기로. */
