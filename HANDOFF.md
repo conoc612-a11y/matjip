@@ -12,6 +12,42 @@
 
 ---
 
+## 2026-08-13 (26) — Claude Code (molit-proxy 레이트리밋 DB화·지도 클릭 ReferenceError·스크롤바·CI 자동화·사진 수집 재개)
+
+> (25) 이후 같은 세션에서 이어감. 다섯 갈래 작업 — 전부 커밋·push·배포 완료(마지막 사진 수집만 진행 중).
+
+### 완료 (커밋 순서대로)
+1. **molit-proxy 레이트리밋 추가 → 메모리 Map 실패 실측 → DB(Postgres RPC)로 교체** (`69a7e72`, `53bd567`, `c45f5de`)
+   - 처음 메모리 Map으로 짰으나 65회 연속 요청에도 429가 한 번도 안 떠서(Edge Function 인스턴스 분산 — 메모리 공유 안 됨) `api_rate_limits` 테이블 + `rl_hit` RPC로 교체. 재검증: 61번째 요청부터 정확히 429 확인.
+   - 마이그레이션(`supabase/migrations/20260813000000_molit_proxy_rate_limit.sql`) 적용 + 함수 재배포 완료(사용자가 `supabase db push` + `functions deploy` 실행).
+   - 이후 사용자 요청으로 한도를 분당 60회 → **분당 클릭 6회(원시 요청 42회)**로 강화(`c45f5de`).
+   - **주의**: 로컬 CLI로 배포하려면 `$env:SUPABASE_ACCESS_TOKEN="..."` (PowerShell, `set`아님) 필요 — 토큰은 채팅에 노출된 적 있음(사용자가 필요시 재발급 고려).
+2. **지도 클릭 팝업이 "주소를 가져오지 못했어요"만 뜨던 버그 — 진짜 원인 규명·수정** (`4d19e59`)
+   - 헤드리스 재현으로 `ReferenceError: uUnit is not defined` (land.html:4066) 확인. `uUnit`/`uPriceMain`/`uPriceSub`/`uAreaTxt` 등 7개 헬퍼가 `if (VWORLD_KEY) {}` 블록 안에 갇혀 있었는데 최상위 스코프의 `map.on('click')` 핸들러가 참조 → 예외로 죽고 6초 스턱 가드가 저 문구로 덮어씀. 클릭 지점 1.5km 안에 실거래가 있을 때만 그 코드 줄을 타서 "자주 실패"로 보였다.
+   - 수정: 헬퍼 7개를 최상위 스코프로 이동 + Naver 지오코딩이 빈 주소 주면 V-World 폴백 추가.
+   - 검증: 헤드리스로 용도지역·공시지가·지번·용적률까지 정상 표시 확인.
+3. **스크롤바를 우측 패널과 동일하게(사용자 요청)** (`4d19e59`)
+   - `.ui-scroll`의 8px 커스텀 스크롤바(`::-webkit-scrollbar`) 제거 → 브라우저 기본(15px, 화살표 버튼 있음)으로 복귀. 좌측 경매 패널·팝업이 좁고 화살표 없어서 조작하기 힘들다는 실사용 문제였음. CCTV 팝업(`.cctv-pc`)은 원래 미사용이라 요청대로 미변경.
+4. **`auction.json` 매일 자동 갱신 — GitHub Actions** (`435abc7`, `088cd55`)
+   - `.github/workflows/collect-auction.yml`: 매일 07:00 KST(=22:00 UTC) 스케줄 + 수동 실행(workflow_dispatch). `collect_auction.js` 실행 → 변경 있을 때만 자동 커밋·push(Pages 자동 재배포).
+   - `tools/collect_auction.js`: Chrome 못 찾으면(Linux CI) 하드코딩 Windows 경로로 폴백하던 걸 제거 → `undefined`면 playwright 번들 브라우저 사용. 로컬 Windows 동작은 그대로(검증됨).
+   - `package.json`에 `playwright`(전체, `playwright-core`와 버전 고정) devDependency 추가 — CI의 `npx playwright install`이 맞는 브라우저 리비전을 받도록.
+   - 지오코딩 캐시(`tools/.geocache.json`, gitignore 유지)는 `actions/cache`로 실행 간 이어받아 매일 전체 재지오코딩을 피함.
+   - **아직 실행 검증 안 됨** — 다음 세션은 GitHub Actions 탭에서 첫 스케줄 실행(2026-08-14 07:00 KST경) 결과를 확인할 것. 실패하면 `npx playwright install --with-deps chromium` 관련 로그부터 볼 것.
+   - 사진(auction_photos.json)은 전량 재수집 8~10시간이라 이 자동화 범위 밖(수동 유지, GitHub Actions 무료 티어 잡 하나당 최대 6시간 제한도 있음).
+
+### 진행 중 (이 세션 종료 시점 상태 — 다음 세션이 이어받을 것)
+- **경매 사진 수집**: 사용자가 "가능한 만큼 계속 수집"을 요청해 `node tools/collect_auction_photos.js`를 백그라운드로 재개함(28건 → 진행 중, 대상 2,921건 남음, 케이스당 ~10-15초 = 전체 완료까지 8~10시간 소요 실측 확인됨).
+  - **재개 방법**: `node tools/collect_auction_photos.js` (인자 없이) — 이미 `auction_photos.json`에 있는 cn은 자동 스킵하므로 여러 세션에 걸쳐 안전하게 나눠 돌릴 수 있음.
+  - 진행 중 IP 차단 징후 없었음(종결 물건은 "물건상세조회 버튼 없음"으로 정상 스킵). 커밋은 이 세션이 멈춘 시점 기준 최신 상태로 남겨둠 — 정확한 수집 건수는 `git log --oneline -1 -- auction_photos.json` 및 `node -e "console.log(Object.keys(JSON.parse(require('fs').readFileSync('auction_photos.json'))).length)"` 로 확인.
+
+### 다음 세션 확인할 것
+1. GitHub Actions `법원경매 목록 자동 갱신` 워크플로가 첫 스케줄에서 성공했는지 (Actions 탭).
+2. 사진 수집 이어서 진행 — 몇 시간 단위로 나눠 돌리고 커밋·push.
+3. `PLAN_auction_detail.md`, `_c1.txt`~`_tjr.txt`, `land.backup-20260808.html`, `redevelop_seoul.backup-20260808.json`, `경쟁사_비교분석_20260808.hwpx` 등 정리 안 된 임시 파일들 여전히 존재 — 필요시 사용자에게 정리 여부 확인(이번 세션도 손 안 댐).
+
+---
+
 ## 2026-08-13 (25) — Claude Code (opencode 세션 (24) 이어받음: 사진 안 나옴·지도 팝업 느림/실패·상세 패널 잘림 3건 수정)
 
 > 사용자가 opencode에서 (24) 작업 중 헤드리스 크롬 devtools 연결 문제로 검증하다 세션이 끊겼다며 이어받아 달라고 요청. opencode 세션 로그(원인 조사까지 완료, 코드 수정은 0건)를 그대로 이어받아 실제 수정·커밋·배포까지 진행.
