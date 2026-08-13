@@ -12,6 +12,26 @@
 
 ---
 
+## 2026-08-13 (24) — opencode (경매 상세 패널: 사진 캐러셀·확대·전 구분 수집 — 코드 변경만, 커밋 전)
+
+> 참조사이트(디스코·재개발닷컴) 벤치마크: "물건 클릭 → 패널이 상세로 전환 + 사진 다음장/확대 + 공개 사진 전부 + 빠른 로딩" 요구. 이미지 확인은 불가(모델 한계)했지만 텍스트로 구현.
+
+### 완료 (실측·검증 근거 포함)
+- **사진 저장 방식 전환**: base64 인라인 → `auction_photos/<사건>/<구분>_<n>.jpg` 개별 파일 + `auction_photos.json` 메타(`{ cn: [{dvs,name,file}] }`). 기존 2건(6장)을 `legacy_*.jpg` 로 마이그레이션. 메타 JSON 1.9MB→**0.9KB**, 사진 디렉토리 1.39MB. **이유**: 상세를 열 때 필요한 사진만 개별 로드 = 참조사이트처럼 빠름(신건 전부 수집해도 auction.json·메타는 가벼움).
+- **`collect_auction_photos.js` 개조**: 전 구분(000241/243/244/245/246 + 미확정 000247) 전부 수집, 구분 코드 순 정렬. 검증: 신건 **2025타경2782 총 17장**(전경도3·위치도2·관련사진10·000247 2) 수집 성공 후 원복·디렉토리 삭제. **000247 이름 미확정 — 추측 금지**(DVS_NAMES에 없으면 코드 그대로 표시).
+- **land.html 상세 패널**: 목록 행 클릭 → `#ap-detail` 전환(목록 ↔ 상세). 구성 = 사진 캐러셀(화살표·카운터 `n/N`·구분명 캡션) + 클릭 시 **라이트박스 확대**(`#apd-lightbox`, 좌우 nav·닫기) + 감정/최저/매각기일 카드 + D-day 배지 + 상세 그리드(사건번호·법원·물건번호·용도·진행상태·담당계·매각기일·비고) + 액션(☆즐겨찾기·지도에서 보기·법원 사이트). 목록 행에 썸네일(64×48) 추가.
+- **버그 2건 수정 (실측)**: ① `#apd-lightbox` CSS `display:flex` 가 `hidden` 의 `display:none` 을 덮어써 상세 패널 조작을 가로챔 → `#apd-lightbox[hidden]{display:none}` 필수. ② 라이트박스 div 가 `<script>` 뒤에 있어 실행 시점에 null → body 상단(패널 뒤)으로 이동.
+- **헤드리스 검증 통과**: 상세 열림·사진 `loaded:true`·다음장 `1/3→2/3`·라이트박스 열고 닫기·뒤로가기 목록 복귀·목록 썸네일 2,896행. console 에러 없음(의도된 auth-guard net::ERR_FAILED 제외).
+
+### 커밋·배포 상태
+- **커밋·push 없음** (동의 대기). 변경: `tools/collect_auction_photos.js`·`land.html`·`auction_photos.json`(메타화)·`auction_photos/`(신규 6 jpg)·TROUBLESHOOTING §6-14. `auction.json` 변경 없음.
+
+### 다음 세션 확인할 것
+- 커밋 동의 후 관심 사건 확대 수집: `node tools/collect_auction_photos.js --court 서울중앙` (IP 안정 시, GAP 1초 유지).
+- 000247 구분명: 다음 수집 때 캡처 확인 후 DVS_NAMES에 추가 여부 판단.
+
+---
+
 ## 2026-08-13 (23) — opencode (경매 사진 분리: auction.json 유지 + auction_photos.json 별도 — 코드 변경만, 커밋 전)
 
 > 사용자 "20건 이상 계획" → 사진 인라인(rows[*].photos)은 사진 1행 ~952KB 실측이라 20건 넘으면 무거움. **auction.json(927KB)은 그대로, 사진은 auction_photos.json `{ cn: [...] }` 맵으로 분리 결정.**
