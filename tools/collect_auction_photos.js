@@ -60,7 +60,10 @@ const dirName = (cn) => cn.replace(/[^\w가-힣]+/g, '_');
 
 async function openSearch(page, courtSel) {
   for (let attempt = 0; attempt < 3; attempt++) {
-    await page.goto(SRCH_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    // goto 자체가 타임아웃으로 throw 할 수 있다(실측: 2025타경103843 에서 30초 타임아웃 →
+    // 잡아주지 않아 전체 프로세스가 죽음). 여기서 삼켜서 재시도 루프를 타게 한다.
+    try { await page.goto(SRCH_URL, { waitUntil: 'domcontentloaded', timeout: 30000 }); }
+    catch (e) { console.log(`  페이지 이동 실패(${attempt + 1}/3): ${e.message.split('\n')[0]}`); continue; }
     let ok = false;
     for (let i = 0; i < 15; i++) {
       await page.waitForTimeout(1000);
@@ -133,69 +136,78 @@ function splitCsNo(cn) {
     console.log(`[${++done}/${targets.length}] ${court} · ${cn}`);
     if (!sp) { console.log('  사건번호 형식 오류 — 스킵'); continue; }
 
-    await openSearch(page, COURT_SEL);
-    // 법원 선택
-    await page.evaluate(({ sel, court }) => {
-      const s = document.querySelector(sel);
-      const opt = [...s.options].find((o) => o.textContent.trim() === court);
-      if (opt) { s.value = opt.value; s.dispatchEvent(new Event('change', { bubbles: true })); s.dispatchEvent(new Event('input', { bubbles: true })); }
-    }, { sel: COURT_SEL, court }).catch(() => {});
-    // 연도 선택
-    await page.evaluate(({ sel, year }) => {
-      const s = document.querySelector(sel);
-      const opt = [...s.options].find((o) => o.textContent.trim() === year);
-      if (opt) { s.value = opt.value; s.dispatchEvent(new Event('change', { bubbles: true })); s.dispatchEvent(new Event('input', { bubbles: true })); }
-    }, { sel: YEAR_SEL, year: sp.year }).catch(() => {});
-    await page.waitForTimeout(400);
-    // 사건번호 숫자부 입력 (WebSquare: 한글 자동 제거 → 숫자만)
-    await page.locator(CSNO_SEL).click().catch(() => {});
-    await page.locator(CSNO_SEL).fill(sp.num).catch(() => {});
-    await page.waitForTimeout(300);
+    // 사건 1건 처리 전체를 감싼다 — 실측: 2025타경103843 에서 page.goto 타임아웃이
+    // 안 잡혀 프로세스 전체가 죽었다(116/2323 에서 중단). 네트워크 순단·페이지 로드 실패
+    // 등 예상 밖 예외 하나 때문에 몇 시간짜리 배치 전체를 잃지 않도록, 이 사건만 스킵하고
+    // 다음 사건으로 넘어간다. photosDb는 매 성공마다 즉시 디스크에 쓰므로(아래) 이전
+    // 진행분은 안전하다.
+    try {
+      await openSearch(page, COURT_SEL);
+      // 법원 선택
+      await page.evaluate(({ sel, court }) => {
+        const s = document.querySelector(sel);
+        const opt = [...s.options].find((o) => o.textContent.trim() === court);
+        if (opt) { s.value = opt.value; s.dispatchEvent(new Event('change', { bubbles: true })); s.dispatchEvent(new Event('input', { bubbles: true })); }
+      }, { sel: COURT_SEL, court }).catch(() => {});
+      // 연도 선택
+      await page.evaluate(({ sel, year }) => {
+        const s = document.querySelector(sel);
+        const opt = [...s.options].find((o) => o.textContent.trim() === year);
+        if (opt) { s.value = opt.value; s.dispatchEvent(new Event('change', { bubbles: true })); s.dispatchEvent(new Event('input', { bubbles: true })); }
+      }, { sel: YEAR_SEL, year: sp.year }).catch(() => {});
+      await page.waitForTimeout(400);
+      // 사건번호 숫자부 입력 (WebSquare: 한글 자동 제거 → 숫자만)
+      await page.locator(CSNO_SEL).click().catch(() => {});
+      await page.locator(CSNO_SEL).fill(sp.num).catch(() => {});
+      await page.waitForTimeout(300);
 
-    // 검색
-    const token = await page.evaluate('document.body.innerText.length');
-    await page.locator(SRCH_BTN).click({ timeout: 10000 });
-    await page.waitForFunction((t) => document.body.innerText.length !== t, token, { timeout: 20000 }).catch(() => {});
-    await page.waitForTimeout(2000);
+      // 검색
+      const token = await page.evaluate('document.body.innerText.length');
+      await page.locator(SRCH_BTN).click({ timeout: 10000 });
+      await page.waitForFunction((t) => document.body.innerText.length !== t, token, { timeout: 20000 }).catch(() => {});
+      await page.waitForTimeout(2000);
 
-    // 물건상세조회 클릭 → 상세 응답 캡처 (리스너는 클릭 전에 등록해야 응답을 놓치지 않는다)
-    const waitDetail = captureDetail(20000);
-    const detailBtn = await page.evaluate(() => {
-      const b = [...document.querySelectorAll('input[value="물건상세조회"], button')]
-        .find((x) => (x.value || x.textContent || '').includes('물건상세조회') && !x.disabled);
-      if (b) { b.click(); return true; }
-      return false;
-    });
-    if (!detailBtn) { console.log('  물건상세조회 버튼 없음(종결/취하?) — 스킵'); continue; }
+      // 물건상세조회 클릭 → 상세 응답 캡처 (리스너는 클릭 전에 등록해야 응답을 놓치지 않는다)
+      const waitDetail = captureDetail(20000);
+      const detailBtn = await page.evaluate(() => {
+        const b = [...document.querySelectorAll('input[value="물건상세조회"], button')]
+          .find((x) => (x.value || x.textContent || '').includes('물건상세조회') && !x.disabled);
+        if (b) { b.click(); return true; }
+        return false;
+      });
+      if (!detailBtn) { console.log('  물건상세조회 버튼 없음(종결/취하?) — 스킵'); continue; }
 
-    const lst = await waitDetail;
-    await page.waitForTimeout(1500);
+      const lst = await waitDetail;
+      await page.waitForTimeout(1500);
 
-    if (!lst.length) { console.log('  상세 응답에서 사진 목록 없음 — 스킵'); continue; }
-    // 구분 코드 순서대로 정렬(000241 전경도 먼저), picFile(base64) 있는 것만
-    const pics = lst
-      .filter((p) => p.picFile)
-      .sort((a, b) => (a.cortAuctnPicDvsCd || '').localeCompare(b.cortAuctnPicDvsCd || ''));
-    if (!pics.length) { console.log('  사진 데이터 없음 — 스킵'); continue; }
+      if (!lst.length) { console.log('  상세 응답에서 사진 목록 없음 — 스킵'); continue; }
+      // 구분 코드 순서대로 정렬(000241 전경도 먼저), picFile(base64) 있는 것만
+      const pics = lst
+        .filter((p) => p.picFile)
+        .sort((a, b) => (a.cortAuctnPicDvsCd || '').localeCompare(b.cortAuctnPicDvsCd || ''));
+      if (!pics.length) { console.log('  사진 데이터 없음 — 스킵'); continue; }
 
-    // 개별 jpg 파일로 저장
-    const dir = path.join(OUT_PHOTOS_DIR, dirName(cn));
-    fs.mkdirSync(dir, { recursive: true });
-    const seq = {};
-    const meta = pics.map((p) => {
-      const dvs = p.cortAuctnPicDvsCd || '000245';
-      seq[dvs] = (seq[dvs] || 0) + 1;
-      const buf = Buffer.from(p.picFile, 'base64');
-      const file = `${dvs}_${seq[dvs]}.${imgExt(buf)}`;
-      fs.writeFileSync(path.join(dir, file), buf);
-      return { dvs, name: DVS_NAMES[dvs] || dvs, file: 'auction_photos/' + dirName(cn) + '/' + file };
-    });
+      // 개별 jpg 파일로 저장
+      const dir = path.join(OUT_PHOTOS_DIR, dirName(cn));
+      fs.mkdirSync(dir, { recursive: true });
+      const seq = {};
+      const meta = pics.map((p) => {
+        const dvs = p.cortAuctnPicDvsCd || '000245';
+        seq[dvs] = (seq[dvs] || 0) + 1;
+        const buf = Buffer.from(p.picFile, 'base64');
+        const file = `${dvs}_${seq[dvs]}.${imgExt(buf)}`;
+        fs.writeFileSync(path.join(dir, file), buf);
+        return { dvs, name: DVS_NAMES[dvs] || dvs, file: 'auction_photos/' + dirName(cn) + '/' + file };
+      });
 
-    photosDb[cn] = meta;
-    const cnt = {};
-    meta.forEach((m) => { cnt[m.name] = (cnt[m.name] || 0) + 1; });
-    console.log(`  사진 ${meta.length}장 저장 → ${Object.entries(cnt).map(([k, v]) => `${k} ${v}장`).join(' · ')}`);
-    fs.writeFileSync(OUT_PHOTOS, JSON.stringify(photosDb));
+      photosDb[cn] = meta;
+      const cnt = {};
+      meta.forEach((m) => { cnt[m.name] = (cnt[m.name] || 0) + 1; });
+      console.log(`  사진 ${meta.length}장 저장 → ${Object.entries(cnt).map(([k, v]) => `${k} ${v}장`).join(' · ')}`);
+      fs.writeFileSync(OUT_PHOTOS, JSON.stringify(photosDb));
+    } catch (e) {
+      console.log(`  처리 중 오류 — 스킵: ${String(e && e.message || e).split('\n')[0]}`);
+    }
     if (GAP_MS) await sleep(GAP_MS);
   }
 
