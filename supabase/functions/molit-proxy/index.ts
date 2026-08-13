@@ -30,15 +30,47 @@ const ALLOWED_OPS = new Set([
   "getBrAtchJibunInfo", "getBrExposPubuseAreaInfo", "getBrHsprcInfo", "getBrJijiguInfo",
 ]);
 
-function json(body: unknown, status = 200) {
+function json(body: unknown, status = 200, extraHeaders?: Record<string, string>) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...CORS, "content-type": "application/json; charset=utf-8" },
+    headers: { ...CORS, ...extraHeaders, "content-type": "application/json; charset=utf-8" },
   });
+}
+
+// IP당 레이트리밋 — MOLIT_KEY(data.go.kr 계정당 일일 호출한도)를 남이 반복 호출로
+// 소진시키는 걸 막는다. Deno Edge Function 인스턴스 안에서만 유효한 메모리 카운터라
+// 인스턴스가 재시작/분산되면 리셋된다 — 완벽한 방어는 아니지만 별도 인프라(Redis 등)
+// 없이 이 정도로도 무차별 반복 호출은 충분히 걸러진다.
+const RATE_WINDOW_MS = 60_000;
+const RATE_MAX = 60; // 지도 클릭 1회 = op 7개 호출이라 여유 있게 잡음
+const rateMap = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimit(ip: string): { ok: true } | { ok: false; retryAfterSec: number } {
+  const now = Date.now();
+  const entry = rateMap.get(ip);
+  if (!entry || now >= entry.resetAt) {
+    rateMap.set(ip, { count: 1, resetAt: now + RATE_WINDOW_MS });
+    return { ok: true };
+  }
+  entry.count += 1;
+  if (entry.count > RATE_MAX) {
+    return { ok: false, retryAfterSec: Math.ceil((entry.resetAt - now) / 1000) };
+  }
+  return { ok: true };
 }
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "unknown";
+  const rl = checkRateLimit(ip);
+  if (!rl.ok) {
+    return json(
+      { error: `요청이 너무 많습니다. ${rl.retryAfterSec}초 후 다시 시도하세요.` },
+      429,
+      { "Retry-After": String(rl.retryAfterSec) },
+    );
+  }
 
   const url = new URL(req.url);
   const p = url.searchParams;
