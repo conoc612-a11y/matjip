@@ -38,32 +38,40 @@ function json(body: unknown, status = 200, extraHeaders?: Record<string, string>
 }
 
 // IP당 레이트리밋 — MOLIT_KEY(data.go.kr 계정당 일일 호출한도)를 남이 반복 호출로
-// 소진시키는 걸 막는다. Deno Edge Function 인스턴스 안에서만 유효한 메모리 카운터라
-// 인스턴스가 재시작/분산되면 리셋된다 — 완벽한 방어는 아니지만 별도 인프라(Redis 등)
-// 없이 이 정도로도 무차별 반복 호출은 충분히 걸러진다.
-const RATE_WINDOW_MS = 60_000;
+// 소진시키는 걸 막는다. 처음엔 함수 메모리 Map으로 짰으나 실측 결과 65회 연속 요청에도
+// 한 번도 안 걸림 — Edge Function 인스턴스가 요청마다 분산돼 메모리가 공유 안 됨.
+// 그래서 DB(rl_hit RPC, api_rate_limits 테이블)로 카운터를 옮겼다 — 인스턴스 무관하게 공유됨.
+const RATE_WINDOW_SEC = 60;
 const RATE_MAX = 60; // 지도 클릭 1회 = op 7개 호출이라 여유 있게 잡음
-const rateMap = new Map<string, { count: number; resetAt: number }>();
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-function checkRateLimit(ip: string): { ok: true } | { ok: false; retryAfterSec: number } {
-  const now = Date.now();
-  const entry = rateMap.get(ip);
-  if (!entry || now >= entry.resetAt) {
-    rateMap.set(ip, { count: 1, resetAt: now + RATE_WINDOW_MS });
+async function checkRateLimit(ip: string): Promise<{ ok: true } | { ok: false; retryAfterSec: number }> {
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/rl_hit`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        apikey: SERVICE_ROLE_KEY,
+        authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+      },
+      body: JSON.stringify({ p_key: ip, p_window_seconds: RATE_WINDOW_SEC, p_max: RATE_MAX }),
+    });
+    const rows = await r.json();
+    const row = Array.isArray(rows) ? rows[0] : rows;
+    if (row && row.allowed === false) return { ok: false, retryAfterSec: row.retry_after ?? RATE_WINDOW_SEC };
+    return { ok: true };
+  } catch (_e) {
+    // DB 왕복 실패 시 서비스 자체를 막지 않는다 — 레이트리밋은 방어선이지 필수 경로가 아니다.
     return { ok: true };
   }
-  entry.count += 1;
-  if (entry.count > RATE_MAX) {
-    return { ok: false, retryAfterSec: Math.ceil((entry.resetAt - now) / 1000) };
-  }
-  return { ok: true };
 }
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "unknown";
-  const rl = checkRateLimit(ip);
+  const rl = await checkRateLimit(ip);
   if (!rl.ok) {
     return json(
       { error: `요청이 너무 많습니다. ${rl.retryAfterSec}초 후 다시 시도하세요.` },
