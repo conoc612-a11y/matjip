@@ -118,8 +118,11 @@
     .ap-fav:hover, .ap-close:hover { color:var(--text); background:var(--c-hover); }
     .ap-hint { padding:6px 12px; font-size:11px; color:var(--muted); border-bottom:1px solid var(--line); line-height:1.5; }
     .ap-list { flex:1; overflow-y:auto; padding:6px; min-height:0; }
-    .ap-row { padding:8px 10px; border-radius:8px; cursor:pointer; margin-bottom:4px; }
+    .ap-row { padding:8px 10px; border-radius:8px; cursor:pointer; margin-bottom:4px; display:flex; gap:10px; align-items:flex-start; }
     .ap-row:hover { background:var(--c-hover); }
+    .ap-thumb { flex-shrink:0; width:64px; height:48px; border-radius:6px; object-fit:cover; border:1px solid var(--line); display:flex; align-items:center; justify-content:center; }
+    .ap-thumb-ph { background:var(--c-hover); font-size:18px; }
+    .ap-row-main { flex:1; min-width:0; }
     .ap-row-top { display:flex; align-items:flex-start; gap:6px; }
     .ap-badge { flex-shrink:0; font-size:11px; color:#fff; padding:1px 7px; border-radius:999px; margin-top:1px; }
     .ap-addr { flex:1; min-width:0; font-weight:600; overflow-wrap:anywhere; }
@@ -138,6 +141,43 @@
     .auc-photo img { width:100%; height:100%; object-fit:cover; display:block; }
     .auc-photo-ph { font-size:11px; color:var(--muted); text-align:center; line-height:1.4; padding:4px; }
     .auc-photo-more { position:absolute; right:0; bottom:0; background:rgba(0,0,0,.55); color:#fff; font-size:11px; padding:1px 6px; border-radius:6px 0 0 0; }
+    /* ── 법원경매 상세 패널 ── (사진 캐러셀 + 확대 + 정보, disco.re/재개발닷컴 벤치마크 2026-08-13) */
+    .apd-head { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+    .apd-back, .apd-close { border:1px solid var(--line); background:var(--card); color:var(--text); border-radius:8px; cursor:pointer; font:inherit; font-size:13px; padding:5px 10px; }
+    .apd-back:hover, .apd-close:hover { border-color:var(--c-primary); color:var(--c-primary); }
+    .apd-title { flex:1; font-size:14px; }
+    .apd-photo { position:relative; border-radius:10px; overflow:hidden; background:var(--c-hover); aspect-ratio:4/3; }
+    .apd-photo img { width:100%; height:100%; object-fit:cover; display:block; cursor:zoom-in; }
+    .apd-photo .apd-ph { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:13px; color:var(--muted); text-align:center; line-height:1.5; }
+    .apd-nav { position:absolute; top:50%; transform:translateY(-50%); width:30px; height:46px; border:none; background:rgba(0,0,0,.45); color:#fff; font-size:20px; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+    .apd-nav:hover { background:rgba(0,0,0,.7); }
+    .apd-prev { left:6px; } .apd-next { right:6px; }
+    .apd-cap { position:absolute; left:0; right:0; bottom:6px; text-align:center; color:#fff; font-size:12px; text-shadow:0 1px 3px rgba(0,0,0,.8); }
+    .apd-count { position:absolute; top:6px; right:8px; background:rgba(0,0,0,.55); color:#fff; font-size:11px; padding:2px 8px; border-radius:999px; }
+    .apd-addr { font-weight:700; font-size:15px; margin:10px 0 2px; }
+    .apd-badges { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+    .apd-badge { font-size:12px; color:#fff; padding:2px 10px; border-radius:999px; }
+    .apd-cards { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:10px; }
+    .apd-card { background:var(--c-hover); border-radius:8px; padding:8px 4px; text-align:center; }
+    .apd-card b { display:block; font-size:13px; margin-top:2px; }
+    .apd-card span { font-size:11px; color:var(--muted); }
+    .apd-card .dday { color:var(--c-primary); font-weight:800; }
+    .apd-grid { display:grid; gap:4px; margin-bottom:10px; }
+    .apd-grid-row { display:flex; justify-content:space-between; gap:10px; font-size:13px; }
+    .apd-grid-row span { color:var(--muted); flex-shrink:0; }
+    .apd-actions { display:flex; gap:6px; }
+    .apd-btn { flex:1; font:inherit; font-size:13px; font-weight:600; padding:9px 8px; border:1px solid var(--line); background:var(--card); color:var(--text); border-radius:9px; cursor:pointer; }
+    .apd-btn:hover { border-color:var(--c-primary); color:var(--c-primary); }
+    .apd-btn.on { background:var(--c-primary); color:#fff; border-color:var(--c-primary); }
+    #apd-lightbox { position:fixed; inset:0; z-index:4000; background:rgba(0,0,0,.92); display:flex; align-items:center; justify-content:center; }
+    #apd-lightbox[hidden] { display:none; }
+    #apd-lightbox img { max-width:94vw; max-height:88vh; border-radius:6px; box-shadow:0 8px 40px rgba(0,0,0,.5); }
+    .apd-lb-cap { position:absolute; left:0; right:0; bottom:16px; text-align:center; color:#fff; font-size:13px; }
+    .apd-lb-close { position:absolute; top:12px; right:16px; width:36px; height:36px; border:none; border-radius:50%; background:rgba(255,255,255,.15); color:#fff; font-size:18px; cursor:pointer; }
+    .apd-lb-close:hover { background:rgba(255,255,255,.3); }
+    .apd-lb-nav { position:absolute; top:50%; transform:translateY(-50%); width:40px; height:60px; border:none; border-radius:10px; background:rgba(255,255,255,.12); color:#fff; font-size:26px; cursor:pointer; }
+    .apd-lb-nav:hover { background:rgba(255,255,255,.25); }
+    .apd-lb-prev { left:10px; } .apd-lb-next { right:10px; }
     /* ── Panel widgets ── */
     .engine-bar { display:flex; gap:4px; margin-bottom:10px; background:var(--c-hover); padding:4px; border-radius:10px; }
     .tool-btn { flex:1; font:inherit; font-size:13px; font-weight:600; padding:7px 10px; border:none; background:transparent; color:var(--muted); border-radius:7px; cursor:pointer; transition:all .15s; }
@@ -453,12 +493,28 @@
         <button id="ap-fav" class="ap-fav" title="즐겨찾기한 물건만 보기">☆즐겨찾기</button>
         <button id="ap-close" class="ap-close" title="패널 닫기 (레이어는 유지)" aria-label="패널 닫기">✕</button>
       </div>
-      <div class="ap-hint">감정평가서·현황조사서·매각물건명세서는 courtauction.go.kr에서 사건번호로 조회됩니다. 행 클릭 = 지도 이동, 사건번호 클릭 = 법원 사이트 검색.</div>
+      <div class="ap-hint">감정평가서·현황조사서·매각물건명세서는 courtauction.go.kr에서 사건번호로 조회됩니다. 행 클릭 = 상세 정보, 사건번호 클릭 = 법원 사이트 검색.</div>
       <div class="ap-list ui-scroll" id="ap-list"></div>
+      <div class="ap-detail ui-scroll" id="ap-detail" hidden>
+        <div class="apd-head">
+          <button type="button" id="apd-back" class="apd-back" title="목록으로 돌아가기">← 목록</button>
+          <b class="apd-title">물건 상세</b>
+          <button type="button" id="apd-close" class="apd-close" title="패널 닫기 (레이어는 유지)">✕</button>
+        </div>
+        <div class="apd-photo" id="apd-photo"></div>
+        <div class="apd-body" id="apd-body"></div>
+      </div>
       <div class="ap-resizer" id="ap-resizer" title="드래그해서 너비 조절"></div>
     </aside>
-    <div id="map"></div>
-    <div class="panel-resizer" id="panel-resizer" title="드래그해서 목록 너비 조절"></div>
+    <!-- 법원경매 사진 확대 (라이트박스) — 스크립트 실행 시점에 DOM 에 있어야 하므로 body 상단에 배치 -->
+    <div id="apd-lightbox" hidden>
+      <button type="button" class="apd-lb-close" id="apd-lb-close" aria-label="닫기">✕</button>
+      <button type="button" class="apd-lb-nav apd-lb-prev" id="apd-lb-prev" aria-label="이전">‹</button>
+      <img id="apd-lb-img" alt="사진 확대">
+      <button type="button" class="apd-lb-nav apd-lb-next" id="apd-lb-next" aria-label="다음">›</button>
+      <div class="apd-lb-cap" id="apd-lb-cap"></div>
+    </div>
+    <div id="map"></div>    <div class="panel-resizer" id="panel-resizer" title="드래그해서 목록 너비 조절"></div>
     <div class="panel" id="panel">
       <div class="sheet-handle" id="sheet-handle" title="위로 올려서 목록 보기"></div>
       <div id="engine-bar" class="engine-bar">
@@ -1597,21 +1653,21 @@
       let auctionRows = null, _auctionPromise = null;
       function loadAuction() {
         if (!_auctionPromise) {
-          // auction.json(목록·좌표) + auction_photos.json(사진) 병렬 fetch — 사진은 분리해서
-          // auction.json 을 가볍게 유지한다(2026-08-13 사진 1행 ~952KB 실측, 20건 넘어가면 인라인 불가).
+          // auction.json(목록·좌표) + auction_photos.json(사진 메타) 병렬 fetch — 사진 본체(jpg)는
+          // auction_photos/ 아래 개별 파일로 분리(2026-08-13). 상세 패널을 열 때만 해당 사진만 로드한다.
           _auctionPromise = Promise.all([
             fetch('auction.json').then((r) => r.json()),
             fetch('auction_photos.json').then((r) => r.json()).catch(() => ({})),
           ]).then(([j, ph]) => {
             const F = {};
             j.fields.forEach((f, i) => { F[f] = i; });
-            const getPhotos = (cn) => (ph[cn] && ph[cn].length ? ph[cn].filter(Boolean) : []);
-            auctionRows = j.rows.map((r) => ({
+            const getPhotos = (cn) => (ph[cn] && ph[cn].length ? ph[cn].filter((p) => p && p.file) : []);
+            auctionRows = j.rows.filter((r) => r[F.lat] && r[F.lng]).map((r, i) => ({
               court: j.courts[r[F.court]], cn: r[F.cn], no: r[F.no], addr: r[F.addr], note: r[F.note],
               appr: r[F.appr], dept: r[F.dept], sale: r[F.sale], use: r[F.use], low: r[F.low],
               status: r[F.status], lat: r[F.lat], lng: r[F.lng],
-              photos: getPhotos(r[F.cn]),
-            })).filter((d) => d.lat && d.lng);
+              photos: getPhotos(r[F.cn]), _i: i,
+            }));
             return auctionRows;
           }).catch(() => null);
         }
@@ -1619,13 +1675,13 @@
       }
       const wonEok = (v) => v ? v.toLocaleString('ko-KR', { maximumFractionDigits: 2 }) + '억원' : '';
       const aucColor = (s) => (s || '').includes('유찰') ? '#fa5252' : '#f08c00';
-      // 사진 플레이스홀더: auction.json 에 photos 배열이 없으면 준비 중 박스. 단계2에서 PGJ155 사진 URL 로 채운다.
+      // 팝업용 사진 그리드 — photos 는 { dvs, name, file } 메타 배열, file 은 상대 경로
       function auctionPhotoHtml(d) {
         const ph = (label) => `<div class="auc-photo"><span class="auc-photo-ph">${label}</span></div>`;
         if (!d.photos || !d.photos.length) {
           return `<div class="auc-photos">${ph('📷 사진<br>준비 중')}${ph('')}${ph('')}</div>`;
         }
-        const cells = d.photos.slice(0, 3).map((p, i) => `<div class="auc-photo"><img src="${esc(p)}" alt="물건 사진 ${i + 1}" loading="lazy"></div>`);
+        const cells = d.photos.slice(0, 3).map((p, i) => `<div class="auc-photo"><img src="${esc(p.file)}" alt="물건 사진 ${i + 1}" loading="lazy"></div>`);
         while (cells.length < 3) cells.push(ph(''));
         if (d.photos.length > 3) cells.push(`<div class="auc-photo"><span class="auc-photo-more">+${d.photos.length - 3}</span></div>`);
         return `<div class="auc-photos">${cells.join('')}</div>`;
@@ -1684,14 +1740,18 @@
         const rows = [
           ['감정', wonEok(d.appr)], ['최저', wonEok(d.low)], ['용도', d.use], ['매각기일', d.sale],
         ].filter(([, v]) => v != null && v !== '').map(([k, v]) => `${k} ${esc(v)}`).join(' · ');
+        const thumb = d.photos && d.photos.length ? `<img class="ap-thumb" src="${esc(d.photos[0].file)}" alt="" loading="lazy">` : '<span class="ap-thumb ap-thumb-ph">📷</span>';
         return `<div class="ap-row" data-i="${idx}">
-          <div class="ap-row-top">
-            <span class="ap-badge" style="background:${aucColor(d.status)};">${esc(d.status)}</span>
-            <b class="ap-addr">${esc(d.addr)}</b>
-            <button type="button" class="ap-star${fav ? ' on' : ''}" title="즐겨찾기">${fav ? '★' : '☆'}</button>
+          ${thumb}
+          <div class="ap-row-main">
+            <div class="ap-row-top">
+              <span class="ap-badge" style="background:${aucColor(d.status)};">${esc(d.status)}</span>
+              <b class="ap-addr">${esc(d.addr)}</b>
+              <button type="button" class="ap-star${fav ? ' on' : ''}" title="즐겨찾기">${fav ? '★' : '☆'}</button>
+            </div>
+            <div class="ap-row-mid" style="margin-top:3px;"><button type="button" class="ap-cn" title="법원 사이트 사건검색에서 조회">${esc((d.cn || '').replace(d.court || '', '').trim())}</button> <span class="ap-court">${esc(d.court)} · 물건${esc(d.no)}</span></div>
+            ${rows ? `<div class="ap-meta">${rows}</div>` : ''}
           </div>
-          <div class="ap-row-mid" style="margin-top:3px;"><button type="button" class="ap-cn" title="법원 사이트 사건검색에서 조회">${esc((d.cn || '').replace(d.court || '', '').trim())}</button> <span class="ap-court">${esc(d.court)} · 물건${esc(d.no)}</span></div>
-          ${rows ? `<div class="ap-meta">${rows}</div>` : ''}
         </div>`;
       }
       function auctionRenderList() {
@@ -1717,18 +1777,125 @@
           return;
         }
         if (cn) { e.stopPropagation(); window.open('https://www.courtauction.go.kr/pgj/index.on?w2xPath=/pgj/ui/pgj100/PGJ159M00.xml', '_blank', 'noopener'); return; }
-        // 행 클릭 = 지도에서 해당 물건으로 이동 + 팝업
-        let m = null;
-        auctionCluster.eachLayer((l) => { if (!m && l._idx === +row.dataset.i) m = l; });
-        if (m && m._pop) {
-          auctionCluster.zoomToShowLayer(m, () => {
-            if (!m.getPopup()) m.bindPopup(m._pop());
-            m.openPopup();
-          });
-        } else {
-          map.setView([d.lat, d.lng], 16);
-        }
+        // 행 클릭 = 상세 패널로 전환
+        auctionOpenDetail(d);
       };
+      // ── 경매 상세 패널 ───────────────────────────────────────────
+      // 목록(#ap-list) ↔ 상세(#ap-detail) 전환. 상세 = 사진 캐러셀(상단) + 가격 카드 + 상세 그리드.
+      // 사진은 auction_photos/<사건>/<구분>_<n>.jpg 개별 파일 — 상세를 열 때만 해당 사진만 로드(빠름).
+      const auctionDetail = $('ap-detail');
+      let apdD = null, apdIdx = 0;
+      function aucDDay(s) {
+        const m = String(s || '').match(/(\d{4})\.(\d{2})\.(\d{2})/);
+        if (!m) return '';
+        const diff = Math.ceil((new Date(+m[1], +m[2] - 1, +m[3]).getTime() - Date.now()) / 86400000);
+        if (diff < 0) return '기일 지남';
+        if (diff === 0) return '오늘';
+        return 'D-' + diff;
+      }
+      function auctionOpenDetail(d) {
+        apdD = d; apdIdx = 0;
+        auctionList.hidden = true;
+        auctionDetail.hidden = false;
+        auctionDetail.scrollTop = 0;
+        auctionRenderDetail();
+        // 지도에서 해당 물건으로 이동 (상세와 지도가 동시에 보이도록)
+        const m = (() => { let out = null; auctionCluster.eachLayer((l) => { if (!out && l._idx === d._i) out = l; }); return out; })();
+        if (m) { auctionCluster.zoomToShowLayer(m, () => { }); } else { map.setView([d.lat, d.lng], 16); }
+      }
+      function auctionCloseDetail() {
+        auctionDetail.hidden = true;
+        auctionList.hidden = false;
+        apdD = null;
+      }
+      function auctionRenderDetail() {
+        const d = apdD;
+        if (!d) return;
+        const phEl = $('apd-photo'), bodyEl = $('apd-body');
+        const photos = d.photos || [];
+        // 사진 캐러셀
+        if (!photos.length) {
+          phEl.innerHTML = `<div class="apd-ph">📷 사진 준비 중<br><span style="font-size:11px;color:var(--muted)">courtauction.go.kr에서 사건번호로 확인</span></div>`;
+        } else {
+          const p = photos[Math.min(apdIdx, photos.length - 1)];
+          phEl.innerHTML = `
+            <img src="${esc(p.file)}" alt="${esc(p.name)} ${apdIdx + 1}" id="apd-photo-img">
+            ${photos.length > 1 ? `<div class="apd-count">${apdIdx + 1} / ${photos.length}</div>
+            <button type="button" class="apd-nav apd-prev" id="apd-nav-prev" aria-label="이전">‹</button>
+            <button type="button" class="apd-nav apd-next" id="apd-nav-next" aria-label="다음">›</button>` : ''}
+            <div class="apd-cap">${esc(p.name)}</div>`;
+          const img = $('apd-photo-img');
+          img.onclick = () => lightboxOpen(d, apdIdx);
+          const prev = $('apd-nav-prev'), next = $('apd-nav-next');
+          if (prev) prev.onclick = (e) => { e.stopPropagation(); apdIdx = (apdIdx + photos.length - 1) % photos.length; auctionRenderDetail(); };
+          if (next) next.onclick = (e) => { e.stopPropagation(); apdIdx = (apdIdx + 1) % photos.length; auctionRenderDetail(); };
+        }
+        // 정보 본문
+        const rows = [
+          ['사건번호', d.cn], ['법원', d.court], ['물건번호', d.no], ['용도', d.use],
+          ['진행상태', d.status], ['담당계', d.dept], ['매각기일', d.sale], ['비고', d.note],
+        ].filter(([, v]) => v != null && v !== '').map(([k, v]) => `<div class="apd-grid-row"><span>${k}</span><b style="text-align:right;">${esc(v)}</b></div>`).join('');
+        const favKey = auctionFavKey(d);
+        const fav = auctionFavLoad().includes(favKey);
+        bodyEl.innerHTML = `
+          <div class="apd-addr">${esc(d.addr)}</div>
+          <div class="apd-badges">
+            <span class="apd-badge" style="background:${aucColor(d.status)};">${esc(d.status)}</span>
+            ${d.sale ? `<span class="apd-badge" style="background:var(--c-primary);">${esc(aucDDay(d.sale))}</span>` : ''}
+          </div>
+          <div class="apd-cards">
+            <div class="apd-card"><span>감정평가액</span><b>${wonEok(d.appr)}</b></div>
+            <div class="apd-card"><span>최저매각가격</span><b>${wonEok(d.low)}</b></div>
+            <div class="apd-card"><span>매각기일</span><b>${esc(d.sale || '-')}</b>${d.sale ? `<span class="dday">${esc(aucDDay(d.sale))}</span>` : ''}</div>
+          </div>
+          <div class="apd-grid">${rows}</div>
+          <div class="apd-actions">
+            <button type="button" class="apd-btn${fav ? ' on' : ''}" id="apd-fav">${fav ? '★ 즐겨찾기' : '☆ 즐겨찾기'}</button>
+            <button type="button" class="apd-btn" id="apd-map">지도에서 보기</button>
+            <button type="button" class="apd-btn" id="apd-link">법원 사이트</button>
+          </div>`;
+        $('apd-fav').onclick = () => {
+          const on = auctionFavToggle(favKey);
+          const b = $('apd-fav');
+          b.classList.toggle('on', on);
+          b.textContent = on ? '★ 즐겨찾기' : '☆ 즐겨찾기';
+          auctionRenderList(); // 목록 별표 동기화
+        };
+        $('apd-map').onclick = () => {
+          const m = (() => { let out = null; auctionCluster.eachLayer((l) => { if (!out && l._idx === d._i) out = l; }); return out; })();
+          if (m && m._pop) {
+            auctionCluster.zoomToShowLayer(m, () => {
+              if (!m.getPopup()) m.bindPopup(m._pop());
+              m.openPopup();
+            });
+          } else { map.setView([d.lat, d.lng], 16); }
+        };
+        $('apd-link').onclick = () => window.open('https://www.courtauction.go.kr/pgj/index.on?w2xPath=/pgj/ui/pgj100/PGJ159M00.xml', '_blank', 'noopener');
+      }
+      // 라이트박스 (사진 확대)
+      const lightbox = $('apd-lightbox');
+      let lbD = null, lbIdx = 0;
+      function lightboxOpen(d, idx) {
+        lbD = d; lbIdx = idx;
+        lightbox.hidden = false;
+        lightboxRender();
+      }
+      function lightboxClose() { lightbox.hidden = true; lbD = null; }
+      function lightboxRender() {
+        if (!lbD) return;
+        const photos = lbD.photos || [];
+        if (!photos.length) return;
+        const p = photos[Math.min(lbIdx, photos.length - 1)];
+        $('apd-lb-img').src = p.file;
+        $('apd-lb-cap').textContent = `${esc(p.name)} ${lbIdx + 1} / ${photos.length}`;
+      }
+      $('apd-lb-close').onclick = lightboxClose;
+      $('apd-lb-prev').onclick = () => { lbIdx = (lbIdx + (lbD.photos.length - 1)) % lbD.photos.length; lightboxRender(); };
+      $('apd-lb-next').onclick = () => { lbIdx = (lbIdx + 1) % lbD.photos.length; lightboxRender(); };
+      lightbox.onclick = (e) => { if (e.target === lightbox) lightboxClose(); };
+      $('apd-back').onclick = auctionCloseDetail;
+      $('apd-close').onclick = () => { auctionPanel.hidden = true; };
+
       $('ap-fav').onclick = () => {
         auctionFavOnly = !auctionFavOnly;
         const b = $('ap-fav');
