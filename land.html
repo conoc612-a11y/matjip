@@ -106,12 +106,20 @@
     /* ── 법원경매 사이드 패널 ── (레이어 on/off와 연동, 왼쪽 오버레이) */
     .auction-panel { position:absolute; left:0; top:0; bottom:0; width:340px; min-width:200px; max-width:640px;
       z-index:2000; background:var(--card); border-right:1px solid var(--line); box-shadow:var(--c-shadow-lg);
-      display:flex; flex-direction:column; font-size:13px; overflow:hidden; }
-      /* overflow:hidden 상시 적용(2026-08-13) — 없으면 포켓도어로 폭을 0으로 줄여도 안의
-         ap-head 버튼들처럼 내용물이 원래 크기를 유지한 채 밖으로 넘쳐 "안 닫힌 것처럼" 보인다.
-         .panel-sliding 클래스에만 있던 overflow:hidden은 전환 애니메이션(220ms) 끝나면
-         지워져서 그 뒤엔 다시 넘쳤다. */
+      display:flex; flex-direction:column; font-size:13px; }
     .auction-panel[hidden] { display:none; }
+    /* .ap-inner — 접었을 때 실제로 잘라내는 클리핑은 여기서 한다(.auction-panel 자체가 아님).
+       이유(2026-08-13, 두 번 헛짚은 뒤 확정): overflow:hidden을 .auction-panel에 걸면
+       .ap-resizer(가장자리 밖 right:-4px)까지 잘려 포켓도어 탭이 작아 보였다. 반대로
+       .ap-head 하나에만 걸었더니, flex item은 기본 min-width:auto라 부모가 0폭이 돼도
+       자기 컨텐츠의 최소 폭(사건검색·즐겨찾기 같은 nowrap 버튼들) 밑으로는 안 줄어들어
+       .ap-head 자체가 .auction-panel 밖으로 삐져나왔다(overflow:hidden은 자기 자신의
+       테두리 밖으로 넘치는 "내용"만 자르지, 자기보다 큰 "자신"은 못 자른다).
+       그래서 콘텐츠 전체를 min-width:0인 별도 래퍼(.ap-inner)로 감싼다 — min-width:0이
+       바로 그 flex 기본값을 깨서 진짜로 0까지 줄어들게 하고, 그 래퍼에 overflow:hidden을
+       걸어 안의 내용을 자른다. .ap-resizer는 이 래퍼 밖(하지만 .auction-panel 안)에 남아
+       안 잘린다. */
+    .ap-inner { flex:1; display:flex; flex-direction:column; min-width:0; min-height:0; overflow:hidden; }
     .ap-head { display:flex; align-items:center; gap:6px; padding:9px 12px; border-bottom:1px solid var(--line); flex-wrap:wrap; }
     .ap-title { font-size:14px; }
     .ap-count { color:var(--muted); font-size:12px; }
@@ -155,10 +163,10 @@
        왼쪽 패널 모양으로 통일. 안의 필터·범례 내용·동작은 그대로, 담는 틀만 바꿨다. */
     .side-panel { position:absolute; left:0; top:0; bottom:0; width:300px; min-width:220px; max-width:520px;
       z-index:2000; background:var(--card); border-right:1px solid var(--line); box-shadow:var(--c-shadow-lg);
-      display:flex; flex-direction:column; font-size:13px; overflow:hidden; }
-      /* overflow:hidden 상시 적용 — .auction-panel 과 같은 이유(포켓도어로 접었을 때
-         안의 체크박스·칩들이 넘쳐 보이는 문제, 2026-08-13). */
+      display:flex; flex-direction:column; font-size:13px; }
     .side-panel[hidden] { display:none; }
+    /* .sp-inner — .ap-inner 와 같은 이유·구조(2026-08-13, land.html .ap-inner 주석 참고). */
+    .sp-inner { flex:1; display:flex; flex-direction:column; min-width:0; min-height:0; overflow:hidden; }
     .sp-head { display:flex; align-items:center; gap:6px; padding:9px 12px; border-bottom:1px solid var(--line); }
     .sp-title { font-size:14px; flex:1; }
     .sp-body { flex:1; overflow-y:auto; padding:10px 12px; min-height:0; }
@@ -528,37 +536,43 @@
 
   <div class="layout">
     <aside id="auction-panel" class="auction-panel" hidden aria-label="법원경매 물건 목록">
-      <div class="ap-head">
-        <b class="ap-title">법원경매</b>
-        <span class="ap-count" id="ap-count"></span>
-        <div class="ap-links">
-          <a href="https://www.courtauction.go.kr/pgj/index.on?w2xPath=/pgj/ui/pgj100/PGJ159M00.xml" target="_blank" rel="noopener" title="courtauction.go.kr 사건검색 — 사건번호로 검색">사건검색</a>
-          <a href="https://www.courtauction.go.kr/pgj/index.on?w2xPath=/pgj/ui/pgj100/PGJ151F00.xml" target="_blank" rel="noopener" title="courtauction.go.kr 물건상세검색 — 주소·지역으로 검색">물건검색</a>
+      <div class="ap-inner">
+        <div class="ap-head">
+          <b class="ap-title">법원경매</b>
+          <span class="ap-count" id="ap-count"></span>
+          <div class="ap-links">
+            <a href="https://www.courtauction.go.kr/pgj/index.on?w2xPath=/pgj/ui/pgj100/PGJ159M00.xml" target="_blank" rel="noopener" title="courtauction.go.kr 사건검색 — 사건번호로 검색">사건검색</a>
+            <a href="https://www.courtauction.go.kr/pgj/index.on?w2xPath=/pgj/ui/pgj100/PGJ151F00.xml" target="_blank" rel="noopener" title="courtauction.go.kr 물건상세검색 — 주소·지역으로 검색">물건검색</a>
+          </div>
+          <button id="ap-fav" class="ap-fav" title="즐겨찾기한 물건만 보기">☆즐겨찾기</button>
+          <button id="ap-close" class="ap-close" title="패널 닫기 (레이어는 유지)" aria-label="패널 닫기">✕</button>
         </div>
-        <button id="ap-fav" class="ap-fav" title="즐겨찾기한 물건만 보기">☆즐겨찾기</button>
-        <button id="ap-close" class="ap-close" title="패널 닫기 (레이어는 유지)" aria-label="패널 닫기">✕</button>
-      </div>
-      <div class="ap-hint">감정평가서·현황조사서·매각물건명세서는 courtauction.go.kr에서 사건번호로 조회됩니다. 행 클릭 = 상세 정보, 사건번호 클릭 = 법원 사이트 검색.</div>
-      <div class="ap-list ui-scroll" id="ap-list"></div>
-      <div class="ap-detail ui-scroll" id="ap-detail" hidden>
-        <div class="apd-head">
-          <button type="button" id="apd-back" class="apd-back" title="목록으로 돌아가기">← 목록</button>
-          <b class="apd-title">물건 상세</b>
-          <button type="button" id="apd-close" class="apd-close" title="패널 닫기 (레이어는 유지)">✕</button>
+        <div class="ap-hint">감정평가서·현황조사서·매각물건명세서는 courtauction.go.kr에서 사건번호로 조회됩니다. 행 클릭 = 상세 정보, 사건번호 클릭 = 법원 사이트 검색.</div>
+        <div class="ap-list ui-scroll" id="ap-list"></div>
+        <div class="ap-detail ui-scroll" id="ap-detail" hidden>
+          <div class="apd-head">
+            <button type="button" id="apd-back" class="apd-back" title="목록으로 돌아가기">← 목록</button>
+            <b class="apd-title">물건 상세</b>
+            <button type="button" id="apd-close" class="apd-close" title="패널 닫기 (레이어는 유지)">✕</button>
+          </div>
+          <div class="apd-photo" id="apd-photo"></div>
+          <div class="apd-body" id="apd-body"></div>
         </div>
-        <div class="apd-photo" id="apd-photo"></div>
-        <div class="apd-body" id="apd-body"></div>
       </div>
       <div class="ap-resizer" id="ap-resizer" title="드래그해서 너비 조절"></div>
     </aside>
     <aside id="rp-panel" class="side-panel" hidden aria-label="실거래가 필터">
-      <div class="sp-head"><b class="sp-title">실거래가</b><button type="button" id="rp-panel-close" class="ap-close" title="패널 닫기 (레이어는 유지)" aria-label="패널 닫기">✕</button></div>
-      <div class="sp-body ui-scroll" id="rp-panel-body"></div>
+      <div class="sp-inner">
+        <div class="sp-head"><b class="sp-title">실거래가</b><button type="button" id="rp-panel-close" class="ap-close" title="패널 닫기 (레이어는 유지)" aria-label="패널 닫기">✕</button></div>
+        <div class="sp-body ui-scroll" id="rp-panel-body"></div>
+      </div>
       <div class="side-resizer" id="rp-panel-resizer" title="드래그해서 너비 조절"></div>
     </aside>
     <aside id="jb-panel" class="side-panel" hidden aria-label="도시계획사업 필터">
-      <div class="sp-head"><b class="sp-title">도시계획사업</b><button type="button" id="jb-panel-close" class="ap-close" title="패널 닫기 (레이어는 유지)" aria-label="패널 닫기">✕</button></div>
-      <div class="sp-body ui-scroll" id="jb-panel-body"></div>
+      <div class="sp-inner">
+        <div class="sp-head"><b class="sp-title">도시계획사업</b><button type="button" id="jb-panel-close" class="ap-close" title="패널 닫기 (레이어는 유지)" aria-label="패널 닫기">✕</button></div>
+        <div class="sp-body ui-scroll" id="jb-panel-body"></div>
+      </div>
       <div class="side-resizer" id="jb-panel-resizer" title="드래그해서 너비 조절"></div>
     </aside>
     <!-- 법원경매 사진 확대 (라이트박스) — 스크립트 실행 시점에 DOM 에 있어야 하므로 body 상단에 배치 -->
