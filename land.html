@@ -119,7 +119,12 @@
     .ap-hint { padding:6px 12px; font-size:11px; color:var(--muted); border-bottom:1px solid var(--line); line-height:1.5; }
     .ap-list { flex:1; overflow-y:auto; padding:6px; min-height:0; }
     .ap-detail { flex:1; overflow-y:auto; padding:6px; min-height:0; }
-    .ap-row { padding:8px 10px; border-radius:8px; cursor:pointer; margin-bottom:4px; display:flex; gap:10px; align-items:flex-start; }
+    /* content-visibility:auto — 화면 밖 행은 레이아웃·페인트를 건너뛴다(2026-08-13 코드리뷰).
+       목록이 최대 2,896행이라 이거 하나로 스크롤 성능이 체감상 눈에 띄게 좋아진다.
+       contain-intrinsic-size 는 실측 평균 행 높이(사진 없을 때 기준) — 값이 아예 없으면
+       스크롤바 크기가 브라우저마다 다르게 추정돼 스크롤이 덜컹거린다. */
+    .ap-row { padding:8px 10px; border-radius:8px; cursor:pointer; margin-bottom:4px; display:flex; gap:10px; align-items:flex-start;
+      content-visibility:auto; contain-intrinsic-size:0 68px; }
     .ap-row:hover { background:var(--c-hover); }
     .ap-thumb { flex-shrink:0; width:64px; height:48px; border-radius:6px; object-fit:cover; border:1px solid var(--line); display:flex; align-items:center; justify-content:center; }
     .ap-thumb-ph { background:var(--c-hover); font-size:18px; }
@@ -1021,7 +1026,19 @@
     map.on('resize zoomend', syncPopupMaxHeight);
     // 컨테이너 크기가 바뀌면 Leaflet 에 알려야 한다. 안 그러면 캐시된 크기(0일 수도)로
     // 타일·클러스터·팝업 위치를 계산해 화면과 어긋난다.
-    function refreshMapSize() { try { map.invalidateSize({ animate: false }); } catch (e) {} syncPopupMaxHeight(); }
+    // rAF로 묶는다 — 우측 패널을 드래그로 리사이즈하는 동안 ResizeObserver가 프레임마다
+    // 이 함수를 부르는데, invalidateSize는 타일 재계산 + 켜진 클러스터(실거래 9,030+경매
+    // 2,896 등) 전체 재배치를 유발해 드래그가 눈에 띄게 끊겼다(2026-08-13 코드리뷰로 발견).
+    // 짧은 시간 안에 여러 번 불려도 프레임당 최대 1번만 실제로 계산한다.
+    let _rmsRaf = 0;
+    function refreshMapSize() {
+      if (_rmsRaf) return;
+      _rmsRaf = requestAnimationFrame(() => {
+        _rmsRaf = 0;
+        try { map.invalidateSize({ animate: false }); } catch (e) {}
+        syncPopupMaxHeight();
+      });
+    }
 
     // 초기 1회 보정은 타이밍을 놓치기 쉽다. 실측: whenReady + 300ms + ResizeObserver 를 모두
     // 걸었는데도 map._size 가 {0,0} 인 채 남아 타일이 1장만 그려졌다(수동 invalidateSize 로는 즉시 복구).
@@ -1103,6 +1120,11 @@
           const e = new Error('no apt file'); e._missing = true; throw e;
         })
         .then((j) => {
+          // 실측(2026-08-13 코드리뷰): realprice_apt.json 이 배포는 됐지만 내용이 빈 배열([])
+          // 이었다. r.ok 는 true 라 위 단계를 통과하고, decodeCompactRp(j)가 j.fields 를
+          // 읽다가 TypeError 로 죽는데 그 예외엔 _missing 이 없어 APT_MISS_KEY 가 안 남고,
+          // 그래서 매 페이지 로드마다 이 파일을 다시 헛으로 받고 2.04MB legacy로 폴백해왔다.
+          if (!j || !Array.isArray(j.fields)) { const e = new Error('apt file empty/invalid'); e._missing = true; throw e; }
           try { sessionStorage.removeItem(APT_MISS_KEY); } catch (e) {}
           rpSource = 'apt'; rpRows = decodeCompactRp(j); return rpRows;
         })
@@ -1726,16 +1748,25 @@
         ].filter(([, v]) => v != null && v !== '').map(([k, v]) => `<div style="display:flex;justify-content:space-between;gap:10px;"><span style="color:var(--c-muted);flex-shrink:0;">${k}</span><b style="text-align:right;">${esc(v)}</b></div>`).join('');
         return `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${aucColor(d.status)};flex-shrink:0;"></span><span class="rp-name">${esc(d.addr)}</span><span style="font-size:12px;background:${aucColor(d.status)};color:#fff;padding:1px 8px;border-radius:999px;">경매</span></div><div class="pc-body">${auctionPhotoHtml(d)}${rows}<div style="margin-top:3px;font-size:12px;color:var(--c-muted);">상세 내역은 courtauction.go.kr 에서 사건번호로 조회</div></div></div>`;
       }
+      // aucColor()는 값이 2가지(유찰 #fa5252 / 그외 #f08c00)뿐인데 예전엔 물건마다(최대
+      // 2,896개) L.divIcon 인스턴스를 새로 만들었다(2026-08-13 코드리뷰로 발견). 색상별로
+      // 딱 2개만 만들어 재사용한다 — evBuild()가 이미 쓰는 것과 같은 패턴.
+      const _aucIconCache = {};
+      function aucIcon(color) {
+        if (!_aucIconCache[color]) {
+          _aucIconCache[color] = L.divIcon({
+            className: '',
+            html: `<div style="width:26px;height:26px;background:${color};border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;font-size:13px;line-height:1;">⚖️</div>`,
+            iconSize: [26, 26], iconAnchor: [13, 13],
+          });
+        }
+        return _aucIconCache[color];
+      }
       function auctionBuild() {
         if (!auctionRows) return;
         auctionCluster.clearLayers();
         auctionCluster.addLayers(auctionRows.map((d, i) => {
-          const icon = L.divIcon({
-            className: '',
-            html: `<div style="width:26px;height:26px;background:${aucColor(d.status)};border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;font-size:13px;line-height:1;">⚖️</div>`,
-            iconSize: [26, 26], iconAnchor: [13, 13],
-          });
-          const m = L.marker([d.lat, d.lng], { icon });
+          const m = L.marker([d.lat, d.lng], { icon: aucIcon(aucColor(d.status)) });
           m._pop = (() => auctionPopupHtml(d));
           m._idx = i;
           return m;
@@ -1891,7 +1922,14 @@
           const b = $('apd-fav');
           b.classList.toggle('on', on);
           b.textContent = on ? '★ 즐겨찾기' : '☆ 즐겨찾기';
-          auctionRenderList(); // 목록 별표 동기화
+          // 목록 전체(최대 2,896행 = 약 1.45MB innerHTML)를 다시 그리는 대신 해당 행의
+          // 별표만 갱신한다 — 상세 패널이 열려 있는 동안 목록은 hidden 상태라 어차피 안
+          // 보이는데도 전체 재생성으로 메인 스레드가 수백 ms 멈췄다(2026-08-13 코드리뷰로 발견).
+          // auctionFavOnly(즐겨찾기만 보기) 필터가 켜져 있으면 이 행이 목록에서 사라지거나
+          // 나타나야 하므로 그때만 전체 재생성한다.
+          if (auctionFavOnly) { auctionRenderList(); return; }
+          const star = auctionList.querySelector('.ap-row[data-i="' + d._i + '"] .ap-star');
+          if (star) { star.classList.toggle('on', on); star.textContent = on ? '★' : '☆'; }
         };
         $('apd-map').onclick = () => {
           const m = (() => { let out = null; auctionCluster.eachLayer((l) => { if (!out && l._idx === d._i) out = l; }); return out; })();
@@ -2339,11 +2377,20 @@
         else if (jbSel.ctrl) { map.removeControl(jbSel.ctrl); jbSel.ctrl = null; }
         jbSelApplyStyles();
       }
+      let _jbGroupCountsFor = null, _jbGroupCounts = null;
       function jbBuild() {
         if (!jbRows) return;
         _jbRowsGlobal = jbRows;
-        // 메뉴에 유형별 구역 수 표시
-        document.querySelectorAll('.jb-cnt').forEach((el) => { el.textContent = jbRows.filter((r) => jbGroup(r) === el.dataset.g).length.toLocaleString(); });
+        // 메뉴에 유형별 구역 수 표시 — jbRows 가 바뀔 때만 다시 센다(+ jbGroup 결과를 d._g에
+        // memoize). 이 카운트는 뷰포트와 무관해 매번 똑같은데, moveend 디바운스마다 여기서
+        // 9종 x 전체 행을 필터링하면 매번 9(그룹) x 2,969(행) ≈ 26,721회 jbGroup() 호출이
+        // 들어갔다(2026-08-13 코드리뷰로 발견). jbGroup은 indexOf·정규식을 도는 함수라 가볍지 않다.
+        if (_jbGroupCountsFor !== jbRows) {
+          _jbGroupCountsFor = jbRows;
+          _jbGroupCounts = {};
+          jbRows.forEach((r) => { const g = jbGroup(r); r._g = g; _jbGroupCounts[g] = (_jbGroupCounts[g] || 0) + 1; });
+        }
+        document.querySelectorAll('.jb-cnt').forEach((el) => { el.textContent = (_jbGroupCounts[el.dataset.g] || 0).toLocaleString(); });
         // 열려 있던 팝업 기록: 팝업 autoPan → moveend → 재빌드 → clearLayers가
         // 팝업을 닫아버리는 루프를 막기 위해 재빌드 후 같은 구역 팝업을 다시 연다.
         const openSrc = (map._popup && map._popup._source && map._popup._source._jb) ? map._popup._source._jb : null;
@@ -2359,10 +2406,10 @@
         const polys = [];
         jbRows.forEach((d) => {
           if (d.lat == null || d.lng == null) return;  // 좌표 미확보 레코드(수집 데이터 중 소수)는 건너뜀
-          if (!jbFilter[jbGroup(d)]) return;
+          if (!jbFilter[d._g]) return;
           if (jbActiveStage !== 'all' && !(d.stage || '').includes(jbActiveStage)) return;
           if (!bounds.contains([d.lat, d.lng])) return;  // 뷰포트 밖 폴리곤·마커 스킵
-          const c = JB_COLOR[jbGroup(d)];
+          const c = JB_COLOR[d._g];
           // 쓸 수 있는 링이 하나도 안 남으면 폴리곤을 그리지 않고 마커로 떨어뜨린다.
           // (예전엔 빈 배열로 L.polygon 을 만들어 아무것도 안 보이는 유령 도형이 됐다.)
           const rings = (d.rc && jbPolys && jbPolys[d.rc]) ? usableRings(d.rc, jbPolys[d.rc]) : null;
@@ -2435,15 +2482,6 @@
           + '<div class="lc-sep lc-sub" style="margin-top:8px;">📰 정비 관련 새 소식</div>'
           + '<div id="jb-notices" style="font-size:12px;color:var(--c-muted);">불러오는 중…</div>';
         document.getElementById('jb-panel-close').onclick = () => { document.getElementById('jb-panel').hidden = true; };
-      }
-      // 레이어 컨트롤 공용 크기조절 그립 — jbCtrl·실거래 필터·범례가 같은 함수로 부착.
-      function lcGrip(el) {
-        const grip = document.createElement('div');
-        grip.className = 'ui-grip ui-grip-corner';
-        grip.title = '드래그하여 크기 조절';
-        el.appendChild(grip);
-        // 최소/최대 제약은 대상의 computed style(min-width/max-width 등)에서 읽는다 (공용 헬퍼 기본값)
-        makeResizable(grip, el);
       }
       // ── Stage chip bar (bottom-center, shown when JB layer is active) ──
       const jbStageBar = document.createElement('div');
@@ -3391,7 +3429,11 @@
       const key = op + '|' + pnu;
       if (_brCache.has(key)) { cb(_brCache.get(key)); return; }
       const attempt = _attempt || 0;
-      const fail = () => {
+      const fail = (err) => {
+        // 429(레이트리밋)는 "잠시 멈춰라"라는 뜻인데 재시도하면 오히려 구멍을 더 깊게 판다 —
+        // loadLedgerDetail이 op 8개를 쏘므로 한 번 429에 걸리면 8 × 3회 = 최대 24회 추가
+        // 요청이 같은 60초 윈도우에 더 들어가 회복이 늦어진다(2026-08-13 코드리뷰로 발견).
+        if (err && err.status === 429) { cb(null); return; }
         const wait = [600, 1800, 0][attempt];
         if (wait) { setTimeout(() => ledgerOp(op, pnu, cb, attempt + 1), wait); return; }
         cb(null);  // 캐시하지 않는다 — 다음 클릭 때 다시 시도할 수 있도록
@@ -3405,7 +3447,7 @@
         const q = `op=${op}&sigunguCd=${p.sigunguCd}&bjdongCd=${p.bjdongCd}`
           + `&platGbCd=${p.platGbCd}&bun=${p.bun}&ji=${p.ji}&numOfRows=${pageSize}&pageNo=${pno}`;
         fetch(`${MOLIT_PROXY}?${q}`)
-          .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+          .then((r) => { if (r.ok) return r.json(); const e = new Error('HTTP ' + r.status); e.status = r.status; throw e; })
           .then((j) => {
             const body = j.response.body;
             const items = body.items;
@@ -3820,7 +3862,6 @@
       const slot = popupEl && popupEl.querySelector('.bld-info');
       if (!slot) return;
       const st = { zone: '', parcel: null, br: null, bld: null, house: null, detail: null, addrPnu: null };
-      let _firstRender = true;
       const render = () => {
         slot.innerHTML = landInfoHtml(st, noDetail);
         // 팝업 안 버튼은 반드시 전파를 끊어야 한다.
@@ -3857,13 +3898,18 @@
         // 팝업이 길어지면 위쪽이 지도 밖으로 잘린 채 남았다(실측 top -52px).
         // 지금은 매 렌더마다 부르지만 '실제로 잘렸을 때만 최소 거리로' 움직이므로,
         // 상세가 쌓일 때 지도가 훌쩍 밀리던 과거 회귀(3e02fdb)는 생기지 않는다.
-        _firstRender = false;
         repanPopup(getPopup(), true);
       };
       let left = jibun ? 4 : 3;
       const afterBase = () => {
         if (--left > 0) return;
         render();
+        // noDetail(호버 툴팁)은 V-World 3종(용도지역·필지·인근건물)만 보여주면 충분하다.
+        // 예전엔 여기서 걸러내지 않아서, 줌 16 이상에서 마우스만 잠깐 멈춰도(클릭 없이)
+        // buildingRegister → molit-proxy 호출이 나갔다 — 실측: 지도를 훑어보기만 해도
+        // 분당 클릭 6회(원시요청 42회) 한도를 몇십 초 안에 넘겨, 진짜 클릭했을 때 429가
+        // 떴다(2026-08-13 코드리뷰로 발견). 상세(건축물대장)는 클릭 시에만 필요하다.
+        if (noDetail) return;
         // 이 동의 단독·다가구 시세 (지번 마스킹 때문에 개별 마커가 불가능한 대신 제공)
         const key = guDongKey(st.parcel && st.parcel.addr);
         if (key) {
@@ -4236,7 +4282,10 @@
           };
         };
         const cacheKey = _gcKey(lat, lng);
-        if (_gcCache.has(cacheKey)) { buildClickPopup(...Object.values(_gcCache.get(cacheKey))); return; }
+        // Object.values() 로 펼치면 캐시 객체를 만드는 4곳 모두가 항상 같은 키 순서로
+        // 리터럴을 써야만 안 깨진다 — 누가 한 곳에서 순서를 바꾸면 예외 없이 조용히 인자가
+        // 뒤바뀐다(2026-08-13 코드리뷰로 발견). 키를 명시해서 순서에 의존하지 않게 한다.
+        if (_gcCache.has(cacheKey)) { const c = _gcCache.get(cacheKey); buildClickPopup(c.addr, c.bldName, c.jibun); return; }
         if (NAVER_KEY && window.naver && naver.maps && naver.maps.Service) {
           naver.maps.Service.reverseGeocode({ coords: new naver.maps.LatLng(lat, lng), orders: [naver.maps.Service.OrderType.ADDR, naver.maps.Service.OrderType.ROAD_ADDR].join(',') }, (status, res) => {
             let addr = '', bldName = null, jibun = '';
@@ -4355,7 +4404,21 @@
           onEnd: resizePano
         });
 
-        const close = () => { ov.remove(); backdrop.remove(); };
+        let ro = null;
+        // close는 panorama/miniMap/ro 선언(아래) 전에 정의되지만, 실제 호출은 사용자가
+        // 닫기를 누른 뒤(모든 선언이 끝난 뒤)이므로 클로저로 안전하게 참조된다.
+        // 정리 안 하면(2026-08-13 코드리뷰로 발견): ResizeObserver는 관측 대상을 강참조로
+        // 붙잡고, Panorama/Map 인스턴스의 이벤트 리스너(dot·ov·backdrop까지 포함한 클로저)가
+        // GC되지 않는다 — 거리뷰를 여러 번 열면 WebGL 컨텍스트가 계속 쌓여 브라우저 상한(보통
+        // 16개)에 걸리면 이후 거리뷰가 검게 뜬다.
+        const close = () => {
+          try { ro && ro.disconnect(); } catch (e) {}
+          try { naver.maps.Event.clearInstanceListeners(panorama); } catch (e) {}
+          try { naver.maps.Event.clearInstanceListeners(miniMap); } catch (e) {}
+          try { typeof panorama.destroy === 'function' && panorama.destroy(); } catch (e) {}
+          try { typeof miniMap.destroy === 'function' && miniMap.destroy(); } catch (e) {}
+          ov.remove(); backdrop.remove();
+        };
         ov.querySelector('#sv-close').onclick = close;
         backdrop.onclick = close;
 
@@ -4401,13 +4464,16 @@
         });
 
         // 미니맵을 드래그로 리사이즈하면 네이버 지도에 새 크기를 알려야 타일이 다시 그려진다.
+        // ro는 위 close()에서 disconnect하기 위해 변수로 잡아둔다(정리 안 하면 관측 대상을
+        // 강참조로 붙잡아 메모리에서 안 빠진다).
         if (window.ResizeObserver) {
           const mmEl = document.getElementById('sv-minimap');
           let _rt = null;
-          new ResizeObserver(() => {
+          ro = new ResizeObserver(() => {
             clearTimeout(_rt);
             _rt = setTimeout(() => { try { miniMap.refresh(true); } catch (e) {} }, 80);
-          }).observe(mmEl);
+          });
+          ro.observe(mmEl);
         }
       });
     }
@@ -4608,6 +4674,7 @@
     // ── 부동산 즐겨찾기 목록 (localStorage) ──
     function renderFavProps() {
       Object.values(markers).forEach((m) => map.removeLayer(m));
+      for (const k in markers) delete markers[k]; // markers는 const라 재대입 대신 비운다(2026-08-13 코드리뷰 — 안 비우면 삭제된 즐겨찾기 마커 객체가 영구 누적)
       agentMarkers.forEach((m) => map.removeLayer(m)); agentMarkers = [];
       let list = loadSavedProps();
       if (propCat !== '전체') list = list.filter((x) => propGroup(x.type) === propCat);
@@ -4752,6 +4819,7 @@
     let lastAgentCenter = null;  // 마지막으로 에이전트를 로드한 지도 중심 좌표
     function renderAgents() {
       Object.values(markers).forEach((m) => map.removeLayer(m));
+      for (const k in markers) delete markers[k]; // markers는 const라 재대입 대신 비운다(2026-08-13 코드리뷰 — 안 비우면 삭제된 즐겨찾기 마커 객체가 영구 누적)
       agentMarkers.forEach((m) => map.removeLayer(m)); agentMarkers = [];
       if (!(window.kakao && kakao.maps && kakao.maps.services)) {
         if (kakaoTries++ < 8) { $('rec-list').innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px 0;">장소검색 로딩 중…</div>'; setTimeout(() => { if (landMode === 'agents') renderAgents(); }, 800); }
@@ -4832,6 +4900,7 @@
     }
     function renderRanking() {
       Object.values(markers).forEach((m) => map.removeLayer(m));
+      for (const k in markers) delete markers[k]; // markers는 const라 재대입 대신 비운다(2026-08-13 코드리뷰 — 안 비우면 삭제된 즐겨찾기 마커 객체가 영구 누적)
       agentMarkers.forEach((m) => map.removeLayer(m)); agentMarkers = [];
       $('banner').textContent = '아파트 실거래가로 전반기 대비 후반기 평균가를 비교한 자체 계산 랭킹입니다 (AI 예측 아님).';
       loadRp().then(() => {
@@ -4899,7 +4968,10 @@
       if (rpEl) rpEl.textContent = (rpRows ? rpRows.length : 0).toLocaleString();
       if (favEl) favEl.textContent = loadSavedProps().length.toLocaleString();
     }
-    setInterval(refreshStatBar, 2000);
+    // 2초마다 localStorage.getItem+JSON.parse(즐겨찾기)를 영구 반복하던 걸 완화한다(2026-08-13
+    // 코드리뷰로 발견) — 갱신 시점마다 직접 부르는 게 근본책이지만 호출 지점이 여러 곳에 흩어져
+    // 있어 지금은 주기를 늘리고 배경 탭에서는 멈추는 안전한 절충으로 우선 처리한다.
+    setInterval(() => { if (document.visibilityState === 'visible') refreshStatBar(); }, 10000);
     // panel-toggle-btn 클릭 배선은 rightTab(포켓도어 탭, land.html 상단 makeSlideTab 근처)에서
     // 이미 처리한다 — 여기서 또 걸면 collapsed 클래스와 인라인 style.flex가 서로 안 맞게 된다.
 
@@ -4986,6 +5058,7 @@
 
     function renderKakao(data) {
       Object.values(markers).forEach((m) => map.removeLayer(m));
+      for (const k in markers) delete markers[k]; // markers는 const라 재대입 대신 비운다(2026-08-13 코드리뷰 — 안 비우면 삭제된 즐겨찾기 마커 객체가 영구 누적)
       clearKakaoMarkers();
       var back = '<button class="kakao-back" id="s-back">← 뒤로</button>';
       $('rec-list').innerHTML = back + data.map(function (p, i) {
