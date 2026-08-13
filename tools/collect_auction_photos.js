@@ -11,15 +11,15 @@
  *  - 법원 사이트 사진은 base64 로만 내려주고 원본 파일 URL 은 404 다. 외부 핫링크 차단.
  *  - 사건검색(PGJ159M00) → 검색 → 물건상세조회 클릭 → 응답 selectAuctnCsSrchRslt.on 의
  *    data.dma_result.csPicLst 에 사진이 인라인(base64)으로 들어온다.
- *  - csPicLst 항목: cortAuctnPicDvsCd(000241=전경도 · 000243=내부구조도 · 000244=위치도 · 000245=관련사진 · 000246=지적도),
- *    picTitlNm(파일명), picFile(base64 jpeg).
- *  - 사진 구분 전부를 수집해 auction_photos/<사건>/<구분>_<n>.jpg 로 디코드 저장한다.
+ *  - csPicLst 항목: cortAuctnPicDvsCd(000241=전경도 · 000243=내부구조도 · 000244=위치도 · 000245=관련사진 · 000246=지적도 · 000247=이름 미확정),
+ *    picTitlNm(파일명), picFile(base64 이미지 — jpeg 뿐 아니라 GIF 도 온다(000247 실측)).
+ *  - 사진 구분 전부를 수집해 auction_photos/<사건>/<구분>_<n>.<실제확장자> 로 디코드 저장한다.
  *    auction_photos.json 은 { cn: [{ dvs, name, file }] } 메타만 담는다(2026-08-13 개별 파일 분리 —
  *    land.html 이 상세 패널을 열 때만 해당 사진을 개별 로드 → base64 통째 로드보다 빠름).
  *  - IP 차단 주의: 요청 사이 최소 1초 대기, 사건당 PGJ159 진입 1회 + 검색 1회 + 상세 1회.
  *
  * 산출물:
- *   auction_photos/<사건>/<구분>_<n>.jpg   — 개별 jpeg 바이너리
+ *   auction_photos/<사건>/<구분>_<n>.<ext>  — 개별 이미지 바이너리 (확장자는 매직바이트 스니핑)
  *   auction_photos.json                    — { cn: [{ dvs, name, file }], ... }
  */
 
@@ -48,7 +48,13 @@ const COURT_SEL = '#mf_wfm_mainFrame_sbx_auctnCsSrchCortOfc';
 const YEAR_SEL = '#mf_wfm_mainFrame_sbx_auctnCsSrchCsYear';
 const CSNO_SEL = '#mf_wfm_mainFrame_ibx_auctnCsSrchCsNo';
 
-const DVS_NAMES = { '000241': '전경도', '000243': '내부구조도', '000244': '위치도', '000245': '관련사진', '000246': '지적도' };
+const DVS_NAMES = { '000241': '전경도', '000243': '내부구조도', '000244': '위치도', '000245': '관련사진', '000246': '지적도', '000247': '000247' };
+// 매직바이트로 실제 이미지 확장자 판별 — jpeg 인줄 알았던 picFile 이 GIF 로 온다(000247 실측).
+const imgExt = (b) =>
+  (b[0] === 0xff && b[1] === 0xd8) ? 'jpg'
+  : (b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46) ? 'gif'
+  : (b[0] === 0x89 && b[1] === 0x50) ? 'png'
+  : 'bin';
 // 사건번호 → 디렉터리명 (웹 경로로 직접 쓰므로 한글·숫자·언더바만 허용)
 const dirName = (cn) => cn.replace(/[^\w가-힣]+/g, '_');
 
@@ -179,8 +185,9 @@ function splitCsNo(cn) {
     const meta = pics.map((p) => {
       const dvs = p.cortAuctnPicDvsCd || '000245';
       seq[dvs] = (seq[dvs] || 0) + 1;
-      const file = `${dvs}_${seq[dvs]}.jpg`;
-      fs.writeFileSync(path.join(dir, file), Buffer.from(p.picFile, 'base64'));
+      const buf = Buffer.from(p.picFile, 'base64');
+      const file = `${dvs}_${seq[dvs]}.${imgExt(buf)}`;
+      fs.writeFileSync(path.join(dir, file), buf);
       return { dvs, name: DVS_NAMES[dvs] || dvs, file: 'auction_photos/' + dirName(cn) + '/' + file };
     });
 
