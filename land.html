@@ -132,6 +132,12 @@
     .ap-resizer:hover { background:var(--line); }
     .ap-resizer:active { background:var(--c-primary); }
     body.ap-resizing { cursor:col-resize; -webkit-user-select:none; user-select:none; }
+    /* ── 법원경매 물건 사진 ── (단계1: 플레이스홀더. 단계2에서 PGJ155로 실사진 연동) */
+    .auc-photos { display:grid; grid-template-columns:repeat(3, 1fr); gap:4px; margin-bottom:8px; }
+    .auc-photo { position:relative; aspect-ratio:4/3; border-radius:8px; overflow:hidden; background:var(--c-hover); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:20px; }
+    .auc-photo img { width:100%; height:100%; object-fit:cover; display:block; }
+    .auc-photo-ph { font-size:11px; color:var(--muted); text-align:center; line-height:1.4; padding:4px; }
+    .auc-photo-more { position:absolute; right:0; bottom:0; background:rgba(0,0,0,.55); color:#fff; font-size:11px; padding:1px 6px; border-radius:6px 0 0 0; }
     /* ── Panel widgets ── */
     .engine-bar { display:flex; gap:4px; margin-bottom:10px; background:var(--c-hover); padding:4px; border-radius:10px; }
     .tool-btn { flex:1; font:inherit; font-size:13px; font-weight:600; padding:7px 10px; border:none; background:transparent; color:var(--muted); border-radius:7px; cursor:pointer; transition:all .15s; }
@@ -329,6 +335,7 @@
        인라인 style 로 흩어져 있던 초기화/닫기/보조 버튼을 한 클래스로 통일한다.
        .primary = 주요 액션(파란 채움), .outline = 주황 테두리 보조(내보내기/가져오기). */
     .btn-mini { font:inherit; font-size:13px; font-weight:500; padding:5px 10px; border:1px solid var(--line); border-radius:7px; background:var(--card); color:var(--text); cursor:pointer; }
+    .btn-mini.active { background:var(--c-primary); color:#fff; border-color:var(--c-primary); }
     .btn-mini.primary { background:var(--c-primary); color:#fff; border-color:var(--c-primary); }
     .btn-mini.primary:hover { background:#1a63a8; color:#fff; }
     .btn-mini.outline { background:transparent; color:var(--c-primary); border-color:var(--c-primary); }
@@ -1141,6 +1148,30 @@
         fetch('toji_heoga.geojson?v=2').then((r) => r.json()).then((gj) => { tojiLayer.addData(gj); applyTojiZoom(); }).catch(() => {});
       });
 
+      // ── 표시 단위 전역 상태 (2026-08-13, disco.re UI 벤치마크) ──
+      // price: total(총액 X억) | unit(평단가 N만원/㎡·평), area: m2(㎡) | pyeong(평)
+      const uUnit = { price: 'total', area: 'm2' };
+      const uAreaVal = (a) => { const n = Number(a); if (!(n > 0)) return null; return uUnit.area === 'pyeong' ? n / 3.3058 : n; };
+      const uAreaTxt = (a) => { const n = uAreaVal(a); return n == null ? '' : Math.round(n).toLocaleString() + (uUnit.area === 'pyeong' ? '평' : '㎡'); };
+      const uUnitTxt = () => (uUnit.area === 'pyeong' ? '만/평' : '만/㎡');
+      const uPriceMain = (d) => {  // 메인 가격 줄: 총액 모드= X억, 단가 모드= 평단가
+        if (d.priceEok == null) return '-';
+        if (uUnit.price === 'total') return d.priceEok + '억';
+        const a = uAreaVal(d.area);
+        return a ? Math.round(d.priceEok * 10000 / a).toLocaleString() + uUnitTxt() : d.priceEok + '억';
+      };
+      const uPriceSub = (d) => {  // 보조 줄: 총액 모드= 평단가, 단가 모드= 총액. 없으면 null
+        if (d.priceEok == null) return null;
+        if (uUnit.price === 'total') { const a = uAreaVal(d.area); return a ? '평단가 ' + Math.round(d.priceEok * 10000 / a).toLocaleString() + uUnitTxt() : null; }
+        return '총액 ' + d.priceEok + '억';
+      };
+      const uPriceShort = (d) => {  // 마커 툴팁 (짧은 형식)
+        if (d.priceEok == null) return esc(d.name);
+        if (uUnit.price === 'total') return d.priceEok + '억';
+        const a = uAreaVal(d.area);
+        return a ? Math.round(d.priceEok * 10000 / a).toLocaleString() + '만' : d.priceEok + '억';
+      };
+
       // ── 아파트 실거래가·노후도 (서울+경기 9천여 단지) : 필터 + 범례 + 카드 팝업 ──
       const realpriceCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 60 });
       // 팝업·툴팁은 마우스가 닿는 순간에만 생성 (9천개 미리 만들면 지도가 멈춘다)
@@ -1148,7 +1179,7 @@
         const m = e.layer, d = m && m._rp;
         if (!d || m._ttDone) return;
         m._ttDone = 1;
-        m.bindTooltip(d.priceEok == null ? esc(d.name) : d.priceEok + '억', { direction: 'top' }).openTooltip();
+        m.bindTooltip(uPriceShort(d), { direction: 'top' }).openTooltip();
       });
       realpriceCluster.on('click', (e) => {
         const m = e.layer;
@@ -1166,7 +1197,7 @@
         realpriceCluster.addLayers(rpRows.filter((d) => inPrice(d.priceEok) && inAge(d.build)).map((d) => {
           const m = L.circleMarker([d.lat, d.lng], { radius: 5, color: '#fff', weight: 1, fillColor: ageColor(d.build), fillOpacity: 0.9 });
           m._rp = d;
-          m._pop = (() => `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};flex-shrink:0;"></span><span class="rp-name">${esc(d.name)}</span></div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div><div class="pc-price">매매 ${d.priceEok == null ? '-' : d.priceEok + '억'}</div><div style="margin-top:3px;">평단가: ${d.area && d.priceEok ? Math.round(d.priceEok * 10000 / d.area).toLocaleString() + '만원/㎡' : '-'}</div><div style="margin-top:3px;">전용 ${esc(d.area)}㎡ · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="margin-top:3px;">${esc(d.build || '?')}년 건축${parseInt(d.build) <= 1994 ? '<span style="background:#e03131;color:#fff;font-size:12px;padding:2px 8px;border-radius:999px;margin-left:6px;">재건축연한 초과</span>' : ''}</div>${jeonseHtml(d, '평형 기준')}${rpFlagsHtml(d)}<div class="rp-radius-stat rp-stat" style="display:none;"></div></div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline" style="border-color:var(--c-price) !important;color:var(--c-price);">저장</button><a href="https://map.naver.com/p/search/${encodeURIComponent(d.name + ' ' + (d.dong || d.gu || ''))}?c=${d.lng},${d.lat},17,0,0,0,dh" target="_blank" rel="noopener" class="pc-btn pc-btn-primary rp-naver">네이버 부동산</a><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline">출발</button><button class="rt-end pc-btn pc-btn-outline">도착</button></div><button class="sv-btn pc-btn pc-btn-outline">거리뷰</button></div></div>`);
+          m._pop = (() => `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};flex-shrink:0;"></span><span class="rp-name">${esc(d.name)}</span></div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div><div class="pc-price">매매 ${uPriceMain(d)}</div>${uPriceSub(d) ? `<div style="margin-top:3px;">${uPriceSub(d)}</div>` : ''}<div style="margin-top:3px;">전용 ${uAreaTxt(d.area)} · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="margin-top:3px;">${esc(d.build || '?')}년 건축${parseInt(d.build) <= 1994 ? '<span style="background:#e03131;color:#fff;font-size:12px;padding:2px 8px;border-radius:999px;margin-left:6px;">재건축연한 초과</span>' : ''}</div>${jeonseHtml(d, '평형 기준')}${rpFlagsHtml(d)}<div class="rp-radius-stat rp-stat" style="display:none;"></div></div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline" style="border-color:var(--c-price) !important;color:var(--c-price);">저장</button><a href="https://map.naver.com/p/search/${encodeURIComponent(d.name + ' ' + (d.dong || d.gu || ''))}?c=${d.lng},${d.lat},17,0,0,0,dh" target="_blank" rel="noopener" class="pc-btn pc-btn-primary rp-naver">네이버 부동산</a><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline">출발</button><button class="rt-end pc-btn pc-btn-outline">도착</button></div><button class="sv-btn pc-btn pc-btn-outline">거리뷰</button></div></div>`);
           return m;
         }));
       }
@@ -1186,6 +1217,12 @@
           + '<button type="button" class="fav-cat" data-v="new">2015~ 신축</button>'
           + '<button type="button" class="fav-cat" data-v="mid">2000~2014</button>'
           + '<button type="button" class="fav-cat" data-v="old">2000 이전</button></div>'
+          + '<div class="lc-sub" style="margin-top:4px;">표시 단위</div><div class="rp-chips" id="u-price" role="group">'
+          + '<button type="button" class="fav-cat active" data-v="total">총액</button>'
+          + '<button type="button" class="fav-cat" data-v="unit">평단가</button></div>'
+          + '<div class="rp-chips" id="u-area" role="group" style="margin-top:4px;">'
+          + '<button type="button" class="fav-cat active" data-v="m2">㎡</button>'
+          + '<button type="button" class="fav-cat" data-v="pyeong">평</button></div>'
           + '<button id="rp-reset" type="button" class="btn-mini" style="width:100%;margin-top:8px;">초기화</button>';
         L.DomEvent.disableClickPropagation(div);
         lcGrip(div);
@@ -1210,6 +1247,9 @@
         setRpChip('rp-price', 'all'); setRpChip('rp-age', 'all');
         rpBuild(); villaBuild();
       }
+      // 단위 토글 후 마커가 새 팝업(클로저)을 들고 다시 그려져야 한다.
+      // jb 팝업은 lazy 생성이라 열 때마다 새 단위를 읽는다.
+      function rpRefresh() { rpBuild(); villaBuild(); officelBuild(); }
       // 필터 변경 시 0건이면 토스트로 안내 + 초기화 바로가기. 데이터가 아직 안 받아진 상태의
       // 빈 지도를 "결과 없음"으로 오판하지 않도록 로드된 레이어가 있을 때만 알린다.
       function rpEmptyNotify() {
@@ -1237,6 +1277,19 @@
           };
           wire('rp-price', 'price');
           wire('rp-age', 'age');
+          const wireU = (gid, key) => {
+            const g = document.getElementById(gid);
+            if (!g || g._w) return;
+            g._w = 1;
+            g.addEventListener('click', (ev) => {
+              const b = ev.target.closest('.fav-cat'); if (!b) return;
+              uUnit[key] = b.dataset.v;
+              g.querySelectorAll('.fav-cat').forEach((c) => c.classList.toggle('active', c === b));
+              rpRefresh();
+            });
+          };
+          wireU('u-price', 'price');
+          wireU('u-area', 'area');
           const rs = document.getElementById('rp-reset');
           if (rs && !rs._w) { rs._w = 1; rs.addEventListener('click', rpResetFilter); }
         }, 60);
@@ -1264,7 +1317,7 @@
         const m = e.layer, d = m && m._rp;
         if (!d || m._ttDone) return;
         m._ttDone = 1;
-        m.bindTooltip(d.priceEok == null ? esc(d.name) : d.priceEok + '억', { direction: 'top' }).openTooltip();
+        m.bindTooltip(uPriceShort(d), { direction: 'top' }).openTooltip();
       });
       villaCluster.on('click', (e) => {
         const m = e.layer;
@@ -1298,14 +1351,13 @@
       }
 
       function villaPopupHtml(d) {
-        const ppm = d.area && d.priceEok ? Math.round(d.priceEok * 10000 / d.area).toLocaleString() + '만원/㎡' : '-';
         const oldTag = parseInt(d.build) <= 1994
           ? '<span style="background:#e03131;color:#fff;font-size:12px;padding:2px 8px;border-radius:999px;margin-left:6px;">재건축연한 초과</span>' : '';
         // 12개월 거래가 여러 건이면 가격 범위를 함께 보여준다 (한 건물의 시세 폭을 알 수 있다)
         const range = d.cnt > 1 && d.pmax > d.pmin
           ? `<div style="margin-top:3px;font-size:12px;color:var(--c-muted);">12개월 ${d.cnt}건 · ${d.pmin}~${d.pmax}억</div>`
           : `<div style="margin-top:3px;font-size:12px;color:var(--c-muted);">12개월 ${d.cnt}건</div>`;
-        return `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};flex-shrink:0;"></span><span class="rp-name">${esc(d.name)}</span><span style="font-size:12px;background:var(--c-primary);color:#fff;padding:1px 8px;border-radius:999px;">${esc(d.type)}</span></div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div><div class="pc-price">매매 ${d.priceEok}억</div><div style="margin-top:3px;">평단가: ${ppm}</div><div style="margin-top:3px;">전용 ${esc(d.area)}㎡ · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="margin-top:3px;">${esc(d.build)}년 건축${oldTag}</div>${jeonseHtml(d, '건물 기준 참고')}${range}<div class="rp-radius-stat" style="display:none;"></div></div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline" style="border-color:var(--c-price) !important;color:var(--c-price);">저장</button><a href="${naverSearchUrl(d.name + ' ' + (d.dong || d.gu || ''), d.lat, d.lng)}" target="_blank" rel="noopener" class="pc-btn pc-btn-primary rp-naver">네이버 부동산</a><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline">출발</button><button class="rt-end pc-btn pc-btn-outline">도착</button></div><button class="sv-btn pc-btn pc-btn-outline">거리뷰</button></div></div>`;
+        return `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};flex-shrink:0;"></span><span class="rp-name">${esc(d.name)}</span><span style="font-size:12px;background:var(--c-primary);color:#fff;padding:1px 8px;border-radius:999px;">${esc(d.type)}</span></div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div><div class="pc-price">매매 ${uPriceMain(d)}</div>${uPriceSub(d) ? `<div style="margin-top:3px;">${uPriceSub(d)}</div>` : ''}<div style="margin-top:3px;">전용 ${uAreaTxt(d.area)} · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="margin-top:3px;">${esc(d.build)}년 건축${oldTag}</div>${jeonseHtml(d, '건물 기준 참고')}${range}<div class="rp-radius-stat" style="display:none;"></div></div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline" style="border-color:var(--c-price) !important;color:var(--c-price);">저장</button><a href="${naverSearchUrl(d.name + ' ' + (d.dong || d.gu || ''), d.lat, d.lng)}" target="_blank" rel="noopener" class="pc-btn pc-btn-primary rp-naver">네이버 부동산</a><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline">출발</button><button class="rt-end pc-btn pc-btn-outline">도착</button></div><button class="sv-btn pc-btn pc-btn-outline">거리뷰</button></div></div>`;
       }
 
       let villaRows = null, _villaPromise = null;
@@ -1466,7 +1518,7 @@
         const range = d.cnt > 1 && d.depMax > d.depMin
           ? `<div style="margin-top:3px;font-size:12px;color:var(--c-muted);">12개월 ${d.cnt}건 · 보증금 ${d.depMin}~${d.depMax}억</div>`
           : `<div style="margin-top:3px;font-size:12px;color:var(--c-muted);">12개월 ${d.cnt}건</div>`;
-        return `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--c-primary);flex-shrink:0;"></span><span class="rp-name">${esc(d.name)}</span><span style="font-size:12px;background:var(--c-primary);color:#fff;padding:1px 8px;border-radius:999px;">오피스텔</span></div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div><div class="pc-price">${rent || '—'}</div><div style="margin-top:3px;">전용 ${esc(d.area)}㎡ · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="margin-top:3px;">${esc(d.build)}년 건축</div>${range}</div></div>`;
+        return `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--c-primary);flex-shrink:0;"></span><span class="rp-name">${esc(d.name)}</span><span style="font-size:12px;background:var(--c-primary);color:#fff;padding:1px 8px;border-radius:999px;">오피스텔</span></div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div><div class="pc-price">${rent || '—'}</div><div style="margin-top:3px;">전용 ${uAreaTxt(d.area)} · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="margin-top:3px;">${esc(d.build)}년 건축</div>${range}</div></div>`;
       }
       function officelBuild() {
         if (!officelRows) return;
@@ -1545,13 +1597,20 @@
       let auctionRows = null, _auctionPromise = null;
       function loadAuction() {
         if (!_auctionPromise) {
-          _auctionPromise = fetch('auction.json').then((r) => r.json()).then((j) => {
+          // auction.json(목록·좌표) + auction_photos.json(사진) 병렬 fetch — 사진은 분리해서
+          // auction.json 을 가볍게 유지한다(2026-08-13 사진 1행 ~952KB 실측, 20건 넘어가면 인라인 불가).
+          _auctionPromise = Promise.all([
+            fetch('auction.json').then((r) => r.json()),
+            fetch('auction_photos.json').then((r) => r.json()).catch(() => ({})),
+          ]).then(([j, ph]) => {
             const F = {};
             j.fields.forEach((f, i) => { F[f] = i; });
+            const getPhotos = (cn) => (ph[cn] && ph[cn].length ? ph[cn].filter(Boolean) : []);
             auctionRows = j.rows.map((r) => ({
               court: j.courts[r[F.court]], cn: r[F.cn], no: r[F.no], addr: r[F.addr], note: r[F.note],
               appr: r[F.appr], dept: r[F.dept], sale: r[F.sale], use: r[F.use], low: r[F.low],
               status: r[F.status], lat: r[F.lat], lng: r[F.lng],
+              photos: getPhotos(r[F.cn]),
             })).filter((d) => d.lat && d.lng);
             return auctionRows;
           }).catch(() => null);
@@ -1560,13 +1619,24 @@
       }
       const wonEok = (v) => v ? v.toLocaleString('ko-KR', { maximumFractionDigits: 2 }) + '억원' : '';
       const aucColor = (s) => (s || '').includes('유찰') ? '#fa5252' : '#f08c00';
+      // 사진 플레이스홀더: auction.json 에 photos 배열이 없으면 준비 중 박스. 단계2에서 PGJ155 사진 URL 로 채운다.
+      function auctionPhotoHtml(d) {
+        const ph = (label) => `<div class="auc-photo"><span class="auc-photo-ph">${label}</span></div>`;
+        if (!d.photos || !d.photos.length) {
+          return `<div class="auc-photos">${ph('📷 사진<br>준비 중')}${ph('')}${ph('')}</div>`;
+        }
+        const cells = d.photos.slice(0, 3).map((p, i) => `<div class="auc-photo"><img src="${esc(p)}" alt="물건 사진 ${i + 1}" loading="lazy"></div>`);
+        while (cells.length < 3) cells.push(ph(''));
+        if (d.photos.length > 3) cells.push(`<div class="auc-photo"><span class="auc-photo-more">+${d.photos.length - 3}</span></div>`);
+        return `<div class="auc-photos">${cells.join('')}</div>`;
+      }
       function auctionPopupHtml(d) {
         const rows = [
           ['법원', d.court], ['사건번호', d.cn], ['물건번호', d.no], ['용도', d.use],
           ['감정평가액', wonEok(d.appr)], ['최저매각가격', wonEok(d.low)],
           ['진행상태', d.status], ['담당계 매각기일', d.sale], ['비고', d.note],
         ].filter(([, v]) => v != null && v !== '').map(([k, v]) => `<div style="display:flex;justify-content:space-between;gap:10px;"><span style="color:var(--c-muted);flex-shrink:0;">${k}</span><b style="text-align:right;">${esc(v)}</b></div>`).join('');
-        return `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${aucColor(d.status)};flex-shrink:0;"></span><span class="rp-name">${esc(d.addr)}</span><span style="font-size:12px;background:${aucColor(d.status)};color:#fff;padding:1px 8px;border-radius:999px;">경매</span></div><div class="pc-body">${rows}<div style="margin-top:3px;font-size:12px;color:var(--c-muted);">상세 내역은 courtauction.go.kr 에서 사건번호로 조회</div></div></div>`;
+        return `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${aucColor(d.status)};flex-shrink:0;"></span><span class="rp-name">${esc(d.addr)}</span><span style="font-size:12px;background:${aucColor(d.status)};color:#fff;padding:1px 8px;border-radius:999px;">경매</span></div><div class="pc-body">${auctionPhotoHtml(d)}${rows}<div style="margin-top:3px;font-size:12px;color:var(--c-muted);">상세 내역은 courtauction.go.kr 에서 사건번호로 조회</div></div></div>`;
       }
       function auctionBuild() {
         if (!auctionRows) return;
@@ -1856,13 +1926,12 @@
         const es = jbEffStage(d);
         const stageBadge = es ? `<span style="display:inline-block;background:${stageColor(es)};color:#fff;font-size:12px;padding:2px 8px;border-radius:999px;margin-left:4px;">${esc(es)}</span>` : '';
         // 구역 면적: 폴리곤 링에서 실제로 계산 (데이터 위조 아님)
-        let areaTxt = '', areaPy = null;
+        let areaTxt = '', areaM2 = 0;
         if (d.rc && jbPolys && jbPolys[d.rc]) {
           const rings = usableRings(d.rc, jbPolys[d.rc]);
           if (rings && rings.length) {
-            const m2 = rings.reduce((a, r) => a + _ringArea(r), 0);
-            areaTxt = ` · <b>${(m2 / 10000).toFixed(1)}만㎡</b>`;
-            areaPy = Math.round(m2 / 3.3058);
+            areaM2 = rings.reduce((a, r) => a + _ringArea(r), 0);
+            areaTxt = ` · <b>${uAreaTxt(areaM2)}</b>`;
           }
         }
         // 기본 정보 — 공공데이터에 있는 값만 표시한다. 공급세대·평당가 등 없는 값은
@@ -1870,7 +1939,7 @@
         const meta = [];
         if (d.method) meta.push(`<div style="flex:1 1 38%;"><span class="jb-meta-k">시행방식</span><div class="jb-meta-v">${esc(d.method)}</div></div>`);
         if (d.create) meta.push(`<div style="flex:1 1 38%;"><span class="jb-meta-k">공고일</span><div class="jb-meta-v">${esc(d.create)}</div></div>`);
-        if (areaPy) meta.push(`<div style="flex:1 1 38%;"><span class="jb-meta-k">대지면적</span><div class="jb-meta-v">${areaPy.toLocaleString()}평</div></div>`);
+        if (areaM2) meta.push(`<div style="flex:1 1 38%;"><span class="jb-meta-k">대지면적</span><div class="jb-meta-v">${uAreaTxt(areaM2)}</div></div>`);
         // 인근 구역 비교표 (1.5km 내 최대 5곳) — 기본 접힘, '인근 구역 비교' 버튼으로 펼침
         const near = nearbyZones(d);
         const cmpHtml = near.length
@@ -1968,6 +2037,57 @@
           .sort((a, b) => a.dist - b.dist)
           .slice(0, limit);
       }
+      // ── [정비] 구역 멀티선택 합계 (2026-08-13, disco.re 다중선택 통계 패널 벤치마크) ──
+      // 선택 모드에서 구역 클릭 → 우하단 패널에 개수·대지면적 합계. 폴리곤 하이라이트(마젠타).
+      const jbSel = { on: false, set: new Map(), ctrl: null };
+      function jbSelKey(d) { return d.name + '|' + (d.jibun || '') + '|' + (d.rc || ''); }
+      function jbSelAreaM2(d) {
+        if (!d.rc || !jbPolys || !jbPolys[d.rc]) return 0;
+        const rings = usableRings(d.rc, jbPolys[d.rc]);
+        return rings && rings.length ? rings.reduce((a, r) => a + _ringArea(r), 0) : 0;
+      }
+      function jbSelToggle(d, poly) {
+        const k = jbSelKey(d);
+        if (jbSel.set.has(k)) jbSel.set.delete(k); else jbSel.set.set(k, { name: d.name, g: jbGroup(d), stage: d.stage || '', m2: jbSelAreaM2(d) });
+        if (poly) jbSelStyleOne(poly, jbSel.set.has(k));
+        jbSelRender();
+      }
+      const JBSEL_ON = { weight: 3, color: '#c2255c', fillColor: '#c2255c', fillOpacity: 0.55 };
+      const JBSEL_OFF = (d) => ({ weight: 1.5, color: JB_COLOR[jbGroup(d)], fillColor: JB_COLOR[jbGroup(d)], fillOpacity: 0.45 });
+      function jbSelStyleOne(poly, on) { poly.setStyle(on ? JBSEL_ON : JBSEL_OFF(poly._jb)); }
+      function jbSelApplyStyles() { jbPolyLayer.eachLayer((p) => { if (p._jb) jbSelStyleOne(p, jbSel.set.has(jbSelKey(p._jb))); }); jbCluster.eachLayer((p) => { if (p._jb) jbSelStyleOne(p, jbSel.set.has(jbSelKey(p._jb))); }); }
+      function jbSelRender() {
+        if (!jbSel.ctrl || !jbSel.ctrl._container) return;
+        const items = [...jbSel.set.values()];
+        const tot = items.reduce((s, x) => s + (x.m2 || 0), 0);
+        jbSel.ctrl._container.querySelector('#jb-sel-cnt').textContent = items.length.toLocaleString() + '개 구역';
+        jbSel.ctrl._container.querySelector('#jb-sel-m2').textContent = tot ? (uUnit.area === 'pyeong' ? Math.round(tot / 3.3058).toLocaleString() + '평' : (tot / 10000).toFixed(1) + '만㎡') : '—';
+      }
+      function ensureJbSelCtrl() {
+        if (jbSel.ctrl) return jbSel.ctrl;
+        const ctrl = L.control({ position: 'bottomright' });
+        ctrl.onAdd = () => {
+          const div = L.DomUtil.create('div');
+          div.className = 'lc ui-scroll';
+          div.innerHTML = '<div class="lc-title">선택 구역 합계</div>'
+            + '<div style="display:flex;gap:12px;align-items:baseline;padding:2px 0;">'
+            + '<b id="jb-sel-cnt" style="font-size:15px;">0개 구역</b>'
+            + '<span id="jb-sel-m2" style="color:var(--c-muted);font-size:13px;">—</span></div>'
+            + '<button id="jb-sel-clear" type="button" class="btn-mini" style="width:100%;margin-top:6px;">선택 비우기</button>';
+          L.DomEvent.disableClickPropagation(div);
+          return div;
+        };
+        ctrl.addTo(map);
+        jbSel.ctrl = ctrl;
+        ctrl._container.querySelector('#jb-sel-clear').addEventListener('click', () => { jbSel.set.clear(); jbSelApplyStyles(); jbSelRender(); });
+        return ctrl;
+      }
+      function jbSetSelMode(on) {
+        jbSel.on = on;
+        if (on) { ensureJbSelCtrl(); jbSelRender(); map.closePopup(); }
+        else if (jbSel.ctrl) { map.removeControl(jbSel.ctrl); jbSel.ctrl = null; }
+        jbSelApplyStyles();
+      }
       function jbBuild() {
         if (!jbRows) return;
         _jbRowsGlobal = jbRows;
@@ -2008,6 +2128,7 @@
               { sticky: !showStageBadge, permanent: showStageBadge, direction: 'top', className: showStageBadge ? 'jb-perm-tt' : '' }
             );
             poly.bindPopup(() => jbPopupHtml(d));  // 열 때 생성
+            poly.on('click', () => { if (jbSel.on) jbSelToggle(d, poly); });
             poly._area = _ringArea(rings[0]);  // 겹친 구역 클릭 순서용 면적 (작은 정밀 경계가 위)
             polys.push(poly);
           } else {
@@ -2021,6 +2142,7 @@
               { sticky: !showStageBadge, permanent: showStageBadge, direction: 'top', className: showStageBadge ? 'jb-perm-tt' : '' }
             );
             circle.bindPopup(() => jbPopupHtml(d));  // 열 때 생성
+            circle.on('click', () => { if (jbSel.on) jbSelToggle(d, circle); });
             dots.push(circle);
           }
         });
@@ -2042,6 +2164,8 @@
           })();
           if (target) target.openPopup();
         }
+        // 선택 모드 유지: 재빌드로 새 폴리곤이 생겼으니 팝업을 다시 끄고 하이라이트를 다시 입힌다.
+        if (jbSel.on) { jbPolyLayer.eachLayer((p) => p.unbindPopup()); jbCluster.eachLayer((p) => p.unbindPopup()); jbSelApplyStyles(); }
       }
       const jbCtrl = L.control({ position: 'topleft' });
       jbCtrl.onAdd = () => {
@@ -2054,6 +2178,7 @@
           + '<div style="display:flex;flex-wrap:wrap;gap:4px;">'
           + ['전체','기획','추진위','조합설립','사업시행','관리처분','착공','준공'].map((s) => `<button class="jb-stage${s === '전체' ? ' active' : ''}" data-s="${s}">${s}</button>`).join('')
           + '</div>'
+          + '<button id="jb-sel-mode" type="button" class="btn-mini" style="width:100%;margin-top:8px;">🖇 구역 선택 모드 (합산)</button>'
           + '<div class="lc-sep lc-sub" style="margin-top:8px;">📰 정비 관련 새 소식</div>'
           + '<div id="jb-notices" style="font-size:12px;color:var(--c-muted);">불러오는 중…</div>';
         L.DomEvent.disableClickPropagation(div);
@@ -2102,6 +2227,15 @@
               jbBuild();
             });
           });
+          const jbSelBtn = document.getElementById('jb-sel-mode');
+          if (jbSelBtn && !jbSelBtn._w) {
+            jbSelBtn._w = 1;
+            jbSelBtn.addEventListener('click', () => {
+              jbSetSelMode(!jbSel.on);
+              jbSelBtn.textContent = jbSel.on ? '✕ 선택 모드 종료' : '🖇 구역 선택 모드 (합산)';
+              jbSelBtn.classList.toggle('active', jbSel.on);
+            });
+          }
         }, 60);
         if (jbRows) return;
         Promise.all([fetch('redevelop_seoul.json?v=4').then((r) => r.json()), fetch('redevelop_polygons.json?v=2').then((r) => r.json()).catch(() => ({}))]).then(([rows, polys]) => { jbRows = rows; jbPolys = polys; _jbRowsGlobal = rows; jbBuild(); }).catch(() => {});
@@ -3660,6 +3794,53 @@
       if (bldSlot) fillLandInfo(bldSlot, () => null, ll.lat, ll.lng, null, true, jibun);
     }
 
+    // ── [지도] 거리 측정 (2026-08-13, disco.re 지도 도구 벤치마크) ──
+    // 하단좌측 컨트롤의 시작 버튼으로 켜고 지도를 클릭해 지점을 잇는다. 총거리는 km/m 자동 표기.
+    const msr = { on: false, pts: [], line: null, dots: null, ctrl: null };
+    function ensureMsrCtrl() {
+      if (msr.ctrl) return msr.ctrl;
+      const ctrl = L.control({ position: 'bottomleft' });
+      ctrl.onAdd = () => {
+        const div = L.DomUtil.create('div');
+        div.className = 'lc';
+        div.innerHTML = '<div class="lc-title">거리 측정</div>'
+          + '<button id="msr-mode" type="button" class="btn-mini" style="width:100%;">시작</button>'
+          + '<div id="msr-stat" style="font-size:12px;color:var(--c-muted);padding:3px 0;">지도를 클릭해 지점 추가</div>'
+          + '<button id="msr-clear" type="button" class="btn-mini" style="width:100%;">지우기</button>';
+        L.DomEvent.disableClickPropagation(div);
+        L.DomEvent.disableScrollPropagation(div);
+        return div;
+      };
+      ctrl.addTo(map);
+      msr.ctrl = ctrl;
+      ctrl._container.querySelector('#msr-mode').addEventListener('click', () => {
+        msr.on = !msr.on;
+        const b = ctrl._container.querySelector('#msr-mode');
+        b.textContent = msr.on ? '끝내기' : '시작';
+        b.classList.toggle('active', msr.on);
+        if (!msr.on) msrClear();
+      });
+      ctrl._container.querySelector('#msr-clear').addEventListener('click', msrClear);
+      return ctrl;
+    }
+    function msrClear() {
+      msr.pts = [];
+      if (msr.line) { msr.line.remove(); msr.line = null; }
+      if (msr.dots) { msr.dots.remove(); msr.dots = null; }
+      if (msr.ctrl && msr.ctrl._container) msr.ctrl._container.querySelector('#msr-stat').textContent = '지도를 클릭해 지점 추가';
+    }
+    function msrAddPoint(latlng) {
+      ensureMsrCtrl();
+      msr.pts.push(latlng);
+      if (!msr.dots) msr.dots = L.featureGroup().addTo(map);
+      L.circleMarker(latlng, { radius: 5, color: '#fff', weight: 1.5, fillColor: '#c2255c', fillOpacity: 1 }).addTo(msr.dots);
+      if (!msr.line) msr.line = L.polyline(msr.pts, { color: '#c2255c', weight: 3, dashArray: '6 4' }).addTo(map);
+      else msr.line.setLatLngs(msr.pts);
+      let tot = 0;
+      for (let i = 1; i < msr.pts.length; i++) tot += msr.pts[i].distanceTo(msr.pts[i - 1]);
+      msr.ctrl._container.querySelector('#msr-stat').textContent = msr.pts.length + '개 지점 · ' + (tot >= 1000 ? (tot / 1000).toFixed(2) + 'km' : Math.round(tot) + 'm');
+    }
+
     map.on('click', (e) => {
       // 팝업 안에서 시작된 클릭은 지도 클릭으로 취급하지 않는다.
       // '건축물대장 상세 보기' 같은 팝업 내부 버튼을 누르면 클릭이 지도까지 올라와,
@@ -3668,6 +3849,8 @@
       // disableClickPropagation 만으로는 막히지 않는 경로가 있어 여기서 한 번 더 거른다.
       const _oe = e.originalEvent;
       if (_oe && _oe.target && _oe.target.closest && _oe.target.closest('.leaflet-popup')) return;
+      // 거리 측정 모드: 지도 클릭은 지점 추가로만 쓰고 기존 클릭 팝업은 열지 않는다.
+      if (msr.on) { msrAddPoint(e.latlng); return; }
 
       const { lat, lng } = e.latlng;
       loadWeather(lat, lng);
@@ -3708,16 +3891,16 @@
         // 클릭한 건물의 시세로 오해하지 않게 한다 — 전용 팝업으로 띄우던 방식의 문제였다.
         let nearHtml = '';
         if (best && bd < 1.5) {
-          const npy = best.area && best.priceEok ? Math.round(best.priceEok * 10000 / best.area).toLocaleString() + '만원/㎡' : '';
+          const npy = best.area && best.priceEok && uUnit.price === 'total' ? ' · ' + uPriceSub(best).replace('평단가 ', '') : '';
           const nOld = parseInt(best.build) <= 1994
             ? '<span style="background:#e03131;color:#fff;font-size:11px;padding:1px 5px;border-radius:8px;margin-left:4px;">30년↑</span>' : '';
           nearHtml = `<div style="font-size:13px;margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">`
             + `<b>근처 아파트 실거래</b> <span style="font-size:12px;color:var(--c-muted);">참고 · 반경 700m ${cnt}건</span><br>`
             + `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${ageColor(best.build)};margin-right:5px;"></span>`
             + `<b>${esc(best.name)}</b> <span style="color:var(--c-muted);font-size:12px;">여기서 ${Math.round(bd * 1000)}m</span><br>`
-            + `<span style="color:var(--c-price);font-weight:700;">매매 ${best.priceEok == null ? '-' : best.priceEok + '억'}</span>`
-            + `${npy ? ` <span style="color:var(--c-muted);">· ${npy}</span>` : ''}<br>`
-            + `전용 ${esc(best.area || '?')}㎡ · ${esc(best.floor || '?')}층 · ${esc(best.build || '?')}년${nOld}`
+            + `<span style="color:var(--c-price);font-weight:700;">매매 ${uPriceMain(best)}</span>`
+            + `${npy ? ` <span style="color:var(--c-muted);">${npy}</span>` : ''}<br>`
+            + `전용 ${uAreaTxt(best.area) || '?'} · ${esc(best.floor || '?')}층 · ${esc(best.build || '?')}년${nOld}`
             + ` <a href="${naverSearchUrl(best.name + ' ' + (best.dong || best.gu || ''), best.lat, best.lng)}" target="_blank" rel="noopener" style="color:var(--c-primary);font-size:12px;">네이버 ↗</a>`
             + `</div>`;
         }
@@ -4133,11 +4316,11 @@
         return cnt ? `500m 내 ${cnt}건 평균 ${Math.round(sum / cnt * 10) / 10}억` : '-';
       };
       const rows = [
-        ['실거래가', (d) => d.kind === 'jb' ? jbPrice(d) : (d.priceEok == null ? '-' : d.priceEok + '억')],
-        ['전용면적', (d) => d.kind === 'jb' ? '-' : (d.area || '?') + '㎡'],
+        ['실거래가', (d) => d.kind === 'jb' ? jbPrice(d) : uPriceMain(d)],
+        ['전용면적', (d) => d.kind === 'jb' ? '-' : (uAreaTxt(d.area) || '?')],
         ['평단가', perPyeong],
         ['진행단계', (d) => dash(d.kind === 'jb' ? d.stage : '')],
-        ['구역면적', (d) => d.kind === 'jb' ? (d.areaM2 ? (d.areaM2 / 10000).toFixed(1) + '만㎡' : '-') : '-'],
+        ['구역면적', (d) => d.kind === 'jb' ? (uAreaTxt(d.areaM2) || '-') : '-'],
         ['사업구분', (d) => dash(d.kind === 'jb' ? d.gubun : '')],
         ['건축년도', (d) => d.kind === 'jb' ? '-' : (d.build || '?') + '년'],
         ['층', (d) => d.kind === 'jb' ? '-' : (d.floor || '?') + '층'],
