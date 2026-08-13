@@ -13,12 +13,14 @@
  *    data.dma_result.csPicLst 에 사진이 인라인(base64)으로 들어온다.
  *  - csPicLst 항목: cortAuctnPicDvsCd(000241=전경도 · 000243=내부구조도 · 000244=위치도 · 000245=관련사진 · 000246=지적도),
  *    picTitlNm(파일명), picFile(base64 jpeg).
- *  - 전경도(000241) 3장만 대표 사진으로 저장한다. auction.json 은 건드리지 않고,
- *    auction_photos.json 에 { cn: [data URI, ...] } 형태로 따로 저장한다(사진 분리 — auction.json
- *    을 가볍게 유지, land.html 이 둘을 병렬 fetch). auctionPhotoHtml 이 이 배열을 렌더한다.
+ *  - 사진 구분 전부를 수집해 auction_photos/<사건>/<구분>_<n>.jpg 로 디코드 저장한다.
+ *    auction_photos.json 은 { cn: [{ dvs, name, file }] } 메타만 담는다(2026-08-13 개별 파일 분리 —
+ *    land.html 이 상세 패널을 열 때만 해당 사진을 개별 로드 → base64 통째 로드보다 빠름).
  *  - IP 차단 주의: 요청 사이 최소 1초 대기, 사건당 PGJ159 진입 1회 + 검색 1회 + 상세 1회.
  *
- * 산출물: auction_photos.json  { "서울중앙지방법원 2023타경2726": ["data:image/jpeg;base64,..."], ... }
+ * 산출물:
+ *   auction_photos/<사건>/<구분>_<n>.jpg   — 개별 jpeg 바이너리
+ *   auction_photos.json                    — { cn: [{ dvs, name, file }], ... }
  */
 
 const { chromium } = require('playwright-core');
@@ -33,6 +35,7 @@ const CHROME = process.env.CHROME_PATH
 
 const OUT_AUCTION = path.resolve(__dirname, '..', 'auction.json');
 const OUT_PHOTOS = path.resolve(__dirname, '..', 'auction_photos.json');
+const OUT_PHOTOS_DIR = path.resolve(__dirname, '..', 'auction_photos');
 const HEADFUL = process.argv.includes('--headful');
 const ONLY_COURT = process.argv.includes('--court') ? process.argv[process.argv.indexOf('--court') + 1] : '';
 const MAX = process.argv.includes('--max') ? Number(process.argv[process.argv.indexOf('--max') + 1]) : 0;
@@ -44,6 +47,10 @@ const SRCH_BTN = '#mf_wfm_mainFrame_btn_auctnCsSrchBtn';
 const COURT_SEL = '#mf_wfm_mainFrame_sbx_auctnCsSrchCortOfc';
 const YEAR_SEL = '#mf_wfm_mainFrame_sbx_auctnCsSrchCsYear';
 const CSNO_SEL = '#mf_wfm_mainFrame_ibx_auctnCsSrchCsNo';
+
+const DVS_NAMES = { '000241': '전경도', '000243': '내부구조도', '000244': '위치도', '000245': '관련사진', '000246': '지적도' };
+// 사건번호 → 디렉터리명 (웹 경로로 직접 쓰므로 한글·숫자·언더바만 허용)
+const dirName = (cn) => cn.replace(/[^\w가-힣]+/g, '_');
 
 async function openSearch(page, courtSel) {
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -72,7 +79,7 @@ function splitCsNo(cn) {
   data.fields.forEach((f, i) => { F[f] = i; });
   const cnIdx = F.cn, courtIdx = F.court;
 
-  // 이미 수집된 사진 (재실행 안전)
+  // 이미 수집된 사진 메타 (재실행 안전)
   const photosDb = fs.existsSync(OUT_PHOTOS) ? JSON.parse(fs.readFileSync(OUT_PHOTOS, 'utf8')) : {};
 
   // 대상: 아직 사진 없는 사건 (cn 으로 판단 — auction.json 의 행 인덱스에 의존하지 않는다)
@@ -159,17 +166,28 @@ function splitCsNo(cn) {
     await page.waitForTimeout(1500);
 
     if (!lst.length) { console.log('  상세 응답에서 사진 목록 없음 — 스킵'); continue; }
-    // 전경도(000241) 우선, 부족하면 그 외
-    let pics = lst.filter((p) => p.cortAuctnPicDvsCd === '000241');
-    if (pics.length < 3) pics = pics.concat(lst.filter((p) => p.cortAuctnPicDvsCd !== '000241'));
-    const photos = pics.slice(0, 3)
-      .map((p) => p.picFile)
-      .filter(Boolean)
-      .map((b64) => 'data:image/jpeg;base64,' + b64);
-    if (!photos.length) { console.log('  사진 데이터 없음 — 스킵'); continue; }
+    // 구분 코드 순서대로 정렬(000241 전경도 먼저), picFile(base64) 있는 것만
+    const pics = lst
+      .filter((p) => p.picFile)
+      .sort((a, b) => (a.cortAuctnPicDvsCd || '').localeCompare(b.cortAuctnPicDvsCd || ''));
+    if (!pics.length) { console.log('  사진 데이터 없음 — 스킵'); continue; }
 
-    photosDb[cn] = photos;
-    console.log(`  사진 ${photos.length}장 수집 (전경도 ${pics.filter((p) => p.cortAuctnPicDvsCd === '000241').length}/${lst.filter((p) => p.cortAuctnPicDvsCd === '000241').length})`);
+    // 개별 jpg 파일로 저장
+    const dir = path.join(OUT_PHOTOS_DIR, dirName(cn));
+    fs.mkdirSync(dir, { recursive: true });
+    const seq = {};
+    const meta = pics.map((p) => {
+      const dvs = p.cortAuctnPicDvsCd || '000245';
+      seq[dvs] = (seq[dvs] || 0) + 1;
+      const file = `${dvs}_${seq[dvs]}.jpg`;
+      fs.writeFileSync(path.join(dir, file), Buffer.from(p.picFile, 'base64'));
+      return { dvs, name: DVS_NAMES[dvs] || dvs, file: 'auction_photos/' + dirName(cn) + '/' + file };
+    });
+
+    photosDb[cn] = meta;
+    const cnt = {};
+    meta.forEach((m) => { cnt[m.name] = (cnt[m.name] || 0) + 1; });
+    console.log(`  사진 ${meta.length}장 저장 → ${Object.entries(cnt).map(([k, v]) => `${k} ${v}장`).join(' · ')}`);
     fs.writeFileSync(OUT_PHOTOS, JSON.stringify(photosDb));
     if (GAP_MS) await sleep(GAP_MS);
   }
