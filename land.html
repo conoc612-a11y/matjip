@@ -118,6 +118,7 @@
     .ap-fav:hover, .ap-close:hover { color:var(--text); background:var(--c-hover); }
     .ap-hint { padding:6px 12px; font-size:11px; color:var(--muted); border-bottom:1px solid var(--line); line-height:1.5; }
     .ap-list { flex:1; overflow-y:auto; padding:6px; min-height:0; }
+    .ap-detail { flex:1; overflow-y:auto; padding:6px; min-height:0; }
     .ap-row { padding:8px 10px; border-radius:8px; cursor:pointer; margin-bottom:4px; display:flex; gap:10px; align-items:flex-start; }
     .ap-row:hover { background:var(--c-hover); }
     .ap-thumb { flex-shrink:0; width:64px; height:48px; border-radius:6px; object-fit:cover; border:1px solid var(--line); display:flex; align-items:center; justify-content:center; }
@@ -4016,6 +4017,10 @@
       // disableClickPropagation 만으로는 막히지 않는 경로가 있어 여기서 한 번 더 거른다.
       const _oe = e.originalEvent;
       if (_oe && _oe.target && _oe.target.closest && _oe.target.closest('.leaflet-popup')) return;
+      // 마커/폴리곤 클릭은 지도 click 으로도 전파된다(Leaflet 기본 동작).
+      // e.layer 가 있으면 이미 해당 레이어의 전용 클릭 핸들러가 팝업을 열었으므로
+      // 여기서 "정보 불러오는 중…" 팝업으로 덮어쓰지 않는다.
+      if (e.layer) return;
       // 거리 측정 모드: 지도 클릭은 지점 추가로만 쓰고 기존 클릭 팝업은 열지 않는다.
       if (msr.on) { msrAddPoint(e.latlng); return; }
 
