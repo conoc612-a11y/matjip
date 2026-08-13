@@ -42,7 +42,7 @@ function json(body: unknown, status = 200, extraHeaders?: Record<string, string>
 // 한 번도 안 걸림 — Edge Function 인스턴스가 요청마다 분산돼 메모리가 공유 안 됨.
 // 그래서 DB(rl_hit RPC, api_rate_limits 테이블)로 카운터를 옮겼다 — 인스턴스 무관하게 공유됨.
 const RATE_WINDOW_SEC = 60;
-const RATE_MAX = 60; // 지도 클릭 1회 = op 7개 호출이라 여유 있게 잡음
+const RATE_MAX = 42; // 지도 클릭 1회 = op 7개 호출 → 분당 클릭 6회 한도(6*7)
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
