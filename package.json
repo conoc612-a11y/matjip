@@ -1,0 +1,30 @@
+{
+  "name": "matjip",
+  "version": "1.0.0",
+  "description": "서울 맛집을 취향 기반으로 추천받고 지도·길찾기로 찾아가는 서비스 + 부동산 투자자를 위한 원격 임장 지도.",
+  "main": "index.js",
+  "dependencies": {
+    "playwright-core": "^1.62.1",
+    "polygon-clipping": "^0.15.7",
+    "robust-predicates": "^3.0.3",
+    "splaytree": "^3.2.3"
+  },
+  "devDependencies": {
+    "playwright": "^1.62.1"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/conoc612-a11y/matjip.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/conoc612-a11y/matjip/issues"
+  },
+  "homepage": "https://github.com/conoc612-a11y/matjip#readme"
+}

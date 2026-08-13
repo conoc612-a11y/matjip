@@ -34,11 +34,14 @@ const https = require('https');
 const fs = require('fs');
 const path = require('path');
 
+// 로컬(Windows)엔 설치된 Chrome 경로를 찾아 쓰고, 못 찾으면(예: GitHub Actions의 Linux
+// 러너) undefined를 넘겨 playwright-core가 자기 번들 브라우저(npx playwright install
+// chromium으로 받은 것)를 쓰게 한다. 예전엔 여기서 항상 Windows 경로로 폴백해서 CI에서
+// 존재하지도 않는 파일을 executablePath로 넘겨 실행 자체가 실패했다.
 const CHROME = process.env.CHROME_PATH
   || [process.env.PROGRAMFILES, `${process.env['PROGRAMFILES(X86)'] || 'C:\\Program Files (x86)'}`, process.env.LOCALAPPDATA]
     .map((p) => p && path.join(p, 'Google', 'Chrome', 'Application', 'chrome.exe'))
-    .find((p) => p && fs.existsSync(p))
-  || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+    .find((p) => p && fs.existsSync(p));
 
 const VWORLD_KEY = process.env.VWORLD_KEY || 'B2CDEEDD-D622-311B-883B-CC7890E50822';
 const OUT_DIR = path.resolve(__dirname, '..');
@@ -255,7 +258,7 @@ async function saveAuction(items) {
     return;
   }
 
-  console.log(`Chrome: ${CHROME}`);
+  console.log(`Chrome: ${CHROME || '(시스템 Chrome 없음 → playwright 번들 브라우저 사용)'}`);
   const browser = await chromium.launch({ executablePath: CHROME, headless: !HEADFUL });
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
 
