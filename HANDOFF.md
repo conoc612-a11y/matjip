@@ -12,6 +12,110 @@
 
 ---
 
+## 2026-08-13 (23) — opencode (경매 사진 분리: auction.json 유지 + auction_photos.json 별도 — 코드 변경만, 커밋 전)
+
+> 사용자 "20건 이상 계획" → 사진 인라인(rows[*].photos)은 사진 1행 ~952KB 실측이라 20건 넘으면 무거움. **auction.json(927KB)은 그대로, 사진은 auction_photos.json `{ cn: [...] }` 맵으로 분리 결정.**
+
+### 완료
+- **`tools/collect_auction_photos.js`**: auction.json은 **읽기 전용**, 사진은 `auction_photos.json`(cn 키 맵)에 저장. 대상 선정은 cn 기준(행 인덱스 미의존), 기존 사진 있는 cn은 스킵. `--court`/`--max`/`--headful` 동일. 테스트: 2025타경2782(신건) 3장 수집 성공 후 원복.
+- **`land.html` `loadAuction()`**: `Promise.all`로 auction.json + auction_photos.json 병렬 fetch, cn으로 photos 조회(`ph[cn] && ph[cn].length ? ... : []`). photos 파일 404면 `.catch(()=>({}))` → 전부 '준비 중'(안전).
+- **`auction.json`**: 원본 복원(927KB, fields 13 — photos 필드 제거). 기존 수집 2건(2023타경2726·2023타경110870)은 `auction_photos.json`(1.9MB)으로 이전.
+
+### 검증 (헤드리스, auth-guard 차단 — §1)
+- fetch: auction.json 2회 + auction_photos.json 1회(병렬) → 팝업 data-uri img 3장 `loaded:true`.
+- 수집기: 신건 1건 재배열 → `--max 1` → 3장 수집 → auction.json 2949행 유지 + auction_photos.json cn 맵 저장 → 원복.
+
+### 함정 (기록용)
+- TROUBLESHOOTING §6-14 갱신: 분리 구조 + 용량 근거(신건 638건 전부 시 1.5GB). `+N` 배지는 `.auc-photo` 안 `.auc-photo-more` span이어야 함.
+- (22)에서 수집한 데이터는 auction_photos.json으로 이전했고, land.html에 auction.json photos 필드 잔재 없음 확인.
+
+### 커밋·배포 상태
+- **커밋·push·배포 없음** (사용자 동의 대기). 변경: `tools/collect_auction_photos.js`·`land.html`·`auction_photos.json`(신규) + auction.json(복원) + TROUBLESHOOTING §6-14. land.html엔 (21) 세션 미커밋 변경(단위 토글 등 196줄)도 여전히 존재.
+
+### 다음 세션 확인할 것
+- 커밋 동의. 관심 사건 확대 수집: `node tools/collect_auction_photos.js --court 서울중앙`(신건 위주, IP 안정 시).
+
+---
+
+## 2026-08-13 (22) — opencode (경매 물건 대표 사진 수집: 관심 사건만 — 도구 + auction.json 2건, 커밋 전)
+
+> 사용자 선택 "관심 사건만 대표 사진 수집(추천)". 법원 사이트에서 전경도(000241) 3장을 base64로 수집해 auction.json에 병합. **커밋·push 전 단계(사용자 동의 대기)**.
+
+### 완료
+- **`tools/collect_auction_photos.js` 신규**: auction.json을 읽어 **photos 필드 없는 행만** 대상으로, PGJ159 사건검색(연도 셀렉트→사건번호→검색→물건상세조회 클릭) → 상세 응답 `selectAuctnCsSrchRslt.on`의 `csPicLst`에서 **전경도(000241) 최대 3장**을 `data:image/jpeg;base64,...`로 추출 → `rows[*].photos` 병합 저장. fields에 `photos` 추가, 기존 열 보존. `--court 법원명`, `--max N`(테스트용), `--headful` 옵션. 요청 간 GAP 1초(§6-11 IP 차단).
+- **auction.json**: fields에 `photos` 추가, 2023타경2726·2023타경110870(중복 사건) 2건 각 3장 저장(파일 2,830KB).
+- **land.html**: 수정 없음 — `loadAuction`(1607)·`auctionPhotoHtml`(1617)이 이미 photos 배열 렌더 지원(있으면 `<img>` 그리드, 없으면 '📷 사진 준비 중' 플레이스홀더).
+
+### 실측 (TROUBLESHOOTING §6-14)
+- 사진 원본 URL(`/pgj/pgj15B/nas_e_image_pgj/...`)은 **404** — 외부 핫링크 차단, base64만 유일한 소스.
+- 사진 구분 코드: 000241=전경도(대표) · 000243=내부구조도 · 000244=위치도 · 000245=관련사진 · 000246=지적도.
+- 사진 base64는 상세 응답 `selectAuctnCsSrchRslt.on`의 `csPicLst[]`에 인라인. 사진 많은 사건은 응답 4.8MB.
+
+### 검증 (헤드리스, auth-guard 차단 — §1)
+- 수집 스크립트: 2건 실행 성공(재시도 로그 0). 개발 중 **셀렉터 버그** 발견·수정: `openSearch`가 `courtSel.replace('#','')`로 `#`을 지워 querySelector가 태그명으로 해석 → 항상 "화면 로드 실패" 로그. `#` 유지로 수정.
+- 렌더: '진행 물건' 토글 → 마커 220개 → 사진 있는 사건(남현7길 51, 2023타경2726) 좌표로 `map.setView(18)` → 클릭 → 팝업에 data-uri `<img>` 3장 렌더 확인.
+
+### 함정 (기록용)
+- **재수집(collect_auction.js) 실행 시 photos가 통째로 사라진다** — saveAuction이 전체 재작성. 전체 재수집 후엔 collect_auction_photos.js를 다시 실행할 것(독립 보강 모드).
+
+### 커밋·배포 상태
+- **커밋·push·배포 없음** (사용자 동의 대기). 변경: `tools/collect_auction_photos.js`(신규) + `auction.json`(photos 2건) + TROUBLESHOOTING §6-14.
+
+### 다음 세션 확인할 것
+- 사용자 동의 받아 커밋·push. push 후 배포본에서 경매 레이어 → 사진 있는 사건 마커 클릭 시 사진 3장 표시 확인.
+- 관심 사건 확대 수집: 실행 `node tools/collect_auction_photos.js --court 서울중앙`(전체 13법원 2,949건이면 IP 부담 크므로 법원/건수 지정 권장).
+
+---
+
+## 2026-08-13 (21) — opencode (disco.re 벤치마크: 단위 토글 + 구역 멀티선택 합계 + 거리 측정 — 코드 변경만, 커밋 전)
+
+> 사용자 "총액/단가·㎡/평 토글, 정비 구역 멀티선택 합계, 지도 거리 측정" — 전부 land.html에 구현. **커밋·push 전 단계(사용자 동의 대기)**.
+
+### 완료 (land.html 1파일, 커밋 전)
+- **① 총액↔단가 토글 + ② ㎡↔평 토글**: 전역 상태 `uUnit = { price:'total'|'unit', area:'m2'|'pyeong' }` + 헬퍼 `uAreaVal/uAreaTxt/uUnitTxt/uPriceMain/uPriceSub/uPriceShort`. 실거래 필터 패널(`.lc-rp`)에 칩 2조(총액/평단가, ㎡/평) 추가, `showPriceFilter`에서 배선. **적용 범위**: 아파트·연립·다세대 팝업+툴팁, 오피스텔 팝업(면적), 클릭 팝업 근처 실거래, 즐겨찾기 비교표(실거래가·전용면적·구역면적), 정비 구역 팝업(대지면적·타이틀). `rpRefresh() = rpBuild+villaBuild+officelBuild`로 마커 팝업 클로저 재생성.
+- **③ 정비 구역 멀티선택 합계**: jbCtrl 패널에 `🖇 구역 선택 모드` 버튼. 선택 모드에서 구역 클릭 → 마젠타 하이라이트 + 우하단 `선택 구역 합계` 패널(개수·대지면적 합, `선택 비우기`). `jbSetSelMode/jbSelToggle/jbSelApplyStyles/jbSelRender/ensureJbSelCtrl`. jbBuild 재빌드 시 선택 유지(키 `name|jibun|rc`), 면적은 폴리곤 링 실제 합산(`jbSelAreaM2`).
+- **④ 거리 측정**: 하단좌측 컨트롤 `시작`→지도 클릭으로 지점 연결(점선 폴리라인+지점 원), 총거리 km/m 자동 표기, `지우기`. `msr/ensureMsrCtrl/msrClear/msrAddPoint`, 지도 click 핸들러 상단에서 `msr.on`이면 팝업 대신 지점 추가.
+- `.btn-mini.active` CSS 신설(토글 버튼 상태).
+
+### 검증
+- 인라인 스크립트 `new Function()` 구문 검사 OK, `ppm/areaPy` 잔재 0.
+- 헬퍼 블록 추출 eval 단언 **12항 전부 PASS**(12억 ↔ 1,420만/㎡ ↔ 4,695만/평, 84.5㎡ ↔ 26평, null 처리) — 개발 중 `만원만/㎡` 중복·평 변환 누락 2버그를 테스트가 먼저 잡아 수정(TROUBLESHOOTING §16·§17).
+- 신규 id/함수 전부 배선 확인. 로컬·배포 실화면 확인은 **아직 안 함**(지도 타일이 V-World 도메인 잠금이라 로컬에선 OSM 전환 필요).
+
+### 함정 (기록용)
+- TROUBLESHOOTING §16·§17 추가: 단위 표시는 헬퍼 한 곳에서(변환+라벨 분리), 접미사 중복 주의, 인라인 헬퍼 단위 검증은 `eval(block + asserts)` 한 문자열.
+
+### 커밋·배포 상태
+- **커밋·push·배포 없음** (사용자 동의 대기). 변경은 land.html 1파일.
+
+### 다음 세션 확인할 것
+- 사용자에게 동의 받아 커밋·push. push 후 배포본 실화면: ① 실거래 레이어 켜고 표시 단위 칩 토글 → 팝업·툴팁 값 변경, ② 정비 레이어에서 선택 모드 → 구역 여러 개 클릭 → 합계 갱신, ③ 거리 측정 시작 → 클릭 3~4지점 → 총거리, 이탈 시 `지우기`.
+- 클릭 팝업 근처 실거래는 열려 있는 동안 토글해도 갱신 안 됨(재클릭 필요) — 의도된 동작.
+
+---
+
+## 2026-08-13 (20) — opencode ("어떤 게 삭제됐는지 확인" 조사 — 코드 변경 없음)
+
+> 사용자 "길찾기 활성 표시 안 되고 부동산 정보가 삭제돼 있는 것 같다" → 조사만 수행. **삭제된 것 없음** 확인, 원인은 사용자 브라우저 캐시 → Ctrl+Shift+R로 해결.
+
+### 완료 (조사·검증만, 커밋 없음)
+- **git diff 실측**: land.html 변경은 버튼 리팩토링 56+/21−뿐 — 삭제 21줄 전부 의도된 인라인 스타일 제거, 기능 코드 0줄 손실.
+- **파일 크기**: backup-20260808 240KB → 현재 289KB(증가), 실배포 284KB. 실거래가·경매·건축년도 등 키워드 36→63개 증가.
+- **헤드리스 Chrome(CDP)** `%TEMP%\opencode\route-repro.cjs` 재현: 을지로3가구역 6지구 마커 팝업 **14,587자 전체 렌더**, 길찾기 자차/도보 활성 표시 정상 전환, JS 예외 0건.
+- **서버 실측**: localhost:8123이 land.html 334,142 bytes를 로컬 파일과 바이트 일치로 서빙(구버전 서빙 아님).
+- `realprice_apt.json` 5B 빈 파일은 의도된 폴백 경로(HANDOFF 493행) — 버그 아님.
+
+### 함정 (기록용)
+- 배포본 검증용 `route-live.cjs`는 PowerShell 5.1 ANSI 인코딩 문제로 한글 주석+개행이 붙어(`// CSS 프로브`와 `{`가 한 줄로) eval 파싱 오류 → 폐기. **파일 복사·치환은 `-Encoding UTF8` 필수** (TROUBLESHOOTING §14 같은 함정).
+
+### 커밋·배포 상태
+- 코드 변경 없음 → 커밋·push 없음.
+
+### 다음 세션 확인할 것
+- 없음(이슈 해결). 참고: UI 회귀 보고는 캐시부터 — TROUBLESHOOTING §15.
+
+---
+
 ## 2026-08-12 (19) — opencode (상수·유틸 공용화: js/common.js — 커밋 `1c36943` push 완료)
 
 > 사용자 "What did we do so far?" → 진행 중이던 공용화 작업을 이어서 마무리·커밋. **상수·유틸이 6개 페이지에 복붙돼 있던 것을 `js/common.js` 한 곳으로 모음.** push까지 완료. Edge Function 배포 없음(프론트만).

@@ -240,6 +240,15 @@ console.log('blocks:',i,'fails:',f);
 - **PGJ157 재방문 로드가 비결정적**: 같은 headless Chrome 로 첫 probe 2회는 성공했으나, 이후 반복 방문에서는 90초 폴링(1초×30, 재로드 3회)에도 법원 셀렉트가 나타나지 않았다. blocked 메시지도, PGJ151 은 정상이었다. → **동일 IP 의 반복 요청이 쌓이면 로드가 죽는다. 실패 시 무한 재시도 금지.** 잠시 두고 재실행.
 - **대응**: `collect_auction.js` 에 `--sched` 모드 추가(PGJ157 → `auction_sched.json`, kind=1). 진행중은 kind=0. 화면 로드는 셀렉트 폴링(최대 15초×3회) 후 재로드. 수집 실행은 IP 안정 후(사용자 동의 2026-08-09).
 
+### 6-14. 법원경매 물건 사진 — 외부 핫링크 404, base64 만 유일한 소스 (2026-08-13 실측)
+- **증상**: 사진을 `<img src="https://www.courtauction.go.kr/pgj/pgj15B/nas_e_image_pgj/[파일명].jpg">` 로 걸면 **404** 를 준다. 외부 핫링크가 차단되어 있고, 원본 URL 자체가 사이트 내부 처리 로직(`nas_e_image_pgj`)에 의존하는 것으로 보인다. 브라우저 캐시·캡처에서도 이미지는 base64 로만 내려온다.
+- **사진은 어디서 오나**: 사건검색 `PGJ159M00.xml`(연도 셀렉트 → 사건번호 입력 → 검색 → `input[value='물건상세조회']` 클릭) → 상세 응답 `selectAuctnCsSrchRslt.on` 의 `data.dma_result.csPicLst[]` 에 **base64 jpeg 가 인라인**으로 온다. 한 응답에 구분별 전부 포함(사진이 많은 사건은 응답 4.8MB).
+- **사진 구분 코드(cortAuctnPicDvsCd) 실측**: `000241`=전경도(8장 예) · `000243`=내부구조도 · `000244`=위치도(2장) · `000245`=관련사진(10장) · `000246`=지적도. **대표 사진은 전경도(000241)** 를 우선 3장 쓰고, 부족하면 나머지에서 채운다.
+- **구현**: `tools/collect_auction_photos.js` — auction.json 을 읽어 **사진 없는 사건만** PGJ159 검색으로 순회, 전경도 최대 3장을 `data:image/jpeg;base64,...` 로 **`auction_photos.json`**(별도 파일, `{ cn: [...] }` 맵) 에 저장. **auction.json 은 절대 안 건드린다.** IP 차단 주의(§6-11): 사건당 화면 로드 1회 + 검색 1회 + 상세 1회, 요청 간 GAP 1초. 재실행 시 이미 있는 cn 은 스킵.
+- **왜 별도 파일인가 (용량 실측)**: 사진 1행당 ~952KB(JSON 기준). auction.json 원본 927KB → 신건 638건 전부 수집 시 **1.5GB** 예상. 20건을 넘기면 인라인(rows[*].photos) 방식은 브라우저 로드·파싱이 무거워지므로, **2026-08-13 분리 결정**. land.html `loadAuction()`(line ~1600) 이 auction.json + auction_photos.json 을 `Promise.all` 로 병렬 fetch 후 cn 으로 photos 를 조회한다. photo 파일이 없으면(404) `.catch(() => ({}))` 로 빈 맵 → 전부 '준비 중' 플레이스홀더(안전).
+- **land.html 배선**: `loadAuction()` 이 cn 으로 photos 를 붙이고, `auctionPhotoHtml()`(line ~1620) 이 photos 배열이 있으면 `<img>` 그리드(최대 3장 + `+N` 배지), 없으면 '📷 사진 준비 중' 플레이스홀더를 렌더한다. `+N` 배지는 `.auc-photo`(relative) 안의 `.auc-photo-more` span 이어야 그리드 셀 배치가 정상 — absolute 를 그리드 직접 자식으로 넣으면 부유(버그 수정 2026-08-13).
+- **헤드리스 검증**: auth-guard 차단(§1) 후 커스텀 레이어 패널에서 '진행 물건' 토글을 켜면(`map.fire('overlayadd')` 대신 체크박스 change) 경매 마커 220개가 뜬다. 사진 있는 사건 좌표로 `map.setView(zoom 18)` 후 클릭 → 팝업에 data-uri `<img>` 3장 렌더 확인(남현7길 51, 2023타경2726). **수집기 자체 검증**: 임시로 auction.json 행 순서를 바꿔 신건 1건을 첫 행으로 → `--max 1` 실행 → 사진 3장 수집 → 원복(테스트 후 auction_photos.json 복원 필수).
+
 ---
 
 ## 7. 배포 (GitHub Pages)
@@ -449,6 +458,29 @@ npx -y supabase projects list
 - **top-level `const` 재선언 = 같은 페이지 SyntaxError**: 6개 페이지가 `SUPABASE_URL/KEY`·`$`·`esc`를 각자 복붙하고 있어 `js/common.js`로 통합. 이때 페이지가 common.js 로딩 후 **자기 인라인 스크립트에서 `const $`·`const esc`를 다시 선언하면**(ai.html 실측) 두 번째 스크립트 전체가 파싱 실패로 죽는다. 글로벌 lexical 환경은 스크립트 태그를 가로질러 공유되므로 **상수는 한 곳에서만 선언**할 것. auth-guard.js는 IIFE 내부라 충돌 없음(형태 확인만).
 - **HTML 인라인 스크립트 문법 검사**: `node --check`는 외부 `.js`만 검사한다. 인라인 블록은 `<script(?![^>]*src=)>` 정규식으로 추출해 임시 파일로 검사할 것. **PowerShell 5.1은 `Get-Content` 기본 인코딩이 ANSI**라 UTF-8 한글 파일이 깨져 "Invalid regular expression"으로 오판한다 — `-Encoding UTF8`로 읽고 UTF8(BOM)로 저장해야 정확하다.
 - **프록시 URL도 중복 제거 가능**: Edge Function 프록시(chungak/bizno/KMA/EXIM/CCTV/MOLIT) URL 7곳이 하드코딩돼 있었는데, common.js 로딩 후(land.html 스크립트 상단)에는 `SUPABASE_URL + '/functions/v1/...'`로 참조 가능 — 키가 한 곳으로 모이면 URL도 함께 모이는지 함께 확인할 것.
+
+## 15. "기능/정보가 삭제됐다" 보고 = 브라우저 캐시 먼저 의심 (2026-08-13 실측)
+
+- **증상**: 사용자 "길찾기 활성 표시 안 되고, 부동산 정보 내용이 많이 삭제돼 있음". 코드는 (겉보기에) 안 건드렸는데 UI가 과거 버전처럼 보인다.
+- **원인**: **삭제 없음.** 로컬 서버가 최신 파일을 서빙 중이었음(land.html 334,142 bytes 파일과 바이트 일치)에도 **브라우저가 이전 응답을 캐시**해 구버전을 렌더. `python http.server`는 캐시 제어 헤더를 안 주므로 브라우저 휴리스틱 캐시로 이전 버전을 쓸 수 있다.
+- **해결**: **Ctrl+Shift+R 강력 새로고침부터.** 그래도 재현되면 헤드리스(CDP)로 해당 페이지·마커를 재현해 "코드 문제인지" 먼저 가른 뒤 사용자에게 원인을 묻는다.
+- **WHY(판단 사유)**: UI 회귀 보고는 "코드가 나빠졌다"가 아니라 "브라우저가 옛 파일을 보고 있다"일 때가 많다. 코드를 먼저 검증하면 잘못된 방향으로 수정을 가하는 재작업을 막는다. 2026-08-13 실측 근거: git diff 56+/21−(삭제 21줄 전부 의도된 인라인 스타일)·파일 크기 증가(240→289KB)·CDP 팝업 14,587자 전체 렌더·JS 예외 0건·서버/파일 바이트 일치.
+
+## 16. 표시 단위 토글(총액/단가·㎡/평) 함정 — 2026-08-13 실측
+
+- **증상 ①**: 단가 모드에서 `1,420만원만/㎡`처럼 "만원"이 두 번 붙는다.
+  - 원인: `'만원' + uUnitTxt()` 인데 `uUnitTxt()`가 이미 `'만/㎡'`를 반환 — 접미사 중복. `'만원' + '만/㎡' = '만원만/㎡'`.
+- **증상 ②**: 평 모드에서 `84.5㎡`가 `85평`으로 나온다(㎡→평 변환 누락).
+  - 원인: `uAreaVal()`에서 변환을 안 하고 `uAreaTxt()`의 단위 라벨만 바꿈 → 숫자는 그대로, 라벨만 바뀜.
+- **해결**: 변환을 **`uAreaVal()` 한 곳에서** 하고(`pyeong`이면 `/ 3.3058`), 접미사는 `uUnitTxt()`를 붙이되 '만원'을 다시 덧붙이지 않는다. 가격·면적 표시는 `uPriceMain/uPriceSub/uPriceShort/uAreaTxt` 헬퍼를 통해서만 한다.
+- **WHY(판단 사유)**: 토글 하나에 팝업·툴팁·비교표·클릭팝업·정비 팝업이 전부 엮이므로 "표시"를 여기저기서 직접 만들면 모드별로 어긋난다. 단위 계산(변환)과 단위 라벨(접미사)을 분리한 뒤 모든 표시가 헬퍼를 타게 했다.
+- **검증**: 인라인 스크립트에서 헬퍼 블록만 잘라 `node`로 eval해 단언 12항 전부 PASS(값: 12억 ↔ 1,420만/㎡ ↔ 4,695만/평, 84.5㎡ ↔ 26평, null 처리). HTML 인라인은 `new Function()`으로 구문 검사.
+
+## 17. 인라인 스크립트 단위 검증 방법 — 2026-08-13 실측
+
+- `land.html`의 인라인 스크립트는 top-level에 `document/L/const`가 잔뜩 있어 `node --check`만으로는 로직을 못 검증한다.
+- **헬퍼 블록만 추출해 eval**: 시작·끝 주석 마커로 `html.slice(start, end)` 후, 같은 eval 문자열에 `const uUnit = ...`(블록 스코프)와 단언을 **한 문자열로 합쳐** 실행한다. `eval(block + asserts)` 형태여야 블록 스코프 const가 단언에서 보인다(별도 eval 호출은 스코프 밖이라 `ReferenceError` — 실측).
+- 순수 함수(입력→출력)면 이 방식으로 충분. DOM/지도 연동은 헤드리스(CDP) 또는 배포본 확인이 필요하다.
 
 # 배포 상태
 gh api repos/conoc612-a11y/matjip/pages/builds/latest --jq '{status:.status, commit:.commit}'
