@@ -137,9 +137,12 @@
 `auction_photos.json` 현재 **1,125 / 2,949건**. 재개: `node tools/collect_auction_photos.js`
 (이미 있는 cn 은 자동 스킵). 건당 10~15초라 전체는 수 시간. 여러 세션에 나눠 돌리면 됨.
 
-### 2) CI 지오코딩 타임아웃 해결 (미적용 — 2026-08-15 (29) 원인만 규명)
-`collect-auction.yml` 60분 제한 vs 지오코딩 ~5.5시간 필요. 방향 후보(TROUBLESHOOTING §19):
-① `timeout-minutes` 확대(6h+) ② 지오코딩을 별도 단계로 분리 + geocache 를 캐시가 아닌 **커밋 파일**로 저장해 취소돼도 재사용 ③ `saveAuction()` 을 지오코딩과 분리. 실행 전 로컬에서 `.geocache.json` 채운 뒤 재실행 시간부터 실측할 것(캐시 히트 시 몇 분이면 되는지).
+### 2) CI 지오코딩 타임아웃 해결 — **적용 완료 (2026-08-15, push 대기)**
+`collect-auction.yml` 60분 제한 vs 지오코딩 ~5.5시간 필요 → **캐시 커밋 전환**으로 해결:
+실측으로 경매 주소 2,862개 중 98.1%가 로컬 `.geocache.json`(34,206 엔트리)에 히트.
+① `.gitignore` 에서 `tools/.geocache.json` 제거(커밋 파일로) ② 워크플로 커밋 단계에 geocache
+스테이징 추가 + `actions/cache` 스텝 제거 ③ `timeout-minutes: 60 → 360`. **push 후
+`workflow_dispatch` 로 실제 실행 시간 확인할 것**(수집 ~30분 + 지오코딩 수 분 예상).
 
 ### 3) Edge Function 배포 환경 정리 (참고)
 배포는 `npx supabase` + keys.env `SUPABASE_ACCESS_TOKEN`(사용자 저장, gitignored) 로 완료됨.

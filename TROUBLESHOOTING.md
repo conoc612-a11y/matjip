@@ -558,6 +558,17 @@ gh api repos/conoc612-a11y/matjip/pages/builds/latest --jq '{status:.status, com
   커밋 가능한 파일로 두면 취소돼도 다음 실행이 재사용할 수 있다(단 auction.json 과 분리 저장 필요).
   결정 전에 실행 시간 실측부터: 로컬에서 `tools/.geocache.json` 이 채워진 뒤 재실행하면 캐시 히트로
   몇 분 안에 끝나는지 확인할 것.
+- **해결(2026-08-15 적용 — ③ 캐시 커밋 전환 + ① 타임아웃 상향)**: 실측으로 **경매 주소
+  2,862개 중 98.1%(2,809개)가 이미 로컬 `.geocache.json`(실거래가 수집이 채운 34,206개 엔트리)에
+  히트**하는 것을 확인했다. 즉 캐시만 CI 에 이어가면 새 물건 주소(수십 건)만 지오코딩하면 된다.
+  그래서 ① `.gitignore` 에서 `tools/.geocache.json` 제거 → **커밋 파일로 전환**(취소·실패와 무관하게
+  항상 유지, `actions/cache` 의 "취소 시 미저장" 문제 원천 제거) ② 워크플로 커밋 단계에서
+  `auction.json` 과 함께 `tools/.geocache.json` 을 스테이징 → 캐시 증분도 매일 커밋으로 누적.
+  `actions/cache` 스텝 자체는 제거. ③ `timeout-minutes: 60 → 360`(GitHub Actions 무료 티어
+  잡당 최대 6시간) — 만에 하나 캐시가 비어 전체 재지오코딩(5.5h)이 필요해도 성공하도록 예비로.
+- **검증(2026-08-15, 실측)**: 로컬 `auction.json` 2,862개 주소 × 캐시 대조 = 98.1% 히트.
+  workflow YAML `python yaml.safe_load` 통과. 실제 CI 실행은 push 후 스케줄(매일 07:00 KST)
+  또는 `workflow_dispatch` 수동 트리거로 확인해야 한다(아직 미실행).
 - **파생 교훈**: 스케줄 워크플로는 "성공 = 종료 코드 0" 이 아니다. **생산물이 실제로 커밋/저장됐는지**
   sanity check step(파일 존재 + 행 수 ≥ 직전 커밋)을 마지막에 두어야 조용한 실패를 잡는다.
   이 워크플로에는 이미 sanity check 가 있지만, 이번엔 도달하기 전에 취소됐다.

@@ -19,7 +19,11 @@ permissions:
 jobs:
   collect:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    # 지오코딩은 아래 주석처럼 캐시가 커밋돼 있어 새 물건 주소만 조회한다(보통 몇 분).
+    # 그래도 수집(playwright 화면 조작)이 법원 13곳 × 페이지 순회라 30분 넘게 걸린다.
+    # 만에 하나 캐시가 비면 전체 재지오코딩(~5.5시간)이 필요하니 넉넉히 잡는다 —
+    # GitHub Actions 무료 티어는 잡당 최대 6시간이라 360이 상한.
+    timeout-minutes: 360
     steps:
       - uses: actions/checkout@v4
 
@@ -27,15 +31,12 @@ jobs:
         with:
           node-version: '20'
 
-      # V-World 지오코딩 캐시(tools/.geocache.json)를 실행 간에 이어받는다.
-      # 없으면 매일 전체 주소(2,900여 건)를 처음부터 재지오코딩해야 해서 느리고
-      # V-World 쪽에 불필요한 부담을 준다 — 캐시가 있으면 새로 나온 물건 주소만 조회한다.
-      - uses: actions/cache@v4
-        with:
-          path: tools/.geocache.json
-          key: auction-geocache-${{ github.run_id }}
-          restore-keys: |
-            auction-geocache-
+      # 지오코딩 캐시(tools/.geocache.json)는 커밋 파일로 관리한다.
+      # actions/cache 는 취소/실패한 실행에서는 캐시를 저장하지 않아, 지오코딩 도중
+      # 타임아웃이 나면 다음 실행이 빈 캐시로 시작해 처음부터 다시 지오코딩했다
+      # (실측: 첫 자동 실행이 60분 제한에 걸려 3,300건 중 200건만 채우고 취소).
+      # 캐시가 git 에 들어 있으면 취소와 무관하게 항상 유지되고, 새 주소만 조회하면 된다.
+      # 변경분은 아래 커밋 단계에서 auction.json 과 함께 반영한다.
 
       - run: npm ci
 
@@ -62,14 +63,14 @@ jobs:
             echo "::error::직전(${old}건) 대비 절반 미만(${new}건) — 커밋 거부"; exit 1
           fi
 
-      - name: auction.json 변경 시 커밋·푸시
+      - name: auction.json·지오코딩 캐시 변경 시 커밋·푸시
         run: |
-          if git diff --quiet -- auction.json; then
+          if git diff --quiet -- auction.json tools/.geocache.json; then
             echo "변경 없음 — 커밋 생략"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add auction.json
+          git add auction.json tools/.geocache.json
           git commit -m "chore(auction): 법원경매 목록 자동 갱신 ($(date -u +%Y-%m-%d))"
           git push
