@@ -78,7 +78,17 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function openScreen(page, url, courtSel) {
   const sel = courtSel.replace('#', '');
   for (let attempt = 0; attempt < 3; attempt++) {
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    // goto 자체가 타임아웃으로 throw 한다. 안 잡으면 법원 13곳을 도는 도중 1건만 실패해도
+    // 프로세스가 통째로 죽어 그때까지 모은 수집분이 전부 날아간다(collect_auction_photos.js
+    // 에서 실제로 116/2323 지점에서 겪은 사고 — 거기선 고쳤는데 여기엔 안 옮겨져 있었다.
+    // 2026-08-14 코드리뷰로 발견. 이 스크립트는 매일 07:00 CI 가 돌리므로 특히 중요).
+    try { await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 }); }
+    catch (e) {
+      console.log(`  페이지 이동 실패(${attempt + 1}/3): ${String(e.message || e).split('\n')[0]}`);
+      // 실패 직후 즉시 재시도하면 차단을 부른다(§6-11) — 간격을 두고 다시 시도.
+      await sleep(GAP_MS);
+      continue;
+    }
     let ok = false;
     for (let i = 0; i < 15; i++) {
       await page.waitForTimeout(1000);
@@ -234,7 +244,27 @@ async function saveAuction(items) {
       pt ? Number(pt[0].toFixed(5)) : 0, pt ? Number(pt[1].toFixed(5)) : 0,
     ]);
   }
-  fs.writeFileSync(CONF.out, JSON.stringify({ fields: SAVE_F, courts: courts2, rows }));
+  // ── 빈/축소 결과로 기존 파일을 덮어쓰지 않는다 (2026-08-14 코드리뷰) ──
+  // 법원 사이트가 IP 를 차단하거나 그리드 마크업을 바꾸면 추출기가 조용히 []를 돌려주고,
+  // 예외 없이 종료코드 0 으로 끝난다. 예전엔 그대로 저장돼 2,949건짜리 파일이 rows:[] 로
+  // 바뀔 수 있었고, CI(매일 07:00)가 그 변경을 자동 커밋·푸시했다.
+  // 기존 파일 대비 절반 미만이면 사고로 보고 중단한다(모드마다 건수가 다르므로 절대값이
+  // 아니라 기존 파일 기준). 진짜로 물건이 반 토막 났다면 --force 로 넘긴다.
+  const FORCE = process.argv.includes('--force');
+  let prevRows = 0;
+  try {
+    if (fs.existsSync(CONF.out)) prevRows = (JSON.parse(fs.readFileSync(CONF.out, 'utf8')).rows || []).length;
+  } catch (e) { /* 기존 파일이 깨져 있으면 비교 대상 없음으로 취급 */ }
+  if (!rows.length) {
+    throw new Error(`수집 0건 — 기존 파일(${prevRows.toLocaleString()}건)을 보존하고 중단합니다. 사이트 차단/마크업 변경 의심.`);
+  }
+  if (prevRows && rows.length < prevRows * 0.5 && !FORCE) {
+    throw new Error(`수집 ${rows.length.toLocaleString()}건 — 기존 ${prevRows.toLocaleString()}건의 절반 미만이라 중단합니다. 의도한 변화면 --force 로 실행하세요.`);
+  }
+  // 원자적 교체: 쓰는 도중 프로세스가 죽어도 기존 파일이 잘린 채 남지 않는다.
+  const tmp = CONF.out + '.tmp';
+  fs.writeFileSync(tmp, JSON.stringify({ fields: SAVE_F, courts: courts2, rows }));
+  fs.renameSync(tmp, CONF.out);
   console.log(`${MODE_SCHED ? 'auction_sched.json' : 'auction.json'} 저장 — ${rows.length.toLocaleString()}건 / ${(fs.statSync(CONF.out).size / 1024).toFixed(1)}KB`);
 }
 
@@ -353,4 +383,9 @@ async function saveAuction(items) {
   console.log(`  완료 — ${addrs.length}개 주소 중 좌표 ${hit}개 (${(hit / addrs.length * 100).toFixed(1)}%)`);
 
   await saveAuction(items);
-})();
+})().catch((e) => {
+  // 잡히지 않은 예외를 삼키지 않고 실패로 끝낸다 — CI 가 빨간불로 알려주고, 무엇보다
+  // 저장 단계까지 못 갔으므로 기존 auction.json 이 그대로 보존된다.
+  console.error('수집 실패:', e && e.stack || e);
+  process.exit(1);
+});

@@ -20,11 +20,43 @@ const CORS = {
   "Access-Control-Allow-Headers": "authorization, content-type, apikey, x-client-info",
 };
 
-function json(body: unknown, status = 200) {
+function json(body: unknown, status = 200, extraHeaders?: Record<string, string>) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...CORS, "content-type": "application/json; charset=utf-8" },
+    headers: { ...CORS, ...extraHeaders, "content-type": "application/json; charset=utf-8" },
   });
+}
+
+// ── 레이트리밋 (2026-08-14) ────────────────────────────────────────────
+// molit-proxy 에만 걸어놨더니 이 함수가 우회로가 됐다 — 위 주석대로 data.go.kr 계정당
+// 인증키 하나를 공용으로 쓰므로, 여기서 무제한으로 부르면 molit-proxy 쪽 방어와 상관없이
+// 같은 계정의 일일 호출한도가 소진된다. 두 함수 모두 인증이 없어(--no-verify-jwt) 공개다.
+// 키 앞에 "datagokr:" 를 붙여 molit-proxy 와 같은 버킷을 공유한다 — 한도가 계정 단위라
+// 함수별로 따로 세면 합계가 한도를 넘긴다.
+const RATE_WINDOW_SEC = 60;
+const RATE_MAX = 42;
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+async function checkRateLimit(ip: string): Promise<{ ok: true } | { ok: false; retryAfterSec: number }> {
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/rl_hit`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        apikey: SERVICE_ROLE_KEY,
+        authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+      },
+      body: JSON.stringify({ p_key: `datagokr:${ip}`, p_window_seconds: RATE_WINDOW_SEC, p_max: RATE_MAX }),
+    });
+    if (!r.ok) return { ok: true };   // 카운터 자체가 죽었으면 서비스는 막지 않는다
+    const rows = await r.json();
+    const row = Array.isArray(rows) ? rows[0] : rows;
+    if (row && row.allowed === false) return { ok: false, retryAfterSec: row.retry_after ?? RATE_WINDOW_SEC };
+    return { ok: true };
+  } catch (_e) {
+    return { ok: true };
+  }
 }
 
 // 위경도 → 기상청 격자(nx,ny) — Lambert Conformal Conic 변환(공식 문서 알고리즘)
@@ -66,6 +98,17 @@ const PTY_NM: Record<string, string> = { "0": "", "1": "비", "2": "비/눈", "3
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "unknown";
+  const rl = await checkRateLimit(ip);
+  if (!rl.ok) {
+    return json(
+      { error: `요청이 너무 많습니다. ${rl.retryAfterSec}초 후 다시 시도하세요.` },
+      429,
+      { "Retry-After": String(rl.retryAfterSec) },
+    );
+  }
+
   const p = new URL(req.url).searchParams;
   const lat = Number(p.get("lat")), lng = Number(p.get("lng"));
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
@@ -83,7 +126,12 @@ Deno.serve(async (req) => {
     const r = await fetch(api);
     const data = await r.json();
     const items = data?.response?.body?.items?.item;
-    if (!Array.isArray(items)) return json({ error: "기상청 응답 형식 이상", raw: data }, 502);
+    // 상류 응답 원문(raw)을 그대로 돌려주지 않는다 — 오류 응답에 요청 URL 이나 키가 섞여
+    // 나올 수 있고, 이 함수는 인증 없이 공개다. 진단은 서버 로그로만(2026-08-14).
+    if (!Array.isArray(items)) {
+      console.error("기상청 응답 형식 이상:", JSON.stringify(data).slice(0, 500));
+      return json({ error: "기상청 응답 형식 이상" }, 502);
+    }
     // 가장 이른 예보 시각(가장 최신) 것만 모아 하나의 요약으로 만든다.
     const firstTime = items.map((i: any) => i.fcstTime).sort()[0];
     const row: Record<string, string> = {};
@@ -94,6 +142,9 @@ Deno.serve(async (req) => {
     const label = pty || sky || "-";
     return json({ nx, ny, base_date, base_time, fcstTime: firstTime, temp, label, raw: row });
   } catch (e) {
-    return json({ error: "기상청 API 호출 실패", detail: String(e) }, 502);
+    // detail 로 예외 문자열을 그대로 내보내면 Deno fetch 실패 메시지에 포함된 요청 URL —
+    // 즉 serviceKey — 가 익명 호출자에게 새어나갈 수 있다. 로그로만 남긴다(2026-08-14).
+    console.error("기상청 API 호출 실패:", e);
+    return json({ error: "기상청 API 호출 실패" }, 502);
   }
 });
