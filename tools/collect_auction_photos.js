@@ -27,11 +27,14 @@ const { chromium } = require('playwright-core');
 const fs = require('fs');
 const path = require('path');
 
+// 못 찾으면 undefined 를 넘겨 playwright 번들 브라우저를 쓰게 한다(collect_auction.js 와 동일).
+// 예전엔 여기서 항상 Windows 경로로 폴백해서, 리눅스(예: GitHub Actions)에서는 존재하지도
+// 않는 파일을 executablePath 로 넘겨 실행 자체가 실패했다 — collect_auction.js 는 고쳤는데
+// 이 파일엔 안 옮겨져 있었다(2026-08-14 코드리뷰).
 const CHROME = process.env.CHROME_PATH
   || [process.env.PROGRAMFILES, `${process.env['PROGRAMFILES(X86)'] || 'C:\\Program Files (x86)'}`, process.env.LOCALAPPDATA]
     .map((p) => p && path.join(p, 'Google', 'Chrome', 'Application', 'chrome.exe'))
-    .find((p) => p && fs.existsSync(p))
-  || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+    .find((p) => p && fs.existsSync(p));
 
 const OUT_AUCTION = path.resolve(__dirname, '..', 'auction.json');
 const OUT_PHOTOS = path.resolve(__dirname, '..', 'auction_photos.json');
@@ -102,7 +105,7 @@ function splitCsNo(cn) {
 
   const browser = await chromium.launch({ executablePath: CHROME, headless: !HEADFUL });
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
-  console.log(`Chrome: ${CHROME}`);
+  console.log(`Chrome: ${CHROME || '(시스템 Chrome 없음 → playwright 번들 브라우저 사용)'}`);
 
   // 상세 응답 캡처 — csPicLst 추출. resolve/타임아웃 어느 쪽이든 리스너는 제거된다.
   const captureDetail = (ms = 20000) => new Promise((resolve) => {

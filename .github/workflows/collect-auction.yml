@@ -46,6 +46,22 @@ jobs:
 
       - run: node tools/collect_auction.js
 
+      # 스크립트 안에도 같은 가드가 있지만(saveAuction), 여기서 한 번 더 막는다 —
+      # 커밋·푸시 직전이 마지막 방어선이고, 스크립트가 바뀌어 가드가 빠져도 여기서 걸린다.
+      # git 에 기록된 직전 버전과 비교해 절반 미만으로 줄었으면 커밋을 거부한다.
+      - name: auction.json 행 수 sanity check
+        run: |
+          new=$(node -e "process.stdout.write(String((require('./auction.json').rows||[]).length))")
+          old=$(git show HEAD:auction.json 2>/dev/null | node -e "
+            let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{
+              try{process.stdout.write(String((JSON.parse(s).rows||[]).length))}catch(e){process.stdout.write('0')}
+            });" || echo 0)
+          echo "직전 ${old}건 → 이번 ${new}건"
+          if [ "$new" -lt 1 ]; then echo "::error::수집 0건 — 커밋 거부"; exit 1; fi
+          if [ "$old" -gt 0 ] && [ "$new" -lt $((old / 2)) ]; then
+            echo "::error::직전(${old}건) 대비 절반 미만(${new}건) — 커밋 거부"; exit 1
+          fi
+
       - name: auction.json 변경 시 커밋·푸시
         run: |
           if git diff --quiet -- auction.json; then

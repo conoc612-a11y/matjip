@@ -55,8 +55,13 @@ async function checkRateLimit(ip: string): Promise<{ ok: true } | { ok: false; r
         apikey: SERVICE_ROLE_KEY,
         authorization: `Bearer ${SERVICE_ROLE_KEY}`,
       },
-      body: JSON.stringify({ p_key: ip, p_window_seconds: RATE_WINDOW_SEC, p_max: RATE_MAX }),
+      // "datagokr:" 접두사로 kma-weather-proxy 와 같은 버킷을 공유한다 — data.go.kr 은
+      // 계정당 인증키 하나를 공용으로 쓰므로 함수별로 따로 세면 합계가 한도를 넘긴다(2026-08-14).
+      body: JSON.stringify({ p_key: `datagokr:${ip}`, p_window_seconds: RATE_WINDOW_SEC, p_max: RATE_MAX }),
     });
+    // rl_hit 이 404/권한오류를 내면 예전엔 조용히 통과시켰다(row.allowed 가 undefined).
+    // 마이그레이션이 빠져도 아무도 모르는 상태가 되므로 최소한 로그는 남긴다.
+    if (!r.ok) { console.error("rl_hit 실패:", r.status); return { ok: true }; }
     const rows = await r.json();
     const row = Array.isArray(rows) ? rows[0] : rows;
     if (row && row.allowed === false) return { ok: false, retryAfterSec: row.retry_after ?? RATE_WINDOW_SEC };
@@ -112,6 +117,9 @@ Deno.serve(async (req) => {
     const data = await r.json();
     return json(data, r.status);
   } catch (e) {
-    return json({ error: "건축HUB 호출 실패", detail: String(e) }, 502);
+    // detail 로 예외 문자열을 그대로 내보내지 않는다 — Deno fetch 실패 메시지에 요청 URL
+    // (= serviceKey 포함)이 실려 익명 호출자에게 샐 수 있다. 로그로만 남긴다(2026-08-14).
+    console.error("건축HUB 호출 실패:", e);
+    return json({ error: "건축HUB 호출 실패" }, 502);
   }
 });
