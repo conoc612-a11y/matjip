@@ -218,4 +218,26 @@ function splitCsNo(cn) {
   const total = Object.keys(photosDb).length;
   console.log(`\n완료 — auction_photos.json 에 사진 ${total}건 저장`);
   fs.writeFileSync(OUT_PHOTOS, JSON.stringify(photosDb));
+
+  // ── 저장한 사진을 즉시 축소한다 (2026-08-14) ──────────────────────────
+  // 법원 사이트 원본은 장당 평균 148KB 라, 1,125건만 모아도 2.3GB 였다. 전량(2,949건)이면
+  // 약 6GB 인데 **GitHub Pages 게시 사이트는 1GB 가 상한**이라 그대로 두면 배포가 막힌다.
+  // 폭 400px·품질 55 로 줄이면 장당 17KB(원본의 11%)라 전량 수집해도 약 690MB 로 들어간다.
+  // 축소 스크립트는 이미 작은 파일은 건너뛰므로 매번 돌려도 안전하다(재실행 안전).
+  // Pillow 가 없으면 경고만 하고 넘어간다 — 수집 결과 자체를 잃지 않기 위해서.
+  try {
+    const { spawnSync } = require('child_process');
+    const script = path.join(__dirname, 'shrink_auction_photos.py');
+    console.log('\n사진 축소 중 (400px) — GitHub Pages 1GB 한도 대응');
+    const r = spawnSync('python', [script], {
+      stdio: 'inherit',
+      env: Object.assign({}, process.env, { PYTHONIOENCODING: 'utf-8' }),
+    });
+    if (r.status !== 0) {
+      console.log('  ⚠ 축소 실패 — 사진은 원본 크기로 남아 있다.');
+      console.log('    Pillow 설치 후 수동 실행:  pip install Pillow && python tools/shrink_auction_photos.py');
+    }
+  } catch (e) {
+    console.log(`  ⚠ 축소 단계 건너뜀: ${e.message}`);
+  }
 })();
