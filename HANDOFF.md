@@ -100,13 +100,13 @@
 
 ---
 
-## 2026-08-15 (29) — opencode (코드리뷰 미조치 6건 전부 수정 + CI 첫 실행 원인 규명 — 커밋 전)
+## 2026-08-15 (29) — opencode (코드리뷰 미조치 6건 수정 + CI 원인 규명 + 커밋·push·Edge Function 배포 완료)
 
-> (28) 후속. 사용자 지시: **전부 진행해 커밋하고, push 전에 결과를 보고받을 것.** ① 실거래가 검증 커밋 `39db2c73` 은 이미 냈고, ② 코드리뷰 6건 수정 완료·4④ CI 원인 규명 완료. **커밋·push·Edge Function 배포는 사용자 동의 대기.**
+> (28) 후속. 사용자 지시: **전부 진행해 커밋하고, push 전에 결과를 보고받을 것.** ① 실거래가 검증 커밋 `39db2c73` → ② 코드리뷰 6건 수정 커밋 `a4652c2c` → push + Edge Function 배포까지 전부 완료. **커밋 3건(`584d5c6b` 포함) push 완료, Pages 배포 완료.**
 
 ### 완료
-1. **① 실거래가 검증 + 커밋 `39db2c73`** (6 files): realprice_apt 30,515 rows/gu 69, villa 13,207/gu 34, house 정상, officel 은 대상 아님(커밋 제외). TROUBLESHOOTING §18·HANDOFF(28) 갱신 포함. **push 만 남음.**
-2. **② 코드리뷰 미조치 6건 전부 수정** (TROUBLESHOOTING §20 에 기록):
+1. **① 실거래가 검증 + 커밋 `39db2c73`** (6 files): realprice_apt 30,515 rows/gu 69, villa 13,207/gu 34, house 정상, officel 은 대상 아님(커밋 제외). TROUBLESHOOTING §18·HANDOFF(28) 갱신 포함.
+2. **② 코드리뷰 미조치 6건 전부 수정 + 커밋 `a4652c2c`** (TROUBLESHOOTING §20):
    - `collect_realprice.js:324` — V-World **차단(일시적) 실패만** 캐시 제외, NOT_FOUND(확정) 는 캐시 유지. null 영구 캐싱 해소.
    - `admin-request-reset:89` — `sent_to:[backupEmail]` 응답 제거 → `{ ok: true }`.
    - `its-cctv-proxy` — `?debug=1` 백도어 2곳 제거.
@@ -114,35 +114,39 @@
    - **신규 마이그레이션** `20260815000000_rate_limit_cleanup.sql`: `rl_hit` 1% 확률 cleanup + `window_start` 인덱스(pg_cron 대신 lazy 정리 — WHY 주석).
    - `land.html:1288` — `if (VWORLD_KEY) {` → `{` 무조건 블록. 키 비면 블록 밖 호출부(검색 자동완성 등) ReferenceError 로 죽는 잠재 이슈 해소(27세션 §26-2 와 동일 사고). **검증: 전체 스크립트 괄호 균형 1769/1769, node --check 구문 OK.**
 3. **④ CI 첫 자동 실행 원인 규명** (TROUBLESHOOTING §19): run `31750427143` 이 `cancelled` — `timeout-minutes: 60` 초과(1h0m18s). 실측: 수집은 성공(3,388건, 23:03:09) → 지오코딩이 23:13(100/3300) → 23:24(200/3300) → 23:33:37 취소. **속도 ~100건/10분이라 3,300건이면 약 5.5시간** — 60분 제한에 절대 안 들어옴. 게다가 `collect_auction.js` 는 지오코딩 완료 후에만 `saveAuction()` 을 호출하므로(287·385행) **이번 실행은 auction.json 저장 자체가 안 됨**. `actions/cache` 는 취소된 실행에선 캐시를 저장 안 해 다음 실행도 전체 재지오코딩.
+4. **push 완료**: `584d5c6b`(사진 400px 축소, 미푸시로 남아있던 것) + `39db2c73` + `a4652c2c` → `origin/master` 반영, Pages 빌드 시작됨.
+5. **Edge Function 배포 완료** (npx supabase, 토큰은 keys.env `SUPABASE_ACCESS_TOKEN`):
+   - `supabase db push` — 마이그레이션 `20260815000000` 적용됨.
+   - 6개 함수 배포: `admin-request-reset`, `naver-search`, `bizno-proxy`, `chungak-proxy`, `eximbank-proxy`, `its-cctv-proxy`.
+   - **429 실측 검증**: naver-search 21번째(한도 20) / bizno-proxy 31번째(30) / chungak-proxy 31번째(30) / eximbank-proxy 31번째(30)부터 429 확인. its-cctv-proxy 는 상류 ITS 응답이 지연(30초 타임아웃·`timedOut:true`)돼 429 실측 불가 — 대신 `supabase functions download` 로 배포본 코드에 `its:`/30 + debug 제거 반영 확인.
+6. **keys.env 에 `SUPABASE_ACCESS_TOKEN` 항목 추가** (사용자 토큰 저장, gitignored 확인됨).
 
 ### 남은 것 (아래 "▶ 이어서 할 일" 참고)
-- 수정분 커밋 + push 동의(② 6건 + §19/§20 기록).
-- Edge Function **배포** 동의 — ②-2~②-4 해당 함수 7개(admin-request-reset, its-cctv-proxy, naver-search, bizno-proxy, chungak-proxy, eximbank-proxy) + 마이그레이션 `supabase db push`.
 - CI 지오코딩 타임아웃 해결 방향은 **미적용**(아래 4)).
+- its-cctv-proxy 레이트리밋 429 실측 — 상류 ITS 가 Edge 아웃바운드를 사실상 차단(keys.env 주석)해 프론트 직접 호출로 전환된 상태라 실측은 어려움. ITS 응답이 빨라지는 시간대에 재시도 가능.
 
 ---
 
 ## ▶ 이어서 할 일 (다음 세션은 여기부터)
 
-> ~~1) 실거래가 복구~~ → **완료** (커밋 `39db2c73`, push 대기).
-> ~~2) 코드리뷰 미조치~~ → **전부 수정 완료** (2026-08-15 (29), 커밋 대기).
-> ~~4) CI 첫 실행 확인~~ → **원인 규명 완료** (타임아웃 취소 — 해결은 미적용). 아래 1)~5) 만 남음.
+> ~~1) 실거래가 복구~~ → **완료·push 완료** (커밋 `39db2c73`).
+> ~~2) 코드리뷰 미조치~~ → **전부 수정·push·배포 완료** (2026-08-15 (29), 커밋 `a4652c2c`).
+> ~~4) CI 첫 실행 확인~~ → **원인 규명 완료** (타임아웃 취소 — 해결은 미적용). 아래 1)~4) 만 남음.
 
-### 1) 커밋·push 동의 받기 (2026-08-15 (29))
-`git status` 로 확인: `tools/collect_realprice.js`(null 캐시 정책) + `supabase/functions/*` 7개 + `supabase/migrations/20260815000000_rate_limit_cleanup.sql`(신규) + `land.html`(VWORLD 블록) + `TROUBLESHOOTING.md`(§19·§20) + `HANDOFF.md`. push 후 Edge Function 배포는 **별도 동의** 필요.
-
-### 2) Edge Function 배포 (사용자 동의 후)
-`supabase db push`(새 마이그레이션) + `supabase functions deploy` 6개: `admin-request-reset`, `its-cctv-proxy`, `naver-search`, `bizno-proxy`, `chungak-proxy`, `eximbank-proxy`. 로컬: `$env:SUPABASE_ACCESS_TOKEN="..."` (PowerShell, `set` 아님 — 26세션 주의사항).
-
-### 3) 사진 수집 (진행 중, 언제든 재개 가능)
+### 1) 사진 수집 (진행 중, 언제든 재개 가능)
 `auction_photos.json` 현재 **1,125 / 2,949건**. 재개: `node tools/collect_auction_photos.js`
 (이미 있는 cn 은 자동 스킵). 건당 10~15초라 전체는 수 시간. 여러 세션에 나눠 돌리면 됨.
 
-### 4) CI 지오코딩 타임아웃 해결 (미적용 — 2026-08-15 (29) 원인만 규명)
+### 2) CI 지오코딩 타임아웃 해결 (미적용 — 2026-08-15 (29) 원인만 규명)
 `collect-auction.yml` 60분 제한 vs 지오코딩 ~5.5시간 필요. 방향 후보(TROUBLESHOOTING §19):
 ① `timeout-minutes` 확대(6h+) ② 지오코딩을 별도 단계로 분리 + geocache 를 캐시가 아닌 **커밋 파일**로 저장해 취소돼도 재사용 ③ `saveAuction()` 을 지오코딩과 분리. 실행 전 로컬에서 `.geocache.json` 채운 뒤 재실행 시간부터 실측할 것(캐시 히트 시 몇 분이면 되는지).
 
-### 5) 테스트 방법 (이번 세션에서 정립 — 꼭 따를 것)
+### 3) Edge Function 배포 환경 정리 (참고)
+배포는 `npx supabase` + keys.env `SUPABASE_ACCESS_TOKEN`(사용자 저장, gitignored) 로 완료됨.
+CLI 가 PATH 에 없으므로 이후 배포 시: `$env:SUPABASE_ACCESS_TOKEN=(keys.env 에서 읽음)` 후
+`npx -y supabase@latest functions deploy <이름> --project-ref bhgijvaxxjnocgfnaaeu`. 프로젝트 ref 는 `bhgijvaxxjnocgfnaaeu`(restaurant-guide).
+
+### 4) 테스트 방법 (이번 세션에서 정립 — 꼭 따를 것)
 - UI 동작 검증은 **반드시 CDP `Input.dispatchMouseEvent`** 로. `element.click()` 은 pointer
   이벤트 체인을 안 타서 진짜 버그를 통과시킨다(위 1번 항목이 그 사례).
 - 헤드리스로 `land.html` 을 열 때는 `auth-guard.js` 요청을 `Fetch.failRequest` 로 막아야 한다
@@ -153,16 +157,8 @@
   브라우저까지 죽인다(이번 세션에 실제로 사고). spawn 한 프로세스만 `.kill()` 할 것.
 - land.html 인라인 스크립트 검증: `<script>` 블록을 UTF-8 로 추출해 `node --check` (PS5.1 은
   `Get-Content` 기본 인코딩이 ANSI 라 한글 정규식 리터럴이 깨져 오판 — `[IO.File]::ReadAllText(..., UTF8)` 필수).
-
-### 5) 테스트 방법 (이번 세션에서 정립 — 꼭 따를 것)
-- UI 동작 검증은 **반드시 CDP `Input.dispatchMouseEvent`** 로. `element.click()` 은 pointer
-  이벤트 체인을 안 타서 진짜 버그를 통과시킨다(위 1번 항목이 그 사례).
-- 헤드리스로 `land.html` 을 열 때는 `auth-guard.js` 요청을 `Fetch.failRequest` 로 막아야 한다
-  (안 그러면 온보딩으로 리다이렉트).
-- 배포본 확인은 `curl` 로 실제 파일을 받아 문자열을 grep 하는 게 확실하다(캐시 주의:
-  `Cache-Control: max-age=600`).
-- 테스트용 크롬을 정리할 때 **`taskkill /IM chrome.exe` 를 쓰지 말 것** — 백그라운드 수집기의
-  브라우저까지 죽인다(이번 세션에 실제로 사고). spawn 한 프로세스만 `.kill()` 할 것.
+- Edge Function 레이트리밋 실측: anon key 헤더(`apikey`/`Authorization`)로 25~35회 반복 호출 →
+  한도 초과 시 429. PS5.1 에 `SkipHttpErrorCheck` 없음 — try/catch 로 `$_.Exception.Response.StatusCode.value__`.
 
 ---
 
