@@ -22,11 +22,16 @@ const https = require('https');
 const fs = require('fs');
 const path = require('path');
 
-const KEY = process.env.DGK;
-if (!KEY) {
+const RAW_KEY = process.env.DGK;
+if (!RAW_KEY) {
   console.error('DGK 환경변수에 data.go.kr 인증키를 넣어 실행하세요.');
   process.exit(1);
 }
+// data.go.kr 의 Decoding 키에는 + / = 가 들어있다. 그대로 URL 에 붙이면
+// '+' 가 공백으로 해석되는 등으로 인증이 깨져 서버가 조용히 0건을 돌려준다
+// (2026-08-14 실측: 전 구·전 월에서 0건 → writeSafe 가드가 덮어쓰기를 막아 발각).
+// 이미 인코딩된 키(%2B 등 포함)를 넣은 경우 이중 인코딩되지 않도록 원형을 먼저 복원한다.
+const KEY = encodeURIComponent(/%[0-9A-Fa-f]{2}/.test(RAW_KEY) ? decodeURIComponent(RAW_KEY) : RAW_KEY);
 const VWORLD_KEY = process.env.VWORLD_KEY || 'B2CDEEDD-D622-311B-883B-CC7890E50822';
 const OUT_DIR = path.resolve(__dirname, '..');
 const MONTHS_BACK = Number(process.env.MONTHS || 12);
@@ -124,14 +129,46 @@ function parseItems(xml) {
   return out;
 }
 
+// 기준월을 실행 시점에서 계산한다. 예전엔 new Date(2026, 6, 1) 로 하드코딩돼 있어
+// 2026-07 이후 거래가 영구히 수집되지 않았다(2026-08-14 코드리뷰로 발견 — 그날 기준
+// 7월·8월 거래가 통째로 빠져 있었다). 재현이 필요하면 BASE_YM=YYYYMM 으로 고정할 수 있다.
+// i=0 부터 도는 이유: 이번 달(진행 중)도 포함해야 최신 거래가 반영된다.
 function recentMonths(n) {
   const out = [];
-  const now = new Date(2026, 6, 1); // 수집 기준월. 실행 시점에 맞춰 조정 가능.
-  for (let i = 1; i <= n; i++) {
+  const bym = String(process.env.BASE_YM || '');
+  const now = /^\d{6}$/.test(bym)
+    ? new Date(Number(bym.slice(0, 4)), Number(bym.slice(4, 6)) - 1, 1)
+    : new Date();
+  for (let i = 0; i < n; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     out.push(String(d.getFullYear()) + String(d.getMonth() + 1).padStart(2, '0'));
   }
   return out;
+}
+
+// ── 빈/축소 결과로 기존 파일을 덮어쓰지 않는 안전 저장 (2026-08-14 코드리뷰) ──
+// data.go.kr 은 키 오류·쿼터 초과일 때도 HTTP 200 에 오류 XML 을 실어 보낸다. 그러면
+// 파싱 결과가 0건이 되는데, 예전엔 그대로 저장돼 멀쩡한 파일이 rows:[] 로 바뀌었다.
+// (실제로 realprice_apt.json 이 빈 채로 배포돼 프론트가 매 로드마다 2MB 구버전으로
+//  폴백하고 있었다.) 0건이거나 기존 대비 절반 미만이면 저장을 거부한다.
+// 의도한 축소면 --force 로 넘긴다. 저장은 tmp+rename 으로 원자적으로 한다.
+function writeSafe(outPath, obj, count, label) {
+  const FORCE = process.argv.includes('--force');
+  let prev = 0;
+  try {
+    if (fs.existsSync(outPath)) {
+      const old = JSON.parse(fs.readFileSync(outPath, 'utf8'));
+      prev = Array.isArray(old) ? old.length : (old.rows ? old.rows.length : Object.keys(old).length);
+    }
+  } catch (e) { /* 기존 파일이 깨져 있으면 비교 대상 없음 */ }
+  if (!count) throw new Error(`${label}: 수집 0건 — 기존 파일(${prev.toLocaleString()}건) 보존하고 중단. API 오류/쿼터 초과 의심.`);
+  if (prev && count < prev * 0.5 && !FORCE) {
+    throw new Error(`${label}: ${count.toLocaleString()}건 — 기존 ${prev.toLocaleString()}건의 절반 미만이라 중단. 의도한 변화면 --force.`);
+  }
+  const tmp = outPath + '.tmp';
+  fs.writeFileSync(tmp, JSON.stringify(obj));
+  fs.renameSync(tmp, outPath);
+  console.log(`  ${label} 저장 — ${count.toLocaleString()}건 / ${(fs.statSync(outPath).size / 1048576).toFixed(2)}MB`);
 }
 
 const eok = (amt) => Math.round(Number(String(amt).replace(/[,\s]/g, '')) / 10000 * 10) / 10;
@@ -374,7 +411,7 @@ async function collectRentOnly() {
       b.deals.length, ds.length ? Math.min(...ds) : 0, ds.length ? Math.max(...ds) : 0,
     ]);
   }
-  fs.writeFileSync(path.join(OUT_DIR, `realprice_officel${SUFFIX}.json`), JSON.stringify({ fields: F, gus, dongs, rows }));
+  writeSafe(path.join(OUT_DIR, `realprice_officel${SUFFIX}.json`), { fields: F, gus, dongs, rows }, rows.length, 'realprice_officel.json');
   console.log(`  realprice_officel.json 저장 — ${rows.length.toLocaleString()}건 / ${(fs.statSync(path.join(OUT_DIR, `realprice_officel${SUFFIX}.json`)).size / 1048576).toFixed(2)}MB`);
 
   console.log('\n완료.');
@@ -434,7 +471,7 @@ async function collectRentOnly() {
       jeonse, jeonse && latest.p ? Math.round(jeonse / latest.p * 100) : 0,
     ]);
   }
-  fs.writeFileSync(path.join(OUT_DIR, `realprice_villa${SUFFIX}.json`), JSON.stringify({ fields: F, gus, dongs, types, rows: villa }));
+  writeSafe(path.join(OUT_DIR, `realprice_villa${SUFFIX}.json`), { fields: F, gus, dongs, types, rows: villa }, villa.length, 'realprice_villa.json');
   console.log(`  realprice_villa.json 저장 — ${villa.length.toLocaleString()}건 / ${(fs.statSync(path.join(OUT_DIR, `realprice_villa${SUFFIX}.json`)).size / 1048576).toFixed(2)}MB`);
 
   // ── 아파트 ──────────────────────────────────────────────────
@@ -491,9 +528,8 @@ async function collectRentOnly() {
         jeonse, jeonse && latest.p ? Math.round(jeonse / latest.p * 100) : 0,
       ]);
     }
-    fs.writeFileSync(path.join(OUT_DIR, `realprice_apt${SUFFIX}.json`),
-      JSON.stringify({ fields: AF, gus: agus, dongs: adongs, gbns: agbns, rows: apt }));
-    console.log(`  realprice_apt.json 저장 — ${apt.length.toLocaleString()}건 / ${(fs.statSync(path.join(OUT_DIR, `realprice_apt${SUFFIX}.json`)).size / 1048576).toFixed(2)}MB`);
+    writeSafe(path.join(OUT_DIR, `realprice_apt${SUFFIX}.json`),
+      { fields: AF, gus: agus, dongs: adongs, gbns: agbns, rows: apt }, apt.length, 'realprice_apt.json');
   }
 
   // 단독다가구 — 지번이 마스킹돼 개별 좌표 불가. 동 단위 집계만.
