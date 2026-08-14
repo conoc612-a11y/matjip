@@ -178,7 +178,15 @@
        리사이저 중앙에 항상 보이는 화살표 손잡이. 누르면 패널이 그 방향으로 쏙 들어가고
        손잡이만 남아, 다시 누르면 도로 펼쳐진다(리사이저 자체는 접힌 뒤에도 안 숨긴다 —
        기존 .panel.collapsed 규칙이 .panel-resizer 까지 display:none 시켰던 걸 걷어냈다). */
-    .panel-slide-tab { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    /* 가운데 정렬을 transform 이 아니라 음수 margin 으로 한다(2026-08-14, 실측으로 원인 확정).
+       css/buttons.css 의 공용 버튼 규칙이 `button:hover { transform: translateY(-1px) }` 를
+       걸어두는데, transform 은 대체(replace)되는 속성이라 이게 translate(-50%,-50%) 를
+       통째로 날려버린다. 그러면 마우스를 올리는 순간 탭이 자기 크기의 절반(가로 10px·세로
+       22px)만큼 튀어 커서 밖으로 도망가고, 클릭은 탭이 아니라 그 아래 리사이저에 떨어져
+       접기 버튼이 "눌러도 아무 반응 없는" 상태가 됐다.
+       margin 방식은 hover 의 translateY(-1px) 와 충돌하지 않아 살짝 뜨는 효과는 그대로 살고
+       위치는 안 흔들린다. (margin 값 = 각 크기의 절반: 20/2=10, 44/2=22) */
+    .panel-slide-tab { position:absolute; top:50%; left:50%; margin-left:-10px; margin-top:-22px;
       width:20px; height:44px; border-radius:8px; border:1px solid var(--line); background:var(--card);
       color:var(--muted); display:flex; align-items:center; justify-content:center; font-size:15px;
       line-height:1; cursor:pointer; z-index:2002; box-shadow:var(--c-shadow); padding:0; }
@@ -2047,6 +2055,17 @@
           setTimeout(() => panel.classList.remove('panel-sliding'), 220);
           if (opts.onToggle) opts.onToggle();
         };
+        // 탭은 리사이저(그립)의 자식이라, 이걸 막지 않으면 실제 마우스 클릭이 통째로 먹힌다.
+        // makeResizable 이 그립에 건 pointerdown 핸들러가 e.preventDefault() 를 부르는데,
+        // pointerdown 에서의 preventDefault 는 뒤따르는 호환 마우스 이벤트(mousedown·click)를
+        // 아예 발생시키지 않는다 → tab.onclick 이 영원히 안 불린다. 게다가 setPointerCapture
+        // 까지 걸려 포인터가 그립으로 넘어간다.
+        // (실측 2026-08-14: 헤드리스에서 tab.click() 으로 테스트했을 땐 통과했는데 — JS 로
+        //  click 이벤트를 직접 쏘면 pointerdown 경로를 안 타서 이 버그를 못 잡는다. CDP
+        //  Input.dispatchMouseEvent 로 진짜 마우스를 흉내내니 폭이 340px 그대로였다.)
+        // 여기서 pointerdown 을 삼켜 그립 핸들러가 아예 안 보게 한다 → 클릭 정상 발생.
+        tab.addEventListener('pointerdown', (e) => { e.stopPropagation(); });
+        tab.addEventListener('mousedown', (e) => { e.stopPropagation(); });
         tab.onclick = (e) => { e.stopPropagation(); toggle(); };
         setGlyph();
         return { toggle, setGlyph };

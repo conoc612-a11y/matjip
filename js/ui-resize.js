@@ -41,6 +41,14 @@
     }
 
     grip.addEventListener('pointerdown', function (e) {
+      // 그립 안에 놓인 버튼(예: 패널 접기/펼치기 탭 .panel-slide-tab)을 누른 것은
+      // 드래그 시작이 아니라 그냥 버튼 클릭이다. 여기서 걸러내지 않으면:
+      //   ① preventDefault() 가 뒤따르는 click 이벤트를 아예 없애고
+      //   ② setPointerCapture() 가 포인터를 그립으로 가로채 mouseup/click 의 target 이
+      //      버튼이 아니라 그립으로 바뀐다
+      // → 버튼의 onclick 이 영원히 안 불린다(실측 2026-08-14: 접기 탭이 실제 마우스로는
+      //   전혀 안 눌렸다. JS 로 .click() 을 쏘면 이 경로를 안 타서 테스트만 통과했었다).
+      if (e.target && e.target.closest && e.target.closest('button')) return;
       e.preventDefault();
       e.stopPropagation();
       drag = { sx: e.clientX, sy: e.clientY, w: target.offsetWidth, h: target.offsetHeight };
