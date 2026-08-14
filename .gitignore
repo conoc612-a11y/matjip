@@ -1,7 +1,6 @@
 node_modules/
 .env
 keys.env
-tools/.geocache.json
 .gstack/
 .omc/
 supabase/.temp/
