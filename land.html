@@ -103,10 +103,22 @@
     /* 접혀도 리사이저는 안 숨긴다 — 포켓도어 탭이 거기 붙어있어야 다시 펼 수 있다(2026-08-13). */
     @media (max-width:820px) { .panel-resizer { display:none; } }
     .panel.collapsed { flex:0 0 0; min-width:0; width:0; padding:0; overflow:hidden; border:none; }
+    /* ── 좌측 패널 컨테이너 (2026-08-14) ─────────────────────────────
+       경매·실거래·정비사업 패널을 가로로 나란히 세운다. 예전엔 세 패널이 각각
+       position:absolute; left:0 이라 전부 같은 자리에 포개져 있었다 — 둘 이상 열면
+       위엣것만 보이고, 접었을 때는 접기 탭까지 같은 좌표에 겹쳐서 아래 패널을 다시
+       펼 수 없었다(사용자 보고). 이제 flex 로 나란히 놓이므로 각자 자기 자리에 있고,
+       접으면 탭만 남는 얇은 띠(.collapsed, JS 의 RAIL_W)가 되어 탭도 안 겹친다.
+       pointer-events:none — 컨테이너의 빈 공간이 지도 클릭을 가로채지 않게(자식만 살림). */
+    .left-panels { position:absolute; left:0; top:0; bottom:0; z-index:2000; display:flex;
+      align-items:stretch; max-width:100%; pointer-events:none; }
+    .left-panels > * { pointer-events:auto; }
     /* ── 법원경매 사이드 패널 ── (레이어 on/off와 연동, 왼쪽 오버레이) */
-    .auction-panel { position:absolute; left:0; top:0; bottom:0; width:340px; min-width:200px; max-width:640px;
-      z-index:2000; background:var(--card); border-right:1px solid var(--line); box-shadow:var(--c-shadow-lg);
+    .auction-panel { position:relative; flex:none; width:340px; min-width:200px; max-width:640px;
+      background:var(--card); border-right:1px solid var(--line); box-shadow:var(--c-shadow-lg);
       display:flex; flex-direction:column; font-size:13px; }
+    /* 접힌 상태 = 탭만 남는 띠. 내용은 통째로 숨겨 띠가 깔끔하게 보이도록 한다. */
+    .auction-panel.collapsed .ap-inner, .side-panel.collapsed .sp-inner { display:none; }
     .auction-panel[hidden] { display:none; }
     /* .ap-inner — 접었을 때 실제로 잘라내는 클리핑은 여기서 한다(.auction-panel 자체가 아님).
        이유(2026-08-13, 두 번 헛짚은 뒤 확정): overflow:hidden을 .auction-panel에 걸면
@@ -161,8 +173,8 @@
     /* ── 실거래/도시계획사업 좌측 패널 ── (경매 패널과 같은 틀. 2026-08-13, 사용자 요청 —
        기존엔 지도 위에 뜨는 작은 필터/범례 상자였는데, 경매처럼 화면 세로 전체를 쓰는
        왼쪽 패널 모양으로 통일. 안의 필터·범례 내용·동작은 그대로, 담는 틀만 바꿨다. */
-    .side-panel { position:absolute; left:0; top:0; bottom:0; width:300px; min-width:220px; max-width:520px;
-      z-index:2000; background:var(--card); border-right:1px solid var(--line); box-shadow:var(--c-shadow-lg);
+    .side-panel { position:relative; flex:none; width:300px; min-width:220px; max-width:520px;
+      background:var(--card); border-right:1px solid var(--line); box-shadow:var(--c-shadow-lg);
       display:flex; flex-direction:column; font-size:13px; }
     .side-panel[hidden] { display:none; }
     /* .sp-inner — .ap-inner 와 같은 이유·구조(2026-08-13, land.html .ap-inner 주석 참고). */
@@ -543,6 +555,7 @@
   </div>
 
   <div class="layout">
+    <div class="left-panels" id="left-panels">
     <aside id="auction-panel" class="auction-panel" hidden aria-label="법원경매 물건 목록">
       <div class="ap-inner">
         <div class="ap-head">
@@ -583,6 +596,7 @@
       </div>
       <div class="side-resizer" id="jb-panel-resizer" title="드래그해서 너비 조절"></div>
     </aside>
+    </div>
     <!-- 법원경매 사진 확대 (라이트박스) — 스크립트 실행 시점에 DOM 에 있어야 하므로 body 상단에 배치 -->
     <div id="apd-lightbox" hidden>
       <button type="button" class="apd-lb-close" id="apd-lb-close" aria-label="닫기">✕</button>
@@ -2043,8 +2057,13 @@
           if (collapsing) {
             panel.dataset.expandedWidth = String(panel.getBoundingClientRect().width);
             panel.classList.add('collapsed');
+            // 좌측 패널은 0 이 아니라 '탭만 남는 띠(RAIL_W)' 로 접는다. 0 으로 접으면 여러
+            // 패널이 전부 x=0 에 몰려 접기 탭이 서로 정확히 겹쳐, 아래 패널을 다시 펼 수
+            // 없었다(2026-08-14 사용자 보고). 띠 폭만큼 자리를 차지하면 탭이 나란히 놓인다.
+            // 우측 패널(flexTarget)은 하나뿐이라 겹칠 일이 없어 그대로 0 으로 접는다.
+            const cw = opts.flexTarget ? 0 : (opts.collapsedWidth || 0);
             if (opts.flexTarget) { panel.style.flex = '0 0 0px'; panel.style.minWidth = '0px'; }
-            else { panel.style.width = '0px'; panel.style.minWidth = '0px'; }
+            else { panel.style.width = cw + 'px'; panel.style.minWidth = cw + 'px'; }
           } else {
             panel.classList.remove('collapsed');
             const w = parseFloat(panel.dataset.expandedWidth) || opts.defaultWidth || 300;
@@ -2070,9 +2089,11 @@
         setGlyph();
         return { toggle, setGlyph };
       }
-      makeSlideTab($('ap-resizer'), auctionPanel, { side: 'left', defaultWidth: 340 });
-      makeSlideTab($('rp-panel-resizer'), $('rp-panel'), { side: 'left', defaultWidth: 300 });
-      makeSlideTab($('jb-panel-resizer'), $('jb-panel'), { side: 'left', defaultWidth: 300 });
+      // RAIL_W — 접었을 때 남는 띠의 폭. 탭(20px)이 들어갈 만큼만 둔다.
+      const RAIL_W = 22;
+      makeSlideTab($('ap-resizer'), auctionPanel, { side: 'left', defaultWidth: 340, collapsedWidth: RAIL_W });
+      makeSlideTab($('rp-panel-resizer'), $('rp-panel'), { side: 'left', defaultWidth: 300, collapsedWidth: RAIL_W });
+      makeSlideTab($('jb-panel-resizer'), $('jb-panel'), { side: 'left', defaultWidth: 300, collapsedWidth: RAIL_W });
       {
         const rightTab = makeSlideTab($('panel-resizer'), $('panel'), {
           side: 'right', flexTarget: true, defaultWidth: 380,
