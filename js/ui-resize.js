@@ -12,7 +12,11 @@
   window.makeResizable = function (grip, target, opts) {
     if (!grip || !target) return;
     opts = opts || {};
-    var drag = null, raf = 0, lastEv = null;
+    // armed: dragThreshold 를 쓸 때 "눌렀지만 아직 드래그로 인정되진 않은" 상태.
+    // 임계값 이상 움직여야 drag 로 승격된다 — 그래야 같은 손잡이가 클릭도 겸할 수 있다.
+    // pressed/downPt: 손잡이를 누른 사실과 그 지점(드래그 허용 여부와 무관). 클릭 판정에 쓴다 —
+    // 임계값 넘게 움직였으면 드래그가 실제로 일어났든 아니든 클릭으로 치지 않는다.
+    var drag = null, armed = null, pressed = false, downPt = null, moved = false, raf = 0, lastEv = null;
 
     function num(v, dflt) {
       var n = (typeof v === 'function') ? v() : v;
@@ -41,14 +45,28 @@
     }
 
     grip.addEventListener('pointerdown', function (e) {
-      // 그립 안에 놓인 버튼(예: 패널 접기/펼치기 탭 .panel-slide-tab)을 누른 것은
-      // 드래그 시작이 아니라 그냥 버튼 클릭이다. 여기서 걸러내지 않으면:
+      // 그립 "안에 든" 버튼을 누른 건 드래그가 아니라 그 버튼의 클릭이다. 안 걸러내면
       //   ① preventDefault() 가 뒤따르는 click 이벤트를 아예 없애고
-      //   ② setPointerCapture() 가 포인터를 그립으로 가로채 mouseup/click 의 target 이
-      //      버튼이 아니라 그립으로 바뀐다
-      // → 버튼의 onclick 이 영원히 안 불린다(실측 2026-08-14: 접기 탭이 실제 마우스로는
-      //   전혀 안 눌렸다. JS 로 .click() 을 쏘면 이 경로를 안 타서 테스트만 통과했었다).
-      if (e.target && e.target.closest && e.target.closest('button')) return;
+      //   ② setPointerCapture() 가 mouseup/click 의 target 을 그립으로 바꿔
+      // 버튼 onclick 이 영원히 안 불린다(2026-08-14 실측).
+      // 단, 그립 자신이 버튼인 경우(클릭 겸 드래그 손잡이)는 예외 — 그건 아래에서 처리한다.
+      var btn = e.target && e.target.closest && e.target.closest('button');
+      if (btn && btn !== grip) return;
+
+      if (opts.dragThreshold) {
+        // 클릭 겸 드래그 손잡이. 여기서 preventDefault 하면 click 이 안 뜨므로 하지 않고,
+        // 임계값을 넘게 움직인 순간(pointermove)에야 드래그로 승격시킨다.
+        pressed = true;
+        downPt = { x: e.clientX, y: e.clientY };
+        moved = false;
+        // dragEnabled 가 false 면 드래그만 막고 클릭은 살린다(예: 접힌 패널은 폭 조절 불가,
+        // 하지만 눌러서 다시 펴는 건 돼야 한다).
+        armed = (opts.dragEnabled && !opts.dragEnabled())
+          ? null
+          : { sx: e.clientX, sy: e.clientY, w: target.offsetWidth, h: target.offsetHeight };
+        try { grip.setPointerCapture(e.pointerId); } catch (err) {}
+        return;
+      }
       e.preventDefault();
       e.stopPropagation();
       drag = { sx: e.clientX, sy: e.clientY, w: target.offsetWidth, h: target.offsetHeight };
@@ -58,6 +76,22 @@
       if (opts.onStart) opts.onStart(e);
     });
     grip.addEventListener('pointermove', function (e) {
+      // 드래그가 허용되지 않는 상황(dragEnabled false)이라도 '움직였다'는 사실은 기록해서,
+      // 손을 뗄 때 클릭으로 오인하지 않게 한다.
+      if (pressed && downPt && !moved && opts.dragThreshold
+        && (Math.abs(e.clientX - downPt.x) >= opts.dragThreshold
+          || Math.abs(e.clientY - downPt.y) >= opts.dragThreshold)) moved = true;
+      if (armed && !drag) {
+        // 임계값 안이면 아직 '클릭 후보' — 손 떨림으로 드래그가 되지 않게 한다.
+        if (Math.abs(e.clientX - armed.sx) < opts.dragThreshold
+          && Math.abs(e.clientY - armed.sy) < opts.dragThreshold) return;
+        drag = armed;
+        armed = null;
+        e.preventDefault();
+        if (opts.bodyClass) document.body.classList.add(opts.bodyClass);
+        if (opts.gripClass) grip.classList.add(opts.gripClass);
+        if (opts.onStart) opts.onStart(e);
+      }
       if (!drag) return;
       lastEv = e;
       if (raf) return;
@@ -67,17 +101,26 @@
         if (ev) apply(ev);
       });
     });
-    function end() {
+    function end(e, allowClick) {
       if (raf) { cancelAnimationFrame(raf); raf = 0; }
       if (lastEv) { var ev = lastEv; lastEv = null; apply(ev); }
+      var wasDrag = !!drag;
       if (drag) {
         drag = null;
         if (opts.bodyClass) document.body.classList.remove(opts.bodyClass);
         if (opts.gripClass) grip.classList.remove(opts.gripClass);
         if (opts.onEnd) opts.onEnd();
       }
+      var wasPressed = pressed, wasMoved = moved;
+      armed = null;
+      pressed = false;
+      downPt = null;
+      moved = false;
+      // 임계값을 못 넘고 손을 뗐으면 = 클릭. click 이벤트에 기대지 않고 여기서 직접 알린다
+      // (setPointerCapture 때문에 click 의 target 이 흔들릴 수 있어 이 편이 확실하다).
+      if (allowClick && opts.dragThreshold && !wasDrag && !wasMoved && wasPressed && opts.onClick) opts.onClick(e);
     }
-    grip.addEventListener('pointerup', end);
-    grip.addEventListener('pointercancel', end);
+    grip.addEventListener('pointerup', function (e) { end(e, true); });
+    grip.addEventListener('pointercancel', function (e) { end(e, false); });
   };
 })();
