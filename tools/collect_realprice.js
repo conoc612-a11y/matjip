@@ -37,12 +37,35 @@ const OUT_DIR = path.resolve(__dirname, '..');
 const MONTHS_BACK = Number(process.env.MONTHS || 12);
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0 Safari/537.36';
 
+// LAWD_CD 는 추측으로 넣지 않는다 — 2026-08-14 전수 탐색(41100~41899 전 코드 1회 호출)으로
+// 데이터가 실제로 나오는 47개만 확보. 수원(41111/13/15/17)·부천(41192/94/96)·화성(41591/93/95/97)은
+// 표준 시군구 코드와 달라 API 로 확인했다 (세부는 HANDOFF (28)).
+//   - 수원 4구: 41111 장안·41113 권선·41115 팔달·41117 영통 (41119 등은 무효)
+//   - 부천 3구(2024 일반구 분리): 41192 원미·41194 소사·41196 오정 (41190/95/97/99 는 전부 0건)
+//   - 화성: 41591/41593/41595/41597 4개 코드 합집합이 화성 전체(능동만 중복 — 수집기 dedupe 로 흡수)
+const GU_GG = {
+  41111: '수원시 장안구', 41113: '수원시 권선구', 41115: '수원시 팔달구', 41117: '수원시 영통구',
+  41131: '성남시 수정구', 41133: '성남시 중원구', 41135: '성남시 분당구',
+  41150: '의정부시', 41171: '안양시 만안구', 41173: '안양시 동안구',
+  41192: '부천시 원미구', 41194: '부천시 소사구', 41196: '부천시 오정구',
+  41210: '광명시', 41220: '평택시', 41250: '동두천시',
+  41271: '안산시 상록구', 41273: '안산시 단원구',
+  41281: '고양시 덕양구', 41285: '고양시 일산동구', 41287: '고양시 일산서구',
+  41290: '과천시', 41310: '구리시', 41360: '남양주시', 41370: '오산시', 41390: '시흥시',
+  41410: '군포시', 41430: '의왕시', 41450: '하남시',
+  41461: '용인시 처인구', 41463: '용인시 기흥구', 41465: '용인시 수지구',
+  41480: '파주시', 41500: '이천시', 41550: '안성시', 41570: '김포시',
+  41591: '화성시', 41593: '화성시', 41595: '화성시', 41597: '화성시',
+  41610: '광주시', 41630: '양주시', 41650: '포천시', 41670: '여주시',
+  41800: '연천군', 41820: '가평군', 41830: '양평군',
+};
 const GU_ALL = {
   11110: '종로구', 11140: '중구', 11170: '용산구', 11200: '성동구', 11215: '광진구',
   11230: '동대문구', 11260: '중랑구', 11290: '성북구', 11305: '강북구', 11320: '도봉구',
   11350: '노원구', 11380: '은평구', 11410: '서대문구', 11440: '마포구', 11470: '양천구',
   11500: '강서구', 11530: '구로구', 11545: '금천구', 11560: '영등포구', 11590: '동작구',
   11620: '관악구', 11650: '서초구', 11680: '강남구', 11710: '송파구', 11740: '강동구',
+  ...GU_GG,
 };
 // ONLY_GU=11620,11440 처럼 지정하면 일부 구만 수집한다 (전체 실행 전 점검용).
 // SUFFIX=_test 를 주면 산출 파일명 뒤에 붙어 실제 데이터를 덮어쓰지 않는다.
@@ -51,6 +74,10 @@ const GU = ONLY.length
   ? Object.fromEntries(Object.entries(GU_ALL).filter(([cd]) => ONLY.includes(cd)))
   : GU_ALL;
 const SUFFIX = process.env.SUFFIX || '';
+// 시도 구분: LAWD_CD 11 로 시작 = 서울, 41 로 시작 = 경기 (이 수집기가 쓰는 코드는 11/41 둘 뿐)
+const SIDO = (cd) => (String(cd).startsWith('11') ? '서울특별시' : '경기도');
+// RENT_ONLY 가 dong/house 에서 코드 없이 구 이름만 들고 다닐 때 시도 복원용 (구 이름은 전체에서 유일)
+const GU_CD_BY_NAME = Object.fromEntries(Object.entries(GU_ALL).map(([cd, nm]) => [nm, cd]));
 
 // ── 공통 유틸 ────────────────────────────────────────────────
 // keepAlive 필수. 수천 건을 연달아 요청하면 Windows 에서 임시 포트가 고갈돼
@@ -192,7 +219,7 @@ async function fetchJeonse(pathSeg, label, nameField, withArea) {
     if (!(dep > 0)) continue;
     jeonseCnt++;
     const area = Math.round((Number(r.excluUseAr) || 0) * 10) / 10;
-    const base = `서울특별시 ${r._gu} ${r.umdNm} ${r.jibun}|${r[nameField] || ''}`;
+    const base = `${SIDO(r._sgg)} ${r._gu} ${r.umdNm} ${r.jibun}|${r[nameField] || ''}`;
     const key = withArea ? `${base}|${area}` : base;
     let arr = byKey.get(key);
     if (!arr) { arr = []; byKey.set(key, arr); }
@@ -329,7 +356,7 @@ async function geocodeAll(addrs) {
 // ① 단독·다가구 전월세(동 단위) ② 기존 단독 매매 house.json 에 동 좌표 보강
 // ③ 오피스텔 전월세(건물 단위) 만 처리한다. 동/건물 좌표는 V-World 로 지오코딩한다.
 async function collectRentOnly() {
-  console.log(`수집 기간: 최근 ${MONTHS_BACK}개월 · 서울 ${Object.keys(GU).length}개 구 (전월세 전용)\n`);
+  console.log(`수집 기간: 최근 ${MONTHS_BACK}개월 · 서울+경기 ${Object.keys(GU).length}개 지역 (전월세 전용)\n`);
 
   // ① 단독·다가구 전월세 — 지번이 마스킹돼 동 단위 집계만 가능하다 (매매와 같은 이유)
   console.log('[1/3] 단독·다가구 전월세 수집 (동 단위 집계)');
@@ -344,12 +371,12 @@ async function collectRentOnly() {
     if (mon > 0) { if (dep > 0) d.rd.push(dep); d.rm.push(mon); }
     else if (dep > 0) d.jd.push(dep);
   }
-  const dAddrs = [...dong.values()].map((d) => `서울특별시 ${d.gu} ${d.dong}`);
+  const dAddrs = [...dong.values()].map((d) => `${SIDO(GU_CD_BY_NAME[d.gu])} ${d.gu} ${d.dong}`);
   console.log(`  동 ${dong.size}개 · 지오코딩`);
   await geocodeAll(dAddrs);
   const hr = {};
   for (const d of dong.values()) {
-    const pt = geoCache.get(`서울특별시 ${d.gu} ${d.dong}`);
+    const pt = geoCache.get(`${SIDO(GU_CD_BY_NAME[d.gu])} ${d.gu} ${d.dong}`);
     hr[`${d.gu} ${d.dong}`] = {
       jc: d.jd.length, jmed: median(d.jd), jmin: d.jd.length ? Math.min(...d.jd) : 0, jmax: d.jd.length ? Math.max(...d.jd) : 0,
       rc: d.rd.length, rmed: median(d.rm), rdep: median(d.rd),
@@ -363,11 +390,11 @@ async function collectRentOnly() {
   const housePath = path.join(OUT_DIR, `realprice_house${SUFFIX}.json`);
   if (fs.existsSync(housePath)) {
     const house = JSON.parse(fs.readFileSync(housePath, 'utf8'));
-    const hAddrs = Object.keys(house).map((k) => `서울특별시 ${k}`);
+    const hAddrs = Object.keys(house).map((k) => `${SIDO(GU_CD_BY_NAME[k.split(' ')[0]])} ${k}`);
     console.log('\n[2/3] 단독·다가구 매매 동 좌표 보강');
     await geocodeAll(hAddrs);
     for (const k of Object.keys(house)) {
-      const pt = geoCache.get(`서울특별시 ${k}`);
+      const pt = geoCache.get(`${SIDO(GU_CD_BY_NAME[k.split(' ')[0]])} ${k}`);
       if (pt) { house[k].lat = Number(pt[0].toFixed(5)); house[k].lng = Number(pt[1].toFixed(5)); }
     }
     fs.writeFileSync(housePath, JSON.stringify(house));
@@ -382,7 +409,7 @@ async function collectRentOnly() {
   const bld = new Map();
   for (const r of offi) {
     if (!r.jibun || /\*/.test(r.jibun)) continue;
-    const addr = `서울특별시 ${r._gu} ${r.umdNm} ${r.jibun}`;
+    const addr = `${SIDO(r._sgg)} ${r._gu} ${r.umdNm} ${r.jibun}`;
     let b = bld.get(addr);
     if (!b) { b = { addr, name: r.offiNm || r.umdNm, gu: r._gu, dong: r.umdNm, deals: [] }; bld.set(addr, b); }
     b.deals.push({
@@ -423,7 +450,7 @@ async function collectRentOnly() {
     await collectRentOnly();
     return;
   }
-  console.log(`수집 기간: 최근 ${MONTHS_BACK}개월 · 서울 ${Object.keys(GU).length}개 구\n`);
+  console.log(`수집 기간: 최근 ${MONTHS_BACK}개월 · 서울+경기 ${Object.keys(GU).length}개 지역\n`);
 
   // 연립다세대 — 건물(지번) 단위로 묶는다
   console.log('[1/3] 연립다세대 매매 수집');
@@ -431,7 +458,7 @@ async function collectRentOnly() {
   const bld = new Map();
   for (const r of rh) {
     if (!r.jibun || /\*/.test(r.jibun)) continue;
-    const addr = `서울특별시 ${r._gu} ${r.umdNm} ${r.jibun}`;
+    const addr = `${SIDO(r._sgg)} ${r._gu} ${r.umdNm} ${r.jibun}`;
     const key = addr + '|' + (r.mhouseNm || '');
     let b = bld.get(key);
     if (!b) { b = { addr, name: r.mhouseNm || r.umdNm, gu: r._gu, dong: r.umdNm, type: r.houseType || '연립다세대', deals: [] }; bld.set(key, b); }
@@ -486,7 +513,7 @@ async function collectRentOnly() {
     for (const r of ap) {
       const jibun = r.jibun || (r.bonbun ? String(Number(r.bonbun)) + (Number(r.bubun) ? '-' + Number(r.bubun) : '') : '');
       if (!jibun || /\*/.test(jibun)) continue;
-      const addr = `서울특별시 ${r._gu} ${r.umdNm} ${jibun}`;
+      const addr = `${SIDO(r._sgg)} ${r._gu} ${r.umdNm} ${jibun}`;
       const area = Math.round((Number(r.excluUseAr) || 0) * 10) / 10;
       const key = `${addr}|${r.aptNm}|${area}`;
       let u = unit.get(key);
