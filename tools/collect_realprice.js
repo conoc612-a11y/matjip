@@ -321,8 +321,12 @@ async function geocode(addr) {
     blocked = true;
     await sleep(400 * attempt * attempt);  // 차단이면 점점 크게 물러선다
   }
-  geoCache.set(addr, pt);
-  saveCheckpoint();
+  // 실패 캐시 정책(2026-08-15 코드리뷰 조치): 차단으로 끝난 null 은 캐시하지 않는다.
+  // 예전엔 geoCache.set(addr, null) 을 해서, 일시 차단을 영구 실패로 고정시켰다 —
+  // CI 의 actions/cache 로 .geocache.json 이 이어받아지면 오염이 누적돼 해당 레코드가
+  // 영영 좌표를 못 얻었다(실측: 이번 수집에서 216건). 차단은 다음 실행에서 재시도된다.
+  // NOT_FOUND 는 확정 실패(주소가 실제로 없음)라 캐시를 유지해 재시도 낭비를 막는다.
+  if (pt || !blocked) { geoCache.set(addr, pt); saveCheckpoint(); }
   return { pt, blocked };
 }
 

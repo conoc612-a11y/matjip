@@ -100,32 +100,59 @@
 
 ---
 
+## 2026-08-15 (29) — opencode (코드리뷰 미조치 6건 전부 수정 + CI 첫 실행 원인 규명 — 커밋 전)
+
+> (28) 후속. 사용자 지시: **전부 진행해 커밋하고, push 전에 결과를 보고받을 것.** ① 실거래가 검증 커밋 `39db2c73` 은 이미 냈고, ② 코드리뷰 6건 수정 완료·4④ CI 원인 규명 완료. **커밋·push·Edge Function 배포는 사용자 동의 대기.**
+
+### 완료
+1. **① 실거래가 검증 + 커밋 `39db2c73`** (6 files): realprice_apt 30,515 rows/gu 69, villa 13,207/gu 34, house 정상, officel 은 대상 아님(커밋 제외). TROUBLESHOOTING §18·HANDOFF(28) 갱신 포함. **push 만 남음.**
+2. **② 코드리뷰 미조치 6건 전부 수정** (TROUBLESHOOTING §20 에 기록):
+   - `collect_realprice.js:324` — V-World **차단(일시적) 실패만** 캐시 제외, NOT_FOUND(확정) 는 캐시 유지. null 영구 캐싱 해소.
+   - `admin-request-reset:89` — `sent_to:[backupEmail]` 응답 제거 → `{ ok: true }`.
+   - `its-cctv-proxy` — `?debug=1` 백도어 2곳 제거.
+   - 레이트리밋 없는 프록시 **5개**에 `rl_hit` RPC 적용(molit-proxy 패턴 복제): `naver-search`=`naver:`/20, `bizno-proxy`=`nts:`/30, `chungak-proxy`=`chungak:`/30, `eximbank-proxy`=`eximbank:`/30, `its-cctv-proxy`=`its:`/30. (data.go.kr 공용 키인 molit/kma 만 `datagokr:` 공유 유지.)
+   - **신규 마이그레이션** `20260815000000_rate_limit_cleanup.sql`: `rl_hit` 1% 확률 cleanup + `window_start` 인덱스(pg_cron 대신 lazy 정리 — WHY 주석).
+   - `land.html:1288` — `if (VWORLD_KEY) {` → `{` 무조건 블록. 키 비면 블록 밖 호출부(검색 자동완성 등) ReferenceError 로 죽는 잠재 이슈 해소(27세션 §26-2 와 동일 사고). **검증: 전체 스크립트 괄호 균형 1769/1769, node --check 구문 OK.**
+3. **④ CI 첫 자동 실행 원인 규명** (TROUBLESHOOTING §19): run `31750427143` 이 `cancelled` — `timeout-minutes: 60` 초과(1h0m18s). 실측: 수집은 성공(3,388건, 23:03:09) → 지오코딩이 23:13(100/3300) → 23:24(200/3300) → 23:33:37 취소. **속도 ~100건/10분이라 3,300건이면 약 5.5시간** — 60분 제한에 절대 안 들어옴. 게다가 `collect_auction.js` 는 지오코딩 완료 후에만 `saveAuction()` 을 호출하므로(287·385행) **이번 실행은 auction.json 저장 자체가 안 됨**. `actions/cache` 는 취소된 실행에선 캐시를 저장 안 해 다음 실행도 전체 재지오코딩.
+
+### 남은 것 (아래 "▶ 이어서 할 일" 참고)
+- 수정분 커밋 + push 동의(② 6건 + §19/§20 기록).
+- Edge Function **배포** 동의 — ②-2~②-4 해당 함수 7개(admin-request-reset, its-cctv-proxy, naver-search, bizno-proxy, chungak-proxy, eximbank-proxy) + 마이그레이션 `supabase db push`.
+- CI 지오코딩 타임아웃 해결 방향은 **미적용**(아래 4)).
+
+---
+
 ## ▶ 이어서 할 일 (다음 세션은 여기부터)
 
-> ~~1) 실거래가 복구~~ → **2026-08-14 (28) 진행 중**: LAWD_CD 47개 확정·수집기 수정·스모크 통과. 실전 수집 백그라운드 실행됨. 아래 2)~5) 만 남음.
+> ~~1) 실거래가 복구~~ → **완료** (커밋 `39db2c73`, push 대기).
+> ~~2) 코드리뷰 미조치~~ → **전부 수정 완료** (2026-08-15 (29), 커밋 대기).
+> ~~4) CI 첫 실행 확인~~ → **원인 규명 완료** (타임아웃 취소 — 해결은 미적용). 아래 1)~5) 만 남음.
 
-### 1) [완료 → 진행 중] 최적화 2번 — `realprice_apt.json` 복구 (2026-08-14 (28))
-경기 47개 코드를 API 전수 탐색으로 확정해 수집기에 반영했다(스모크 통과). **실전 수집이 백그라운드로 도는 중.** 완료 후 확인: realprice_apt.json 에 서울+경기 12개월치·gu 경기 명칭·전세가율(jrate) 포함 여부. 폴백 realprice_seoul_gg.json(9,030건)과 병행 사용 중이므로 프론트에는 영향 없음.
+### 1) 커밋·push 동의 받기 (2026-08-15 (29))
+`git status` 로 확인: `tools/collect_realprice.js`(null 캐시 정책) + `supabase/functions/*` 7개 + `supabase/migrations/20260815000000_rate_limit_cleanup.sql`(신규) + `land.html`(VWORLD 블록) + `TROUBLESHOOTING.md`(§19·§20) + `HANDOFF.md`. push 후 Edge Function 배포는 **별도 동의** 필요.
 
-### 2) 코드리뷰 미조치 항목 (실재하나 아직 안 고침)
-- `collect_realprice.js:260` 부근 — V-World 차단으로 실패한 주소를 `null` 로 **영구 캐싱**해
-  레코드가 영영 좌표를 못 얻는다. `actions/cache` 로 CI 에 전파되면 오염이 누적된다.
-  (이번 수집에서도 216건이 "끝내 차단"으로 남았다.)
-- `admin-request-reset:89` 가 인증 없이 `sent_to: [backupEmail]` 로 관리자 백업 이메일을 노출.
-- `its-cctv-proxy` 의 `?debug=1` 백도어(상류 원문 300자 반환).
-- 레이트리밋 없는 프록시 5개: `naver-search`(임의 쿼리 중계, 일 25,000건 한도),
-  `bizno-proxy`(요청당 100건 = 증폭 10배), `chungak-proxy`, `eximbank-proxy`, `its-cctv-proxy`.
-- `api_rate_limits` 테이블에 정리(cleanup) 로직 없음 — 행이 영구 누적.
-- `land.html` 의 `jbPopupHtml` 등이 `if (VWORLD_KEY) {}` 블록 안에 있어 스코프상 위험.
-  현재는 키가 항상 채워져 있어 안 터지는 잠재 이슈. 고치려면 ~215줄 상호의존 코드 이동 필요.
+### 2) Edge Function 배포 (사용자 동의 후)
+`supabase db push`(새 마이그레이션) + `supabase functions deploy` 6개: `admin-request-reset`, `its-cctv-proxy`, `naver-search`, `bizno-proxy`, `chungak-proxy`, `eximbank-proxy`. 로컬: `$env:SUPABASE_ACCESS_TOKEN="..."` (PowerShell, `set` 아님 — 26세션 주의사항).
 
 ### 3) 사진 수집 (진행 중, 언제든 재개 가능)
 `auction_photos.json` 현재 **1,125 / 2,949건**. 재개: `node tools/collect_auction_photos.js`
 (이미 있는 cn 은 자동 스킵). 건당 10~15초라 전체는 수 시간. 여러 세션에 나눠 돌리면 됨.
 
-### 4) 검증 안 된 것
-- `.github/workflows/collect-auction.yml` **첫 자동 실행 결과 미확인**(매일 07:00 KST).
-  Actions 탭에서 성공 여부 확인 필요. 실패 시 `npx playwright install` 로그부터 볼 것.
+### 4) CI 지오코딩 타임아웃 해결 (미적용 — 2026-08-15 (29) 원인만 규명)
+`collect-auction.yml` 60분 제한 vs 지오코딩 ~5.5시간 필요. 방향 후보(TROUBLESHOOTING §19):
+① `timeout-minutes` 확대(6h+) ② 지오코딩을 별도 단계로 분리 + geocache 를 캐시가 아닌 **커밋 파일**로 저장해 취소돼도 재사용 ③ `saveAuction()` 을 지오코딩과 분리. 실행 전 로컬에서 `.geocache.json` 채운 뒤 재실행 시간부터 실측할 것(캐시 히트 시 몇 분이면 되는지).
+
+### 5) 테스트 방법 (이번 세션에서 정립 — 꼭 따를 것)
+- UI 동작 검증은 **반드시 CDP `Input.dispatchMouseEvent`** 로. `element.click()` 은 pointer
+  이벤트 체인을 안 타서 진짜 버그를 통과시킨다(위 1번 항목이 그 사례).
+- 헤드리스로 `land.html` 을 열 때는 `auth-guard.js` 요청을 `Fetch.failRequest` 로 막아야 한다
+  (안 그러면 온보딩으로 리다이렉트).
+- 배포본 확인은 `curl` 로 실제 파일을 받아 문자열을 grep 하는 게 확실하다(캐시 주의:
+  `Cache-Control: max-age=600`).
+- 테스트용 크롬을 정리할 때 **`taskkill /IM chrome.exe` 를 쓰지 말 것** — 백그라운드 수집기의
+  브라우저까지 죽인다(이번 세션에 실제로 사고). spawn 한 프로세스만 `.kill()` 할 것.
+- land.html 인라인 스크립트 검증: `<script>` 블록을 UTF-8 로 추출해 `node --check` (PS5.1 은
+  `Get-Content` 기본 인코딩이 ANSI 라 한글 정규식 리터럴이 깨져 오판 — `[IO.File]::ReadAllText(..., UTF8)` 필수).
 
 ### 5) 테스트 방법 (이번 세션에서 정립 — 꼭 따를 것)
 - UI 동작 검증은 **반드시 CDP `Input.dispatchMouseEvent`** 로. `element.click()` 은 pointer

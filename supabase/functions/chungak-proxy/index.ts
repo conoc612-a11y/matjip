@@ -51,8 +51,46 @@ function json(body, status = 200) {
   });
 }
 
+// ── 레이트리밋 (2026-08-15 코드리뷰 조치) ──────────────────────────
+// 이 함수는 인증 없이(--no-verify-jwt) 공개다. CHUNGAK_API_KEY(data.go.kr 서비스키)를
+// 품고 있어 반복 호출로 일일 한도를 소진시킬 수 있다. molit-proxy 와 같은
+// api_rate_limits/rl_hit DB 카운터를 쓴다. 버킷 접두사는 "chungak:" — odcloud 별도
+// 서비스키라 data.go.kr 계정 버킷과는 따로 센다.
+const RATE_WINDOW_SEC = 60;
+const RATE_MAX = 30; // 분양 목록 조회 1회 = API 1호출. 정상 사용은 분당 수 회.
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+async function checkRateLimit(ip: string): Promise<{ ok: true } | { ok: false; retryAfterSec: number }> {
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/rl_hit`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        apikey: SERVICE_ROLE_KEY,
+        authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+      },
+      body: JSON.stringify({ p_key: `chungak:${ip}`, p_window_seconds: RATE_WINDOW_SEC, p_max: RATE_MAX }),
+    });
+    if (!r.ok) { console.error("rl_hit 실패:", r.status); return { ok: true }; }
+    const rows = await r.json();
+    const row = Array.isArray(rows) ? rows[0] : rows;
+    if (row && row.allowed === false) return { ok: false, retryAfterSec: row.retry_after ?? RATE_WINDOW_SEC };
+    return { ok: true };
+  } catch (_e) {
+    // DB 왕복 실패 시 서비스 자체를 막지 않는다 — 레이트리밋은 방어선이지 필수 경로가 아니다.
+    return { ok: true };
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "unknown";
+  const rl = await checkRateLimit(ip);
+  if (!rl.ok) {
+    return json({ error: `요청이 너무 많습니다. ${rl.retryAfterSec}초 후 다시 시도하세요.` }, 429);
+  }
 
   const url = new URL(req.url);
   const p = url.searchParams;

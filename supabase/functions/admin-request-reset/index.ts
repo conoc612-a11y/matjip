@@ -86,5 +86,8 @@ Deno.serve(async (req) => {
     return json({ error: "메일 발송 실패: " + (resBody.message || res.status) }, 502);
   }
 
-  return json({ ok: true, sent_to: [backupEmail] });
+  // 코드리뷰(2026-08-15) 조치: 이 엔드포인트는 인증 없이 호출 가능하므로
+  // 응답에서 실주소(backupEmail)를 제거했다. sent_to 를 그대로 돌려주면
+  // 스패머가 유효한 백업 주소를 수집할 수 있다.
+  return json({ ok: true });
 });

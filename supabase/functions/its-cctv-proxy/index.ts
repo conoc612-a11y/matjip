@@ -29,8 +29,44 @@ function json(body: unknown, status = 200) {
   });
 }
 
+// ── 레이트리밋 (2026-08-15 코드리뷰 조치) ──────────────────────────
+// 이 함수는 인증 없이(--no-verify-jwt) 공개다. ITS_CCTV_KEY 를 품고 있어 반복 호출로
+// ITS 호출한도를 소진시킬 수 있다(지도 이동 1회당 2요청 — ex/its 병렬). molit-proxy 와
+// 같은 api_rate_limits/rl_hit DB 카운터를 쓴다. 버킷 접두사는 "its:" — 타 API 와 별도.
+const RATE_WINDOW_SEC = 60;
+const RATE_MAX = 30; // 화면 이동 1회 = API 2호출 → 분당 15회 이동 한도.
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+async function checkRateLimit(ip: string): Promise<{ ok: true } | { ok: false; retryAfterSec: number }> {
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/rl_hit`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        apikey: SERVICE_ROLE_KEY,
+        authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+      },
+      body: JSON.stringify({ p_key: `its:${ip}`, p_window_seconds: RATE_WINDOW_SEC, p_max: RATE_MAX }),
+    });
+    if (!r.ok) { console.error("rl_hit 실패:", r.status); return { ok: true }; }
+    const rows = await r.json();
+    const row = Array.isArray(rows) ? rows[0] : rows;
+    if (row && row.allowed === false) return { ok: false, retryAfterSec: row.retry_after ?? RATE_WINDOW_SEC };
+    return { ok: true };
+  } catch (_e) {
+    // DB 왕복 실패 시 서비스 자체를 막지 않는다 — 레이트리밋은 방어선이지 필수 경로가 아니다.
+    return { ok: true };
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "unknown";
+  const rl = await checkRateLimit(ip);
+  if (!rl.ok) {
+    return json({ error: `요청이 너무 많습니다. ${rl.retryAfterSec}초 후 다시 시도하세요.` }, 429);
+  }
   const p = new URL(req.url).searchParams;
   const key = Deno.env.get("ITS_CCTV_KEY");
   if (!key) return json({ error: "서버에 ITS_CCTV_KEY가 설정되지 않았습니다." }, 500);
@@ -71,7 +107,8 @@ Deno.serve(async (req) => {
       try {
         const r = await fetch(api, { signal: ctrl.signal });
         const text = await r.text();
-        if (p.get("debug")) return { debug: { type, attempt, status: r.status, body: text.slice(0, 300) } };
+        // 코드리뷰(2026-08-15) 조치: ?debug=1 백도어 제거 — 원문 응답(API 키·서버 헤더 포함)
+        // 을 클라이언트에 그대로 노출했다. 디버깅이 필요하면 서버 로그로만 찍는다.
         const arr = JSON.parse(text)?.response?.data;
         if (Array.isArray(arr) && arr.length) return { rows: arr };
         if (Array.isArray(arr)) return { rows: [] };   // 정상 응답인데 정말 0건
@@ -85,7 +122,6 @@ Deno.serve(async (req) => {
     return { rows: [] };
   };
   const settled = await Promise.all(types.map(fetchType));
-  if (p.get("debug")) return json({ debug: settled.map((s: any) => s.debug).filter(Boolean) });
   let results: any[] = settled.flatMap((s: any) => s.rows || []);
 
   // 그래도 비면, 최근에 성공한 결과를 대신 준다. CCTV 위치는 몇 분 단위로 바뀌지 않으므로

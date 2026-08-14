@@ -541,3 +541,41 @@ gh api repos/conoc612-a11y/matjip/pages/builds/latest --jq '{status:.status, com
 - **검증**: `ONLY_GU=11110,41135,41830,41597 SUFFIX=_test MONTHS=2 WITH_APT=1` 스모크 —
   지오코딩 100%(103/103·70/70), 경기 구/군/화성 gu 명칭·좌표 정상(동탄 능동 37.20653/127.05783).
 
+### 19. GitHub Actions 지오코딩이 60분 제한에 걸려 매일 실행이 취소된다 (2026-08-13 실측)
+- **증상**: 첫 자동 실행(`collect-auction.yml` 스케줄, run 31750427143)이 `cancelled`로 끝났다.
+  `gh run view --log` 실측: 수집은 성공(2,949→3,388건, 23:03:09 "수집 완료 총 3388건")했지만,
+  바로 이어진 지오코딩이 23:13(100/3300) → 23:24(200/3300) → 23:33:37
+  `##[error]The operation was canceled.` 로 중단 — 워크플로 `timeout-minutes: 60` 초과(1h0m18s).
+- **원인(실측 근거)**: 지오코딩 속도가 약 **100건/10분**(V-World `GEO_GAP_MS` 속도 제한 + Edge
+  Function 이 아니라 직접 호출이라 왕복이 느림). 3,300건이면 **약 5.5시간**이라 60분 제한에 절대
+  안 들어온다. 더 결정적인 문제: `collect_auction.js` 는 **지오코딩 완료 후에만 `saveAuction()`
+  을 호출**하므로(287·385행), 취소되면 `auction.json` 저장 자체가 안 된다 → 이번 실행은 데이터가
+  하나도 반영되지 않았다. 게다가 `actions/cache` 는 **취소된 실행에서는 캐시를 저장하지 않아**
+  다음 실행도 캐시 없이 처음부터 재지오코딩한다.
+- **해결 방향(아직 미적용, 추측 금지)**: ① `timeout-minutes` 를 지오코딩 완료 가능 수준(6h+)으로
+  늘리거나 ② 지오코딩을 단계로 분리해 결과(geocache)를 아티팩트/캐시로 먼저 저장하고, 그 뒤 단계에서
+  `saveAuction()` 만 실행하도록 워크플로를 나누는 것. ③ geocache 를 `actions/cache` 대신
+  커밋 가능한 파일로 두면 취소돼도 다음 실행이 재사용할 수 있다(단 auction.json 과 분리 저장 필요).
+  결정 전에 실행 시간 실측부터: 로컬에서 `tools/.geocache.json` 이 채워진 뒤 재실행하면 캐시 히트로
+  몇 분 안에 끝나는지 확인할 것.
+- **파생 교훈**: 스케줄 워크플로는 "성공 = 종료 코드 0" 이 아니다. **생산물이 실제로 커밋/저장됐는지**
+  sanity check step(파일 존재 + 행 수 ≥ 직전 커밋)을 마지막에 두어야 조용한 실패를 잡는다.
+  이 워크플로에는 이미 sanity check 가 있지만, 이번엔 도달하기 전에 취소됐다.
+
+### 20. 레이트리밋 없는 공개 프록시 + API 키 노출 패턴 (2026-08-15 코드리뷰 조치)
+- **증상(코드리뷰)**: 인증 없이(`--no-verify-jwt`) 공개된 Edge Function 프록시 5개
+  (`naver-search`·`bizno-proxy`·`chungak-proxy`·`eximbank-proxy`·`its-cctv-proxy`)에
+  레이트리밋이 없어, 서버 secret(API 키)을 품고 있는 채로 무제한 호출 허용 → 제3자가 스크립트로
+  반복 호출해 일일 호출 한도를 소진시킬 수 있었다. `its-cctv-proxy` 는 `?debug=1` 로 원문 응답
+  (헤더·키 포함 가능)까지 노출하는 백도어가 있었다.
+- **해결(모두 적용됨)**: `molit-proxy` 의 패턴(DB `rl_hit` RPC + `api_rate_limits` 테이블, 인스턴스
+  무관 공유)을 복사. 버킷 접두사를 함수별로 분리 — `naver:`/`nts:`/`chungak:`/`eximbank:`/`its:`
+  (data.go.kr 계정 공용 키를 쓰는 `molit-proxy`·`kma-weather-proxy` 만 `datagokr:` 공유).
+  각각 `RATE_WINDOW_SEC=60`, `RATE_MAX` 는 20~30(용도에 따라 주석에 근거 기재).
+- **파생**: `admin-request-reset` 응답의 `sent_to:[backupEmail]` 도 제거(익명 호출자에게 실주소
+  유출). `land.html` 의 `if (VWORLD_KEY) {}` 블록도 풀었음 — 키가 비면 블록 안 함수 선언이
+  실행되지 않아 블록 밖 호출부(검색 자동완성)에서 ReferenceError(1217행 주석과 동일 사고).
+- **교훈**: 새 프록시를 만들 때 레이트리밋·`debug` 파라미터·원문 응답 반환은 처음부터 넣는다.
+  RLS 정책이 없는 테이블은 service_role(RLS 우회)만 접근 가능하므로, RPC 호출부가 `rl_hit` 404/
+  권한 오류를 내도 조용히 통과시키지 말고 최소한 로그를 남긴다(molit-proxy 주석 참고).
+
