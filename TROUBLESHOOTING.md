@@ -486,3 +486,39 @@ npx -y supabase projects list
 # 배포 상태
 gh api repos/conoc612-a11y/matjip/pages/builds/latest --jq '{status:.status, commit:.commit}'
 ```
+
+---
+
+### 15. UI 클릭 테스트는 `element.click()` 으로 하면 안 된다 (2026-08-14 실측)
+- **증상**: 패널 접기 탭이 실제 마우스로 아무리 눌러도 반응이 없는데, 헤드리스 테스트는 계속 통과.
+  세 번이나 "고쳤다"고 잘못 보고했다.
+- **원인**: JS 로 `tab.click()` 을 부르면 `click` 이벤트만 직접 발생하고 **pointerdown →
+  mousedown → mouseup → click 체인을 안 탄다.** 실제 버그는 그 체인 위에 있었다:
+  ① `css/buttons.css` 의 공용 `button:hover { transform: translateY(-1px) }` 가 탭의 가운데
+  정렬용 `transform: translate(-50%,-50%)` 를 **대체**해(transform 은 누적이 아니라 교체)
+  마우스를 올리는 순간 탭이 자기 크기의 절반만큼 튀어 커서 밖으로 도망갔다.
+  ② `makeResizable` 이 그립에 건 `pointerdown` 핸들러가 `preventDefault()` 로 뒤따르는 click 을
+  없애고, `setPointerCapture()` 로 mouseup/click 의 target 을 그립으로 바꿔버렸다.
+- **해결**: 중앙 정렬은 transform 대신 **음수 margin** 으로(공용 hover 와 충돌 안 함).
+  `makeResizable` 은 그립 안 button 을 누른 경우 드래그를 시작하지 않도록 가드.
+- **테스트 방법**: CDP `Input.dispatchMouseEvent` 로 mouseMoved → mousePressed → mouseReleased
+  를 직접 쏴야 한다. 계측이 필요하면 `document.addEventListener(ev, ..., true)` 로 각 단계의
+  `e.target` 을 찍어보면 어디서 새는지 바로 보인다(위 ②는 target 이 탭→그립으로 바뀌어 발각).
+
+### 16. data.go.kr 은 인증 실패를 200 + 0건으로 돌려준다 (2026-08-14 실측)
+- **증상**: `collect_realprice.js` 가 서울 25개 구 × 3개월 = 75개 작업 전부에서 "거래 0건".
+  예외도 없고 종료코드도 0.
+- **원인**: Decoding 키에 든 `+ / =` 를 URL 에 그대로 붙여 인증이 깨졌다. 그런데 서버는 오류
+  코드가 아니라 **HTTP 200 + `totalCount 0`** 을 준다 → 수집기 입장에선 "정상적으로 0건".
+- **해결**: `encodeURIComponent(KEY)` (이미 인코딩된 키를 넣었을 때 이중 인코딩되지 않도록
+  `%XX` 패턴이 있으면 먼저 decode). 실측: 수정 후 강남구 202606 연립다세대 87건 정상 수신.
+- **파생 교훈**: 이런 API 를 쓰는 수집기는 **0건을 성공으로 취급하면 안 된다.** 저장 직전에
+  "0건이면 중단 / 기존 파일 대비 절반 미만이면 중단" 가드를 반드시 둘 것(`writeSafe()`).
+  이 가드가 실제로 23,708건짜리 파일이 `[]` 로 덮어써지는 걸 두 번 막았다.
+
+### 17. 테스트 정리할 때 `taskkill /IM chrome.exe` 금지 (2026-08-14 사고)
+- 헤드리스 테스트용 크롬을 정리하려고 이름으로 전체 종료했더니, 백그라운드로 몇 시간째 돌던
+  **사진 수집기의 브라우저까지 같이 죽었다.** 수집기는 try/catch 덕에 살아는 있었지만
+  그 뒤 700여 건을 "페이지 이동 실패"로 헛돌았다.
+- spawn 한 프로세스 핸들만 `.kill()` 하거나, 테스트마다 다른 `--user-data-dir`/포트를 쓰고
+  그 프로세스만 정리할 것.
