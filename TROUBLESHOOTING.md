@@ -573,6 +573,33 @@ gh api repos/conoc612-a11y/matjip/pages/builds/latest --jq '{status:.status, com
   sanity check step(파일 존재 + 행 수 ≥ 직전 커밋)을 마지막에 두어야 조용한 실패를 잡는다.
   이 워크플로에는 이미 sanity check 가 있지만, 이번엔 도달하기 전에 취소됐다.
 
+### 19-2. 원인 확정: V-World 가 GitHub Actions 러너 IP 를 TCP 차단 (2026-08-15 실측)
+- **증상**: 캐시 커밋 전환(§19) 후에도 CI 지오코딩이 **좌표 1,029/3,338 (30.8%)** 에서 끝났다.
+  좌표 없는 2,309개 전부 캐시에 `null` 로 저장됨. 100건당 6~8분 = 건당 ~4초(정상 ~200ms 의 20배).
+- **원인(실측 근거)**: CI 러너에서 V-World 직접 호출 **5/5 전부 ECONNRESET**(TCP 연결 거부).
+  `api.github.com/meta` 실측: GitHub Actions 공개 러너 IP 는 **7,280개 CIDR, 전부 해외(미국 Azure)
+  대역**. V-World 가 해외 IP 를 네트워크 단에서 차단한다. 로컬(한국 IP)은 동일 키·동일 주소 전부 OK.
+  참고 자료: "GitHub Action CI/CD 가 막히는 문제"(velog/@horang12) — 같은 결론(해외 IP 차단의 맹점).
+- **해결(2026-08-15 적용 — Supabase Edge Function 경유)**: `supabase/functions/vworld-geocode`
+  를 배포하고(재시도 4회 + `sleep(400×attempt²)` 백오프, NOT_FOUND 만 확정, 그 외 오류는 재시도),
+  `collect_auction.js` 가 `VWORLD_PROXY` 환경변수가 있으면 프록시 경유, 없으면(로컬) 직접 호출하도록
+  수정. 워크플로 `collect-auction.yml` 의 지오코딩 스텝에 `VWORLD_PROXY` env 를 주입.
+  동시에 null 캐시 버그 수정(아래).
+- **검증(2026-08-15, 실측)**: Supabase(미국 IP)에서 V-World 직접 호출 성공률 ~50%(8회 중 4회 200,
+  실패는 Deno fetch ECONNRESET류 + V-World 자체 502 두 종류). **재시도 4회+백오프를 넣은
+  `vworld-geocode` 는 4주소 × 8회 = 전부 OK** — 재시도가 우회 경로의 간헐 차단을 실용적으로 흡수한다.
+  로컬 재보강 하네스로 `geocode()` candidate 분기(PARCEL→ROAD→PARCEL)도 정상 확인.
+  CI 전체 재검증은 run 31875216160(workflow_dispatch)로 진행 중.
+- **null 캐시 버그 수정 (같은 날 코드리뷰 조치, collect_realprice.js 와 정책 통일)**: 기존
+  `collect_auction.js` 는 차단(502/RST)으로 끝난 null 도 `geoCache.set(addr, null)` 을 해서,
+  캐시가 커밋 파일로 이어지면 **일시 차단이 영구 실패로 고정**되는 오염이 누적됐다(실측: 2,309건).
+  이제 `if (pt || !blocked) geoCache.set(...)` — 차단 null 은 캐시하지 않아 다음 실행에서 재시도되고,
+  NOT_FOUND 만 확정 실패로 캐시해 재시도 낭비를 막는다.
+- **WHY(판단 사유)**: "CI 에서 30.8% 성공이었다" 를 지오코딩 규칙 문제로 오해할 뻔했지만, 진단 스텝
+  (실측 ECONNRESET 5/5) 으로 **네트워크 차단**임을 확정하고 접근 경로를 바꿨다. 재시도 단독 해법이
+  아니라 "IP 를 바꾸고(프록시) + 간헐 차단을 재시도로 흡수" 가 맞다. ITS(keys.env:70)도 같은 패턴
+  (Supabase IP 간헐 차단)이 있어, 공공 API 는 우회 경로에 재시도를 반드시 붙일 것.
+
 ### 20. 레이트리밋 없는 공개 프록시 + API 키 노출 패턴 (2026-08-15 코드리뷰 조치)
 - **증상(코드리뷰)**: 인증 없이(`--no-verify-jwt`) 공개된 Edge Function 프록시 5개
   (`naver-search`·`bizno-proxy`·`chungak-proxy`·`eximbank-proxy`·`its-cctv-proxy`)에

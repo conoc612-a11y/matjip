@@ -12,6 +12,50 @@
 
 ---
 
+## 2026-08-15 (28) — opencode (V-World CI 해외 IP 차단 → Supabase Edge Function 프록시로 우회)
+
+> (27)에 이어짐. 커밋 `8f8cff3e`·`defbaca2`·`4f73403d` 3개는 이미 push 완료(사용자 동의 후).
+> **다음 세션이 이어받을 지점은 "▶ 이어서 할 일"부터.**
+
+### 완료 (커밋 순)
+1. `4f73403d` **CI 지오코딩 100% 실패 원인 확정** — CI 러너에서 V-World 직접 호출 **5/5 전부
+   ECONNRESET**(TCP 차단). `api.github.com/meta` 실측으로 GitHub Actions 공개 러너 IP 전부
+   해외(미국 Azure, 7,280 CIDR) 확인. V-World 가 해외 IP 를 네트워크 단에서 차단(§19-2).
+   로컬(한국 IP)은 동일 키·동일 주소 전부 OK 였음.
+2. `defbaca2` **진단 스텝을 수집 전으로 이동** — 빠른 실패 확인.
+3. `8f8cff3e` **V-World 지오코딩을 Supabase Edge Function 경유로 전환** — `supabase/functions/
+   vworld-geocode` 배포(재시도 4회 + `sleep(400×attempt²)` 백오프, NOT_FOUND 만 확정). `collect_
+   auction.js` 는 `VWORLD_PROXY` env 가 있으면 프록시 경유(없으면 로컬 직접). 워크플로 `collect-
+   auction.yml` 에 env 주입. 동시에 **null 캐시 오염 버그 수정**: 차단(502/RST)으로 끝난 null 은
+   `geoCache.set` 하지 않아 일시 차단이 영구 실패로 고정되는 것을 방지(실측: 캐시에 null 2,309건
+   누적돼 있었음). `if (pt || !blocked) geoCache.set(...)` 정책.
+   **검증(로컬 실측)**: Supabase(미국 IP)에서 V-World 직접 호출은 ~50%(8회 중 4회 200), 재시도
+   4회+백오프 넣은 `vworld-geocode` 는 4주소×8회 = **전부 OK**. TROUBLESHOOTING §19-2 문서화.
+
+### 이번 세션 (28) 진단 결과 — CI 재실행 2회 모두 실패 (지오코딩과 무관)
+- **run 31875216160 / 31875589960** 둘 다 동일 지점에서 실패: `page.goto` **법원 사이트 접속
+  30초 타임아웃 ×3회** → `수집 실패: Execution context was destroyed`. 캐시 36,495건 복원·env
+  주입까지는 정상, **지오코딩 스텝에 도달하기 전에 죽었다**.
+- **원인 실측**: 같은 시각 로컬(한국 IP)에서도 courtauction.go.kr 이 **500 + "사용에 불편을
+  드려서 죄송합니다. 잠시 후 다시 이용해 주십시오"** (57ms) 응답. §6-11 의 IP 차단 문구와 다른
+  일반 점검/장애 메시지. → **법원 사이트 자체가 점검/장애 상태** (GitHub Actions 문제 아님).
+
+### ▶ 이어서 할 일
+1. **법원 사이트 정상화 후 CI 재실행** (`gh workflow run "법원경매 목록 자동 갱신" --ref master`).
+   목표는 지오코딩 프록시가 **CI 환경에서 실제로 도는지** 확인 — 로컬 검증은 끝났지만 CI 통과
+   확인은 법원 사이트가 살아야 가능. 사이트 장애는 수 분~수 시간이므로 1시간 뒤 재시도 권장.
+2. **TROUBLESHOOTING.md §19-2 수정분 커밋** (현재 working tree 에 uncommitted, 27줄) — 사용자
+   동의 후. `tools/recommend.js` 도 working tree 에 M 상태인데 이 세션과 무관한 기존 잔재(다음
+   세션에서 확인 필요).
+
+### Relevant Files
+- `supabase/functions/vworld-geocode/index.ts` — V-World 프록시 (재시도 4회+백오프)
+- `tools/collect_auction.js` — `VWORLD_PROXY` env 분기 + null 캐시 가드
+- `.github/workflows/collect-auction.yml` — `VWORLD_PROXY` env 주입
+- `TROUBLESHOOTING.md` §19-2 — 원인/해결/검증/WHY 기록 (미커밋)
+
+---
+
 ## 2026-08-14 (27) — Claude Code (UI 통합·코드리뷰 조치·성능 최적화 1·3 / 2번 진행 중 중단)
 
 > (26) 에 이어짐. 커밋 8개, 전부 push 완료. **다음 세션이 이어받을 지점은 아래 "▶ 이어서 할 일" 부터.**
