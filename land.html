@@ -1437,7 +1437,7 @@
         if (!rpRows) return;
         realpriceCluster.clearLayers();
         realpriceCluster.addLayers(rpRows.filter((d) => inPrice(d.priceEok) && inAge(d.build)).map((d) => {
-          const m = L.circleMarker([d.lat, d.lng], { radius: 5, color: '#fff', weight: 1, fillColor: ageColor(d.build), fillOpacity: 0.9 });
+          const m = L.circleMarker([d.lat, d.lng], { radius: 10, color: '#fff', weight: 1, fillColor: ageColor(d.build), fillOpacity: 0.9 });
           m._rp = d;
           m._pop = (() => `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};flex-shrink:0;"></span><span class="rp-name">${esc(d.name)}</span></div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div><div class="pc-price">매매 ${uPriceMain(d)}</div>${uPriceSub(d) ? `<div style="margin-top:3px;">${uPriceSub(d)}</div>` : ''}<div style="margin-top:3px;">전용 ${uAreaTxt(d.area)} · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="margin-top:3px;">${esc(d.build || '?')}년 건축${parseInt(d.build) <= 1994 ? '<span style="background:#e03131;color:#fff;font-size:12px;padding:2px 8px;border-radius:999px;margin-left:6px;">재건축연한 초과</span>' : ''}</div>${jeonseHtml(d, '평형 기준')}${rpFlagsHtml(d)}<div class="rp-radius-stat rp-stat" style="display:none;"></div></div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline" style="border-color:var(--c-price) !important;color:var(--c-price);">저장</button><a href="https://map.naver.com/p/search/${encodeURIComponent(d.name + ' ' + (d.dong || d.gu || ''))}?c=${d.lng},${d.lat},17,0,0,0,dh" target="_blank" rel="noopener" class="pc-btn pc-btn-primary rp-naver">네이버 부동산</a><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline">출발</button><button class="rt-end pc-btn pc-btn-outline">도착</button></div><button class="sv-btn pc-btn pc-btn-outline">거리뷰</button></div></div>`);
           return m;
@@ -1638,7 +1638,7 @@
         if (!villaRows) return;
         villaCluster.clearLayers();
         villaCluster.addLayers(villaRows.filter((d) => inPrice(d.priceEok) && inAge(d.build)).map((d) => {
-          const m = L.circleMarker([d.lat, d.lng], { radius: 4, color: '#fff', weight: 1, fillColor: ageColor(d.build), fillOpacity: 0.9 });
+          const m = L.circleMarker([d.lat, d.lng], { radius: 10, color: '#fff', weight: 1, fillColor: ageColor(d.build), fillOpacity: 0.9 });
           m._rp = d;                       // 아파트 마커와 같은 키를 쓴다 → 저장·길찾기·거리뷰 핸들러 공용
           m._isVilla = 1;                  // 팝업의 '구 데이터' 배지를 아파트(구폴백)에만 붙이기 위한 표시
           m._pop = (() => villaPopupHtml(d));
@@ -1690,7 +1690,7 @@
         if (!houseRows) return;
         houseCluster.clearLayers();
         houseCluster.addLayers(houseRows.map((d) => {
-          const m = L.circleMarker([d.lat, d.lng], { radius: 5, color: '#fff', weight: 1, fillColor: '#f08c00', fillOpacity: 0.85 });
+          const m = L.circleMarker([d.lat, d.lng], { radius: 10, color: '#fff', weight: 1, fillColor: '#f08c00', fillOpacity: 0.85 });
           m.bindPopup(housePopupHtml(d));
           return m;
         }));
@@ -1727,7 +1727,7 @@
         if (!houseRentRows) return;
         houseRentCluster.clearLayers();
         houseRentCluster.addLayers(houseRentRows.map((d) => {
-          const m = L.circleMarker([d.lat, d.lng], { radius: 5, color: '#fff', weight: 1, fillColor: '#339af0', fillOpacity: 0.85 });
+          const m = L.circleMarker([d.lat, d.lng], { radius: 10, color: '#fff', weight: 1, fillColor: '#339af0', fillOpacity: 0.85 });
           m.bindPopup(houseRentPopupHtml(d));
           return m;
         }));
@@ -1778,7 +1778,7 @@
         if (!officelRows) return;
         officelCluster.clearLayers();
         officelCluster.addLayers(officelRows.map((d) => {
-          const m = L.circleMarker([d.lat, d.lng], { radius: 4, color: '#fff', weight: 1, fillColor: '#7048e8', fillOpacity: 0.9 });
+          const m = L.circleMarker([d.lat, d.lng], { radius: 10, color: '#fff', weight: 1, fillColor: '#7048e8', fillOpacity: 0.9 });
           m._pop = (() => officelPopupHtml(d));
           return m;
         }));
@@ -2828,7 +2828,7 @@
         rpRows.forEach((r) => {
           if (r.lat == null) return;
           if (!rings.some((ring) => pointInRing(r.lat, r.lng, ring))) return;
-          const m = L.circleMarker([r.lat, r.lng], { radius: 6, color: '#fff', weight: 1, fillColor: '#1971c2', fillOpacity: 0.85 });
+          const m = L.circleMarker([r.lat, r.lng], { radius: 10, color: '#fff', weight: 1, fillColor: '#1971c2', fillOpacity: 0.85 });
           m._rp = r;
           m._pop = (() => `<b>${esc(r.name)}</b><br>매매 ${r.priceEok == null ? '-' : r.priceEok + '억'} · ${esc(r.gu)} ${esc(r.dong)}<br><a href="https://map.naver.com/p/search/${encodeURIComponent(r.name + ' ' + (r.dong || r.gu || ''))}" target="_blank" rel="noopener">네이버 부동산</a>`);
           ms.push(m);
@@ -4321,7 +4321,7 @@
       ensureMsrCtrl();
       msr.pts.push(latlng);
       if (!msr.dots) msr.dots = L.featureGroup().addTo(map);
-      L.circleMarker(latlng, { radius: 5, color: '#fff', weight: 1.5, fillColor: '#c2255c', fillOpacity: 1 }).addTo(msr.dots);
+      L.circleMarker(latlng, { radius: 10, color: '#fff', weight: 1.5, fillColor: '#c2255c', fillOpacity: 1 }).addTo(msr.dots);
       if (!msr.line) msr.line = L.polyline(msr.pts, { color: '#c2255c', weight: 3, dashArray: '6 4' }).addTo(map);
       else msr.line.setLatLngs(msr.pts);
       let tot = 0;
@@ -4923,7 +4923,7 @@
       // 부동산 마커 (오렌지)
       list.forEach((d) => {
         if (d.lat == null || d.lng == null) return;
-        const m = L.circleMarker([d.lat, d.lng], { radius: 7, color: '#fff', weight: 2, fillColor: '#e8590c', fillOpacity: 0.95 }).addTo(map)
+        const m = L.circleMarker([d.lat, d.lng], { radius: 10, color: '#fff', weight: 2, fillColor: '#e8590c', fillOpacity: 0.95 }).addTo(map)
           .bindPopup(`<b>${esc(d.name)}</b><br>${esc(d.gu || '')} ${esc(d.dong || '')}<br>${d.priceEok == null ? '-' : d.priceEok + '억'}${d.type && d.type !== '아파트' ? '<br>' + esc(d.type) : ''}`);
         markers[d.id] = m;
       });
@@ -4950,8 +4950,8 @@
           const d = kind === 'agent' ? agentList[Number(card.dataset.i)] : list[Number(card.dataset.i)];
           if (d && d.lat != null) { map.setView([d.lat, d.lng], 16); const mk = markers[d.id] || markers['agent_' + d.id]; if (mk) mk.openPopup(); document.querySelector('.panel').classList.remove('sheet-open'); }
         });
-        card.addEventListener('mouseenter', () => { const kind = card.dataset.kind; const d = kind === 'agent' ? agentList[Number(card.dataset.i)] : list[Number(card.dataset.i)]; const mk = markers[d && d.id] || markers['agent_' + (d && d.id)]; if (mk && mk.setStyle) mk.setStyle({ radius: 11, fillColor: '#e8590c', weight: 3 }); });
-        card.addEventListener('mouseleave', () => { const kind = card.dataset.kind; const d = kind === 'agent' ? agentList[Number(card.dataset.i)] : list[Number(card.dataset.i)]; const mk = markers[d && d.id] || markers['agent_' + (d && d.id)]; if (mk && mk.setStyle) mk.setStyle({ radius: 7, fillColor: '#e8590c', weight: 2 }); });
+        card.addEventListener('mouseenter', () => { const kind = card.dataset.kind; const d = kind === 'agent' ? agentList[Number(card.dataset.i)] : list[Number(card.dataset.i)]; const mk = markers[d && d.id] || markers['agent_' + (d && d.id)]; if (mk && mk.setStyle) mk.setStyle({ radius: 12, fillColor: '#e8590c', weight: 3 }); });
+        card.addEventListener('mouseleave', () => { const kind = card.dataset.kind; const d = kind === 'agent' ? agentList[Number(card.dataset.i)] : list[Number(card.dataset.i)]; const mk = markers[d && d.id] || markers['agent_' + (d && d.id)]; if (mk && mk.setStyle) mk.setStyle({ radius: 10, fillColor: '#e8590c', weight: 2 }); });
       });
       $('rec-list').querySelectorAll('.cmp').forEach((cb) => cb.addEventListener('change', (e) => {
         e.stopPropagation(); const d = list[Number(cb.dataset.i)];
