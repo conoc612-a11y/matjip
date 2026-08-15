@@ -2503,8 +2503,8 @@
         if (poly) jbSelStyleOne(poly, jbSel.set.has(k));
         jbSelRender();
       }
-      const JBSEL_ON = { weight: 3, color: '#c2255c', fillColor: '#c2255c', fillOpacity: 0.55 };
-      const JBSEL_OFF = (d) => ({ weight: 1.5, color: JB_COLOR[jbGroup(d)], fillColor: JB_COLOR[jbGroup(d)], fillOpacity: 0.45 });
+  const JBSEL_ON = { weight: 2, color: '#c2255c', fillColor: '#c2255c', fillOpacity: 0.2 };
+  const JBSEL_OFF = (d) => ({ weight: 2, color: JB_COLOR[jbGroup(d)], fillColor: JB_COLOR[jbGroup(d)], fillOpacity: 0.2 });
       function jbSelStyleOne(poly, on) { poly.setStyle(on ? JBSEL_ON : JBSEL_OFF(poly._jb)); }
       function jbSelApplyStyles() { jbPolyLayer.eachLayer((p) => { if (p._jb) jbSelStyleOne(p, jbSel.set.has(jbSelKey(p._jb))); }); jbCluster.eachLayer((p) => { if (p._jb) jbSelStyleOne(p, jbSel.set.has(jbSelKey(p._jb))); }); }
       function jbSelRender() {
@@ -2578,10 +2578,10 @@
           if (rings && rings.length) {
             // fillRule 'nonzero': Leaflet 기본값은 'evenodd'인데, 그 규칙에서는 겹친 링이 서로를
             // 상쇄해 채움이 사라지고 외곽선만 남는다 (= 폴리곤 색이 안 칠해지는 증상).
-            // weight 를 얇게: 서울 전체 줌에서는 구역이 20px 남짓이라 굵은 선이 채움을 덮어버린다.
+            // 채움은 전 구역 통일 20%로 낮추고(지도 타일이 잘 보이도록), 외곽선은 2px로 — 구역 경계가 우선 읽히도록 (2026-08-15 사용자 지시).
             // smoothFactor 는 화면 픽셀 기준 단순화 허용오차다. 2 로 두면 줌 17에서
             // 경계가 실제 필지선에서 최대 2.4m 벗어난다(실측). 1 로 낮춰 절반으로 줄인다.
-            const poly = L.polygon(rings.map((r) => [r]), { color: c, weight: 1.5, fillColor: c, fillOpacity: 0.45, fillRule: 'nonzero', smoothFactor: 1 });
+            const poly = L.polygon(rings.map((r) => [r]), { color: c, weight: 2, fillColor: c, fillOpacity: 0.2, fillRule: 'nonzero', smoothFactor: 1 });
             poly._jb = d;
             poly.bindTooltip(
               showStageBadge ? stageBadgeHtml(d) : `<b>${esc(d.name)}</b><br><span style="font-size:12px;color:#555">${esc(d.stage || '')}</span>`,
@@ -2594,7 +2594,7 @@
           } else {
             // 폴리곤 데이터가 없는 건(모아·신통·지역주택·리모델링 등)은 대표 좌표 기준
             // 근사 구역(반경 300m 점선 원)으로 표시. 실측 경계가 없어 근사치임을 점선으로 구분.
-            const circle = L.circle([d.lat, d.lng], { radius: 300, color: c, weight: 1.5, dashArray: '4 4', fillColor: c, fillOpacity: 0.22 });
+            const circle = L.circle([d.lat, d.lng], { radius: 300, color: c, weight: 2, dashArray: '4 4', fillColor: c, fillOpacity: 0.2 });
             circle._jb = d;
             circle._approx = true;
             circle.bindTooltip(
