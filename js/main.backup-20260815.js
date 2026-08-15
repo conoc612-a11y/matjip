@@ -20,7 +20,6 @@ if (window.kakao) kakao.maps.load(function () { kakaoReady = true; });
 
 let restaurants = [];
 let restIndex = [];                       // 검색용 소문자 인덱스 (buildRestIndex에서 생성)
-let restaurantById = new Map();           // id → 식당 O(1) 조회 (buildRestIndex에서 생성)
 let taste = null;
 let user = null;
 let query = '';
@@ -69,7 +68,7 @@ function renderRecent() {
   el.querySelectorAll('.recent-chip').forEach((c) => c.addEventListener('click', (e) => {
     if (e.target.closest('.recent-del')) return;
     e.preventDefault(); const x = a[Number(c.dataset.i)];
-    if (x && x.lat != null) { map.setCenter(latLng(x.lat, x.lng)); map.setZoom(16); openInfo(latLng(x.lat, x.lng), restaurantCard(restaurantById.get(String(x.id)) || x)); }
+    if (x && x.lat != null) { map.setCenter(latLng(x.lat, x.lng)); map.setZoom(16); openInfo(latLng(x.lat, x.lng), restaurantCard(restaurants.find((r) => r.id == x.id) || x)); }
   }));
   el.querySelectorAll('.recent-del').forEach((d) => d.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); const b = loadRecent(); b.splice(Number(d.dataset.i), 1); try { localStorage.setItem(RECENT_KEY, JSON.stringify(b)); } catch (er) {} renderRecent(); }));
   const cl = el.querySelector('.recent-clear'); if (cl) cl.addEventListener('click', (e) => { e.preventDefault(); try { localStorage.removeItem(RECENT_KEY); } catch (er) {} renderRecent(); });
@@ -416,20 +415,6 @@ let LIST_MAX = 50; // 목록 상위 N개만 렌더(전체 1,300+ 카드 렌더 �
 // 검색용 소문자 인덱스 — 매 keystroke마다 1,300건 join+toLowerCase 하는 비용 제거
 function buildRestIndex() {
   restIndex = restaurants.map((r) => `${r.name} ${r.category || ''} ${(r.tags || []).join(' ')}`.toLowerCase());
-  restaurantById = new Map(restaurants.map((r) => [String(r.id), r])); // 리스트 클릭·자동완성의 find(O(n)) → O(1)
-}
-
-// 점수는 취향(taste 객체)이 바뀔 때만 달라진다. render()는 입력 디바운스·탭 전환마다
-// 1,300곳 전부를 window.score 로 재계산했는데, 같은 taste 면 결과를 캐시에서 재사용한다.
-// (세션 중 식당 태그는 변하지 않음 — 신규 저장 식당은 캐시에 없어 최초 1회만 계산)
-// taste 가 null→객체로 바뀌는 시점에만 캐시를 비운다.
-let scoreCache = new Map();
-let scoreCacheTaste = undefined;
-function scoreOf(r) {
-  if (scoreCacheTaste !== taste) { scoreCache = new Map(); scoreCacheTaste = taste; }
-  let v = scoreCache.get(r.id);
-  if (v === undefined) { v = window.score(r, taste); scoreCache.set(r.id, v); }
-  return v;
 }
 function matchRestaurants(q) {
   const out = [];
@@ -451,7 +436,7 @@ function render() {
   const distMemo = new Map();
   const distOf = (r) => { if (r.lat == null) return Infinity; let v = distMemo.get(r); if (v === undefined) { v = hav(center, latLng(r.lat, r.lng)); distMemo.set(r, v); } return v; };
   const scored = base.map((r) => {
-    const { score: s, hits } = scoreOf(r);
+    const { score: s, hits } = window.score(r, taste);
     return { r, score: s, hits };
   });
   if (panelMode === 'recommend') {
@@ -762,7 +747,7 @@ function bindEvents() {
     if (saveBtn) { e.stopPropagation(); handleSave(saveBtn); return; }
     const card = e.target.closest('.rec[data-id]');
     if (!card || e.target.closest('.actions')) return;
-    const r = restaurantById.get(card.dataset.id);
+    const r = restaurants.find((x) => x.id == card.dataset.id);
     if (r) {
       showRestaurant(r);
       document.querySelector('.panel').classList.remove('sheet-open');
@@ -792,7 +777,7 @@ function renderAC() {
   ac.querySelectorAll('.ac-item').forEach((it) => it.addEventListener('mousedown', (ev) => {
     ev.preventDefault();
     if (it.dataset.search) { runSearch(); }
-    else { const r = restaurantById.get(it.dataset.id); if (r) showRestaurant(r); $('search').value = r ? r.name : raw; query = $('search').value; render(); }
+    else { const r = restaurants.find((x) => x.id == it.dataset.id); if (r) showRestaurant(r); $('search').value = r ? r.name : raw; query = $('search').value; render(); }
     ac.className = 'ac';
   }));
 }

@@ -142,25 +142,18 @@ function httpGet(url, tries = 3) {
   });
 }
 
-// item 과 totalCount 를 한 번의 문자열 스캔으로 뽑는다. 예전엔 parseItems(전체 스캔) 뒤에
-// xml.match(/<totalCount>/) 로 문자열을 한 번 더 훑었는데, 페이지 XML(~200KB)당 이중 스캔을 줄인다.
 function parseItems(xml) {
   const out = [];
-  let total = 0;
-  const re = /<item>([\s\S]*?)<\/item>|<totalCount>(\d+)<\/totalCount>/g;
+  const re = /<item>([\s\S]*?)<\/item>/g;
   let m;
   while ((m = re.exec(xml))) {
-    if (m[1] !== undefined) {
-      const o = {};
-      const r2 = /<([A-Za-z0-9_]+)>([\s\S]*?)<\/\1>/g;
-      let t;
-      while ((t = r2.exec(m[1]))) o[t[1]] = t[2].trim();
-      out.push(o);
-    } else if (m[2] !== undefined) {
-      total = Number(m[2]);
-    }
+    const o = {};
+    const r2 = /<([A-Za-z0-9_]+)>([\s\S]*?)<\/\1>/g;
+    let t;
+    while ((t = r2.exec(m[1]))) o[t[1]] = t[2].trim();
+    out.push(o);
   }
-  return { items: out, total };
+  return out;
 }
 
 // 기준월을 실행 시점에서 계산한다. 예전엔 new Date(2026, 6, 1) 로 하드코딩돼 있어
@@ -254,9 +247,10 @@ async function fetchAll(pathSeg, label) {
       let page = 1;
       for (;;) {
         const xml = await httpGet(`https://apis.data.go.kr/1613000/${pathSeg}?serviceKey=${KEY}&LAWD_CD=${cd}&DEAL_YMD=${ym}&numOfRows=1000&pageNo=${page}&_type=xml`);
-        const { items, total } = parseItems(xml);
-        for (const r of items) rows.push(Object.assign(r, { _gu: GU[cd], _sgg: cd }));
-        if (page * 1000 >= total || !items.length) break;
+        const its = parseItems(xml);
+        for (const r of its) rows.push(Object.assign(r, { _gu: GU[cd], _sgg: cd }));
+        const tot = Number((xml.match(/<totalCount>(\d+)<\/totalCount>/) || [, 0])[1]);
+        if (page * 1000 >= tot || !its.length) break;
         page++;
       }
       done++;
@@ -313,14 +307,11 @@ async function geocode(addr) {
   // NOT_FOUND 는 확정 실패라 재시도하지 않는다. 차단(502/RST)만 물러섰다가 다시 시도한다.
   for (let attempt = 1; attempt <= 4; attempt++) {
     const body = await httpGet(url, 1);
-    // JSON 은 한 번만 파싱한다 — 예전엔 상태 확인과 point 추출에 두 번 파싱해
-    // 응답마다 문자열 변환 비용이 두 배였다.
-    let parsed = null;
-    try { parsed = JSON.parse(body); } catch (e) {}
-    const status = parsed && parsed.response && parsed.response.status;
+    let status = null;
+    try { status = JSON.parse(body).response.status; } catch (e) { status = null; }
     if (status === 'OK') {
       try {
-        const p = parsed.response.result.point;
+        const p = JSON.parse(body).response.result.point;
         pt = [Number(Number(p.y).toFixed(6)), Number(Number(p.x).toFixed(6))];
       } catch (e) {}
       blocked = false;
