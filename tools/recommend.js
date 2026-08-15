@@ -13,6 +13,7 @@ async function fetchRestaurants() {
 // taste 객체별로 Set을 1회만 생성 (대량 스코어링 반복 시 성능) — js/recommend.js와 동일 로직 유지
 const tasteCache = new WeakMap();
 function score(r, taste) {
+  if (!taste) return { score: 0, hits: [] };
   let want = tasteCache.get(taste);
   if (!want) { want = new Set([...(taste.flavor_tags || []), ...(taste.situation_tags || [])]); tasteCache.set(taste, want); }
   const hits = [];
