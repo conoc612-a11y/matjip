@@ -232,6 +232,11 @@
 3. **백업 (수정 전 git HEAD 원본)**: `js/main.backup-20260815.js`(50,049B)·
    `tools/collect_realprice.backup-20260815.js`(33,972B)
 4. **TROUBLESHOOTING §22** — scoreOf 캐시 무효화 조건 함정(새 객체 대입 규칙·buildRestIndex 누락 주의).
+5. **추가 수정 (최종 확인 중 발견)**: 단독다가구 저장 3곳(`realprice_house`·`realprice_house_rent`·
+   house 좌표 보강)이 `writeSafe` 가드 없이 raw `fs.writeFileSync` — §16 과 같은 "빈 파일
+   덮어쓰기" 버그 클래스. **전부 `writeSafe` 로 교체** + TROUBLESHOOTING §23(저장 경로는 전부
+   writeSafe 경유 규칙). 검증: 0건 거부·절반 미만(10→4) 중단+보존·절반 이상 통과·`.tmp` 잔존
+   없음 — 4항목 시뮬레이션 PASS.
 
 ### WHY (결정 사유)
 - gprof/valgrind는 네이티브용이라 vanilla JS엔 부적합 → Node `--cpu-prof` 대신 핫 패스 직접
@@ -244,8 +249,8 @@
 - 동작 불변성: total 0이면 1페이지 후 종료(기존 동일) · JSON 파싱 실패 → 차단 재시도 경로(기존 동일).
 
 ### 커밋·배포 상태
-- **커밋 예정**: `js/main.js`·`tools/collect_realprice.js`·`HANDOFF.md`(본 항목)·
-  `TROUBLESHOOTING.md`(§22)·백업 2건. push는 별도 동의 대기.
+- **커밋 `e3c11f40`** 완료: js/main.js·collect_realprice.js·백업 2건·HANDOFF(31)·TROUBLESHOOTING §22.
+- **미커밋 추가분 (동의 대기)**: collect_realprice.js house 3곳 writeSafe 교체 + TROUBLESHOOTING §23 + 본 항목 수정. push 는 별도 동의 대기.
 
 ---
 

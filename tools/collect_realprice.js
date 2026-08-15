@@ -396,7 +396,7 @@ async function collectRentOnly() {
       ...(pt ? { lat: Number(pt[0].toFixed(5)), lng: Number(pt[1].toFixed(5)) } : {}),
     };
   }
-  fs.writeFileSync(path.join(OUT_DIR, `realprice_house_rent${SUFFIX}.json`), JSON.stringify(hr));
+  writeSafe(path.join(OUT_DIR, `realprice_house_rent${SUFFIX}.json`), hr, Object.keys(hr).length, 'realprice_house_rent.json');
   console.log(`  realprice_house_rent.json 저장 — ${Object.keys(hr).length}개 동 / ${(fs.statSync(path.join(OUT_DIR, `realprice_house_rent${SUFFIX}.json`)).size / 1024).toFixed(0)}KB`);
 
   // ② 기존 단독 매매 house.json 에 동 좌표 보강 — 키 형식이 ① 과 같아 레이어에서 좌표를 쓸 수 있다
@@ -410,7 +410,7 @@ async function collectRentOnly() {
       const pt = geoCache.get(`${SIDO(GU_CD_BY_NAME[k.split(' ')[0]])} ${k}`);
       if (pt) { house[k].lat = Number(pt[0].toFixed(5)); house[k].lng = Number(pt[1].toFixed(5)); }
     }
-    fs.writeFileSync(housePath, JSON.stringify(house));
+    writeSafe(housePath, house, Object.keys(house).length, 'realprice_house.json (좌표 보강)');
     console.log(`  realprice_house.json 좌표 보강 — ${Object.values(house).filter((h) => h.lat).length}/${Object.keys(house).length} 동`);
   } else {
     console.log('\n[2/3] realprice_house.json 없음 — 건너뜀 (먼저 매매 수집 실행 필요)');
@@ -594,7 +594,7 @@ async function collectRentOnly() {
       plot: median(d.plots), area: median(d.areas), build: median(d.years),
     };
   }
-  fs.writeFileSync(path.join(OUT_DIR, `realprice_house${SUFFIX}.json`), JSON.stringify(house));
+  writeSafe(path.join(OUT_DIR, `realprice_house${SUFFIX}.json`), house, Object.keys(house).length, 'realprice_house.json');
   console.log(`  realprice_house.json 저장 — ${Object.keys(house).length}개 동 / ${(fs.statSync(path.join(OUT_DIR, `realprice_house${SUFFIX}.json`)).size / 1024).toFixed(0)}KB`);
 
   console.log('\n완료.');
