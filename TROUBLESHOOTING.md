@@ -641,3 +641,24 @@ gh api repos/conoc612-a11y/matjip/pages/builds/latest --jq '{status:.status, com
   써야 하면 즉시 `window.`로 노출한다. `'use strict'` 도입 시 이런 함수가 전부 깨지므로
   전역 노출(브라우저 실제 실측) 후 진행한다.
 
+## 22. render() 성능 캐시의 무효화 조건 — window.score 캐시 (2026-08-15 실측)
+
+- **증상(성능)**: main.js `render()`가 입력 디바운스(140ms)·탭 전환·GPS마다 전체 1,300곳을
+  `window.score()`로 전량 재계산했다. 개별 비용은 수 µs라 체감은 작지만, render가 잦은
+  경로의 유일한 중복 계산이었다(다른 곳은 이미 render 캐시 키·검색 인덱스·dist memo·LIST_MAX로
+  최적화돼 있음).
+- **해결**: `scoreOf(r)` 캐시 도입 — 점수는 취향(taste 객체)과 식당 태그에만 의존하므로 같은
+  taste면 결과 재사용. `scoreCache`는 **taste 객체 identity가 바뀔 때만** 무효화
+  (`scoreCacheTaste !== taste`). 세션 중 taste 대입은 `loadAll()` 1회뿐이라 사실상 1회 계산 후
+  계속 히트. 함께 만든 `restaurantById`(id→식당 Map)는 리스트 클릭·자동완성·recent-chip의
+  `restaurants.find`(O(n))를 O(1)로 바꾼다.
+- **함정(다음 세션 주의)**:
+  1. **캐시 무효화 키는 taste 객체 identity다.** "세션 중 취향 재입력" 기능을 만들면 **반드시
+     새 객체로 대입**해야 캐시가 자동으로 비워진다. 기존 taste 객체를 mutate 하면 캐시가
+     썩어 점수가 영영 예전 취향으로 남는다.
+  2. `restaurantById`는 `buildRestIndex()`가 만들므로, **`restaurants`를 직접 수정한 뒤
+     `buildRestIndex()`를 안 부르면 Map이 누락**돼 클릭이 조용히 무반응이 된다. 저장 경로
+     (saveNaverPlace/saveKakaoPlace)는 push 후 buildRestIndex 호출 확인 완료 — 새 저장 경로를
+     만들 때도 동일하게.
+  3. 식당 태그는 세션 중 불변 전제. push로 추가된 신규 식당은 캐시에 없어 최초 1회만 계산된다.
+

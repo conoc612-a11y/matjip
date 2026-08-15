@@ -212,6 +212,43 @@
 
 ---
 
+## 2026-08-15 (31) — opencode (성능 최적화: main.js render 스코어링 캐시 + collect_realprice.js 파싱 절감)
+
+> (30) 후속. 사용자 지시: 최적화(기능·외부 동작 불변, 신규 의존성 없음) → **기록 → 백업 → 커밋.**
+
+### 완료
+1. **js/main.js** (지도 렌더·클러스터링 — 유일하게 남은 중복 계산은 render()의 전량 스코어링)
+   - `scoreOf(r)` 점수 캐시: render()가 호출될 때마다 1,300곳 전부 `window.score()` 재계산 →
+     같은 취향이면 캐시 재사용. 무효화는 **taste 객체 identity 변경 시에만**(세션 중 대입은
+     `loadAll()` 619행 1회뿐 — 실측). `restaurantById`(id→식당 Map)로 리스트 클릭·자동완성·
+     recent-chip 3곳의 `restaurants.find`(O(n)) → O(1).
+   - `buildClusters()`는 이미 뷰포트 버킷+마커 풀 재사용이라 손대지 않음.
+2. **tools/collect_realprice.js** (수집 파이프라인)
+   - `parseItems()`가 `<item>`+`<totalCount>`를 **한 번의 정규식 스캔**으로 추출(기존엔 파싱 후
+     `xml.match` 재스캔 — 페이지 XML ~200KB×요청 수만큼 이중 스캔 절감).
+   - `geocode()` 성공 응답의 JSON.parse **2회 → 1회** (핫 경로라 요청마다 파싱 비용 반감).
+   - 페이지 병렬화·동시성 증가는 **일부러 안 함** — data.go.kr 500 빈도가 높아(코드 주석·실측)
+     버스트는 재시도 폭탄. 현재 CONC=6·지오코딩 8.8건/s 리미트 유지가 최적.
+3. **백업 (수정 전 git HEAD 원본)**: `js/main.backup-20260815.js`(50,049B)·
+   `tools/collect_realprice.backup-20260815.js`(33,972B)
+4. **TROUBLESHOOTING §22** — scoreOf 캐시 무효화 조건 함정(새 객체 대입 규칙·buildRestIndex 누락 주의).
+
+### WHY (결정 사유)
+- gprof/valgrind는 네이티브용이라 vanilla JS엔 부적합 → Node `--cpu-prof` 대신 핫 패스 직접
+  복잡도 분석으로 병목 확정. 남은 병목은 "render마다 전량 재계산" 하나뿐이었고, 수집 파이프라인은
+  I/O·API 속도제한 바운드라 남은 여지는 파싱 중복 제거가 전부.
+
+### 검증
+- `node --check` 두 파일 구문 OK / `parseItems` 실제 XML → `{items:[...], total:3}` 정상 반환.
+- `scoreOf` 시뮬레이션: 캐시 히트(호출 1회)·taste 변경 무효화·신규 취향 반영 통과.
+- 동작 불변성: total 0이면 1페이지 후 종료(기존 동일) · JSON 파싱 실패 → 차단 재시도 경로(기존 동일).
+
+### 커밋·배포 상태
+- **커밋 예정**: `js/main.js`·`tools/collect_realprice.js`·`HANDOFF.md`(본 항목)·
+  `TROUBLESHOOTING.md`(§22)·백업 2건. push는 별도 동의 대기.
+
+---
+
 ## ▶ 이어서 할 일 (다음 세션은 여기부터)
 
 > ~~1) 실거래가 복구~~ → **완료·push 완료** (커밋 `39db2c73`).
