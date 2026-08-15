@@ -190,6 +190,10 @@ console.log('blocks:',i,'fails:',f);
 - `SUBSCRPT_AREA_CODE`/`_NM` 필터는 주소와 별개인 공급지역 개념이다. 좌표는 `HSSPLY_ADRES`(주소)로 변환한다.
 - serviceKey 는 **인코딩된 문자열을 그대로** `serviceKey=<키>` 로 넣는다. `encodeURIComponent` 로 감싸면 `%`→`%25` 이중 인코딩되어 인증이 깨진다(molit-proxy 와 동일한 함정).
 - 프록시는 op/파라미터를 화이트리스트로 검증 후 중계한다(`supabase/functions/chungak-proxy/index.ts`). 시크릿은 `CHUNGAK_API_KEY`.
+- **⚠️ 무순위 잔여세대 재공급(줍줍)은 `getAPTLttotPblancDetail`(분양정보)에 없다** (2026-08-18 실측). 별도 op `getRemndrLttotPblancDetail` 을 호출해야 잡힌다. 실측: 서울 무순위 matchCount=303. 접수일 필드는 일반 분양의 `SPSPLY_RCEPT_*`/`RCEPT_*` 가 아니라 **`GNRL_RCEPT_BGNDE`/`GNRL_RCEPT_ENDDE`**·`SUBSCRPT_RCEPT_*` 이고, `TOT_SUPLY_HSHLDCO` 도 아닌 **`TOT_SUPPLY_HSHLDCO`**(S가 2개)다. `RCEPT_ENDDE` 기준 날짜 필터를 그대로 쓰면 무순위가 전부 걸러져 배지에서 누락된다.
+  - 증상 사례: "송파 시그니처 롯데캐슬(2026-08-18 접수, 거여동 181·202번지 일원, 불법행위 재공급 1세대)이 배지에 안 뜬다" — 분양정보 API 로는 아예 검색 불가였음(`HOUSE_NM::LIKE` 송파 → 0건).
+  - 해결(2026-08-18 커밋 예정): `land.html` `loadSubscriptions()` 가 두 op(`getAPTLttotPblancDetail` + `getRemndrLttotPblancDetail`)를 병렬 호출해 병합. 날짜 필터도 op 별로 나눠 적용(`RCEPT_ENDDE`/`GNRL_RCEPT_ENDDE`).
+  - 무순위 주소는 다중 지번(콤마)이 많다: `vworldAddrToPnu()` 는 '○○번지 일원' 제거 후 콤마로 분리해 **각 지번을 road→parcel 순차** 시도(실측: 거여동 181번지는 NOT_FOUND, 202번지는 parcel OK). ⚠️ `번지?`(문자 뒤 ?)는 '번'+선택'지'라서 **'번'이 필수** — 숫자만 있는 지번('181')이 매치 안 되는 함정이 있다. `(?:번지)?` 로 묶어야 전체가 선택이 된다.
 
 ### 6-8. 국토교통부 건축HUB 상세조회 — molit-proxy 화이트리스트 함정 (2026-08-07 실측)
 - `molit-proxy` 의 `ALLOWED_OPS` 에 **건축물대장 "상세 보기" op 가 빠지면 HTTP 400** 으로 거부되어 상세 조회가 전부 실패한다. 증상: 버튼은 뜨는데(목록 `getBrTitleInfo` 는 허용돼서) 클릭 후 "불러오지 못했어요" 또는 무한 "조회 중…".
