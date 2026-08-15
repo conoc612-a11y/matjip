@@ -3490,7 +3490,12 @@
       if (!addr) { cb(null); return; }
       const cbName = '__vwAddr_' + (++_vwSeq);
       let done = false;
+      let triedParcel = false;
       const finish = (val) => { if (done) return; done = true; try { delete window[cbName]; } catch (e) {} cb(val); };
+      // '○○번지 일원/일대' 같은 지번 주소는 road 검색이 전부 NOT_FOUND(실측 2026-08-15)라
+      // 결과가 없으면 '일원/일대'를 떼고 지번(parcel)으로 재시도한다. 없으면 배지가 누락된다.
+      const query0 = addr.replace(/\s*(일원|일대|번지일원|번지일대)\s*$/, '');
+      const ge = (category) => `https://api.vworld.kr/req/search?service=search&request=search&version=2.0&crs=EPSG:4326&size=1&page=1&query=${encodeURIComponent(query0)}&type=address&category=${category}&format=json&key=${VWORLD_KEY}&callback=${cbName}`;
       window[cbName] = (data) => {
         try {
           const items = (data.response && data.response.result && data.response.result.items) || [];
@@ -3502,12 +3507,19 @@
             if (pnu && x && y) { finish({ pnu, lat: y, lng: x }); return; }
           }
         } catch (e) {}
+        if (!triedParcel) { triedParcel = true; s2(); return; }
         finish(null);
       };
-      const s = document.createElement('script');
-      s.src = `https://api.vworld.kr/req/search?service=search&request=search&version=2.0&crs=EPSG:4326&size=1&page=1&query=${encodeURIComponent(addr)}&type=address&category=road&format=json&key=${VWORLD_KEY}&callback=${cbName}`;
-      s.onerror = () => finish(null);
-      document.head.appendChild(s);
+      const s1 = document.createElement('script');
+      const s2 = () => {
+        const st = document.createElement('script');
+        st.src = ge('parcel');
+        st.onerror = () => finish(null);
+        document.head.appendChild(st);
+      };
+      s1.src = ge('road');
+      s1.onerror = () => { if (!triedParcel) { triedParcel = true; s2(); } };
+      document.head.appendChild(s1);
       setTimeout(() => finish(null), 7000);
     }
 
