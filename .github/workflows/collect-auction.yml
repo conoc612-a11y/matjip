@@ -47,6 +47,48 @@ jobs:
 
       - run: node tools/collect_auction.js
 
+      # 임시 진단(2026-08-15): CI 러너에서 V-World 지오코딩이 100% 실패(캐시 히트분만
+      # 좌표 획득, 신규 0건) — 원인 확정용. CI에서 V-World 응답을 직접 호출해
+      # OK/NOT_FOUND/502/차단 여부를 로그로 남긴다. 확인 후 이 스텝은 제거.
+      - name: V-World 응답 진단 (임시)
+        run: |
+          node -e "
+          const https=require('https');
+          const KEY='B2CDEEDD-D622-311B-883B-CC7890E50822';
+          const samples=[
+            ['서울특별시 서초구 논현로1길 23','ROAD'],
+            ['서울특별시 서초구 논현로1길 23','PARCEL'],
+            ['서울특별시 관악구 신림동 255-160','PARCEL'],
+            ['서울특별시 관악구 봉천동 65-3','PARCEL'],
+            ['서울특별시 서초구 반포대로 275','ROAD'],
+          ];
+          function once(url){
+            return new Promise((resolve)=>{
+              const dl=setTimeout(()=>{ req.destroy(); console.log('  TIMEOUT'); resolve(); },12000);
+              const req=https.get(url,{headers:{'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120 Safari/537.36'}},(res)=>{
+                let d=''; res.on('data',c=>d+=c);
+                res.on('end',()=>{
+                  clearTimeout(dl);
+                  let s='';
+                  try{ s=JSON.parse(d).response.status; }catch(e){ s='PARSE_ERR http='+res.statusCode+' head='+d.slice(0,60).replace(/\\n/g,' '); }
+                  console.log('  http',res.statusCode,'->',s);
+                  resolve();
+                });
+                res.on('error',e=>{ clearTimeout(dl); console.log('  RES_ERR',e.code); resolve(); });
+              });
+              req.on('error',e=>{ clearTimeout(dl); console.log('  REQ_ERR',e.code); resolve(); });
+            });
+          }
+          (async()=>{
+            for(const [addr,type] of samples){
+              const url='https://api.vworld.kr/req/address?service=address&request=getcoord&version=2.0&crs=EPSG:4326&type='+type+'&format=json&key='+KEY+'&address='+encodeURIComponent(addr);
+              console.log(addr, '('+type+')');
+              await once(url);
+              await new Promise(r=>setTimeout(r,150));
+            }
+          })();
+          "
+
       # 스크립트 안에도 같은 가드가 있지만(saveAuction), 여기서 한 번 더 막는다 —
       # 커밋·푸시 직전이 마지막 방어선이고, 스크립트가 바뀌어 가드가 빠져도 여기서 걸린다.
       # git 에 기록된 직전 버전과 비교해 절반 미만으로 줄었으면 커밋을 거부한다.
