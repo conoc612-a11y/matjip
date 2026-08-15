@@ -662,3 +662,18 @@ gh api repos/conoc612-a11y/matjip/pages/builds/latest --jq '{status:.status, com
      만들 때도 동일하게.
   3. 식당 태그는 세션 중 불변 전제. push로 추가된 신규 식당은 캐시에 없어 최초 1회만 계산된다.
 
+## 23. 수집기 저장 경로는 전부 writeSafe 가드를 쓸 것 — house 3곳 누락 발견·수정 (2026-08-15 실측)
+
+- **증상(잠재)**: `tools/collect_realprice.js`에서 villa·apt·officel 은 `writeSafe`(0건 중단·
+  기존 절반 미만 중단·tmp+rename 원자 저장)를 쓰는데, **단독다가구 3곳은 raw `fs.writeFileSync`**
+  였다 — `realprice_house.json`(매매)·`realprice_house_rent.json`(전월세)·house 좌표 보강 쓰기.
+  data.go.kr 이 HTTP 200 에 오류 XML 을 실어 0건을 돌려주면(키 오류·쿼터 초과, §16 과 같은
+  조용한 실패) 멀쩡한 house 파일이 통째로 날아갈 수 있었던 것.
+- **해결**: 3곳 모두 `writeSafe` 로 교체(2026-08-15). 보강 경로는 count=기존 동 수라 가드가
+  오작동하지 않는다(동 수 동일 → 절반 미만 조건 불발).
+- **검증(실측)**: writeSafe 단위 시뮬레이션 — ①0건 저장 거부+기존 보존 ②절반 미만(10→4) 중단+
+  보존 ③절반 이상(10→6) 통과 저장 ④정상 저장 시 `.tmp` 잔존 없음.
+- **WHY(판단 사유)**: "새 파일 경로를 추가할 때도 같은 가드를 붙인다"는 규칙이 문서에 없어
+  누락이 눈에 안 띄었다. 수집기 파일 저장은 **전부 writeSafe 경유**가 규칙 — 새 저장 경로를
+  만들면 이 규칙을 따른다.
+
