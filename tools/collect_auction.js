@@ -135,35 +135,61 @@ const cleanAddr = (a) => a
   .replace(/\s*(비?동|[가나다라]동).*$/, '')
   .trim();
 
+// V-World 지오코딩. CI(GitHub Actions, 해외 IP)에서 V-World가 TCP 차단(ECONNRESET)을
+// 하므로(2026-08-15 실측, TROUBLESHOOTING §19) VWORLD_PROXY(= Supabase Edge Function
+// vworld-geocode)가 설정돼 있으면 그걸 경유한다. 로컬(한국 IP)은 직접 호출이 낫다.
+// 캐시 정책(collect_realprice.js 와 동일, 2026-08-15 조치): 차단(502/RST)으로 끝난
+// null 은 캐시하지 않는다 — 일시 차단을 영구 실패로 고정시키지 않으려고.
+// NOT_FOUND 는 확정 실패라 캐시해 재시도 낭비를 막는다.
 async function geocode(addr) {
-  // 실패(null) 캐시는 재시도 대상으로 둔다 (지오코딩 규칙 개선 후 재보강 가능).
-  if (geoCache.has(addr) && geoCache.get(addr)) return geoCache.get(addr);
+  if (geoCache.has(addr)) return geoCache.get(addr);
   const candidates = [
     [addr, 'PARCEL'],
     [cleanAddr(addr), 'ROAD'],   // 도로명은 PARCEL 로 못 잡는다 (실측: 남현7길 51 실패)
     [cleanAddr(addr), 'PARCEL'], // 지번인데 층/호만 붙은 경우
   ];
-  let pt = null;
+  let pt = null, blocked = false;
   for (const [cand, type] of candidates) {
-    const url = `https://api.vworld.kr/req/address?service=address&request=getcoord&version=2.0&crs=EPSG:4326&type=${type}&format=json&key=${VWORLD_KEY}&address=${encodeURIComponent(cand)}`;
     for (let i = 1; i <= 3; i++) {
-      const body = await httpGet(url, 1);
-      try {
-        const j = JSON.parse(body);
-        if (j.response.status === 'OK') {
-          const p = j.response.result.point;
-          pt = [Number(Number(p.y).toFixed(6)), Number(Number(p.x).toFixed(6))];
-          break;
-        }
-        if (j.response.status === 'NOT_FOUND') break;
-      } catch (e) {}
-      await sleep(300 * i);
+      const res = await geocodeOnce(cand, type);
+      if (res.status === 'OK') { pt = res.pt; break; }
+      if (res.status === 'NOT_FOUND') { blocked = false; break; }
+      blocked = true;
+      await sleep(400 * i * i);
     }
     if (pt) break;
   }
-  geoCache.set(addr, pt);
-  try { fs.writeFileSync(CKPT, JSON.stringify(Object.fromEntries(geoCache))); } catch (e) {}
+  if (pt || !blocked) { geoCache.set(addr, pt); saveGeocode(); }
   return pt;
+}
+
+// 프록시(VWORLD_PROXY) 또는 V-World 직접 호출 — 공통 응답 {status, pt}
+async function geocodeOnce(addr, type) {
+  if (process.env.VWORLD_PROXY) {
+    const url = `${process.env.VWORLD_PROXY}?address=${encodeURIComponent(addr)}&type=${type}`;
+    const body = await httpGet(url, 1);
+    try {
+      const j = JSON.parse(body);
+      if (j.status === 'OK') return { status: 'OK', pt: [j.lat, j.lng] };
+      if (j.status === 'NOT_FOUND') return { status: 'NOT_FOUND' };
+    } catch (e) {}
+    return { status: 'BLOCKED' };
+  }
+  const url = `https://api.vworld.kr/req/address?service=address&request=getcoord&version=2.0&crs=EPSG:4326&type=${type}&format=json&key=${VWORLD_KEY}&address=${encodeURIComponent(addr)}`;
+  const body = await httpGet(url, 1);
+  try {
+    const j = JSON.parse(body);
+    if (j.response.status === 'OK') {
+      const p = j.response.result.point;
+      return { status: 'OK', pt: [Number(Number(p.y).toFixed(6)), Number(Number(p.x).toFixed(6))] };
+    }
+    if (j.response.status === 'NOT_FOUND') return { status: 'NOT_FOUND' };
+  } catch (e) {}
+  return { status: 'BLOCKED' };
+}
+
+function saveGeocode() {
+  try { fs.writeFileSync(CKPT, JSON.stringify(Object.fromEntries(geoCache))); } catch (e) {}
 }
 
 // ── 경매 화면 조작 ──
