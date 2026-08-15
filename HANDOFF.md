@@ -12,6 +12,31 @@
 
 ---
 
+## 2026-08-15 (32) — opencode (land.html UI 검토 6건 수정 — "다 고쳐")
+
+> 사용자: "land만 UI 렌더 검토 → 보고" → 6건 리스트 보고 → "다 고쳐". **코드 변경만, 커밋·push·배포는 동의 대기.**
+
+### 완료 (수정 근거: 실측 — 헤드리스 Chrome, §1·§8 방법, 데몬은 §8 신규 메모 참조)
+1. **모바일 지도 하단 92px 클리핑** — `css/buttons.css` `#map{height:100vh}` → `calc(100vh - 92px)`+`calc(100dvh - 92px)`. 실측 390×844: map bottom 936→844(=뷰포트 바닥). 헤더(58)+stat-bar(34)가 실제 공간 차지가 원인.
+2. **데스크톱 우측 패널 항상 280px** — `.panel` 기본 `min-width:380px`(TROUBLESHOOTING §24-② 참조: 9:1 배분이 항상 min-width 미만이라 눌림) + `@media (max-width:900px)`에서 280 복귀. 실측: 1440/1024→380, 900/820→280. 드래그 저장 폭(mj_panel_w)은 인라인 flex로 우선 — 기존 리사이즈 동작 불변.
+3. **다크모드 OS 미연동** — 저장값 없으면 `matchMedia('(prefers-color-scheme: dark)')` 따라감. **`<head>` 프리페인트 스크립트 추가**(플래시 방지, head·body 판정 동일 — 한쪽 바꾸면 다른 쪽도). `js/main.js` 도 같은 결함이라 함께 수정.
+4. **320px 이하 헤더 좁힘** — `.brand-title` ellipsis + `@media (max-width:380px){#weather-chip{display:none}}`. 실측 320: headerOverflow=false, 헤더 58px 유지(수정 전 360px에서 날씨칩 2번째 줄 탈출·stat-bar 덮음).
+5. **푸터 죽은 링크 제거** — `이용안내`/`이용방법 및 장애문의`(`href="#"`) land·main 둘 다 제거.
+6. **키보드 포커스 링** — css/buttons.css 공용에 `:focus-visible` 규칙. 실측: Tab→`.brand` outline 2px(주 색상).
+
+### 검증
+- 헤드리스(임시 HTTP 서버 + auth-guard만 무력화한 temp 사본) 실측: 위 1·2·4 항목 값 확인, 콘솔 에러 0건(환경 탓 404·subscriptions fetch 제외), `node --check js/main.js` OK, footer 링크 `#` 0개.
+- 임시 파일·데몬·HTTP 서버 정리 완료. 원본 auth-guard.js 변경 없음.
+
+### 커밋·배포 상태
+- **커밋 대기 (사용자 동의 대기)**: `css/buttons.css`·`land.html`·`main.html`·`js/main.js`(+TROUBLESHOOTING §24·HANDOFF). push·배포는 별도 동의.
+
+### ▶ 이어서 할 일
+- (31)의 "▶ 이어서 할 일" 1)~4) 그대로 유효: ①사진 수집 재개 ②CI 지오코딩 캐시 커밋 전환 push 대기 ③Edge 배포 명령 참고 ④테스트 방법 준수.
+- 이번 수정 커밋 동의 받기. push 후 배포본에서 모바일 지도·패널 폭·다크모드 확인(§7: 캐시 주의 `?cb=`).
+
+---
+
 ## 2026-08-15 (28) — opencode (V-World CI 해외 IP 차단 → Supabase Edge Function 프록시로 우회)
 
 > (27)에 이어짐. 커밋 `8f8cff3e`·`defbaca2`·`4f73403d` 3개는 이미 push 완료(사용자 동의 후).

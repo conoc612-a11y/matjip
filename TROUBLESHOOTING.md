@@ -293,8 +293,23 @@ console.log('blocks:',i,'fails:',f);
 - **합성 PointerEvent 로 드래그를 흉내낼 땐 `setPointerCapture` 가 던진다** (2026-08-12 실측): `dispatchEvent` 한 가짜 포인터는 활성 포인터가 아니라 `NotFoundError`(InvalidPointerId) 발생 → `makeResizable` 은 capture 를 try/catch 로 감싸 실사용(실제 포인터)은 캡처 유지, 테스트는 조용히 스킵. 이걸 감싸지 않으면 capture 뒤의 `bodyClass`/`gripClass` 추가가 통째로 사라진다.
 - **ui-resize 단위·실화면 회귀 하네스** (2026-08-12): `%TEMP%\opencode\ui-resize-test.cjs <repo경로>` — 헤드리스 Chrome(CDP)로 `js/ui-resize.js` 단위 테스트 5종 + land.html 에서 `.lp-midcb` '정비사업 상세' 체크박스를 실제 클릭해 `.lc-jb` 그립 드래그까지 검증. Chrome 은 `--remote-allow-origins=*` 없으면 CDP 거부, `/json/new` 는 **PUT** 요청이어야 함(두 가지 다 실측으로 겪음).
 - **경매 패널(ap-resizer) 드래그 방향이 반대였다** (2026-08-12 실측·수정): 좌측 앵커(`left:0`) 패널의 **우측 가장자리** 그립인데 원래 손코딩이 `auctionPanel.clientWidth + (x - e.clientX)` 로 써서 **오른쪽으로 끌면 줄어들었다**. 마이그레이션(a5a34b8)이 `reverseW:true` 로 보존. 좌측 앵커+우측 그립이면 오른쪽으로 끌수록 넓어지는 게 맞으므로 **`reverseW` 제거**로 교정(land.html:1636). 방향 판단 기준: `reverseW/reverseH` 가 필요한 건 **오른쪽/하단이 고정된(축 반대쪽이 고정된) 대상**일 때뿐 — 좌측 고정 패널은 `reverseW:false`(기본)가 자연 방향.
+- **opencode bash 에서 gstack browse 데몬이 죽는 문제** (2026-08-15 실측): bash 툴이 **타임아웃 시 프로세스 트리 전체를 죽여** 데몬도 같이 사라진다. 데몬을 살리려면:
+  1. `Invoke-CimMethod Win32_Process -MethodName Create -Arguments @{ CommandLine='<browse.exe> <cmd>'; CurrentDirectory='<repo>' }` 로 **트리 밖에서** 시작(그러면 state 파일이 `repo\.gstack\browse.json` 에 생김).
+  2. 이후 클라이언트 호출마다 `$env:BROWSE_STATE_FILE='<repo>\.gstack\browse.json'` 를 설정(안 하면 git root 를 못 찾아 다른 state 파일로 새 데몬을 띄우려 함). 이 두 가지만 지키면 명령마다 데몬 재시작 없이 ~100ms 로 응답한다.
+  3. 다 끝나면 `browse.exe stop`. (정리 대상: `System32\.gstack\` 에 떠돈 state 파일이 있으면 지울 것 — WMI 클라이언트가 cwd 없이 돌아 System32 를 git root 로 오인했다.)
 
 ---
+
+## 24. land.html UI 레이아웃 함정 4종 — 전부 실측(2026-08-15 수정·검증)
+
+- **① 모바일 `#map` 하단 92px 클리핑**: 모바일(≤640px)에서 `#map { height:100vh }` 인데 **헤더(58px)+stat-bar(34px)가 실제 레이아웃 공간을 차지**하므로 지도 하단이 뷰포트 밖으로 잘렸다(실측 390×844: map bottom=936). 해결: `calc(100vh - 92px)` + `calc(100dvh - 92px)`(dvh 미지원 브라우저는 첫 줄 적용). 검증: mapTop=92, mapBottom=844=뷰포트 바닥.
+- **② 데스크톱 우측 패널이 항상 280px**: `.panel { flex:1 1 0; min-width:280px }` + `#map { flex:9 1 0 }` 구조에서 9:1 배분이면 패널 몫(1/10)이 **넓은 화면에서도 항상 280 미만**이라 min-width 에 눌린다(실측 1024·1400·1440 전부 280). 해결: 기본 `min-width:380px`(드래그 저장 폭은 인라인 flex 로 우선) + `@media (max-width:900px)` 에서 280 복귀(좁은 화면에선 지도 보호). 검증: 1440/1024→380, 900/820→280.
+- **③ 다크모드가 OS 설정과 미연동**: `applyTheme(localStorage.getItem('mj_theme') === 'dark')` 라서 **저장 값이 없으면 무조건 라이트**. 해결: 저장 값이 있으면 그걸 따르고, 없으면 `matchMedia('(prefers-color-scheme: dark)')` 사용. **`<head>` 끝에 프리페인트 스크립트**(저장/OS 동일 판정)를 추가해 다크 유저의 흰 화면 플래시도 제거 — head 와 body 양쪽이 같은 판정을 쓰므로 **한쪽을 바꾸면 반드시 다른 쪽도 바꿀 것**(land.html 주석 명시). main.js 도 같은 결함이라 함께 수정.
+- **④ 320px 이하 헤더 좁힘**: 브랜드+날씨칩이 한 줄을 넘겨 **헤더(58px 고정) 밖으로 흘러 stat-bar 를 덮었다**(실측 360px 에서 날씨칩이 2번째 줄로 탈출). 해결: `.brand-title` 에 ellipsis(nowrap+overflow+min-width:0) + `@media (max-width:380px) { #weather-chip { display:none } }`. 검증: 320px 에서 headerOverflow=false, 날씨칩 none, 타이틀 말줄임.
+- **⑤ (부수) 푸터 죽은 링크**: `이용안내`/`이용방법 및 장애문의` 가 `href="#"`(클릭 무반응). 이동할 페이지가 없어 **제거**(연락처는 footer-right 에 이미 존재). main.html 도 같은 결함이라 함께 제거.
+- **⑥ (부수) 키보드 포커스 링 부재**: `:focus-visible` 규칙이 전혀 없어 키보드 탭 이동 시 어디 있는지 안 보였다. css/buttons.css 공용에 `:is(button,a,input,...):focus-visible { outline:2px solid var(--c-primary) }` 추가 — 마우스 클릭엔 안 뜨고 키보드에만 표시. 검증: Tab → `.brand` 링 outline 2px solid rgb(25,113,194).
+- **WHY(판단 사유)**: ①②는 "flex 배분 비율이 min-width 보다 작아 항상 최소에 눌린다"는 **CSS 스펙상 당연한 결과**라 실측 없이는 안 보인다. ④는 flex-wrap 이 헤더 밖으로 내용을 밀어내는 구조. 세 건 모두 "실측 → 근거 → 최소 수정"으로 처리했다. 공용(buttons.css) 이슈는 land 뿐 아니라 main 등 **같은 결함을 가진 형제 페이지까지 함께 고친다**(이번엔 main 푸터·다크모드 포함).
+
 
 ## 9. 키 정책 요약
 
