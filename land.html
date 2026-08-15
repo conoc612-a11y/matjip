@@ -486,8 +486,20 @@
     .leaflet-popup-content-wrapper { overflow:visible; }
     .leaflet-popup-tip { background:var(--card); }
     .leaflet-container a.leaflet-popup-close-button { color:var(--muted); }
-    /* ── 팝업 공통 컨트롤 (그립 리사이즈 + 접기) — 그립은 css/buttons.css .ui-grip 공용 ── */
-    /* 접기 버튼 위치만 잡고, 24px 아이콘 버튼 외형은 .ui-pop-btn 공용 */
+    /* ── 팝업 공통 컨트롤 (스크롤바 세로 리사이즈 + 접기) — 2026-08-16 코너 그립 제거 ── */
+    /* 세로 크기조절은 우하단 그립 대신 스크롤바 위·아래 화살표 자리의 .lp-sbar 핸들이 한다
+       (사용자 요청). 스크롤바 버튼 위치를 덮어 드래그로 높이 조절, 클릭은 페이지 스크롤 유지.
+       내용 폭은 자동 맞춤이므로(1038~) 가로 리사이즈는 더 이상 없다. */
+    .lp-sbar { position:absolute; width:16px; height:17px; z-index:1200; cursor:row-resize; display:flex; align-items:center; justify-content:center; border:none; padding:0; background:transparent; }
+    .lp-sbar::after { content:''; width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; }
+    .lp-sbar-top::after { border-bottom:6px solid var(--muted); }
+    .lp-sbar-bot::after { border-top:6px solid var(--muted); }
+    .lp-sbar-top:hover::after { border-bottom-color:var(--c-primary); }
+    .lp-sbar-bot:hover::after { border-top-color:var(--c-primary); }
+    body.lp-vresizing { cursor:row-resize; -webkit-user-select:none; user-select:none; }
+    /* 접기 버튼 위치만 잡고, 24px 아이콘 버튼 외형은 .ui-pop-btn 공용.
+       우상단(right:30px)이어야 한다 — 좌측 상단(left:6px)은 좌측 사이드 패널(#rp-panel) 헤더와 겹쳐
+       클릭을 가로챘다(실측 2026-08-16, elementFromPoint로 확인). */
     .lp-min-btn { position:absolute; top:3px; right:30px; z-index:1100; }
     .lp-restore-chip { position:absolute; right:12px; bottom:12px; z-index:1500; display:flex; align-items:center; gap:6px; max-width:300px; padding:8px 12px; background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:10px; box-shadow:var(--c-shadow-lg); font-size:13px; cursor:pointer; }
     .lp-restore-chip:hover { border-color:var(--c-primary); }
@@ -1041,39 +1053,97 @@
       if (!content) return;
       const sz = map.getSize();
       const w = sz.x - 30, h = sz.y - 50;
-      if (this._lpW) { content.style.width = Math.max(220, Math.min(this._lpW, w)) + 'px'; content.style.maxWidth = Math.max(220, Math.min(this._lpW, w)) + 'px'; }
-      if (this._lpH) { content.style.height = Math.max(120, Math.min(this._lpH, h)) + 'px'; content.style.maxHeight = Math.max(120, Math.min(this._lpH, h)) + 'px'; }
+      // 폭: 수동(_lpW)이 있으면 그 값, 없으면 내용의 가장 긴 줄(비줄바꿈 자연폭)에 맞춘다.
+      // 공시지가 '(평당 …원 · … 기준)' 같은 긴 한 줄 때문에 줄바꿈돼 답답하다는 지적(2026-08-16).
+      // 넓은 폭으로 잠시 펼쳐 가장 긴 줄의 실제 폭을 재고(overflow-wrap:anywhere 는 2000px 안에서
+      // 줄바꿈이 안 생기므로 자연폭 = longest line), 그 폭으로 고정한다.
+      if (this._lpW) {
+        const v = Math.max(220, Math.min(this._lpW, w));
+        content.style.width = v + 'px';
+        content.style.maxWidth = v + 'px';
+      } else {
+        const prevW = content.style.width;
+        content.style.width = Math.min(2000, w) + 'px';
+        const natural = content.scrollWidth;
+        content.style.width = prevW;
+        // 상한 480: 블록/플렉스 자식이 전부 폭 100%라 자연폭 측정이 항상 맵 폭을 반환해
+        // 넓은 화면에서 팝업이 지도 전체(1280px에서 895px)를 덮는 회귀가 있었다(실측 2026-08-16).
+        // 좁은 화면에서는 50px 더 줄여 오른쪽 상단의 접힌 레이어 탭(.lp, x=우측-34)을
+        // min 버튼이 비켜가게 한다(실측 678px에서 버튼이 탭 svg에 가려 클릭 불가였음).
+        // 좁은 화면(map w < 220)은 floor 220으로 유지.
+        const want = Math.max(220, Math.min(natural, w - 50, 480));
+        content.style.width = want + 'px';
+        content.style.maxWidth = want + 'px';
+      }
+      // 높이: 수동(_lpH)이 있으면 그 값(스크롤바 세모 드래그), 없으면 내용 높이(CSS max-height 상한 유지).
+      // 폭과 독립 — _lpW 없이 _lpH 만 설정될 수 있어 한 분기에 묶으면 안 된다(2026-08-16 실측).
+      if (this._lpH) {
+        const v = Math.max(120, Math.min(this._lpH, h));
+        content.style.height = v + 'px';
+        content.style.maxHeight = v + 'px';
+      } else if (content.style.height) {
+        content.style.height = '';
+        content.style.maxHeight = '';
+      }
       // 폰트 fit — 리사이즈로 높이가 고정되면 내용을 그 높이에 맞춰 축소하고,
       // 다시 크게 열었을 때는 원래 폰트로 복원한다.
       if (this._lpH) fitPopupText(content);
       else if (content.style.fontSize) content.style.fontSize = '';
+      // 스크롤바 세로 리사이즈 핸들 위치·표시 여부(스크롤 가능할 때만) 갱신
+      if (this._placeSbar) this._placeSbar();
     };
     let _restoreChip = null;   // 접은 팝업의 복원 칩 — 1개만 유지
     function attachPopupControls(popup) {
       const el = popup.getElement();
-      if (!el || el.querySelector('.ui-grip')) return;
+      if (!el || el.querySelector('.ui-grip') || el.querySelector('.lp-sbar')) return;
       const content = el.querySelector('.leaflet-popup-content');
       if (!content) return;
       // 팝업 내부 스크롤바도 공용 스타일(.ui-scroll)을 쓴다
       content.classList.add('ui-scroll');
       // 접은 팝업의 복원 칩이 남아 있으면 치운다 — 새 팝업이 열렸다면 옛 칩은 무의미하다.
       if (_restoreChip) { _restoreChip.remove(); _restoreChip = null; }
-      // 우하단 크기조절 그립 — 드래그 로직은 js/ui-resize.js 의 makeResizable() 공용
-      const grip = document.createElement('div');
-      grip.className = 'ui-grip ui-grip-corner';
-      grip.title = '드래그하여 크기 조절';
-      el.appendChild(grip);
-      let autoPanPrev = null;
-      makeResizable(grip, content, {
+      // 세로 크기조절: 우하단 코너 그립 대신 스크롤바 위·아래 화살표 자리에 핸들을 둔다(2026-08-16).
+      // 드래그 = 높이 조절(makeResizable 공용, 임계값 4px), 클릭 = 페이지 스크롤(네이티브 화살표 유지).
+      const topH = document.createElement('button');
+      topH.type = 'button';
+      topH.className = 'lp-sbar lp-sbar-top';
+      topH.title = '드래그: 세로 크기 조절 · 클릭: 위로 스크롤';
+      const botH = document.createElement('button');
+      botH.type = 'button';
+      botH.className = 'lp-sbar lp-sbar-bot';
+      botH.title = '드래그: 세로 크기 조절 · 클릭: 아래로 스크롤';
+      el.appendChild(topH);
+      el.appendChild(botH);
+      // 핸들을 내용의 오른쪽 모서리(스크롤바 화살표 위치)에 맞춘다. offsetLeft/Top 은
+      // 루트 좌표계 CSS px 라 줌/팬과 무관하게 항상 화살표와 정렬된다. 스크롤 불가면 숨긴다.
+      const placeSbar = () => {
+        const sbW = content.offsetWidth - content.clientWidth;
+        const L = content.offsetLeft + content.offsetWidth - sbW;
+        topH.style.left = L + 'px';
+        topH.style.top = content.offsetTop + 'px';
+        botH.style.left = L + 'px';
+        botH.style.bottom = (el.offsetHeight - content.offsetTop - content.offsetHeight) + 'px';
+        const scrollable = content.scrollHeight > content.clientHeight + 1;
+        topH.style.display = botH.style.display = scrollable ? '' : 'none';
+      };
+      popup._placeSbar = placeSbar;
+      const vResize = (hAnchor) => makeResizable(hAnchor, content, {
         applyStyle: false,
-        minW: 220, minH: 120,
-        maxW: () => map.getSize().x - 30,
+        axis: 'w',            // 높이만
+        dragThreshold: 4,     // 임계값 넘어야 드래그 — 안 넘으면 onClick(클릭 스크롤)
+        minH: 120,
         maxH: () => map.getSize().y - 50,
-        // 드래그 중엔 autoPan 을 꺼 둬 지도가 함께 밀리지 않게 한다 (원래 값은 종료 시 복원)
-        onStart: () => { autoPanPrev = popup.options.autoPan; popup.options.autoPan = false; },
-        onResize: (w, h) => { popup._lpW = w; popup._lpH = h; popup._updateLayout(); popup._updatePosition(); },
-        onEnd: () => { if (autoPanPrev != null) { popup.options.autoPan = autoPanPrev; autoPanPrev = null; } }
+        reverseH: hAnchor === topH,   // 위 화살표는 위로 끌면 커짐, 아래 화살표는 아래로 끌면 커짐
+        bodyClass: 'lp-vresizing',
+        // 주의(실측 2026-08-16): 뷰포트 상단의 마커라 상단 핸들을 위로 끝까지 끌면 팝업 상단이
+        // 페이지 헤더 아래로 들어가 그 위치의 상단 핸들이 가려진다 — 이때 축소는 하단 핸들로 한다.
+        // 지도/오버레이 스택(Leaflet pane < 컨트롤) 때문에 팝업을 위로 끌어올리는 건 구조적으로 불가.
+        onResize: (w, h) => { popup._lpH = h; popup._updateLayout(); popup._updatePosition(); },
+        onClick: () => content.scrollBy({ top: hAnchor === topH ? -content.clientHeight : content.clientHeight, behavior: 'smooth' })
       });
+      vResize(topH);
+      vResize(botH);
+      placeSbar();
       // 접기 버튼 — 팝업을 닫고 지도 우하단에 복원 칩을 남긴다 (내용은 그대로 유지)
       const minBtn = document.createElement('button');
       minBtn.type = 'button';
@@ -1092,6 +1162,9 @@
         chip.innerHTML = `<span>📌</span><b>${esc(srcTitle)}</b>`;
         chip.title = '클릭하여 팝업 복원';
         map.getContainer().appendChild(chip);
+        // 칩은 map 컨테이너에 붙기 때문에 클릭이 그대로 버블링되면 map click 핸들러가
+        // 위치 정보 팝업을 열어 복원을 덮어썼다(실측 2026-08-16). 전파를 끊는다.
+        L.DomEvent.disableClickPropagation(chip);
         if (_restoreChip) { _restoreChip.remove(); }
         _restoreChip = chip;
         chip.onclick = () => {
