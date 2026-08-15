@@ -648,8 +648,12 @@ async function loadAll() {
 
 // ── ⑬ 이벤트 바인딩·초기화 ────────────────────────────────────────────────
 function bindEvents() {
-  applyTheme(localStorage.getItem('mj_theme') === 'dark');
-  document.addEventListener('DOMContentLoaded', () => applyTheme(localStorage.getItem('mj_theme') === 'dark'));
+  // 저장된 선택(mj_theme)이 없으면 OS(prefers-color-scheme)를 따른다 (2026-08-15, land.html 과 동일 판정)
+  const storedTheme = localStorage.getItem('mj_theme');
+  const systemDark = () => (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+  const initialDark = () => (storedTheme ? storedTheme === 'dark' : systemDark());
+  applyTheme(initialDark());
+  document.addEventListener('DOMContentLoaded', () => applyTheme(initialDark()));
   initThemeBtn();
 
   // 지도 도구
