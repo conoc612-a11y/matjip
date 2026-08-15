@@ -104,7 +104,10 @@ button,
 .sheet-handle { display:none; }
 @media (max-width:640px) {
   .layout { display:block; flex:none; }
-  #map { height:100vh; min-height:0; }
+  /* 모바일에서 헤더(58px)+stat-bar(34px)=92px 가 실제 레이아웃 공간을 차지하므로
+     지도가 100vh 그대로면 하단 92px 가 뷰포트 밖으로 잘린다(실측 2026-08-15).
+     dvh 는 모바일 주소줄 접힘 대응 — 미지원 브라우저는 첫 줄(vh)이 적용된다. */
+  #map { height:calc(100vh - 92px); height:calc(100dvh - 92px); min-height:0; }
   .panel { position:fixed; left:0; right:0; bottom:0; max-height:84vh; height:auto; z-index:1200;
     background:var(--card); border-radius:18px 18px 0 0; box-shadow:0 -6px 24px rgba(0,0,0,.18);
     transform:translateY(calc(100% - 138px)); transition:transform .28s ease; }
@@ -112,4 +115,15 @@ button,
   .sheet-handle { display:block; text-align:center; padding:8px 0 6px; position:sticky; top:0; background:var(--card); border-radius:18px 18px 0 0; cursor:pointer; z-index:2; }
   .sheet-handle::before { content:''; display:inline-block; width:42px; height:5px; border-radius:3px; background:#c1c4c9; }
   .site-footer { display:none; }
+}
+
+/* ── 키보드 포커스 링 (접근성, 2026-08-15) ──
+   그동안 포커스 스타일이 검색 입력(.search-inp:focus)에만 있었다 — 키보드로 탭을
+   이동해도 어떤 요소가 선택됐는지 안 보였다. :focus-visible 이라 마우스 클릭에는
+   안 뜨고 키보드(또는 그에 준하는 입력)로 온 경우에만 링이 나타난다.
+   outline 은 레이아웃을 밀지 않으므로 어떤 요소에도 안전하다. (검색 입력의 기존
+   -1px offset 은 인라인 스타일이 더 구체적이라 그대로 우선한다.) */
+:is(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--c-primary);
+  outline-offset: 2px;
 }
