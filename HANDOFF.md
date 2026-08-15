@@ -30,6 +30,11 @@
 
 ### 커밋·배포 상태
 - **커밋 대기 (사용자 동의 대기)**: `css/buttons.css`·`land.html`·`main.html`·`js/main.js`(+TROUBLESHOOTING §24·HANDOFF). push·배포는 별도 동의.
+- **완료 (사용자 "1" 동의 + "그냥 푸시까지 다해줘")**:
+  - `6494c5d7` fix(ui) 6건 — push, 배포 `built`, `?cb=` 캐시 우회 실측 반영 확인.
+  - `5b957dad` docs (TROUBLESHOOTING §24·§8 메모 + HANDOFF 32) — push.
+  - `2b4003ae` fix(land) 폴리곤 스타일 — push, 배포 `built`, 배포본 `weight:2`·`fillOpacity:0.2` 실측 확인.
+- **정비사업 폴리곤 최종 스타일 (2b4003ae, 사용자 반복 지시)**: 채움 `fillOpacity` 전 구역 통일 **0.2**, 외곽선 `weight` 전 구역 통일 **2** (선택/미선택/폴리곤/근사 원). 과정: 45%→25%→20%, 외곽 1.5→2.5→2. 근사 원(경계 미확보)은 점선 `dashArray:'4 4'` 유지. land.html 주석에 WHY 기록.
 
 ### ▶ 이어서 할 일
 - (31)의 "▶ 이어서 할 일" 1)~4) 그대로 유효: ①사진 수집 재개 ②CI 지오코딩 캐시 커밋 전환 push 대기 ③Edge 배포 명령 참고 ④테스트 방법 준수.
