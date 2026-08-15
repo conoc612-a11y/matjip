@@ -2380,7 +2380,6 @@
         const tlHtml = jbTlHtml(d);
         return `<div class="pc"><div class="pc-head">${badgeLink(`<span style="display:inline-block;background:${c};color:#fff;font-size:12px;padding:2px 8px;border-radius:999px;">${g}</span>`)}${badgeLink(stageBadge)}</div><div class="pc-body"><div style="font-weight:700;font-size:15px;margin-bottom:2px;color:var(--c-text);">${esc(d.name)}</div><div>${esc(d.gu)} ${esc(d.jibun)}${areaTxt}${d.approx ? ' <span style="color:var(--c-price);">(동 근사위치)</span>' : ''}</div><div style="font-size:12px;color:var(--c-muted);margin-top:3px;">사업구분: ${esc(d.gubun)}</div>${meta.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:8px;border-top:1px solid var(--line);padding-top:8px;">${meta.join('')}</div>` : ''}<div style="margin:8px 0 4px;"><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--c-muted);margin-bottom:3px;"><span>진행단계</span><span>${jbPct(es)}%</span></div><div style="height:5px;background:var(--line);border-radius:3px;overflow:hidden;"><div style="height:100%;width:${jbPct(es)}%;background:${stageColor(es)};border-radius:3px;transition:width .3s;"></div></div></div>${tlHtml}${cmpHtml}<div class="jb-rp-stat rp-stat" style="display:none;padding:5px 0;border-top:1px solid var(--c-border);"></div><div class="jb-community" style="display:none;margin-top:6px;"></div></div><div class="pc-actions">${linkBtns}<button class="jb-rp-filter pc-btn pc-btn-outline" style="border-color:var(--c-price) !important;color:var(--c-price);">🔎 이 구역 실거래 보기</button><button class="jb-community-btn pc-btn pc-btn-outline" style="border-color:#2f9e44 !important;color:#2f9e44;">💬 커뮤니티</button><button class="jb-cmp pc-btn pc-btn-outline" style="border-color:var(--c-primary) !important;color:var(--c-primary);">＋ 비교</button><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline" style="border-color:var(--c-success) !important;color:var(--c-success);">출발</button><button class="rt-end pc-btn pc-btn-outline" style="border-color:var(--c-danger) !important;color:var(--c-danger);">도착</button></div><button class="sv-btn pc-btn pc-btn-outline">거리뷰</button></div></div>`;
       }
-      window.jbPopupHtml = jbPopupHtml;   // 블록 밖(검색 자동완성)에서 접근 — §21: 블록 함수를 sloppy-mode 호이스팅에 기대면 안 됨
       // ── 정비구역 커뮤니티(익명 방명록형) — Supabase jb_posts, anon insert/select RLS (schema.sql 참고) ──
       async function renderJbCommunity(container, d) {
         const zoneKey = d.rc || ('name:' + d.name + '|' + (d.jibun || ''));
@@ -5157,7 +5156,7 @@
         if (vsMarker) map.removeLayer(vsMarker);
         vsMarker = L.marker([d.lat, d.lng]).addTo(map);
         vsMarker._jb = d;  // 팝업에 출발/도착/실거래 통계까지 연결되도록 popupopen 핸들러와 동일 경로 사용
-        vsMarker.bindPopup(() => window.jbPopupHtml(d)).openPopup();
+        vsMarker.bindPopup(() => jbPopupHtml(d)).openPopup();
       }));
     }
 

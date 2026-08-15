@@ -184,6 +184,34 @@
 
 ---
 
+## 2026-08-15 (30) — opencode (jbPopupHtml 블록 스코프 잠재 ReferenceError 해소 + 백업 + TROUBLESHOOTING §21)
+
+> (29) 후속. 사용자 지시: **기록 먼저 → 백업 → 커밋.** 수정 2줄만.
+
+### 완료
+1. **수정 전 백업**: `land.backup-20260815.html` (SHA-256 `87A289D0...`, 383,012B). 기존 `land.backup-20260808.html` 은 유지.
+2. **TROUBLESHOOTING §21 문서화** — "인라인 스크립트 블록 스코프 함수가 블록 밖 호출부에서 사라지는 함정".
+3. **수정 (land.html 2줄)**:
+   - 2382 행 근처: `window.jbPopupHtml = jbPopupHtml;` 추가 — 1296~3275 블록 **안**에 선언된
+     `jbPopupHtml`(2347)을 노출. 호출부 5159(검색 자동완성)가 블록 **밖**이라 strict mode 전환 시
+     ReferenceError 로 죽을 잠재 이슈였음(현재는 sloppy-mode Annex B 호이스팅 덕에 동작).
+   - 5160 행: `jbPopupHtml(d)` → `window.jbPopupHtml(d)` 로 명시.
+   - **검증 (실측)**: ① node 실측 — sloppy mode 블록 함수는 밖에서 보임 / strict mode 는 숨김.
+     ② Playwright(Chrome headless, `auth-guard.js` 라우트 차단) — `land.html` 실제 로드 후
+     `window.jbPopupHtml` 함수 확인 + 팝업 HTML 9,900B 생성 + pageerror 0건.
+
+### WHY (결정 사유)
+- 215줄짜리 상호의존 로직을 통째로 블록 밖으로 옮기는 대신 **1줄 `window.` 노출**로 해결 —
+  클로저가 stageColor·jbTlHtml 등 헬퍼를 통째로 캡처해 블록 밖에서도 정상 동작함을 실측으로 확인(§21).
+- 블록 `{}`(1296·3275) 자체를 제거하는 대안도 있지만 블록 안/밖 `const` 이름 충돌 검사가 필요해
+  리스크가 더 크다. 지금은 "가시성" 문제만 해결하면 되므로 1줄 노출이 최소 변경.
+
+### 커밋·배포 상태
+- **커밋 대기 중 (사용자 동의 대기)**: `land.html`(+2/−1), `TROUBLESHOOTING.md`(+24), `HANDOFF.md`,
+  `land.backup-20260815.html`(신규).
+
+---
+
 ## ▶ 이어서 할 일 (다음 세션은 여기부터)
 
 > ~~1) 실거래가 복구~~ → **완료·push 완료** (커밋 `39db2c73`).
