@@ -752,28 +752,47 @@
     function loadSubscriptions() {
       if (!SUBSCRIPTION_ENDPOINT) return Promise.resolve([]);
       if (_subPromise) return _subPromise;
-      const q = new URLSearchParams({
-        op: 'getAPTLttotPblancDetail', page: '1', perPage: '50', returnType: 'JSON',
-        'cond[SUBSCRPT_AREA_CODE_NM::EQ]': '서울',
-      });
-      _subPromise = fetch(SUBSCRIPTION_ENDPOINT + '?' + q)
-        .then((r) => (r.ok ? r.json() : Promise.reject(new Error('청약API HTTP ' + r.status))))
-        .then((j) => {
-          const d = new Date();
-          const ymd = (x) => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
-          const todayStr = ymd(d);
-          const seen = new Set();
-          return (Array.isArray(j && j.data) ? j.data : [])
-            // 접수가 아직 끝나지 않은(접수중·접수예정) 공고만 배지로 띄운다.
-            .filter((x) => x && x.RCEPT_ENDDE && x.RCEPT_ENDDE >= todayStr && x.HSSPLY_ADRES)
-            .filter((x) => (seen.has(x.PBLANC_NO) ? false : (seen.add(x.PBLANC_NO), true)))
-            .map((x) => ({
+      // 일반 분양 + 무순위 잔여세대(줍줍)를 함께 띄운다. 송파 시그니처 롯데캐슬(2026-08-18 접수
+      // 무순위 1세대)은 분양정보 API가 아닌 getRemndrLttotPblancDetail 에만 잡힌다(실측
+      // 2026-08-18: 전국 matchCount 303건 중 서울). 필드명이 달라(무순위는 접수 마감이
+      // GNRL_RCEPT_ENDDE) 날짜 필터도 op 별로 나눠 적용한다.
+      const todayStr = (() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      })();
+      const call = (op) => {
+        const q = new URLSearchParams({
+          op, page: '1', perPage: '50', returnType: 'JSON',
+          'cond[SUBSCRPT_AREA_CODE_NM::EQ]': '서울',
+        });
+        return fetch(SUBSCRIPTION_ENDPOINT + '?' + q)
+          .then((r) => (r.ok ? r.json() : Promise.reject(new Error('청약API HTTP ' + r.status))));
+      };
+      _subPromise = Promise.all([
+        call('getAPTLttotPblancDetail'),
+        call('getRemndrLttotPblancDetail'),
+      ]).then(([normal, remndr]) => {
+        const seen = new Set();
+        const rows = [];
+        const push = (x, endField) => {
+          if (!x || !x.RCEPT_ENDDE && !x.GNRL_RCEPT_ENDDE) return;
+          if (!x.HSSPLY_ADRES) return;
+          const end = x[endField];
+          if (end && end >= todayStr && !seen.has(x.PBLANC_NO)) {
+            seen.add(x.PBLANC_NO);
+            rows.push({
               pblancNo: x.PBLANC_NO, name: x.HOUSE_NM || x.PBLANC_NO, addr: x.HSSPLY_ADRES,
-              supply: x.TOT_SUPLY_HSHLDCO, pblancDe: x.RCRIT_PBLANC_DE,
+              supply: x.TOT_SUPPLY_HSHLDCO || x.TOT_SUPLY_HSHLDCO, pblancDe: x.RCRIT_PBLANC_DE,
               spStart: x.SPSPLY_RCEPT_BGNDE, spEnd: x.SPSPLY_RCEPT_ENDDE,
-              rcptStart: x.RCEPT_BGNDE, rcptEnd: x.RCEPT_ENDDE, url: x.PBLANC_URL,
-            }));
-        })
+              rcptStart: x.RCEPT_BGNDE || x.GNRL_RCEPT_BGNDE, rcptEnd: x.RCEPT_ENDDE || x.GNRL_RCEPT_ENDDE,
+              url: x.PBLANC_URL,
+            });
+          }
+        };
+        (Array.isArray(normal && normal.data) ? normal.data : []).forEach((x) => push(x, 'RCEPT_ENDDE'));
+        (Array.isArray(remndr && remndr.data) ? remndr.data : []).forEach((x) => push(x, 'GNRL_RCEPT_ENDDE'));
+        return rows;
+      })
         .catch((err) => { _subPromise = null; console.warn('청약예정 불러오기 실패:', err); return []; });
       return _subPromise;
     }
@@ -3490,12 +3509,28 @@
       if (!addr) { cb(null); return; }
       const cbName = '__vwAddr_' + (++_vwSeq);
       let done = false;
-      let triedParcel = false;
+      let idx = 0;
       const finish = (val) => { if (done) return; done = true; try { delete window[cbName]; } catch (e) {} cb(val); };
-      // '○○번지 일원/일대' 같은 지번 주소는 road 검색이 전부 NOT_FOUND(실측 2026-08-15)라
-      // 결과가 없으면 '일원/일대'를 떼고 지번(parcel)으로 재시도한다. 없으면 배지가 누락된다.
-      const query0 = addr.replace(/\s*(일원|일대|번지일원|번지일대)\s*$/, '');
-      const ge = (category) => `https://api.vworld.kr/req/search?service=search&request=search&version=2.0&crs=EPSG:4326&size=1&page=1&query=${encodeURIComponent(query0)}&type=address&category=${category}&format=json&key=${VWORLD_KEY}&callback=${cbName}`;
+      // 청약 주소는 '○○번지 일원/일대' 지번형이라 도로명(road) 검색이 전부 NOT_FOUND(실측
+      // 2026-08-15)다. '일원/일대'를 떼고 지번(parcel)으로 재시도하면 매칭된다.
+      // 다중 지번('181, 202번지 일원')은 콤마가 있을 때만 각 지번으로 분리해 순차 시도한다 —
+      // 단지 경계 안이면 어느 하나라도 잡히면 배지 위치로 충분하다(실측 2026-08-18: 181만
+      // NOT_FOUND, 202로 OK). 콤마가 없으면 원문 그대로 1개 후보다.
+      const base = addr.replace(/\s*(일원|일대|번지일원|번지일대)\s*$/, '');
+      const queries = [];
+      // 다중 지번('181, 202번지')은 콤마로 분리해 각 지번을 순차 시도한다. 단일 지번이거나
+      // 도로명 주소면 원문 그대로 1개 후보다 (도로명 숫자에 '번지'를 붙이면 검색이 깨진다).
+      const jibunAll = (base.match(/\d+(?:-\d+)?(?:번지)?(?:\s*,\s*\d+(?:-\d+)?(?:번지)?)*\s*$/) || [null])[0];
+      if (jibunAll && /,/.test(jibunAll)) {
+        const prefix = base.slice(0, base.length - jibunAll.length).trim();
+        for (const part of jibunAll.split(/\s*,\s*/)) {
+          const j = /번지$/.test(part) ? part : part + '번지';
+          queries.push((prefix + ' ' + j).trim());
+        }
+      }
+      if (!queries.length) queries.push(base);
+      const cats = ['road', 'parcel'];
+      const ge = (q, cat) => `https://api.vworld.kr/req/search?service=search&request=search&version=2.0&crs=EPSG:4326&size=1&page=1&query=${encodeURIComponent(q)}&type=address&category=${cat}&format=json&key=${VWORLD_KEY}&callback=${cbName}`;
       window[cbName] = (data) => {
         try {
           const items = (data.response && data.response.result && data.response.result.items) || [];
@@ -3507,19 +3542,18 @@
             if (pnu && x && y) { finish({ pnu, lat: y, lng: x }); return; }
           }
         } catch (e) {}
-        if (!triedParcel) { triedParcel = true; s2(); return; }
-        finish(null);
+        fireNext();
       };
-      const s1 = document.createElement('script');
-      const s2 = () => {
+      const fireNext = () => {
+        if (done) return;
+        if (idx >= queries.length * cats.length) { finish(null); return; }
         const st = document.createElement('script');
-        st.src = ge('parcel');
-        st.onerror = () => finish(null);
+        st.src = ge(queries[Math.floor(idx / cats.length)], cats[idx % cats.length]);
+        st.onerror = fireNext;
         document.head.appendChild(st);
+        idx++;
       };
-      s1.src = ge('road');
-      s1.onerror = () => { if (!triedParcel) { triedParcel = true; s2(); } };
-      document.head.appendChild(s1);
+      fireNext();
       setTimeout(() => finish(null), 7000);
     }
 
