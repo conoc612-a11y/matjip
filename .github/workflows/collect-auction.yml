@@ -31,22 +31,6 @@ jobs:
         with:
           node-version: '20'
 
-      # 지오코딩 캐시(tools/.geocache.json)는 커밋 파일로 관리한다.
-      # actions/cache 는 취소/실패한 실행에서는 캐시를 저장하지 않아, 지오코딩 도중
-      # 타임아웃이 나면 다음 실행이 빈 캐시로 시작해 처음부터 다시 지오코딩했다
-      # (실측: 첫 자동 실행이 60분 제한에 걸려 3,300건 중 200건만 채우고 취소).
-      # 캐시가 git 에 들어 있으면 취소와 무관하게 항상 유지되고, 새 주소만 조회하면 된다.
-      # 변경분은 아래 커밋 단계에서 auction.json 과 함께 반영한다.
-
-      - run: npm ci
-
-      # playwright(devDependencies, playwright-core와 버전 고정)로 브라우저 리비전을
-      # 맞춰서 설치한다 — 버전이 안 맞으면 playwright-core가 실행 시점에 브라우저를
-      # 못 찾는다.
-      - run: npx playwright install --with-deps chromium
-
-      - run: node tools/collect_auction.js
-
       # 임시 진단(2026-08-15): CI 러너에서 V-World 지오코딩이 100% 실패(캐시 히트분만
       # 좌표 획득, 신규 0건) — 원인 확정용. CI에서 V-World 응답을 직접 호출해
       # OK/NOT_FOUND/502/차단 여부를 로그로 남긴다. 확인 후 이 스텝은 제거.
@@ -88,6 +72,22 @@ jobs:
             }
           })();
           "
+
+      # 지오코딩 캐시(tools/.geocache.json)는 커밋 파일로 관리한다.
+      # actions/cache 는 취소/실패한 실행에서는 캐시를 저장하지 않아, 지오코딩 도중
+      # 타임아웃이 나면 다음 실행이 빈 캐시로 시작해 처음부터 다시 지오코딩했다
+      # (실측: 첫 자동 실행이 60분 제한에 걸려 3,300건 중 200건만 채우고 취소).
+      # 캐시가 git 에 들어 있으면 취소와 무관하게 항상 유지되고, 새 주소만 조회하면 된다.
+      # 변경분은 아래 커밋 단계에서 auction.json 과 함께 반영한다.
+
+      - run: npm ci
+
+      # playwright(devDependencies, playwright-core와 버전 고정)로 브라우저 리비전을
+      # 맞춰서 설치한다 — 버전이 안 맞으면 playwright-core가 실행 시점에 브라우저를
+      # 못 찾는다.
+      - run: npx playwright install --with-deps chromium
+
+      - run: node tools/collect_auction.js
 
       # 스크립트 안에도 같은 가드가 있지만(saveAuction), 여기서 한 번 더 막는다 —
       # 커밋·푸시 직전이 마지막 방어선이고, 스크립트가 바뀌어 가드가 빠져도 여기서 걸린다.
