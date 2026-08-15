@@ -46,7 +46,20 @@
    확인은 법원 사이트가 살아야 가능. 사이트 장애는 수 분~수 시간이므로 1시간 뒤 재시도 권장.
 2. **TROUBLESHOOTING.md §19-2 수정분 커밋** (현재 working tree 에 uncommitted, 27줄) — 사용자
    동의 후. `tools/recommend.js` 도 working tree 에 M 상태인데 이 세션과 무관한 기존 잔재(다음
-   세션에서 확인 필요).
+   세션에서 확인 필요). [8/15(28) 세션에서 해결 — §"완료(28-2)" 참조]
+
+### 완료 (28-2) — 정리 세션
+- **커밋 `fb74bff8`**: §19-2 문서화 + HANDOFF(28) 추가, push 완료 (사용자 동의)
+- **커밋 `aab8e6b8`**: `tools/recommend.js` 에 `if (!taste)` 가드 추가 (브라우저 `js/recommend.js`엔
+  이미 있었는데 canonical 에만 없던 동기화 누락) + `tools/verify.js`(리팩토링 안전망) 추가, push 완료.
+  호출부 전수 확인: `mcp/server.js:30`(zod 기본값)·`matjip-cli.js:22`(항상 객체) — 안전.
+- **임시 파일 삭제**: `_*.txt` 10개 + `gg-codes-verified.json`(빈 `{}`)
+- **검증 중 발견(데이터 정합성, 미처리)**: `mj_restaurants` 1,000건 태그 780종 중 **'매콤'·'매운맛'·
+  '담백' 태그 0건** (상위: 착한가격·한식·김치찌개 등 메뉴명 기반). 취향 설문에서 "매콤" 선택 시 추천
+  스코어가 전부 0점이 됨(스파이스 보정은 `매콤`/`담백` 태그 의존). 시드 데이터 태그 보강 또는 스파이스
+  보정 로직 변경 필요. 지오코딩과 무관. 사용자: "다음에".
+- **남은 항목**: `PLAN_auction_detail.md`·backup 2개·`경매사_비교분석_20260808.hwpx` 는 보존
+  (사용자 확인 완료, 커밋 안 함).
 
 ### Relevant Files
 - `supabase/functions/vworld-geocode/index.ts` — V-World 프록시 (재시도 4회+백오프)
