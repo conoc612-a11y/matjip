@@ -1265,6 +1265,77 @@
 
     // 노후도(건축년도) 색상
     const ageColor = (b) => { const y = parseInt(b) || 0; return !y ? '#868e96' : y >= 2015 ? '#2f9e44' : y >= 2005 ? '#94d82d' : y >= 1995 ? '#fab005' : y >= 1985 ? '#fd7e14' : '#e03131'; };
+    // ── 실거래 단지 그룹 인덱스 (시계열·신고가·가격변동 계산용, 2026-08-15) ──
+    // realprice_apt.json 은 거래 1건 = 행 1개라, 같은 단지의 과거 거래를 모아 추이를 뽑아야 한다.
+    // rpRows 전체를 돌며 단지(이름|구|동)별로 거래를 모으고 ymd 오름차순 정렬해 캐시한다.
+    // 행마다 매번 재계산하면 30,515행 × N 으로 느려져 한 번만 만든다.
+    let _rpGrp = null;
+    const rpGroupMap = () => {
+      if (_rpGrp) return _rpGrp;
+      _rpGrp = new Map();
+      if (!rpRows) return _rpGrp;
+      for (const r of rpRows) {
+        const k = (r.name || '') + '|' + (r.gu || '') + '|' + (r.dong || '');
+        if (!_rpGrp.has(k)) _rpGrp.set(k, []);
+        _rpGrp.get(k).push(r);
+      }
+      _rpGrp.forEach((g) => g.sort((a, b) => (a.ymd || '').localeCompare(b.ymd || '')));
+      return _rpGrp;
+    };
+    const rpGroup = (d) => rpGroupMap().get((d.name || '') + '|' + (d.gu || '') + '|' + (d.dong || '')) || null;
+    // 평단가(만/㎡). 총액은 평형에 따라 달라 같은 단지라도 비교가 왜곡돼, 면적으로 나눈 단가로 비교한다.
+    const rpUnitM2 = (r) => { const a = Number(r.area); return a > 0 && r.priceEok != null ? r.priceEok * 10000 / a : null; };
+    // 가격변동률(%): 최신 거래월 평균 평단가 vs 직전 거래월 평균 평단가. 단지 거래가 2건 미만이면 null.
+    const rpMoveRate = (d) => {
+      const g = rpGroup(d);
+      if (!g || g.length < 2) return null;
+      const avg = (arr) => { const u = arr.map(rpUnitM2).filter((x) => x != null); return u.length ? u.reduce((a, b) => a + b, 0) / u.length : null; };
+      const ymds = [...new Set(g.map((r) => r.ymd || ''))].filter(Boolean).sort((a, b) => a.localeCompare(b));
+      if (ymds.length < 2) return null;
+      const lastYmd = ymds[ymds.length - 1];
+      const prevYmd = ymds[ymds.length - 2];
+      const cur = avg(g.filter((r) => r.ymd === lastYmd));
+      const prev = avg(g.filter((r) => r.ymd === prevYmd));
+      return cur != null && prev ? (cur - prev) / prev * 100 : null;
+    };
+    const rpMoveColor = (d) => {
+      const r = rpMoveRate(d);
+      if (r == null) return '#868e96';
+      if (r >= 2) return '#e03131';
+      if (r <= -2) return '#1971c2';
+      return '#868e96';
+    };
+    // 신고가 여부: 해당 평형(면적, 0.5㎡ 단위로 매칭)의 이전 거래들보다 최신 거래가 최고가이면 true.
+    const rpNewHigh = (d) => {
+      if (d.priceEok == null) return false;
+      const g = rpGroup(d);
+      if (!g || g.length < 2) return false;
+      const a = Math.round(Number(d.area) * 2) / 2;
+      const same = g.filter((r) => Math.round(Number(r.area) * 2) / 2 === a && r.priceEok != null);
+      if (same.length < 2) return false;
+      return same[same.length - 1] === d && same.every((r) => r.priceEok <= d.priceEok + 1e-9);
+    };
+    // 팝업 시계열 그래프: 단지 거래를 평단가 기준으로 최근 8건만 점·선으로 그린다.
+    const rpTrendHtml = (d) => {
+      const g = rpGroup(d);
+      if (!g || g.length < 2) return '';
+      const pts = g.map((r) => ({ ymd: r.ymd || '', u: rpUnitM2(r) })).filter((p) => p.u != null);
+      if (pts.length < 2) return '';
+      const show = pts.slice(-8);
+      const n = show.length;
+      const W = 220, H = 56, px = 4, py = 8;
+      const uMin = Math.min(...show.map((p) => p.u));
+      const uMax = Math.max(...show.map((p) => p.u));
+      const span = (uMax - uMin) || 1;
+      const x = (i) => px + i * (W - px * 2) / (n - 1);
+      const y = (u) => H - py - (u - uMin) / span * (H - py * 2);
+      const line = show.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.u).toFixed(1)}`).join(' ');
+      const dots = show.map((p, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(p.u).toFixed(1)}" r="${i === n - 1 ? 3 : 2}" fill="${i === n - 1 ? 'var(--c-primary)' : 'var(--c-text)'}"/>`).join('');
+      const chg = show[0].u ? (show[n - 1].u - show[0].u) / show[0].u * 100 : 0;
+      const col = chg >= 0 ? 'var(--c-danger)' : 'var(--c-price)';
+      const pct = `${chg >= 0 ? '+' : ''}${chg.toFixed(1)}%`;
+      return `<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--line);"><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--c-muted);margin-bottom:2px;"><span>최근 ${n}건 평단가</span><b style="color:${col};">${pct}</b></div><svg viewBox="0 0 ${W} ${H}" style="width:100%;height:56px;display:block;"><path d="${line}" fill="none" stroke="${col}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>${dots}</svg><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--c-muted);"><span>${esc(show[0].ymd)}</span><span>${esc(show[n - 1].ymd)}</span></div></div>`;
+    };
     // 두 좌표 사이 대략 거리(km). 서울권 한정 근사식(위도 1도≈111km, 경도 1도≈88km).
     const kmDist = (lat1, lng1, lat2, lng2) => { const dy = (lat1 - lat2) * 111, dx = (lng1 - lng2) * 88; return Math.sqrt(dx * dx + dy * dy); };
     // 정비사업 유형 분류 + 색상 — 대분류 구조는 서울도시공간포털 도시계획사업 메뉴(BZ1xx 정비 / BZ2xx 소규모 /
@@ -1303,6 +1374,8 @@
     // 지도 클릭 팝업(map.on('click'))이 uUnit/uPriceMain 을 못 봐서 ReferenceError 로
     // 죽고, 6초 스턱 가드가 '주소를 가져오지 못했어요'만 띄웠다(2026-08-13 실측 수정).
     const uUnit = { price: 'total', area: 'm2' };
+    // 실거래 마커 색상 모드: 'age' = 노후도(기본), 'move' = 가격변동률. rpBuild 마커가 읽는다.
+    const rpColorMode = { v: 'age' };
     const uAreaVal = (a) => { const n = Number(a); if (!(n > 0)) return null; return uUnit.area === 'pyeong' ? n / 3.3058 : n; };
     const uAreaTxt = (a) => { const n = uAreaVal(a); return n == null ? '' : Math.round(n).toLocaleString() + (uUnit.area === 'pyeong' ? '평' : '㎡'); };
     const uUnitTxt = () => (uUnit.area === 'pyeong' ? '만/평' : '만/㎡');
@@ -1437,9 +1510,9 @@
         if (!rpRows) return;
         realpriceCluster.clearLayers();
         realpriceCluster.addLayers(rpRows.filter((d) => inPrice(d.priceEok) && inAge(d.build)).map((d) => {
-          const m = L.circleMarker([d.lat, d.lng], { radius: 10, color: '#000', weight: 2, fillColor: ageColor(d.build), fillOpacity: 0.9 });
+          const m = L.circleMarker([d.lat, d.lng], { radius: 10, color: '#000', weight: 2, fillColor: rpColorMode.v === 'move' ? rpMoveColor(d) : ageColor(d.build), fillOpacity: 0.9 });
           m._rp = d;
-          m._pop = (() => `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};flex-shrink:0;"></span><span class="rp-name">${esc(d.name)}</span></div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div><div class="pc-price">매매 ${uPriceMain(d)}</div>${uPriceSub(d) ? `<div style="margin-top:3px;">${uPriceSub(d)}</div>` : ''}<div style="margin-top:3px;">전용 ${uAreaTxt(d.area)} · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="margin-top:3px;">${esc(d.build || '?')}년 건축${parseInt(d.build) <= 1994 ? '<span style="background:#e03131;color:#fff;font-size:12px;padding:2px 8px;border-radius:999px;margin-left:6px;">재건축연한 초과</span>' : ''}</div>${jeonseHtml(d, '평형 기준')}${rpFlagsHtml(d)}<div class="rp-radius-stat rp-stat" style="display:none;"></div></div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline" style="border-color:var(--c-price) !important;color:var(--c-price);">저장</button><a href="https://map.naver.com/p/search/${encodeURIComponent(d.name + ' ' + (d.dong || d.gu || ''))}?c=${d.lng},${d.lat},17,0,0,0,dh" target="_blank" rel="noopener" class="pc-btn pc-btn-primary rp-naver">네이버 부동산</a><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline">출발</button><button class="rt-end pc-btn pc-btn-outline">도착</button></div><button class="sv-btn pc-btn pc-btn-outline">거리뷰</button></div></div>`);
+          m._pop = (() => `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${rpColorMode.v === 'move' ? rpMoveColor(d) : ageColor(d.build)};flex-shrink:0;"></span><span class="rp-name">${esc(d.name)}</span></div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div><div class="pc-price">매매 ${uPriceMain(d)}</div>${uPriceSub(d) ? `<div style="margin-top:3px;">${uPriceSub(d)}</div>` : ''}<div style="margin-top:3px;">전용 ${uAreaTxt(d.area)} · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="margin-top:3px;">${esc(d.build || '?')}년 건축${parseInt(d.build) <= 1994 ? '<span style="background:#e03131;color:#fff;font-size:12px;padding:2px 8px;border-radius:999px;margin-left:6px;">재건축연한 초과</span>' : ''}</div>${jeonseHtml(d, '평형 기준')}${rpFlagsHtml(d)}${rpTrendHtml(d)}<div class="rp-radius-stat rp-stat" style="display:none;"></div></div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline" style="border-color:var(--c-price) !important;color:var(--c-price);">저장</button><a href="https://map.naver.com/p/search/${encodeURIComponent(d.name + ' ' + (d.dong || d.gu || ''))}?c=${d.lng},${d.lat},17,0,0,0,dh" target="_blank" rel="noopener" class="pc-btn pc-btn-primary rp-naver">네이버 부동산</a><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline">출발</button><button class="rt-end pc-btn pc-btn-outline">도착</button></div><button class="sv-btn pc-btn pc-btn-outline">거리뷰</button></div></div>`);
           return m;
         }));
       }
@@ -1450,7 +1523,6 @@
       function buildRpPanel() {
         if (_rpPanelBuilt) return;
         _rpPanelBuilt = true;
-        const legendRow = (c, t) => `<div><span class="lc-dot" style="background:${c};"></span>${t}</div>`;
         rpPanelBody.innerHTML = '<div class="lc-sub">실거래가</div><div class="rp-chips" id="rp-price" role="group">'
           + '<button type="button" class="fav-cat active" data-v="all">전체</button>'
           + '<button type="button" class="fav-cat" data-v="u10">10억 이하</button>'
@@ -1468,11 +1540,48 @@
           + '<div class="rp-chips" id="u-area" role="group" style="margin-top:4px;">'
           + '<button type="button" class="fav-cat active" data-v="m2">㎡</button>'
           + '<button type="button" class="fav-cat" data-v="pyeong">평</button></div>'
+          + '<div id="rp-color-wrap"><div class="lc-sub" style="margin-top:4px;">마커 색</div><div class="rp-chips" id="rp-color" role="group">'
+          + '<button type="button" class="fav-cat active" data-v="age">노후도</button>'
+          + '<button type="button" class="fav-cat" data-v="move">가격변동</button></div></div>'
           + '<button id="rp-reset" type="button" class="btn-mini" style="width:100%;margin-top:8px;">초기화</button>'
-          + '<div class="lc-sep lc-sub" style="margin-top:12px;">건축년도 (노후도)</div>'
-          + legendRow('#2f9e44', '신축 2015~') + legendRow('#94d82d', '2005~2014') + legendRow('#fab005', '1995~2004')
-          + legendRow('#fd7e14', '1985~1994') + legendRow('#e03131', '노후 ~1984') + legendRow('#868e96', '미상');
+          + '<div class="lc-sep lc-sub" id="rp-legend" style="margin-top:12px;"></div>';
         document.getElementById('rp-panel-close').onclick = () => { document.getElementById('rp-panel').hidden = true; };
+        rpLegendRows();
+        rpSyncColorChip();
+      }
+      // 마커 색 모드(노후도/가격변동) 전환 시 범례와 마커를 함께 갱신한다.
+      // 가격변동 색은 아파트 전용(rpMoveRate가 rpRows·rpGroup 기준)이라, 연립·다세대만
+      // 켜진 상태에선 칩을 감추고 move 모드가 남아 있으면 age 로 되돌린다. 안 그러면
+      // 범례만 move 색으로 바뀌고 villa 마커는 노후도색 그대로인 불일치가 생긴다(2026-08-15 검수).
+      function rpSyncColorChip() {
+        const wrap = document.getElementById('rp-color-wrap');
+        if (!wrap) return;
+        const aptOn = map.hasLayer(realpriceCluster);
+        wrap.style.display = aptOn ? '' : 'none';
+        if (!aptOn && rpColorMode.v === 'move') {
+          rpColorMode.v = 'age';
+          setRpChip('rp-color', 'age');
+          rpLegendRows();
+          rpBuild();
+        }
+      }
+      function rpLegendRows() {
+        const L = document.getElementById('rp-legend');
+        if (!L) return;
+        if (rpColorMode.v === 'move') {
+          L.innerHTML = '마커 색 (가격변동률)'
+            + '<div class="lc-dot" style="background:#e03131;"></div>상승 +2%↑<br>'
+            + '<div class="lc-dot" style="background:#1971c2;"></div>하락 -2%↓<br>'
+            + '<div class="lc-dot" style="background:#868e96;"></div>보합/거래 부족';
+        } else {
+          L.innerHTML = '건축년도 (노후도)'
+            + '<div class="lc-dot" style="background:#2f9e44;"></div>신축 2015~<br>'
+            + '<div class="lc-dot" style="background:#94d82d;"></div>2005~2014<br>'
+            + '<div class="lc-dot" style="background:#fab005;"></div>1995~2004<br>'
+            + '<div class="lc-dot" style="background:#fd7e14;"></div>1985~1994<br>'
+            + '<div class="lc-dot" style="background:#e03131;"></div>노후 ~1984<br>'
+            + '<div class="lc-dot" style="background:#868e96;"></div>미상';
+        }
       }
       // 가격·건축년도 필터와 노후도 범례는 아파트/연립다세대 두 레이어가 공용으로 쓴다.
       // 레이어별로 배선 코드를 복사하면 또 갈라지므로 한 곳에 모아둔다.
@@ -1545,6 +1654,17 @@
           };
           wireU('u-price', 'price');
           wireU('u-area', 'area');
+          const wc = document.getElementById('rp-color');
+          if (wc && !wc._w) {
+            wc._w = 1;
+            wc.addEventListener('click', (ev) => {
+              const b = ev.target.closest('.fav-cat'); if (!b) return;
+              rpColorMode.v = b.dataset.v;
+              wc.querySelectorAll('.fav-cat').forEach((c) => c.classList.toggle('active', c === b));
+              rpLegendRows();
+              rpBuild();
+            });
+          }
           const rs = document.getElementById('rp-reset');
           if (rs && !rs._w) { rs._w = 1; rs.addEventListener('click', rpResetFilter); }
         }, 60);
@@ -1552,12 +1672,15 @@
       map.on('overlayadd', (e) => {
         if (e.layer !== realpriceCluster) return;
         showPriceFilter();
+        rpSyncColorChip();
         // 이미 받아둔 경우에도 반드시 rpBuild()를 호출해야 마커가 그려진다 (예전엔 early-return으로 빈 레이어가 됐음)
         loadRp().then(() => rpBuild());
       });
       map.on('overlayremove', (e) => {
+        if (e.layer !== realpriceCluster) return;
+        rpSyncColorChip();
         // 연립·다세대 레이어가 아직 켜져 있으면 공용 컨트롤을 지우지 않는다
-        if (e.layer !== realpriceCluster || map.hasLayer(villaCluster)) return;
+        if (map.hasLayer(villaCluster)) return;
         document.getElementById('rp-panel').hidden = true;
       });
 
@@ -1601,6 +1724,7 @@
         if (d.cancel) f.push('<span style="background:var(--c-danger);color:#fff;font-size:12px;padding:1px 6px;border-radius:9px;">계약해제</span>');
         if (d.gbn && d.gbn.indexOf('직거래') >= 0) f.push('<span style="background:#f08c00;color:#fff;font-size:12px;padding:1px 6px;border-radius:9px;">직거래</span>');
         if (d.lease) f.push('<span style="background:#7048e8;color:#fff;font-size:12px;padding:1px 6px;border-radius:9px;">토지임대부</span>');
+        if (rpNewHigh(d)) f.push('<span style="background:#c92a2a;color:#fff;font-size:12px;padding:1px 6px;border-radius:9px;">신고가</span>');
         return f.length ? `<div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap;">${f.join('')}</div>` : '';
       }
 
