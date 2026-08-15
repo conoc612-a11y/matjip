@@ -730,3 +730,43 @@ gh api repos/conoc612-a11y/matjip/pages/builds/latest --jq '{status:.status, com
   "클릭이 안 된다" 보고가 오면 **무엇이 그 좌표를 덮고 있는지**(팝업 transform 위치·컨트롤 rect)
   먼저 재야 한다.
 
+## 26. 열린 레이어 패널(.lp-body)이 팝업을 덮음 — z-index 스택 + 스크롤바 margin (2026-08-16)
+
+### ① 팝업 pane(z700) < 컨트롤 컨테이너(z1000): 열린 패널이 팝업 우측을 통째로 덮음
+- **증상(사용자 보고)**: 배포 후 "드래그 크기조절이 전혀 안 됨", "스크롤바가 맨 우측에 없음",
+  "팝업 상단의 접기·닫기 버튼과 스크롤바가 겹침".
+- **원인(실측, 1440x900 CDP)**: `.leaflet-popup-pane` 기본 z-index 700 < Leaflet 컨트롤 컨테이너
+  `.leaflet-top/.leaflet-right` z-index 1000. 사용자가 레이어 패널(`.lp`, `L.control({position:'topright'})`,
+  `.lp-body` 실측 x794·y142·w250·h680)을 연 채 우측 마커(창신쌍용2, 팝업 x392-918)를 클릭하면 패널이
+  팝업 오른쪽 124px 를 덮음. 하단 드래그 핸들의 `elementFromPoint` 가 `SPAN.lp-name`(패널 내부)을
+  반환해 makeResizable pointerdown 이 안 뜨고, 닫기·접기·스크롤바도 패널 아래 가림. 핸들 자체는
+  `z:1200; pointer-events:auto` 라도 **stacking context 가 팝업 pane(700) 안이라 컨트롤에 진다.**
+- **해결**: ① `.leaflet-popup-pane { z-index: 1200 }` (팝업을 컨트롤 위로 — 항상 조작 가능한 안전망),
+  ② popupopen 시 팝업 rect 와 `.lp-body` rect 가 겹치면 패널을 **자동 접기**
+  (`lp.classList.remove('open')`, requestAnimationFrame 안에서 `getBoundingClientRect()` 판정).
+  겹치지 않는 좌측 팝업은 패널이 그대로 열려 있음(실측 probe89: 좌측 팝업 lpOpen:true, 우측 false).
+  아파트 레이어 체크 상태는 접어도 유지됨(실측 repro88: aptChecked:true).
+- **검증(실측)**: 1440/1280/678 세 뷰포트에서 하단 핸들 hit = `BUTTON.lp-sbar lp-sbar-bot`, 드래그로
+  내용 높이 증가(1440: ch 474→534, 폭 480 유지), JS 예외 0건. 패널 기본 상태는 닫힘(`.open` 없음,
+  toggle.onclick 이 토글) — 증상은 사용자가 패널을 편 뒤에 발생.
+
+### ② "스크롤바가 맨 우측에 없다" — content margin-right 24px 가 스크롤바를 안쪽으로 밀었음
+- **원인**: `.leaflet-popup-content` 기본 `margin: 13px 24px 13px 20px` — 네이티브 스크롤바가
+  content 의 오른쪽 테두리에 붙으므로 오른쪽에서 24px 들어간 자리에 생김.
+- **해결**: `margin: 13px 0 13px 20px` + `padding-right: 24px` (텍스트 여백은 padding 이 대신).
+  content 는 `box-sizing: border-box` 라 padding 24px 를 포함해도 `offsetWidth` 동일, 스크롤바가
+  팝업의 오른쪽 끝에 붙음(실측 repro86: content x413 w480, 오른쪽 893 = 팝업 오른쪽 894-1).
+
+### ③ 폭이 드래그 후 480→390 으로 오그라드는 함정 (maxWidth 클램프 ratchet)
+- **원인(실측)**: `_updateLayout` 의 자연폭 측정이 `width:2000px` 를 주지만 **직전 실행이 남긴 인라인
+  `maxWidth`(예: 390px)가 다시 그 값을 클램프**해 `scrollWidth` 가 왜곡됨(probe87 TRACE:
+  maxWidth 있을 때 sw 390 → 비우면 sw 1024). 높이 드래그 → `_updateLayout` 재실행 → 폭이 오그라듦.
+- **해결**: 측정하는 동안만 `content.style.maxWidth = ''` 로 비우고 끝나면 복원 (land.html _updateLayout).
+  폭은 상한 480 에 안정 고정(실측 repro86: 드래그 후에도 w480, 이전엔 390).
+
+- **교훈**: Leaflet 컨트롤과 팝업의 z-index 비교는 **pane 과 컨트롤 컨테이너가 서로 다른 stacking
+  context** 라 단순 비교로 안 끝난다 — 실측 hit-test(`elementFromPoint`)로 "누가 이기는지" 확인.
+  또 "폭을 재는" 코드는 **다른 인라인 스타일이 그 측정을 오염시키는지** (maxWidth·width 클램프)
+  항상 점검한다.
+
+

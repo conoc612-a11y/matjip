@@ -12,6 +12,48 @@
 
 ---
 
+## 2026-08-16 (37) — opencode (배포 후 신고 3건 수정: 드래그 리사이즈 무동작·스크롤바 위치·버튼 겹침 — 커밋·push·배포 완료)
+
+> 사용자 신고(배포본 스크린샷): "드래그 크기조절이 전혀 안 됨", "스크롤바가 맨 우측에 없음",
+> "팝업 상단 접기·닫기 버튼과 스크롤바 겹침". (36)의 검증은 1280/678 에서만 진행돼 **1440px + 레이어
+> 패널이 열린 상태의 겹침을 놓쳤다** — 교훈: 열린 레이어 패널 포함 전 뷰포트 조합으로 검증해야 한다.
+
+### 근본 원인 (실측 — CDP 1440x900, repro86/probe87/probe89)
+- `.leaflet-popup-pane` z700 < Leaflet 컨트롤 컨테이너 z1000 → **열린 레이어 패널(.lp-body)이 팝업
+  우측 124px 을 덮음**. 하단 드래그 핸들 hit-test 가 패널 내부 `SPAN.lp-name` 을 반환 → 드래그
+  pointerdown 미발생(무동작), 닫기·접기·스크롤바 가림. 핸들이 `z:1200` 이어도 **popup pane 안의
+  stacking context** 라 컨트롤에 진다.
+- "스크롤바 맨 우측 아님": content 기본 `margin: 13px 24px 13px 20px` 가 스크롤바를 24px 안쪽으로.
+- 버튼 겹침: 모두 패널 아래 가려 나타난 착시 + content margin.
+
+### 수정 (land.html)
+1. **`.leaflet-popup-pane { z-index: 1200 }`** — 팝업을 컨트롤 위로 (안전망).
+2. **popupopen 자동 접기** — 팝업 rect 와 `.lp-body` rect 가 겹치면 패널 fold
+   (`requestAnimationFrame` + `getBoundingClientRect`). 안 겹치는 좌측 팝업은 패널 유지(실측 probe89),
+   아파트 체크는 유지(실측 repro88). 레이어는 켜진 채 접히므로 재토글 1번으로 복귀.
+3. **content `margin: 13px 0 13px 20px` + `padding-right:24px`** — 스크롤바가 팝업 오른쪽 끝에 붙음
+   (content 는 `box-sizing:border-box` → offsetWidth 동일).
+4. **폭 ratchet 수정** — `_updateLayout` 자연폭 측정 시 이전 실행이 남긴 인라인 `maxWidth` 가
+   `width:2000px` 을 다시 클램프해 드래그 후 폭이 480→390 으로 오그라듦(실측 probe87 TRACE:
+   maxWidth 있을 때 sw390 → 비우면 sw1024). 측정 동안만 maxWidth 비움 → 폭 480 유지(실측).
+
+### 검증 (실측 — CDP 실마우스)
+- 1440/1280/678 세 뷰포트: 하단 핸들 hit = `lp-sbar-bot`, 드래그로 높이 증가(1440: ch 474→534),
+  폭 480 유지, 패널 자동 접힘(레이어는 유지), JS 예외 0건.
+- probe89: 좌측 팝업(팝업 x12-514, 패널 x794)은 접히지 않음 / 우측 팝업은 접힘.
+- 상세 함정·수치: TROUBLESHOOTING §26.
+
+### 커밋·배포 상태
+- 커밋 1개: `land.html`(+54/−7) + `HANDOFF.md`(37) + `TROUBLESHOOTING.md` §26. push 후 배포본 `?cb=`
+  마커(`lp-pane-z`/`lp-fold`/`sb-margin`/`mw-clear`)로 확인 예정. untracked 4개·`keys.env` 커밋 안 함.
+
+### ▶ 이어서 할 일
+- 배포 반영 확인 후 사용자 실사용 확인(로그인 세션): 드래그·스크롤바 위치·버튼 배치가 배포본에서 정상인지.
+- **다음 회귀 검증 관례(37 교훈)**: 팝업 레이아웃 변경 시 반드시 **패널 열림 + 넓은 화면(1440)** 조합 포함.
+- (36)의 이어서 할 일 유지. 테스트 프로세스(chrome 9223·python 8798)는 정리 예정.
+
+---
+
 ## 2026-08-16 (36) — opencode (팝업 폭 자동맞춤 + 스크롤바 세로 드래그 + 버그 3건 — 커밋·push·배포 완료)
 
 > 사용자: "테스트 다끝나면 푸시 배포까지 다 해놓고 기록해놔" → 사전 동의로 커밋·push·배포·기록까지 진행.

@@ -481,7 +481,14 @@
        끌어 크기를 조절할 수 있게 한다. overflow 가 visible 이 아니어야 동작한다(아래 auto).
        max-width 는 리사이즈 상한이 되어 '넓히기'를 막으므로 넉넉히 준다(화면 폭까지).
        내용은 .pc 가 width:100% 라 늘어난 폭에 맞춰 자동으로 다시 흐른다. */
-    .leaflet-popup-content { max-height:var(--popup-max-h, min(62vh, 520px)); overflow:auto; overflow-wrap:anywhere; word-break:break-word; min-width:220px; max-width:calc(100vw - 40px); }
+    .leaflet-popup-content { max-height:var(--popup-max-h, min(62vh, 520px)); overflow:auto; overflow-wrap:anywhere; word-break:break-word; min-width:220px; max-width:calc(100vw - 40px); margin:13px 0 13px 20px; padding-right:24px; }
+    /* 스크롤바를 팝업 오른쪽 끝에 붙인다(2026-08-16): content margin-right 를 0으로, 텍스트 여백은
+       padding-right 가 대신한다. 이전엔 스크롤바가 오른쪽에서 24px 들어가 "맨 우측에 없다"는 지적이 있었다.
+       .leaflet-popup-pane z-index: 기본 700 은 컨트롤 컨테이너 1000 아래라, 열린 레이어 패널(.lp-body,
+       z1000)이 팝업의 닫기·접기 버튼과 스크롤바·하단 드래그 핸들을 덮었다(실측 2026-08-16: 1440px에서
+       팝업 우측 124px 를 패널이 가림 → 하단 핸들 드래그 무반응, 스크롤바/버튼 가림). 팝업을 컨트롤 위로
+       올려 모든 팝업 컨트롤이 항상 조작 가능하게 한다. */
+    .leaflet-popup-pane { z-index: 1200; }
     /* 리사이즈 그립이 둥근 모서리에 잘리지 않도록 */
     .leaflet-popup-content-wrapper { overflow:visible; }
     .leaflet-popup-tip { background:var(--card); }
@@ -1063,9 +1070,15 @@
         content.style.maxWidth = v + 'px';
       } else {
         const prevW = content.style.width;
+        const prevMW = content.style.maxWidth;
+        // 이전 실행이 남긴 인라인 maxWidth 가 있으면 width:2000 을 그 값으로 다시 클램프해
+        // natural 이 왜곡된다(실측 2026-08-16: 높이 드래그 후 480→390 으로 폭이 오그라듦).
+        // 측정 동안만 maxWidth 를 비워 진짜 자연폭을 잰다.
+        content.style.maxWidth = '';
         content.style.width = Math.min(2000, w) + 'px';
         const natural = content.scrollWidth;
         content.style.width = prevW;
+        content.style.maxWidth = prevMW;
         // 상한 480: 블록/플렉스 자식이 전부 폭 100%라 자연폭 측정이 항상 맵 폭을 반환해
         // 넓은 화면에서 팝업이 지도 전체(1280px에서 895px)를 덮는 회귀가 있었다(실측 2026-08-16).
         // 좁은 화면에서는 50px 더 줄여 오른쪽 상단의 접힌 레이어 탭(.lp, x=우측-34)을
@@ -2425,7 +2438,25 @@
         L.DomEvent.disableScrollPropagation(n);
       });
       // 팝업 공통 컨트롤 부착 — 모든 Leaflet 팝업(정비·실거래·빌라·CCTV)에 그립 리사이즈 + 접기 적용
-      map.on('popupopen', (e) => { attachPopupControls(e.popup); });
+      map.on('popupopen', (e) => {
+        attachPopupControls(e.popup);
+        // 열린 레이어 패널(.lp-body)이 팝업과 겹치면 자동으로 접는다 — 팝업이 패널에 덮여
+        // 닫기·접기·스크롤바·드래그 핸들이 가려지는 문제(실측 2026-08-16)를 방지. 패널은 팝업이
+        // 닫혀도 접힌 채 유지된다(레일의 .lp-toggle 로 다시 펼 수 있음).
+        const lp = document.querySelector('.lp');
+        if (lp && lp.classList.contains('open')) {
+          requestAnimationFrame(() => {
+            const pEl = e.popup && e.popup.getElement ? e.popup.getElement() : null;
+            const body = lp.querySelector('.lp-body');
+            if (pEl && body && body.offsetParent !== null) {
+              const pr = pEl.getBoundingClientRect(), br = body.getBoundingClientRect();
+              if (pr.left < br.right && pr.right > br.left && pr.top < br.bottom && pr.bottom > br.top) {
+                lp.classList.remove('open');
+              }
+            }
+          });
+        }
+      });
       // X 버튼·경로 버튼으로 팝업을 닫으면 클릭 마커도 제거한다.
       // 지오코딩은 비동기라 닫은 뒤에야 buildClickPopup()(3603)이 setPopupContent+openPopup 을 실행해
       // 팝업이 다시 열리는 문제가 있었다 — 마커를 지우면 3598행의 if(!clickMarker) 가드로 재오픈이 차단된다.
