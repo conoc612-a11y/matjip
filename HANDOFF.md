@@ -12,6 +12,56 @@
 
 ---
 
+## 2026-08-15 (33) — opencode (자동 갱신 일원화 + 청약 배지 누락 원인·수정)
+
+> 사용자: "법원경매·SH공사 공고·실거래가·지오코딩 진행하고" + "청약 분양예정은 스케줄 불필요한데 지금도 서울에 1곳만 떠, 실제 더 많은데 어떻게 해야 해?".
+> **코드·워크플로 변경만. 커밋·push·배포·시크릿 등록은 사용자 동의 대기.**
+
+### 완료
+1. **청약 배지 4건 중 1건만 뜨던 원인 확정 (실측)** — API 데이터는 정상(서울 접수마감 미지난 공고 4건:
+   쌍용 더 플래티넘 서대문·더샵 신길센트럴시티·써밋 클라비온·충정로역자이르네, 최신 공고 2026-08-14).
+   문제는 `land.html:3508` `vworldAddrToPnu()` 가 `category=road`(도로명) 고정인데, 청약 주소가
+   `서울특별시 영등포구 신길동 413-8번지 일원` 같은 **지번+"일원" 접미사**라 3/4건 `NOT_FOUND`
+   (V-World 실측). `category=parcel` 로 "일원/일대"를 떼고 묻자 4/4 좌표 획득.
+   → `vworldAddrToPnu()` 를 **road → parcel 순차 재시도**로 수정(JSONP 콜백에서 결과 없으면 s2() 로 parcel 재시도).
+2. **실거래가 수집기 CI 대응** — `tools/collect_realprice.js` `geocode()` 에 `VWORLD_PROXY` 분기 추가
+   (`collect_auction.js` 와 동일 정책: 프록시 경유 시 `{status,lat,lng}`, 차단 null 은 캐시 안 함).
+   **스모크 테스트: 강남구 1개월 + VWORLD_PROXY 경유 → 지오코딩 10/10 100% 성공, 차단 0건.**
+   (프록시 자체는 간헐 차단이라 6연속 502 → 7/10 OK 까지 실측 — 재시도+백오프가 흡수.)
+3. **자동 갱신 워크플로 2종**
+   - `collect-auction.yml` → 이름 "경매·공고 자동 갱신"으로, **공고 수집 스텝 추가**
+     (`node tools/collect_notices.js` → `notices.json`, 키 불필요·초 단위), 커밋 파일에 notices.json 포함.
+     매일 07:00 KST(`0 22 * * *`) 유지.
+   - `collect-realprice.yml` **신규** — 매월 1일 07:00 KST(`0 22 1 * *`), `timeout-minutes: 120`.
+     메인 실행(`DGK`·`MONTHS=12`·`WITH_APT=1`·`VWORLD_PROXY`) → RENT_ONLY 실행(전월세 2종).
+     `writeSafe` 가 0건/절반 미만이면 스텝 실패. 커밋은 `realprice_*.json`·`.geocache.json` 변경 시에만.
+4. **TROUBLESHOOTING 갱신** — §6-6에 지번"일원" 함정·parcel 폴백 실측 기록, §6-7의 "0건이 정상"(08-07
+   실측)에 08-15 갱신 주석(4건), §19-2에 실거래가 프록시 전환 기록.
+
+### 주기 결정 사유 (재작업 방지용 WHY)
+- **경매+공고 = 매일 07:00 KST**: 법원·SH공사 둘 다 하루 단위 신규물건, IP 차단 위험 낮추려면 1회/일이 상한.
+- **실거래가 = 월 1회 (1일 07:00)**: 데이터가 월 단위 확정 공개. 주 1회(연 314,496회) vs 월 1회(연 72,576회)
+  호출 — 최신성 차이는 거의 없는데 data.go.kr 쿼터 소모만 4.3배. **레포가 PUBLIC**이라 Actions 분은
+  무제한(비공개만 월 2,000분 제한)이라 분당 제한은 무관.
+- **청약 = 스케줄 불필요**: chungak-proxy 실시간 조회(페이지 로드 시). 사용자 확정.
+
+### ⚠️ 배포 전 필수 (사용자 동의 필요)
+- **`DGK` GitHub 시크릿 등록** — 아직 시크릿 0개 (`gh secret list` 확인). 실거래가 워크플로가
+  `secrets.DGK` 를 쓰므로 등록 전엔 실패. 값은 `keys.env` 에 있음 (키 이름만 참조, 값 출력 금지).
+  등록 명령: `gh secret set DGK` (keys.env 값 입력) — **사용자 동의 후**.
+- 커밋 6개 파일: `.github/workflows/collect-auction.yml`·`collect-realprice.yml`(신규)·`land.html`·
+  `tools/collect_realprice.js`·`tools/.geocache.json`·`TROUBLESHOOTING.md`(+HANDOFF).
+  `.geocache.json` 변경은 스모크 테스트로 추가된 유효 좌표(강남구 연립)임.
+- **커밋 대기 (32)의 css/buttons.css·main.html·js/main.js 파일과 함께 묶지 말 것** — (32)는 별도 동의 대기 중이므로 분리 커밋 권장.
+- vworld-geocode Edge Function 배포는 이미 되어 있음(400/200 응답으로 확인). land.html 수정은
+  **배포(GitHub Pages push) 후 `?cb=` 캐시 우회로 확인** — 분양예정 배지가 4건 다 뜨는지.
+
+### ▶ 이어서 할 일
+- 사용자 동의 후: ① `gh secret set DGK` ② 33번 작업 커밋·push ③ (32) 커밋·push ④ 배포본에서 배지 4건 확인.
+- (31)의 "▶ 이어서 할 일" ①사진 수집 재개 ③Edge 배포 명령 ④테스트 방법은 그대로 유효.
+
+---
+
 ## 2026-08-15 (32) — opencode (land.html UI 검토 6건 수정 — "다 고쳐")
 
 > 사용자: "land만 UI 렌더 검토 → 보고" → 6건 리스트 보고 → "다 고쳐". **코드 변경만, 커밋·push·배포는 동의 대기.**

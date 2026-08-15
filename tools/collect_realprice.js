@@ -307,14 +307,12 @@ async function geocode(addr) {
   // cached 플래그가 필요한 이유: 캐시 히트는 네트워크를 쓰지 않으므로 속도 제한 대기를
   // 걸 필요가 없다. 안 그러면 재실행 때 2.4만건 × 150ms = 약 1시간을 헛되게 기다린다.
   if (geoCache.has(addr)) return { pt: geoCache.get(addr), blocked: false, cached: true };
-  const url = `https://api.vworld.kr/req/address?service=address&request=getcoord&version=2.0`
-    + `&crs=EPSG:4326&type=PARCEL&format=json&key=${VWORLD_KEY}&address=${encodeURIComponent(addr)}`;
+  // CI(GitHub Actions, 해외 IP)에서 V-World가 TCP 차단(ECONNRESET)하므로(2026-08-15 실측,
+  // TROUBLESHOOTING §19) VWORLD_PROXY(= Supabase Edge Function vworld-geocode)가 설정돼
+  // 있으면 그걸 경유한다. 로컬(한국 IP)은 직접 호출이 낫다. collect_auction.js 와 동일 정책.
   let pt = null, blocked = false;
-  // NOT_FOUND 는 확정 실패라 재시도하지 않는다. 차단(502/RST)만 물러섰다가 다시 시도한다.
-  for (let attempt = 1; attempt <= 4; attempt++) {
+  const attempt = async (url) => {
     const body = await httpGet(url, 1);
-    // JSON 은 한 번만 파싱한다 — 예전엔 상태 확인과 point 추출에 두 번 파싱해
-    // 응답마다 문자열 변환 비용이 두 배였다.
     let parsed = null;
     try { parsed = JSON.parse(body); } catch (e) {}
     const status = parsed && parsed.response && parsed.response.status;
@@ -323,12 +321,29 @@ async function geocode(addr) {
         const p = parsed.response.result.point;
         pt = [Number(Number(p.y).toFixed(6)), Number(Number(p.x).toFixed(6))];
       } catch (e) {}
-      blocked = false;
-      break;
+      return 'OK';
     }
-    if (status === 'NOT_FOUND') { blocked = false; break; }
+    if (status === 'NOT_FOUND') return 'NOT_FOUND';
+    return 'BLOCKED';
+  };
+  // NOT_FOUND 는 확정 실패라 재시도하지 않는다. 차단(502/RST)만 물러섰다가 다시 시도한다.
+  for (let i = 1; i <= 4; i++) {
+    let st;
+    if (process.env.VWORLD_PROXY) {
+      const body = await httpGet(`${process.env.VWORLD_PROXY}?address=${encodeURIComponent(addr)}&type=PARCEL`, 1);
+      try {
+        const j = JSON.parse(body);
+        if (j.status === 'OK') { pt = [Number(j.lat), Number(j.lng)]; st = 'OK'; }
+        else if (j.status === 'NOT_FOUND') st = 'NOT_FOUND';
+        else st = 'BLOCKED';
+      } catch (e) { st = 'BLOCKED'; }
+    } else {
+      st = await attempt(`https://api.vworld.kr/req/address?service=address&request=getcoord&version=2.0`
+        + `&crs=EPSG:4326&type=PARCEL&format=json&key=${VWORLD_KEY}&address=${encodeURIComponent(addr)}`);
+    }
+    if (st === 'OK' || st === 'NOT_FOUND') { blocked = false; break; }
     blocked = true;
-    await sleep(400 * attempt * attempt);  // 차단이면 점점 크게 물러선다
+    await sleep(400 * i * i);  // 차단이면 점점 크게 물러선다
   }
   // 실패 캐시 정책(2026-08-15 코드리뷰 조치): 차단으로 끝난 null 은 캐시하지 않는다.
   // 예전엔 geoCache.set(addr, null) 을 해서, 일시 차단을 영구 실패로 고정시켰다 —

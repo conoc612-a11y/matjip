@@ -1,0 +1,63 @@
+name: 실거래가 월간 자동 갱신
+
+# 국토부 실거래가(부동산거래신고)는 월 단위 확정 공개라 매일 갱신해 얻을 이득이 없다.
+# data.go.kr 일일 쿼터(데이터셋당 ~1,000회) 대비 전량 수집(서울25+경기47 구 × 12개월 ×
+# 7종 = ~6,048회)이 1회 실행으로 이미 상당하므로, 주기 조정은 월 1회가 한도다.
+# 결정 사유(2026-08-15): 주 1회(연 314,496회)는 월 1회(연 72,576회) 대비 최신성이
+# 거의 늘지 않는데 쿼터 소모만 4.3배 — 월 1회 채택.
+# 매월 1일 07:00 KST(= 전달 22:00 UTC). 직전 달 데이터가 확정 공개되는 시점.
+
+on:
+  schedule:
+    - cron: '0 22 1 * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    # 지오코딩은 tools/.geocache.json(커밋 파일)로 이어받아 새 주소만 조회한다.
+    # 캐시가 비면 전체 재지오코딩(2.4만건 × 8.8건/s ≈ 45분)이 필요하다. fetch+저장까지
+    # 넉넉히 120분으로 잡는다 — GitHub Actions 무료 티어 잡당 상한(6시간) 안.
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # V-World 지오코딩은 GitHub Actions(해외 IP)에서 TCP 차단(ECONNRESET)을 당하므로
+      # Supabase Edge Function(vworld-geocode)을 경유한다 (2026-08-15 실측, TROUBLESHOOTING §19).
+      # DGK는 data.go.kr 인증키 — GitHub 시크릿에 넣어 프론트·로그에 노출하지 않는다.
+      # 매매 3종(연립·아파트·단독) + 전월세 2종을 한 번의 월간 실행에서 모두 갱신한다.
+      - run: node tools/collect_realprice.js
+        env:
+          DGK: ${{ secrets.DGK }}
+          MONTHS: '12'
+          WITH_APT: '1'
+          VWORLD_PROXY: https://bhgijvaxxjnocgfnaaeu.supabase.co/functions/v1/vworld-geocode
+
+      # 전월세(realprice_house_rent.json·realprice_officel.json)는 RENT_ONLY 모드로 수집.
+      - run: node tools/collect_realprice.js
+        env:
+          DGK: ${{ secrets.DGK }}
+          MONTHS: '12'
+          RENT_ONLY: '1'
+          VWORLD_PROXY: https://bhgijvaxxjnocgfnaaeu.supabase.co/functions/v1/vworld-geocode
+
+      # 스크립트 안 writeSafe 가 저장 시점에 0건/절반 미만을 거부한다. 여기서는
+      # 실행 자체가 실패했는지만 확인(위 단계가 이미 그 역할). 변경 없으면 커밋 생략.
+      - name: realprice*.json·지오코딩 캐시 변경 시 커밋·푸시
+        run: |
+          if git diff --quiet -- 'realprice_*.json' tools/.geocache.json; then
+            echo "변경 없음 — 커밋 생략"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add 'realprice_*.json' tools/.geocache.json
+          git commit -m "chore(realprice): 실거래가 월간 자동 갱신 ($(date -u +%Y-%m))"
+          git push

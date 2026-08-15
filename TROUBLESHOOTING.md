@@ -178,6 +178,7 @@ console.log('blocks:',i,'fails:',f);
 - `land.html` 의 `vworldAddrToPnu()` 가 `type=address` 로 검색할 때 **`category=road` 를 빼면 `PARAM_REQUIRED` 에러**가 난다(V-World 가 필수 파라미터로 추가). 응답이 `ERROR` 로 오니 마커가 한 개도 안 찍힌다.
 - 실측 조합: `type=address&category=road&query=<전체주소>` → OK, `{id: PNU, point:{x,y}}` 반환. `category=road&type=road` 로 도로명만 넣으면 NOT_FOUND, `category=PARCEL` 은 지번형이라 안 맞음.
 - 증상이 "청약 배지만 안 뜨는 게 아니라 지번→좌표가 전부 안 되는 것"이라면 이 파라미터부터 의심할 것(공유 함수라 호출처 전체에 영향).
+- **지번 주소 함정(2026-08-15 실측)**: 청약 `HSSPLY_ADRES` 는 `서울특별시 영등포구 신길동 413-8번지 일원` 처럼 **지번 + "일원" 접미사**다. `category=road` 로는 **3/4건 NOT_FOUND** 였다(도로명이라 안 잡힘). `category=parcel` 로 "일원/일대"를 떼고 묻으면 **4/4 좌표 획득**(지번형이라 매칭). 그래서 `vworldAddrToPnu()` 는 road → parcel 순차 재시도로 바꿨다(2026-08-15). 증상이 "분양예정 배지가 일부만 뜬다"면 여기부터 볼 것 — API 데이터(4건)는 정상이었다.
 - 참고: V-World 타일(`wmts`)과 역지오코딩(`req/address`)은 `category` 없이 정상 동작한다 — 주소검색(`req/search`)만 해당.
 
 ### 6-7. 한국부동산원 청약홈 분양정보 (chungak-proxy, 2026-08-07 신규)
@@ -185,7 +186,7 @@ console.log('blocks:',i,'fails:',f);
 - 오퍼레이션: `getAPTLttotPblancDetail`(분양정보 상세) / `getAPTLttotPblancMdl`(주택형별 모델), OPT/UrbtyOfctl/PblPvtRent/Remndr 동일 세트.
 - 파라미터: `serviceKey`, `page`, `perPage`, `returnType`(JSON/XML), `cond[FIELD::OP]` — FIELD: `HOUSE_MANAGE_NO`/`PBLANC_NO`/`HOUSE_NM`/`HOUSE_SECD`(01 APT 등)/`HOUSE_DTL_SECD`(01 민영·03 공공)/`SUBSCRPT_AREA_CODE_NM`("서울")/`HSSPLY_ADRES`/`RCRIT_PBLANC_DE`(형식 `2026-08-07`), OP: EQ/LIKE/GT/GTE/LT/LTE.
 - 응답: `{currentCount, data:[...], matchCount, totalCount}`. 최신 공고일 순 정렬.
-- **데이터 지연 실측(2026-08-07)**: 서울 최신 공고가 2026-07-16 까지밖에 없다. "접수중·접수예정(`RCEPT_ENDDE >= 오늘`)" 필터를 걸면 **현재 0건이 나오는 게 정상**이다. 배지가 안 보인다고 코드 문제로 단정하지 말 것.
+- **데이터 지연 실측(2026-08-07)**: 서울 최신 공고가 2026-07-16 까지밖에 없다. "접수중·접수예정(`RCEPT_ENDDE >= 오늘`)" 필터를 걸면 **현재 0건이 나오는 게 정상**이다. 배지가 안 보인다고 코드 문제로 단정하지 말 것. (⚠️ 갱신: 2026-08-15 실측에서는 서울 최신 공고 2026-08-14까지, 접수마감 미지난 4건 — 쌍용 더 플래티넘 서대문·더샵 신길센트럴시티·써밋 클라비온·충정로역자이르네. "0건"은 그때 당시 값이지 상수가 아니다. 그래도 배지가 1건만 뜨면 → §6-6 지번 함정을 의심.)
 - `SUBSCRPT_AREA_CODE`/`_NM` 필터는 주소와 별개인 공급지역 개념이다. 좌표는 `HSSPLY_ADRES`(주소)로 변환한다.
 - serviceKey 는 **인코딩된 문자열을 그대로** `serviceKey=<키>` 로 넣는다. `encodeURIComponent` 로 감싸면 `%`→`%25` 이중 인코딩되어 인증이 깨진다(molit-proxy 와 동일한 함정).
 - 프록시는 op/파라미터를 화이트리스트로 검증 후 중계한다(`supabase/functions/chungak-proxy/index.ts`). 시크릿은 `CHUNGAK_API_KEY`.
@@ -600,6 +601,8 @@ gh api repos/conoc612-a11y/matjip/pages/builds/latest --jq '{status:.status, com
   `collect_auction.js` 가 `VWORLD_PROXY` 환경변수가 있으면 프록시 경유, 없으면(로컬) 직접 호출하도록
   수정. 워크플로 `collect-auction.yml` 의 지오코딩 스텝에 `VWORLD_PROXY` env 를 주입.
   동시에 null 캐시 버그 수정(아래).
+  **`collect_realprice.js` 도 같은 날 같은 패턴으로 수정** — `geocode()` 에 `VWORLD_PROXY` 분기를
+  추가해 신규 월간 워크플로(`collect-realprice.yml`)에서 프록시를 경유한다.
 - **검증(2026-08-15, 실측)**: Supabase(미국 IP)에서 V-World 직접 호출 성공률 ~50%(8회 중 4회 200,
   실패는 Deno fetch ECONNRESET류 + V-World 자체 502 두 종류). **재시도 4회+백오프를 넣은
   `vworld-geocode` 는 4주소 × 8회 = 전부 OK** — 재시도가 우회 경로의 간헐 차단을 실용적으로 흡수한다.
