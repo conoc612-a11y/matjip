@@ -77,7 +77,8 @@
 
 ### 커밋·배포 상태
 - 직전 커밋 `9fb62677`(44의 Fix A/B)는 **push 완료** — 배포 반영 확인됨(rpClusterRef 포함, try 3).
-- **이번 contains 보강은 로컬 편집만 — 커밋·push 동의 대기.** 변경: land.html + HANDOFF 45 + TROUBLESHOOTING 31-1.
+- **이번 contains 보강 `f006ce94` push·배포 반영 완료** — 배포 확인(includes(bldName) 포함, try 3).
+  변경: land.html + HANDOFF 45 + TROUBLESHOOTING 31-1.
 
 ### ▶ 이어서 할 일
 1. contains 보강 커밋·push 동의 확인 → 커밋·push·배포 반영 확인(사용자 실사용 재확인).
