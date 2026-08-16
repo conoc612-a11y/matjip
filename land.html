@@ -1013,7 +1013,7 @@
     if (KAKAO_JS_KEY) {
       const ks = document.createElement('script');
       ks.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_JS_KEY}&libraries=services&autoload=false`;
-      ks.onload = () => window.kakao && kakao.maps.load(() => { kakaoReady = true; });
+      ks.onload = () => window.kakao && kakao.maps.load(() => { kakaoReady = true; if (landMode === 'agents' && typeof renderAgents === 'function') renderAgents(); });
       document.head.appendChild(ks);
     }
 
