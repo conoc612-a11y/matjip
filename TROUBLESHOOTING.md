@@ -852,4 +852,23 @@ gh api repos/conoc612-a11y/matjip/pages/builds/latest --jq '{status:.status, com
   그대로 두므로 안전. 사용자가 제시한 단순 패턴(상태 + delta + min/max)이 원인 추적과 수정에
   모두 가장 적은 코드로 끝났다.
 
+## 30-1. 최종 결정 — 스트립 핸들(30)은 기각, 20260815 백업의 makeResizable() 코드로 복원 (2026-08-16 사용자 지시)
+
+- **증상**: 30의 스트립 핸들 수정이 배포 검증까지 끝났지만, 사용자가 "지금까지도 해결이 안되고
+  있어" + "백업의 드래그 리사이즈 코드 그대로 사용해라" 로 방향 전환.
+- **해결(지시 그대로, 신규 코드 금지)**: `land.backup-20260815.html` 1019-1034 의
+  `makeResizable(grip, content, {applyStyle:false, minW/maxW, minH/maxH, onStart/onResize/onEnd})`
+  블록을 **그대로 복원**. `js/ui-resize.js`(공용 헬퍼)는 그 옵션을 여전히 지원 — 변경 불필요.
+  트리거만 스크롤바 오른쪽 세로줄 바로 아래 **우하단 아이콘 버튼**(`.ui-grip.ui-grip-corner`,
+  right:3/bottom:3, 항상 표시)으로 위치 조정. `_updateLayout` 의 `_lpW/_lpH` 적용 로직은
+  백업 계약의 상위호환(폭 자동맞춤 포함)이라 그대로 유지.
+- **검증(probe106, 실마우스)**: 417×480 → 확대 497×520 → 축소 337×460 모두 유지, 팝업 재오픈
+  없음(`same:true`), JS 예외 0건.
+- **WHY**: `makeResizable` 은 pointerdown 에서 `setPointerCapture()` 를 걸어 **드래그 후 합성
+  click 의 target 이 그립(=팝업 컨테이너 내부)에 머문다** → `disableClickPropagation` 이 지도
+  click 전파를 막아 30 의 재오픈 원인이 구조적으로 발생하지 않는다. 즉 30 의 "click 차단"이
+  스트립 핸들(mousedown/up 패턴, pointer capture 없음)에만 필요했던 것. 코드를 새로 짜지 말라는
+  사용자 지시가 곧 가장 안전한 경로였음.
+
+
 

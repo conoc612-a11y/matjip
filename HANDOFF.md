@@ -12,6 +12,42 @@
 
 ---
 
+## 2026-08-16 (42) — opencode (팝업 리사이즈 최종: 20260815 백업의 makeResizable() 코드 복원 + 우하단 아이콘 배치. 사용자 "어" 승인으로 커밋·push)
+
+> 사용자 지시: "너가 뭘 다시 코드 짜려고 하지말고 리사이즈 삭제하기 전 복구 자료에서 그 코드
+> 그대로 사용해줘, 다만 스크롤바 있는 그 세로줄 밑에 아이콘(버튼)으로 리사이즈 되게끔만 위치만
+> 조정해줘" → (41)의 스트립 핸들 기각, 백업 코드 복원.
+
+### 수정 (land.html, 커밋 `6b4ec9f1`)
+1. `.lp-resize-handle`(스트립) + mousedown/mousemove/mouseup click 차단 제거.
+2. **`land.backup-20260815.html` 1019-1034 의 makeResizable() 드래그 코드를 그대로 복원**
+   (`applyStyle:false, minW:220/minH:120, maxW/maxH = 지도−30/−50, onStart: autoPan 끔,
+   onResize: _lpW/_lpH + _updateLayout + _updatePosition, onEnd: autoPan 복원`).
+   `js/ui-resize.js` 공용 헬퍼는 그 옵션을 여전히 지원(변경 없음).
+3. 트리거: `<button class="ui-grip ui-grip-corner">` — **스크롤바 오른쪽 세로줄 바로 아래
+   우하단**(right:3/bottom:3, buttons.css 공용 그립, 항상 표시). 폭·높이 동시 조절.
+4. re-entry 가드 `.lp-resize-handle` → `.ui-grip`. `_updateLayout` 의 `_lpW/_lpH` 분기는
+   백업 계약의 상위호환이라 유지(폭 자동맞춤·maxWidth 정리 포함).
+
+### 검증 (probe106, 실마우스)
+- 417×480 → 확대(+40,+80) 497×520 → 축소(−60,−160) 337×460 모두 유지. 팝업 재오픈 없음
+  (`same:true`), JS 예외 0건. 스크린샷 10/11 저장. syncheck ALL OK.
+
+### WHY (이 설계가 안전한 이유)
+- makeResizable 이 pointerdown 에서 `setPointerCapture()` 로 드래그 후 합성 click 의 target 을
+  **그립(팝업 컨테이너 내부)**에 고정 → `disableClickPropagation` 이 지도 click 전파를 차단 →
+  (41)의 click-차단 방어가 구조적으로 불필요해짐. 코드 신규 작성 금지 지시 = 가장 안전한 경로.
+
+### 커밋·배포
+- 커밋 `6b4ec9f1` (land.html + HANDOFF 42 + TROUBLESHOOTING 30-1), push 완료(사용자 "어").
+- 배포본 fetch 확인: `ui-grip-corner`(팝업용) 존재, `.lp-resize-handle` 부재.
+
+### ▶ 이어서 할 일
+- 사용자 실사용 확인(배포본): 우하단 아이콘을 대각선으로 드래그해 크기 조절 유지되는지.
+- (41)의 스트립 핸들 관련 관찰은 무효 — makeResizable+setPointerCapture 는 재오픈을 유발하지 않음.
+
+---
+
 ## 2026-08-16 (41) — opencode (팝업 드래그 리사이즈 3차 재작업 — 진짜 원인: 드래그 후 합성 click 이 지도 팝업을 재오픈. 하단 스트립 핸들 + click 차단으로 해결. 커밋·push 완료)
 
 > 사용자: (40) 직후 "드래그해서 크기 조정가능하게" 재보고 → 3번째 재작업. 이번엔 **커밋·push 없이
