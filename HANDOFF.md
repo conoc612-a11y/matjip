@@ -12,30 +12,31 @@
 
 ---
 
-## 2026-08-17 (57) — opencode (법원경매 사이트 딥링크 조사 완결: WebSquare5 SPA 구조 실측, 6종 버튼 URL 딥링크 불가 확정 — auctionmsg 참조 분석 포함)
+## 2026-08-17 (57) — opencode (법원경매 딥링크 조사 완결 + 6종 바로가기 버튼 구현·배포, auctionmsg 자체 DB 구조 확인, 딥링크 불가 재확정 → PLAN 로드맵 문서화)
 
-> 사용자 지시: "법원 경매 팝업안에 사건번호로 조회 바로가기 버튼(사건내역·기일내역·문건/송달내역·감정평가서·현황조사서·매각물건명세서 6종)을 만들어줘" + "auctionmsg.com 코드 분석하고 참조해봐". 조사 결과 **6종 전부가 법원 사이트의 한 화면(사건상세) 내부 탭·문서이고, 그 화면은 URL로 사건번호를 받을 수 없음** → 딥링크 구현 불가 확정. 코드 변경 없음(조사·기록만).
+> 사용자 지시: "법원 경매 팝업안에 사건번호로 조회 바로가기 버튼(사건내역·기일내역·문건/송달내역·감정평가서·현황조사서·매각물건명세서 6종)을 만들어줘" → 1차 "추가 안 함" → 2차 재지시로 **구현·배포 완료**. 이후 사용자가 auctionmsg.com 참조 지시 → 조사 결과 **auctionmsg는 법원 딥링크가 아니라 자체 DB 서비스**임을 실측, 법원 사이트 딥링크 불가 재확정 → 최종 선택: "PLAN 문서로 로드맵만" (코드 변경 없음).
 
 ### 조사 방법 (모든 근거는 실측)
-- headless Chrome(puppeteer-core, CDP)로 courtauction.go.kr 직접 접속·조작, 화면 XML 직접 fetch, WebSquare5 공식 API 문서 확인. 검증 스크립트: `%TEMP%\opencode\court\pptr\v*.js`(v14까지).
+- headless Chrome(puppeteer-core, CDP)로 courtauction.go.kr 직접 접속·조작, 화면 XML 직접 fetch, WebSquare5 엔진 JS 소스 직접 분석. 검증 스크립트: `%TEMP%\opencode\court\pptr\v*.js`(v36까지).
 
 ### 실측 결론 (WHY = 구현 불가의 근거)
-1. **courtauction.go.kr = WebSquare5 SPA**. 화면 XML은 직접 fetch 가능(`/pgj/ui/pgj100/PGJ15AF01.xml` 등)하나, 사건번호는 URL이 아니라 **`setSrc('/pgj/ui/pgj100/PGJ15AF01.xml', obj)`의 dataObject**(cortOfcCd+csNo)로만 전달됨 — 사건검색 버튼 코드(PGJ159M01.xml) 실측.
-2. **6종 버튼이 가리키는 대상 전부 = 사건상세 화면(PGJ15AF01.xml) 내부 기능**:
-   - 탭 3개(사건내역·기일내역·문건/송달내역)가 tabControl로 있고, 기일내역=`PGJ15AF02.xml`, 문건/송달내역=`PGJ15AF03.xml` wframe.
-   - 감정평가서·현황조사서·매각물건명세서는 사건상세 안의 **버튼으로 열리는 문서**(별도 URL 없음).
-3. **URL 딥링크 불가 실증**: `?w2xPath=PGJ15AF01.xml&param={"cortOfcCd":"...","csNo":"..."}`로 직접 접속 → 화면은 뜨지만 `$p.getParameter("param")`이 URL 파라미터를 읽지 못해 `법원:- 사건번호:-` + "잘못된 번호" 표시(v13 실측). param은 WebSquare5 내부 데이터 경로(setSrc)로만 전달.
-4. **직접 URL로 화면 여는 방법은 존재**: `index.on?pgjId=159M01&w2xPath=%2Fpgj%2Fui%2Fpgj100%2FPGJ159M00.xml` → 사건검색 화면 정상 로드(법원 목록 60개). **pgjId가 없으면** wfm_mainFrame이 없어 onpageload가 `Cannot read properties of undefined (reading 'scope')`로 중단 — land.html의 기존 사건검색 링크가 이 형태라 정상.
-5. **auctionmsg.com(경매알리미) 참조 결과**: Angular SPA. 홈·상세 HTML + JS 번들(main.439af2bf27dfdb37.js, 1.9MB) 전수 검색에서 `courtauction/PGJ/w2xPath/scourt` 0건 — **auctionmsg도 법원 사이트 딥링크를 전혀 쓰지 않음**(문서는 자체 뷰어). 참조할 패턴 없음.
-6. 결론: 6종 버튼을 만들어도 전부 사건검색 화면 링크와 동일 결과 → **중복·무가치**. 기존 land.html의 사건검색(PGJ159M00)·물건검색(PGJ151F00) 링크(636-637)와 사건번호 클릭→사건검색(~2272)·apd-link(~2373)이 유일한 진입점. 사용자에게 조사 결과 보고 후 방향 재결정 대기.
+1. **courtauction.go.kr = WebSquare5 SPA**. 사건번호는 URL이 아니라 **`setSrc('/pgj/ui/pgj100/PGJ15AF01.xml', obj)`의 dataObject**(cortOfcCd+csNo)로만 전달됨 — 사건검색 버튼 코드(PGJ159M01.xml) 실측.
+2. **WebSquare5 엔진 소스 확정** (`$W._g.getParameter`): URL 쿼리스트링의 `param`은 **문자열 그대로** 반환, JSON 자동 파싱 없음. 객체 param은 내부 화면 이동 시 `userData` 메모리로만 전달 → **신규 탭 URL 접속 시 사이트가 객체를 받을 수단이 없음**.
+3. **사건검색 프리필 실측 실패** (v28): `param={"cortOfcCd":"서울중앙지방법원","csNo":"2025타경103327"}` URL로 접속 → 법원은 기본값(첫 항목), **연도 2026(기본)·사건번호 빈칸** = 프리필 안 됨. 사이트 `prevInit()`은 param을 객체로 기대(`param.csNo`)하는데 문자열이 와서 실패.
+4. **사건상세 딥링크 실측 실패** (v13, v22): `PGJ15AF01`에 param URL 접속 → 화면은 뜨나 `법원:- 사건번호:-` + "잘못된 번호". `$p.url()`도 param을 URL 쿼리스트링으로 펼치면서(한글 EUC-KR 인코딩) **URIError**(v36).
+5. 6종 버튼이 가리키는 대상 전부 = 사건상세 화면(PGJ15AF01.xml) 내부 탭·문서(기일내역=PGJ15AF02, 문건/송달=PGJ15AF03 wframe, 감정/현황/명세서는 버튼으로 열리는 문서) → 사건상세 URL 진입이 안 되므로 6종이 전부 같은 사건검색 화면으로 열리는 게 구조상 필연.
+6. **auctionmsg.com(경매알리미) 조사 결과 (v29~v35)**: 상세 페이지(`/auction/detail/507066`)의 기일내역·사건내역·감정평가서·현황조사서·매각물건명세서는 **전부 자체 도메인 렌더링**, 외부 링크는 네이버 지도·OSM 저작권뿐. main.js(1.9MB) 바이트 검색 `courtauction/PGJ/w2xPath` **0건** = auctionmsg는 법원 데이터를 자체 DB로 복제해서 보여주는 서비스. 우리가 하려는 "법원 사이트 딥링크"와 접근이 다름.
 
-### 최종 결정 (2026-08-17 사용자 선택 → 사용자 재지시로 구현)
+### 최종 결정 (2026-08-17 사용자 선택 3단계)
 - **1차**: "버튼 추가 안 함" (추천안 선택) — 코드 변경 없음.
-- **2차 (사용자 "바로가기 버튼 생성 안됬는데")**: 버튼 구현 재지시 → **구현·검증 완료 (커밋·push 대기)**.
-- 구현 내용 (land.html): 경매 상세 패널에 `.apd-gos` 6종 버튼(사건내역·기일내역·문건/송달·감정평가서·현황조사서·매각물건명세서). 딥링크가 불가능하므로 **클릭 시 사건번호를 클립보드에 복사("복사됨 ✓" 1.2초 표시) + 검증된 사건검색 URL**(`pgjId=159M01&w2xPath=...PGJ159M00.xml`) 새 탭 열기 — 사건번호 붙여넣기만 하면 조회. 검증 URL이 기존 링크(636-637)보다 안전(실측으로 정상 로드 확인).
-- 검증 (headless Chrome + puppeteer, auth-guard 차단 후 로컬 8871): 목록 1051행 → 상세 패널에서 6종 버튼 렌더 확인, 클릭 시 `window.open` 1회 + "복사됨 ✓" 표시, JS 오류 0건 (404는 테스트 서버의 사진/아이콘 리소스, 로직 오류 아님).
-- 빌드 태그: `build 2026-08-17-b38`로 갱신.
-- 커밋·push는 사용자 동의 후. 커밋 메시지 제안: "경매 상세에 법원 사이트 바로가기 6종 버튼 추가 (사건번호 복사 + 사건검색) — 빌드 b38".
+- **2차 (사용자 "바로가기 버튼 생성 안됬는데")**: 버튼 구현 재지시 → **구현·검증·커밋·push 완료 (c922b155)**.
+- 구현 내용 (land.html): 경매 상세 패널에 `.apd-gos` 6종 버튼(사건내역·기일내역·문건/송달·감정평가서·현황조사서·매각물건명세서). 딥링크 불가 → **클릭 시 사건번호 클립보드 복사("복사됨 ✓" 1.2초) + 검증된 사건검색 URL**(`pgjId=159M01&w2xPath=...PGJ159M00.xml`) 새 탭 열기 — 붙여넣기만 하면 조회.
+- 검증 (headless v20, auth-guard 차단 후 로컬 8871): 목록 1051행 → 상세 패널 6종 버튼 렌더, 클릭 시 `window.open` 1회 + "복사됨 ✓", JS 오류 0건. 배포본 확인(`?v=2`): `apd-go`/`apdGosHtml`/`build 2026-08-17-b38` 존재. 커밋 `c922b155` push 완료.
+- **3차 (사용자 "auctionmsg.com 참조해서 바로가기가 법원에 어떻게 연결되는지 확인해봐")**: 실측 결과 auctionmsg = 자체 DB 서비스(법원 링크 0건)임을 확인·보고 → **최종 선택 "PLAN 문서로 로드맵만"** (코드 변경 없음, `PLAN_auction_detail.md` §8에 로드맵 문서화: 자체 데이터 수집 파이프라인 → auction.json v3 → 6종 버튼을 패널 내 탭 전환으로 교체).
+
+### ▶ 이어서 할 일
+1. 코드 변경 없음. 로드맵은 `PLAN_auction_detail.md` §8 (auctionmsg식 자체 렌더링, 자체 데이터 수집 시 적용).
+2. land.html 기존 사건검색 링크(636-637)·apd-link(~2373)는 pgjId 없는 w2xPath URL이라 신규 탭 접속 시 깨질 위험 — 다음에 land.html 손댈 때 `AUC_SEARCH_URL`(pgjId 포함) 형태로 통일 권장.
 
 ---
 
