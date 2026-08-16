@@ -33,10 +33,10 @@
 
 ### 커밋·배포 상태
 - **이번 커밋·push 진행** (사용자 "확장 후 push" 동의). 변경: land.html + HANDOFF 49 + TROUBLESHOOTING 35/36.
-- 배포는 GitHub Actions 자동 빌드 → 배포본에서 툴팁·자석 실측 확인 필요.
+- 커밋 `9235d6c1` push 완료, **배포 반영 확인 완료** — 배포본 land.html fetch로 7개 마커(uPriceShort `n+·`·`n먼저`, EV/CCTV bindTooltip, 경매 addr, CCTV magnetize, magMarks) 전부 True.
 
 ### ▶ 이어서 할 일
-1. push 후 배포 반영 확인(probe_deploy 패턴): 배포본 land.html에 `n + ' · '` 툴팁, CCTV `magnetize(m)` 포함 검사.
+1. ~~push 후 배포 반영 확인~~ **완료** (배포본 fetch 7개 마커 True).
 2. 사용자 실사용 확인: 마커 hover 시 상호명 툴팁 + 자석 당김.
 3. (선택) V-World 타일 내장 POI(병원·커피숍 등)는 타일 이미지라 JS 제어 불가 — 사용자에게 설명 완료.
 
