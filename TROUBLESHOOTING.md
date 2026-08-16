@@ -1022,7 +1022,7 @@ gh api repos/conoc612-a11y/matjip/pages/builds/latest --jq '{status:.status, com
 > 사용자: "네가 해커라 생각하고 matjip 해킹한다고 하면 어떻게 뚫릴 것 같아? 보안은 어떻게 해야 좋을지 분석해서 알려줘" → 전 Edge Function 17개 + schema.sql + 프론트 innerHTML 실측 점검.
 
 ### 발견 (실측 근거·파일 경로 포함, 위험도 순)
-1. **[높음] `X-Forwarded-For` 위조로 관리자 잠금·레이트리밋 우회** — 전 함수가 IP를 `req.headers.get("x-forwarded-for")?.split(",")[0]`로 판정(`admin-login/index.ts:45-48` 등 공통). 이 헤더는 클라이언트가 임의 위조 가능 → admin-login의 "IP당 15분 5회 잠금"(`admin-login/index.ts:78-85`)이 무력화되고 **무제한 비밀번호 대입** 가능. ⚠️ Supabase가 클라이언트 XFF를 신뢰하는지는 배포 실측으로 확정 필요(아직 미확인 — 방어는 위험 가정으로 설계).
+1. ~~[높음] `X-Forwarded-For` 위조로 관리자 잠금·레이트리밋 우회~~ → **실측으로 유효하지 않음 확인(2026-08-16)** — 전 함수가 IP를 `req.headers.get("x-forwarded-for")?.split(",")[0]`로 판정(`admin-login/index.ts:45-48` 등 공통). 헤더는 위조 가능해 보이지만, **Supabase 엣지가 클라이언트 XFF를 무시하고 실제 출발 IP를 첫 값으로 세팅**한다. 실측: 위조 IP `203.0.113.77`로 5회 실패 → 6회째 잠금 429 확인, 위조 IP를 `.88`·`.99`로 바꿔도 **계속 429(잠금 메시지)** → 카운터 키가 위조값이 아니라 실제 IP. **조치 불필요**(수정 보류). 다만 상류 함수들이 같은 XFF 패턴을 쓰므로, Supabase 정책이 바뀌면(엣지가 XFF를 통과시키도록 변경) 다시 검증 필요.
 2. **[높음] 상류 API 키가 502 에러로 유출 (`detail: String(e)`)** — Deno fetch 실패 메시지는 **요청 URL을 포함**한다(키가 쿼리스트링에 실림). molit-proxy(`molit-proxy/index.ts:120`)·kma-weather-proxy(`kma-weather-proxy/index.ts:146`)는 이미 2026-08-14에 "고정 문구로 반환" 수정했는데, 아래는 아직 그대로:
    | 함수 | 위치 | 노출 키 |
    |---|---|---|
@@ -1043,9 +1043,9 @@ gh api repos/conoc612-a11y/matjip/pages/builds/latest --jq '{status:.status, com
 - 프록시 레이트리밋(`rl_hit` DB 카운터, 버킷 분리 `datagokr:/naver:/its:/nts:/chungak:/eximbank:`), molit·chungak op 화이트리스트, bizno 입력 정제(10자리 숫자·100건).
 
 ### 수정 순서 (빠른 것부터, 각 항목 실측 검증 포함)
-1. `ai.html:132` tags에 `esc()` 추가 — **한 줄**, HTML만 고치면 즉시 반영.
-2. 4개 프록시 `detail: String(e)` → 고정 문구("상류 API 호출 실패") — 파일당 1줄, `supabase functions deploy` 재배포 필요.
-3. `schema.sql` RLS — `mj_restaurants update`에서 authenticated 제거(관리자만), insert는 필요 시 name unique 제약+레이트리밋.
-4. admin-login XFF 방어 — 배포 실측(XFF 신뢰 여부) 후 설계(IP+UA 조합·전역 실패 카운터).
-- 배포 후 검증: 각 함수에 위조 XFF로 잠금 우회 시도 → 429/401 유지 확인. ai.html에 XSS 페이로드 태그 넣고 렌더 시 탈취 불가 확인.
+1. ~~`ai.html:132` tags에 `esc()` 추가~~ → **적용 완료(2026-08-16, 커밋 b952508c)** — 배포본에 `.map((t)=>esc(t))` 반영 확인.
+2. ~~4개 프록시 `detail: String(e)` → 고정 문구~~ → **적용 완료(2026-08-16, 커밋 b952508c)** — chungak:132·bizno:134·eximbank:94·its-cctv:117/137 모두 `detail` 제거+`console.error`로 교체, Edge Function 4개 재배포 후 정상 200 응답 확인.
+3. ~~`schema.sql` RLS — `mj_restaurants update`에서 authenticated 제거~~ → **적용 완료(2026-08-16, 커밋 b952508c)** — 정책 삭제 migration `20260816000000` DB 반영 확인(Local=Remote).
+4. ~~admin-login XFF 방어~~ → **실측 결과 조치 불필요로 종결(2026-08-16)** — 위조 XFF 무시 확인(위 항목 1 참조).
+- 배포 후 검증: 각 함수에 위조 XFF로 잠금 우회 시도 → 429 유지 확인(실측 완료). ai.html에 XSS 페이로드 태그 넣고 렌더 시 탈취 불가 확인(코드상 esc 적용 확인).
 
