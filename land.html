@@ -242,10 +242,14 @@
     .apd-grid { display:grid; gap:4px; margin-bottom:10px; }
     .apd-grid-row { display:flex; justify-content:space-between; gap:10px; font-size:13px; }
     .apd-grid-row span { color:var(--muted); flex-shrink:0; }
-    .apd-actions { display:flex; gap:6px; }
-    .apd-btn { flex:1; font:inherit; font-size:13px; font-weight:600; padding:9px 8px; border:1px solid var(--line); background:var(--card); color:var(--text); border-radius:9px; cursor:pointer; }
+    .apd-actions { display:flex; gap:6px; flex-wrap:wrap; }
+    .apd-btn { flex:1 1 30%; font:inherit; font-size:13px; font-weight:600; padding:9px 8px; border:1px solid var(--line); background:var(--card); color:var(--text); border-radius:9px; cursor:pointer; }
     .apd-btn:hover { border-color:var(--c-primary); color:var(--c-primary); }
     .apd-btn.on { background:var(--c-primary); color:#fff; border-color:var(--c-primary); }
+    .apd-gos { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+    .apd-go { flex:1 1 30%; font:inherit; font-size:12px; font-weight:600; padding:7px 6px; border:1px solid var(--line); background:var(--card); color:var(--text); border-radius:9px; cursor:pointer; }
+    .apd-go:hover { border-color:var(--c-primary); color:var(--c-primary); }
+    .apd-go:active { background:var(--c-primary); color:#fff; }
     #apd-lightbox { position:fixed; inset:0; z-index:4000; background:rgba(0,0,0,.92); display:flex; align-items:center; justify-content:center; }
     #apd-lightbox[hidden] { display:none; }
     #apd-lightbox img { max-width:94vw; max-height:88vh; border-radius:6px; box-shadow:0 8px 40px rgba(0,0,0,.5); }
@@ -727,7 +731,7 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           <!-- 빌드 태그: 브라우저가 옛 파일을 캐시하고 있는지 한눈에 확인하는 용도. 배포마다 올린다. -->
-          · <span class="build-tag">build 2026-08-16-b37</span></span>
+          · <span class="build-tag">build 2026-08-17-b38</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
@@ -2301,6 +2305,38 @@
         auctionList.hidden = false;
         apdD = null;
       }
+      // ── 경매 바로가기 6종 ──
+      // 사건내역·기일내역·문건/송달내역·감정평가서·현황조사서·매각물건명세서는 전부
+      // courtauction.go.kr 사건상세(PGJ15AF01) 화면 안의 탭/문서다. 사건상세는 사건번호를
+      // URL이 아니라 WebSquare5 내부 데이터(setSrc)로만 받으므로 딥링크 불가(2026-08-17
+      // headless 실측, HANDOFF 57). 그래서 버튼 = 사건번호 복사 + 사건검색 화면 열기로 설계.
+      const AUC_SEARCH_URL = 'https://www.courtauction.go.kr/pgj/index.on?pgjId=159M01&w2xPath=%2Fpgj%2Fui%2Fpgj100%2FPGJ159M00.xml';
+      const AUC_GO_LABELS = ['사건내역', '기일내역', '문건/송달', '감정평가서', '현황조사서', '매각물건명세서'];
+      function apdGsNo(d) {
+        return String(d.cn || '').replace(String(d.court || ''), '').trim();
+      }
+      function apdGosHtml(d) {
+        const cs = apdGsNo(d);
+        return AUC_GO_LABELS.map((l) =>
+          `<button type="button" class="apd-go" data-go="${esc(l)}" title="사건번호 ${esc(cs)} 복사 + 법원 사이트 사건검색 열기 (복사 후 사건번호 붙여넣기)">${esc(l)}</button>`
+        ).join('');
+      }
+      function apdGoClick(l) {
+        const d = apdD;
+        if (!d) return;
+        const cs = apdGsNo(d);
+        if (cs) {
+          navigator.clipboard && navigator.clipboard.writeText(cs).then(() => {
+            const b = auctionDetail.querySelector('.apd-go[data-go="' + l + '"]');
+            if (b) { b.textContent = '복사됨 ✓'; setTimeout(() => { b.textContent = l; }, 1200); }
+          }).catch(() => { });
+        }
+        window.open(AUC_SEARCH_URL, '_blank', 'noopener');
+      }
+      auctionDetail.onclick = (e) => {
+        const go = e.target.closest('.apd-go');
+        if (go) { e.stopPropagation(); apdGoClick(go.dataset.go); return; }
+      };
       function auctionRenderDetail() {
         const d = apdD;
         if (!d) return;
@@ -2346,6 +2382,9 @@
             <button type="button" class="apd-btn${fav ? ' on' : ''}" id="apd-fav">${fav ? '★ 즐겨찾기' : '☆ 즐겨찾기'}</button>
             <button type="button" class="apd-btn" id="apd-map">지도에서 보기</button>
             <button type="button" class="apd-btn" id="apd-link">법원 사이트</button>
+          </div>
+          <div class="apd-gos">
+            ${apdGosHtml(d)}
           </div>`;
         $('apd-fav').onclick = () => {
           const on = auctionFavToggle(favKey);
