@@ -12,6 +12,37 @@
 
 ---
 
+## 2026-08-16 (40) — opencode (스크롤바 상시 표시 + 공용 ui-grip 그립, 실제 크롬 프론트뷰 검증·push·배포 완료 + 스크롤바 규격 비교 확정)
+
+> 사용자 지시(39 직후): "제발 팝업크기 상관없이 스크롤바 나오게 해주고, 드래그해서 크기 조정가능하게
+> 만들어줘, 너가 꼭 실제 크롬익스플러에서 작동하는지(프론트뷰)에서 확인까지 해주고 푸시하자."
+
+### 수정 (land.html, 커밋 808ff6b2)
+1. **스크롤바 상시 표시**: `.leaflet-popup-content` `overflow:auto` → `overflow-y:scroll; overflow-x:hidden`.
+   팝업 크기·내용과 무관하게 네이티브 스크롤바 트랙이 항상 보인다(내용이 차면 thumb 가 채워짐).
+2. **그립을 공용 디자인으로 교체**: `lp-corner-grip`(은은한 대각선, 투명) → **`.ui-grip.ui-grip-corner`**
+   (24x24, 어두운 배경 rgba(0,0,0,.82) + 흰 테두리 — css/buttons.css 공용, 어떤 지도 위에서도 보임).
+   makeResizable 콜백은 그대로.
+
+### 검증 — 실제 보이는(비헤드리스) Chrome + CDP 실마우스, 1440x900
+- probe96: `overflow-y:scroll` 전 상태 유지, 그립 24x24 `disp:flex`·배경 확인, 드래그 축소→확대→
+  축소 전 주기, JS 예외 0건. 스크린샷 4장(01_open→02_shrunk→03_grown→04_min) 저장.
+- probe97: 내용이 완전히 차도(ch==sh 537) **스크롤바 트랙 15px 유지**(cw 465 < ow 480), `oy:scroll` — PASS.
+- probe89: 레이어 패널 자동 접기 불변. syncheck 1블록 OK. 배포본 fetch 확인(overflow-y:scroll,
+  ui-grip 존재, 구 lp-corner-grip 부재).
+
+### 스크롤바 규격 비교 (사용자 질문 → 실측 확정)
+- "지도에서 레이어 클릭하고 팝업 나오잖아, 거기(=레이어 패널) 스크롤바 규격 기준으로 팝업도 동일하게."
+- 실측: 패널 `.lp-body` ow250−cw233=17px 이지만 2px 은 border(1px×2), **실제 네이티브 스크롤바는
+  팝업·패널 모두 15px 동일**. 뷰포트에서 서로 다른 커스텀 규격 없음(::-webkit-scrollbar 전무).
+- **사용자 선택: 현재 그대로 유지** (스크롤바 규격 변경 없음). 항상 표시(overflow-y:scroll)만 유지.
+
+### 배포
+- 커밋 `808ff6b2`, push `d0341a6e..808ff6b2`. 배포본 확인 완료.
+- 스크린샷: `C:\Users\conoc\AppData\Local\Temp\opencode\landtest\screens\`.
+
+---
+
 ## 2026-08-16 (39) — opencode (재설계: 리사이즈를 스크롤바에서 분리 — 팝업 레이어 우하단 코너 그립 상시 노출, 커밋·push·배포 완료)
 
 > 사용자 후속 지시: "스크롤바도 없고, 크기조정도 안되고. 팝업 레이어 자체를 크기 조정 되는 기능으로
