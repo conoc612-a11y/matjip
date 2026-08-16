@@ -498,7 +498,12 @@
        하단 스트립 핸들 3차 재작업은 기각). 트리거는 스크롤바가 있는 오른쪽 세로줄 바로 아래
        우하단 아이콘(.ui-grip, css/buttons.css 공용, 항상 표시). makeResizable 의
        setPointerCapture 덕에 드래그 후 합성 click 이 팝업 컨테이너에 머물러 지도 click
-       (위치정보 팝업 재오픈)이 유발되지 않는다. 위치는 .ui-grip-corner(right:3/bottom:3). */
+       (위치정보 팝업 재오픈)이 유발되지 않는다. */
+    /* 스크롤바 하단 세모와 겹치지 않도록 세로줄 바로 아래로 내린다(실측 2026-08-16:
+       스크롤바 하단=content 하단 y535, 팝업 하단 y549 → bottom:-12px 면 그립 상단 y537 =
+       세모 아래 2px). 팝업 아래로 12px 매달리지만 tip(.leaflet-popup-tip)과 같은 메커니즘으로
+       잘리지 않는다. */
+    .leaflet-popup .ui-grip-corner { bottom: -12px; }
     /* 접기 버튼 위치만 잡고, 24px 아이콘 버튼 외형은 .ui-pop-btn 공용.
        우상단(right:30px)이어야 한다 — 좌측 상단(left:6px)은 좌측 사이드 패널(#rp-panel) 헤더와 겹쳐
        클릭을 가로챘다(실측 2026-08-16, elementFromPoint로 확인). */
@@ -1110,7 +1115,7 @@
       // 접은 팝업의 복원 칩이 남아 있으면 치운다 — 새 팝업이 열렸다면 옛 칩은 무의미하다.
       if (_restoreChip) { _restoreChip.remove(); _restoreChip = null; }
       // 우하단 크기조절 아이콘 — 드래그 로직은 20260815 백업의 makeResizable() 공용 코드 그대로.
-      // 스크롤바 오른쪽 세로줄 아래(.ui-grip-corner: right/bottom 3px)에 항상 표시된다.
+      // 스크롤바 오른쪽 세로줄 아래(.ui-grip-corner, bottom:-12px 로 세모와 비접촉)에 항상 표시.
       const grip = document.createElement('button');
       grip.type = 'button';
       grip.className = 'ui-grip ui-grip-corner';
