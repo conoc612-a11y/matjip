@@ -12,6 +12,44 @@
 
 ---
 
+## 2026-08-16 (41) — opencode (팝업 드래그 리사이즈 3차 재작업 — 진짜 원인: 드래그 후 합성 click 이 지도 팝업을 재오픈. 하단 스트립 핸들 + click 차단으로 해결. 커밋·push 완료)
+
+> 사용자: (40) 직후 "드래그해서 크기 조정가능하게" 재보고 → 3번째 재작업. 이번엔 **커밋·push 없이
+> 로컬만** ("푸시 절대 하지말고, 로컬에서 먼저 확인할꺼야") → 실마우스 검증 통과 후 사용자
+> "푸시해봐 확인해볼께" 승인으로 커밋·push·배포 완료.
+
+### 근본 원인 (실측 — 보이는 Chrome 9223, 계측 로그 probe104)
+- **드래그 로직 자체는 정상 동작했다**(높이 417→477 실변화, probe101). 문제는 mouseup 직후
+  **브라우저가 합성하는 `click`** — mousedown 은 팝업(핸들), mouseup 은 지도 위라 공통 조상인
+  **지도 컨테이너에 click 이 발생** → `map.on('click')`(4549)이 위치정보 팝업을 열고 → Leaflet 이
+  기존 팝업을 닫으며 `setContent/update` 가 새 팝업을 자연 높이(417)로 초기화. "끌어도 원래대로
+  돌아간다"=사용자 보고. (§28·§39의 그립 실패도 같은 경로로 추정.)
+- probe103(직접 `_lpH` 세팅 후 `_updateLayout()`)으로 **`_updateLayout` 자체는 결함 없음** 확인.
+
+### 수정 (land.html, 41자 `+51/−28`)
+1. 커스텀 그립+makeResizable(pointer capture·임계값) 제거 → **래퍼 하단 12px 스트립
+   `.lp-resize-handle`** + mousedown/mousemove/mouseup 플래그로 `content.style.height` 만 변경
+   (React SearchSection 델타 패턴, min 120 / max 지도높이−50). 폭은 자동 맞춤 유지.
+2. **드래그 동안 window 캡처 click 차단** — `rsDragging` flag + `e.stopPropagation()+preventDefault()`,
+   flag 는 mouseup 에서 `setTimeout(0)` 으로 내려 **mouseup 직후의 click 을 잡는다**.
+3. `.leaflet-popup-content-wrapper` 에 `position:relative` (핸들 좌표 기준).
+
+### 검증 (실마우스 probe104/105)
+- probe104 계측: mouseup 후 `setContent/close` 0건 (수정 전 2건). probe105: 417→507(+90)→307(−200)
+  모두 유지·팝업 재오픈 없음·JS 예외 0건. 스크린샷 08/09 저장.
+- syncheck ALL OK, 서빙 사본(`site\land.html`) 동기화 확인. TROUBLESHOOTING §30 기록.
+
+### 커밋·배포
+- 커밋·push 완료 (사용자 "푸시해봐 확인해볼께"). 배포본 fetch 확인: `lp-resize-handle` True,
+  `ui-grip.ui-grip-corner`(팝업용) 부재 — 거리뷰·경매 패널의 공용 그립은 유지됨.
+
+### ▶ 이어서 할 일
+- 사용자 실사용 확인 (배포본): 핸들 드래그로 크기 조절이 유지되는지.
+- 남은 관찰: §28 "성장 후 축소 불가" 함정이 이 설계에서 재발하는지 — 높이를 자연 높이 미만/초과로
+  반복해 재오픈 없이 축소 가능한지 사용자 실사용으로 확정.
+
+---
+
 ## 2026-08-16 (40) — opencode (스크롤바 상시 표시 + 공용 ui-grip 그립, 실제 크롬 프론트뷰 검증·push·배포 완료 + 스크롤바 규격 비교 확정)
 
 > 사용자 지시(39 직후): "제발 팝업크기 상관없이 스크롤바 나오게 해주고, 드래그해서 크기 조정가능하게

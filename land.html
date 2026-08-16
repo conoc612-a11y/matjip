@@ -472,7 +472,7 @@
     .unit-detail { display:none; margin:2px 0 2px; padding:7px 9px; border-left:2px solid var(--c-primary); border-radius:0 8px 8px 0; background:var(--c-primary-soft); font-size:12px; color:var(--muted); line-height:1.75; }
     .unit-detail b { color:var(--text); }
     /* ── Leaflet 팝업 (다크모드 배경 + 화면 크기에 맞는 크기) ── */
-    .leaflet-popup-content-wrapper { background:var(--card); color:var(--text); border-radius:12px; box-shadow:var(--c-shadow-lg); }
+    .leaflet-popup-content-wrapper { position:relative; background:var(--card); color:var(--text); border-radius:12px; box-shadow:var(--c-shadow-lg); }
     /* 세로만 스크롤한다. overflow-x 를 막지 않으면 긴 한 줄이 컨테이너를 밀어내 가로 스크롤바가 생긴다
        (예: '공시지가 4,984,000원/㎡ (평당 16,476,032원 · 2025.01 기준)').
        --popup-max-h 는 지도 높이에 맞춰 JS 가 갱신한다. vh 로 고정하면 지도가 화면 일부일 때 팝업이 넘친다. */
@@ -493,13 +493,14 @@
     .leaflet-popup-content-wrapper { overflow:visible; }
     .leaflet-popup-tip { background:var(--card); }
     .leaflet-container a.leaflet-popup-close-button { color:var(--muted); }
-    /* ── 팝업 공통 컨트롤 (우하단 코너 그립 리사이즈 + 접기) — 2026-08-16 ── */
-    /* 리사이즈를 스크롤바에서 분리해 팝업 레이어 우하단 코너에 항상 보이는 그립을 둔다(사용자 요청
-       2026-08-16). 이전에는 스크롤바 위·아래 화살표 자리의 16x17px 핸들이 리사이즈를 담당해, 내용이
-       채워져 스크롤바가 사라지면 핸들도 사라져 "드래그로 크기 조절이 안 된다"는 보고가 있었다.
-       스크롤바는 위의 overflow-y:scroll 로 항상 노출하고 그립은 공용 .ui-grip(어두운 배경 + 흰
-       테두리 — 어떤 지도 위에서도 보이는 통일 디자인, css/buttons.css)을 쓴다. right/bottom 은
-       .leaflet-popup(position:absolute) 기준이라 줌/팬과 무관하게 항상 우하단에 붙는다. */
+    /* ── 팝업 공통 컨트롤 (하단 드래그 핸들 리사이즈 + 접기) — 2026-08-16 ── */
+    /* 리사이즈: 커스텀 그립 + makeResizable(pointer capture·임계값) 대신 사용자 요청대로
+       mousedown/mousemove/mouseup 플래그로 내용 높이만 바꾸는 단순 패턴을 쓴다(2026-08-16 —
+       그립 드래그가 안 먹히는 환경이 있어 재작업). 래퍼 하단의 얇은 스트립을 잡고 세로로 끌면
+       content.style.height 에 반영. 스크롤바(overflow-y:scroll)와는 독립이라 항상 조작 가능. */
+    .lp-resize-handle { position:absolute; left:0; right:0; bottom:0; height:12px; cursor:row-resize; z-index:1150; border-radius:0 0 12px 12px; }
+    .lp-resize-handle::after { content:''; position:absolute; left:50%; bottom:2px; transform:translateX(-50%); width:34px; height:4px; border-radius:2px; background:rgba(0,0,0,.22); transition:background .15s; }
+    .lp-resize-handle:hover::after, .lp-resize-handle.drag::after { background:rgba(0,0,0,.45); }
     body.lp-vresizing { cursor:row-resize; -webkit-user-select:none; user-select:none; }
     /* 접기 버튼 위치만 잡고, 24px 아이콘 버튼 외형은 .ui-pop-btn 공용.
        우상단(right:30px)이어야 한다 — 좌측 상단(left:6px)은 좌측 사이드 패널(#rp-panel) 헤더와 겹쳐
@@ -1030,7 +1031,8 @@
     // ── 팝업 공통 컨트롤: 크기 조절(우하단 그립) + 접기 ──────────────────
     // Leaflet 은 popup._updateLayout() 이 content 폭을 다시 계산해 넣으므로, 리사이즈된
     // 크기는 팝업 객체(_lpW/_lpH)에 저장해 두고 _updateLayout 끝에 다시 적용한다.
-    // (기존 CSS resize:both 는 그립이 거의 안 보여 명시적 그립으로 교체)
+    // (기존 CSS resize:both 는 그립이 거의 안 보여 명시적 그립으로 교체했고, 그 그립도
+    // 드래그가 안 먹히는 환경이 있어 하단 스트립 핸들(mousedown 패턴)로 교체 — 2026-08-16)
     const _origUpdateLayout = L.Popup.prototype._updateLayout;
     // 텍스트 fit — 고정 높이 안에 내용이 넘치면(스크롤 대신) 폰트를 줄여 맞춘다.
     // fit 은 '그 순간의 고정 높이'에 맞추는 일회성 동작이라, 매번 기본 크기에서 시작해
@@ -1103,31 +1105,52 @@
     let _restoreChip = null;   // 접은 팝업의 복원 칩 — 1개만 유지
     function attachPopupControls(popup) {
       const el = popup.getElement();
-      if (!el || el.querySelector('.ui-grip')) return;
+      if (!el || el.querySelector('.lp-resize-handle')) return;
       const content = el.querySelector('.leaflet-popup-content');
       if (!content) return;
       // 팝업 내부 스크롤바도 공용 스타일(.ui-scroll)을 쓴다
       content.classList.add('ui-scroll');
       // 접은 팝업의 복원 칩이 남아 있으면 치운다 — 새 팝업이 열렸다면 옛 칩은 무의미하다.
       if (_restoreChip) { _restoreChip.remove(); _restoreChip = null; }
-      // 세로 크기조절: 우하단 코너 그립 — 스크롤바와 분리해 항상 보인다(사용자 요청 2026-08-16).
-      // 이전엔 스크롤바 위·아래 화살표 자리에 16x17px 핸들을 둬, 내용이 채워져 스크롤바가 사라지면
-      // 핸들도 함께 사라져 "드래그로 크기 조절이 안 된다"는 보고가 있었다. 이제 스크롤바는 항상
-      // 노출(overflow-y:scroll)되고 리사이즈 그립은 공용 .ui-grip 디자인으로 상시 표시한다.
-      const grip = document.createElement('button');
-      grip.type = 'button';
-      grip.className = 'ui-grip ui-grip-corner';
-      grip.title = '드래그: 세로 크기 조절';
-      el.appendChild(grip);
-      makeResizable(grip, content, {
-        applyStyle: false,
-        axis: 'w',            // 높이만 (폭은 자동 맞춤, 상한 480)
-        dragThreshold: 4,     // 임계값 넘어야 드래그 — 안 넘으면 클릭
-        minH: 120,
-        maxH: () => map.getSize().y - 50,
-        reverseH: false,      // 아래로 끌면 커짐, 위로 끌면 작아짐
-        bodyClass: 'lp-vresizing',
-        onResize: (w, h) => { popup._lpH = h; popup._updateLayout(); popup._updatePosition(); }
+      // 세로 크기조절: 래퍼 하단 얇은 스트립 핸들 — mousedown/mousemove/mouseup 플래그로 내용
+      // 높이만 바꾼다(사용자 요청 2026-08-16). pointer capture·드래그 임계값 같은 복잡한 로직 없이
+      // '누르고 → 움직인 만큼 더하고 → 놓으면 끝'. 폭은 자동 맞춤(상한 480)이라 건드리지 않는다.
+      const wrap = content.closest('.leaflet-popup-content-wrapper') || el;
+      const handle = document.createElement('div');
+      handle.className = 'lp-resize-handle';
+      handle.title = '드래그: 세로 크기 조절';
+      wrap.appendChild(handle);
+      let rsDragging = false, rsStartY = 0, rsStartH = 0;
+      const rsMaxH = () => Math.max(121, (map.getSize().y || window.innerHeight) - 50);
+      handle.addEventListener('mousedown', (e) => {
+        e.preventDefault();    // 드래그 중 텍스트 선택 방지
+        e.stopPropagation();   // Leaflet 지도 드래그로 새지 않게
+        rsDragging = true;
+        rsStartY = e.clientY;
+        rsStartH = content.offsetHeight;
+        handle.classList.add('drag');
+        document.body.classList.add('lp-vresizing');
+      });
+      // 드래그 후 브라우저가 합성하는 click(공통 조상 = 지도 컨테이너에서 발생)이 지도 click 핸들러
+      // (위치정보 팝업)를 건드려 드래그한 크기가 초기화되는 걸 막는다(실측 2026-08-16).
+      window.addEventListener('click', (e) => {
+        if (rsDragging) { e.stopPropagation(); e.preventDefault(); }
+      }, true);
+      window.addEventListener('mousemove', (e) => {
+        if (!rsDragging) return;
+        const h = Math.max(120, Math.min(rsStartH + (e.clientY - rsStartY), rsMaxH()));
+        popup._lpH = h;                       // 재업데이트 시에도 유지되도록 팝업에 기록
+        content.style.height = h + 'px';      // 마우스에 따라 즉시 반영
+        content.style.maxHeight = h + 'px';
+      });
+      window.addEventListener('mouseup', () => {
+        if (!rsDragging) return;
+        handle.classList.remove('drag');
+        document.body.classList.remove('lp-vresizing');
+        // 놓을 때 한 번 레이아웃 재계산(폭 재측정 + 폰트 fit) — 기존 동작 유지
+        try { popup._updateLayout(); popup._updatePosition(); } catch (err) {}
+        // click 은 mouseup 직후에 발생하므로, 이 플래그는 다음 태스크에서야 내려야 click 을 잡는다.
+        setTimeout(() => { rsDragging = false; }, 0);
       });
       // 접기 버튼 — 팝업을 닫고 지도 우하단에 복원 칩을 남긴다 (내용은 그대로 유지)
       const minBtn = document.createElement('button');

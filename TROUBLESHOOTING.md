@@ -829,4 +829,27 @@ gh api repos/conoc612-a11y/matjip/pages/builds/latest --jq '{status:.status, com
   네이티브 스크롤바가 유일한 공통 규격이므로 커스텀 CSS를 쓰지 않고 마커 클래스 `ui-scroll` 하나로
   통일(§14·§15 같은 결말). 그립도 지도 배경과 무관하게 보이도록 buttons.css 공용 그립을 재사용.
 
+## 30. 팝업 드래그 리사이즈가 "안 되는" 진짜 원인 — 드래그 후 합성 click 이 지도를 울려 팝업이 재오픈됨 (2026-08-16 실측)
+
+- **증상(사용자 보고, 3번째 재작업 요청)**: 하단에 드래그 핸들이 보이는데 크기가 안 조절된다.
+  "몇번째 요청하냐" (그립·makeResizable 2회 시도 후에도 동일 보고).
+- **원인(실측, 계측 로그)**: 드래그 로직은 **정상 동작**했다(높이 417→477 실변화). 문제는
+  mouseup 직후 브라우저가 합성하는 `click` 이벤트 — mousedown 은 팝업(핸들), mouseup 은 지도
+  위라서 **공통 조상인 지도 컨테이너에 click 이 발생** → `map.on('click')`(4549)이 위치정보 팝업을
+  열고 → Leaflet 이 기존 팝업을 닫으면서 `setContent/update` 가 새 팝업을 417px 로 초기화.
+  그래서 "끌어도 원래대로 돌아간다"처럼 보였다. (§28의 .ui-grip 이 실패한 환경도 같은 경로로
+  추정 — 드래그 자체는 됐지만 release 직후 click 이 재오픈을 유발.)
+- **해결(사용자 제안 패턴 + click 차단)**: 커스텀 그립/makeResizable(pointer capture·임계값)을
+  버리고 **래퍼 하단 얇은 스트립 핸들(.lp-resize-handle, 12px, row-resize) + mousedown/
+  mousemove/mouseup 플래그** 로 내용 높이만 바꾼다(React 예시의 delta 패턴). 동시에 드래그 동안
+  window 캡처 단계 `click` 리스너로 `e.stopPropagation()+preventDefault()` — `rsDragging` 을
+  mouseup 에서 바로 내리지 않고 `setTimeout(0)` 에서 내려 mouseup 직후의 click 을 잡는다.
+- **검증(실제 보이는 Chrome 9223, CDP 실마우스, probe104/105)**: 계측 로그상 mouseup 후
+  `setContent/close` 가 0건(수정 전엔 2건). 실드래그 확대 417→507, 축소 507→307 모두 유지,
+  팝업 재오픈 없음, JS 예외 0건. syncheck 1블록 OK. 스크린샷 08/09 저장.
+- **WHY(판단 사유)**: Leaflet 은 팝업이 지도 컨테이너 안에 있으므로 "팝업 안에서 눌러 지도 위에서
+  놓는" 드래그가 항상 지도 click 을 유발한다. 드래그 직후의 click 만 억제하면 다른 click 은 전부
+  그대로 두므로 안전. 사용자가 제시한 단순 패턴(상태 + delta + min/max)이 원인 추적과 수정에
+  모두 가장 적은 코드로 끝났다.
+
 
