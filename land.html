@@ -477,11 +477,11 @@
        (예: '공시지가 4,984,000원/㎡ (평당 16,476,032원 · 2025.01 기준)').
        --popup-max-h 는 지도 높이에 맞춰 JS 가 갱신한다. vh 로 고정하면 지도가 화면 일부일 때 팝업이 넘친다. */
     .leaflet-popup-content > * { max-width:100%; }
-    /* resize:both — 팝업이 고정 크기라 답답하다는 지적에 따라 사용자가 우하단 모서리를
-       끌어 크기를 조절할 수 있게 한다. overflow 가 visible 이 아니어야 동작한다(아래 auto).
-       max-width 는 리사이즈 상한이 되어 '넓히기'를 막으므로 넉넉히 준다(화면 폭까지).
-       내용은 .pc 가 width:100% 라 늘어난 폭에 맞춰 자동으로 다시 흐른다. */
-    .leaflet-popup-content { max-height:var(--popup-max-h, min(62vh, 520px)); overflow:auto; overflow-wrap:anywhere; word-break:break-word; min-width:220px; max-width:calc(100vw - 40px); margin:13px 0 13px 20px; padding-right:24px; }
+    /* 팝업 내용. overflow-y:scroll — 팝업 크기와 무관하게 스크롤바 트랙이 항상 보인다(사용자 요청
+       2026-08-16: "팝업크기 상관없이 스크롤바 나오게"). 내용이 채워져 스크롤이 필요 없어도 트랙이
+       남아 리사이즈 조작 위치를 알려준다. max-width 는 리사이즈 상한이 되어 '넓히기'를 막으므로
+       넉넉히 준다(화면 폭까지). 내용은 .pc 가 width:100% 라 늘어난 폭에 맞춰 자동으로 다시 흐른다. */
+    .leaflet-popup-content { max-height:var(--popup-max-h, min(62vh, 520px)); overflow-y:scroll; overflow-x:hidden; overflow-wrap:anywhere; word-break:break-word; min-width:220px; max-width:calc(100vw - 40px); margin:13px 0 13px 20px; padding-right:24px; }
     /* 스크롤바를 팝업 오른쪽 끝에 붙인다(2026-08-16): content margin-right 를 0으로, 텍스트 여백은
        padding-right 가 대신한다. 이전엔 스크롤바가 오른쪽에서 24px 들어가 "맨 우측에 없다"는 지적이 있었다.
        .leaflet-popup-pane z-index: 기본 700 은 컨트롤 컨테이너 1000 아래라, 열린 레이어 패널(.lp-body,
@@ -497,14 +497,9 @@
     /* 리사이즈를 스크롤바에서 분리해 팝업 레이어 우하단 코너에 항상 보이는 그립을 둔다(사용자 요청
        2026-08-16). 이전에는 스크롤바 위·아래 화살표 자리의 16x17px 핸들이 리사이즈를 담당해, 내용이
        채워져 스크롤바가 사라지면 핸들도 사라져 "드래그로 크기 조절이 안 된다"는 보고가 있었다.
-       스크롤바는 네이티브(ui-scroll)로 별도 유지하고 그립은 스크롤 여부와 무관하게 항상 노출한다.
-       내용 폭은 자동 맞춤이므로(1038~) 가로 리사이즈는 없다 — 높이만. right/bottom 은
+       스크롤바는 위의 overflow-y:scroll 로 항상 노출하고 그립은 공용 .ui-grip(어두운 배경 + 흰
+       테두리 — 어떤 지도 위에서도 보이는 통일 디자인, css/buttons.css)을 쓴다. right/bottom 은
        .leaflet-popup(position:absolute) 기준이라 줌/팬과 무관하게 항상 우하단에 붙는다. */
-    .lp-corner-grip { position:absolute; width:22px; height:22px; right:1px; bottom:1px; z-index:1200; cursor:row-resize; border:none; padding:0; background:transparent; opacity:.7; }
-    .lp-corner-grip::before { content:''; position:absolute; right:3px; bottom:4px; width:11px; height:2px; background:var(--muted); transform:rotate(-45deg); transform-origin:right bottom; }
-    .lp-corner-grip::after { content:''; position:absolute; right:6px; bottom:7px; width:7px; height:2px; background:var(--muted); transform:rotate(-45deg); transform-origin:right bottom; }
-    .lp-corner-grip:hover { opacity:1; }
-    .lp-corner-grip:hover::before, .lp-corner-grip:hover::after { background:var(--c-primary); }
     body.lp-vresizing { cursor:row-resize; -webkit-user-select:none; user-select:none; }
     /* 접기 버튼 위치만 잡고, 24px 아이콘 버튼 외형은 .ui-pop-btn 공용.
        우상단(right:30px)이어야 한다 — 좌측 상단(left:6px)은 좌측 사이드 패널(#rp-panel) 헤더와 겹쳐
@@ -1108,7 +1103,7 @@
     let _restoreChip = null;   // 접은 팝업의 복원 칩 — 1개만 유지
     function attachPopupControls(popup) {
       const el = popup.getElement();
-      if (!el || el.querySelector('.ui-grip') || el.querySelector('.lp-corner-grip')) return;
+      if (!el || el.querySelector('.ui-grip')) return;
       const content = el.querySelector('.leaflet-popup-content');
       if (!content) return;
       // 팝업 내부 스크롤바도 공용 스타일(.ui-scroll)을 쓴다
@@ -1117,11 +1112,11 @@
       if (_restoreChip) { _restoreChip.remove(); _restoreChip = null; }
       // 세로 크기조절: 우하단 코너 그립 — 스크롤바와 분리해 항상 보인다(사용자 요청 2026-08-16).
       // 이전엔 스크롤바 위·아래 화살표 자리에 16x17px 핸들을 둬, 내용이 채워져 스크롤바가 사라지면
-      // 핸들도 함께 사라져 "드래그로 크기 조절이 안 된다"는 보고가 있었다. 스크롤바는 네이티브(ui-scroll)
-      // 로 그대로 두고 리사이즈 그립만 팝업 레이어 우하단에 상시 노출한다. 드래그 = 높이 조절.
+      // 핸들도 함께 사라져 "드래그로 크기 조절이 안 된다"는 보고가 있었다. 이제 스크롤바는 항상
+      // 노출(overflow-y:scroll)되고 리사이즈 그립은 공용 .ui-grip 디자인으로 상시 표시한다.
       const grip = document.createElement('button');
       grip.type = 'button';
-      grip.className = 'lp-corner-grip';
+      grip.className = 'ui-grip ui-grip-corner';
       grip.title = '드래그: 세로 크기 조절';
       el.appendChild(grip);
       makeResizable(grip, content, {
