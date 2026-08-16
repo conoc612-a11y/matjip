@@ -12,6 +12,38 @@
 
 ---
 
+## 2026-08-16 (48) — opencode (Flaticon 아이콘으로 지도 마커 교체 + 로그인 이메일 저장)
+
+> 사용자 요청: "flaticon.com 무료 아이콘 쓸 수 있어? 그렇게 하고, matjip land에 교체 적용할만한 것들 분석해서 알려줘" →
+> 라이선스(저작자 표시 필수) 확인 → 4종 교체 적용·로컬 검증 완료. 이어서 "로그인할 때 기존 로그인했던 ID 저장" 추가 요청 → 구현·검증 완료.
+
+### 아이콘 교체 (Flaticon → 로컬 icons/)
+- **`icons/` 신설**: `ev-station.png`(8744239), `auction-gavel.png`(5396706, Freepik), `cctv.png`(636024), `house-key.png`(2185972, Freepik) — 전부 512x512, 투명 배경, 검정 단색.
+- **land.html divIcon 5곳** 교체: evIcon(⚡→ev-station), aucIcon(⚖️→auction-gavel), cctvIcon(인라인SVG→cctv, CSS `.cctv-icon svg`→`img`), 즐겨찾기 중개사(중→house-key), 카카오 중개사(중→house-key). 검정 단색이라 `filter:invert(1)`로 흰색화.
+- **css/buttons.css**: `.footer-links .footer-attribution` 스타일 추가.
+- **푸터 attribution**: `아이콘 · Freepik (Flaticon)` 링크 (Flaticon 무료 라이선스 요구사항).
+- ⚠️ **저작자 미확정**: house-key·gavel은 Freepik 확인, **ev-station·cctv는 Flaticon 사이트 403 차단으로 저작자 미확인**. 푸터에 "Freepik"으로 통일 표기했으니 필요 시 정정.
+
+### 로그인 이메일 저장 (onboarding.html)
+- 로그인 성공 시 `localStorage.setItem('mj_last_email', email)` (비밀번호는 저장 안 함). 페이지 로드 시 자동 채움.
+- `#email`에 `autocomplete="email"`, `#password`에 `autocomplete="current-password"` 추가(브라우저 자동완성 연동).
+
+### 검증 (서버 8798 + Chrome 9223 CDP)
+- probe123·124: EV/경매/CCTV 마커 렌더 + 이미지 로드 OK + JS 오류 0건. probe_iconload: 4개 PNG 512x512 OK.
+- ⚠️ **공인중개사 마커는 로컬에서 확인 불가** — 카카오 키 도메인 잠금(localhost 미등록, TROUBLESHOOTING §1). **배포본에서 확인 필요(미확인)**.
+- probe_login: 저장 후 새로고침 시 이메일 자동 채움 확인, JS 오류 0.
+- 함정: 테스트 site 폴더에 `evcharger.json`·`auction.json` 없으면 EV/경매 마커 안 뜸(데이터 파일 서빙 확인 필수, probe124에서 발견).
+
+### 커밋·배포 상태
+- **이번 커밋·push 진행** (사용자 동의). 변경: land.html, css/buttons.css, onboarding.html, icons/, HANDOFF 48, TROUBLESHOOTING 33.
+- 배포 후 **배포본에서 공인중개사 마커(house-key.png) + 아이콘 전체 확인 필요**.
+
+### ▶ 이어서 할 일
+1. 배포본(conoc612-a11y.github.io/matjip/land.html)에서 공인중개사 마커·아이콘 렌더 실측 확인 (probe121 패턴, 배포 후 ~60초).
+2. (선택) ev-station·cctv 저작자 확인 → 푸터 attribution 정정.
+
+---
+
 ## 2026-08-16 (47) — opencode (정비 폴리곤 퇴화 링 임계값 수정: MIN_RING_M2 1000→100 — "반포 717-16 가로주택이 원으로 보인다")
 
 > 사용자 실측: 반포동 717-16 가로주택정비사업이 폴리곤이 아니라 반경 300m 점선 원으로 표시됨.

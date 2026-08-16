@@ -81,9 +81,9 @@
           <input type="text" id="name" placeholder="홍길동" autocomplete="name" />
         </div>
         <label class="fld">이메일 (필수)</label>
-        <input type="email" id="email" placeholder="name@example.com" />
+        <input type="email" id="email" placeholder="name@example.com" autocomplete="email" />
         <label class="fld">비밀번호 (필수, 6자 이상)</label>
-        <input type="password" id="password" placeholder="••••••" />
+        <input type="password" id="password" placeholder="••••••" autocomplete="current-password" />
         <div id="agree-fld" class="agree-fld hidden">
           <div class="agree" data-sec="terms">
             <input type="checkbox" id="agree-terms" />
@@ -187,6 +187,10 @@
     const SITUATIONS = ['혼밥','회식','데이트','가족모임','친구모임'];
     let mode = 'login'; // login | signup
 
+    // 로그인 시 이메일 기억 — 매번 아이디 입력 안 하도록 (2026-08-16). 비밀번호는 저장하지 않는다.
+    const _savedEmail = localStorage.getItem('mj_last_email');
+    if (_savedEmail) $('email').value = _savedEmail;
+
     // ── 태그 칩 렌더 ──
     function renderChips(el, items) {
       el.innerHTML = items.map((t) => `<span class="chip" data-tag="${t}">${t}</span>`).join('');
@@ -274,6 +278,7 @@
       if (!data.session) { // 이메일 확인이 켜져 있는 경우
         msg.textContent = '가입 확인 메일을 보냈어요. 메일을 확인해 주세요.'; msg.className = 'msg ok'; return;
       }
+      localStorage.setItem('mj_last_email', email);
       showOnboarding(data.user);
     });
 
