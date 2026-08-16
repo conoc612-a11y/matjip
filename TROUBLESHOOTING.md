@@ -870,5 +870,21 @@ gh api repos/conoc612-a11y/matjip/pages/builds/latest --jq '{status:.status, com
   스트립 핸들(mousedown/up 패턴, pointer capture 없음)에만 필요했던 것. 코드를 새로 짜지 말라는
   사용자 지시가 곧 가장 안전한 경로였음.
 
+## 30-2. 리사이즈 그립이 스크롤바 하단 세모와 겹침 — `.ui-grip-corner` bottom 오버라이드 (2026-08-16 발견·수정, 로컬 검증만)
+
+- **증상**: 팝업 우하단 리사이즈 아이콘(그립)이 위치정보 콘텐츠의 스크롤바 하단 세모(화살표)와
+  겹쳐 세모 클릭이 어렵다(사용자 "실거래 표 반영안됬어"와 무관한 별건 — 실거래 UI 분석 중 발견).
+- **실측(probe107, 127.0.0.1:9223)**: 팝업 전체 y104-549, content(스크롤바 소유) y118-535,
+  그립 y522-546 → 그립 하단이 content 하단(535) = 스크롤바 하단 세모 위치와 **14px 겹침**.
+  §29(상시 스크롤바) 도입 후 그립(right:3/bottom:3)이 스크롤바 하단 세모 바로 위에 얹힌 것.
+- **해결(land.html)**: popup 스코프 오버라이드 `.leaflet-popup .ui-grip-corner { bottom: -12px; }`
+  추가. `css/buttons.css` 공용 값(right:3/bottom:3)은 건드리지 않음 — popup 에서만 그립을 아래로
+  12px 매달아 세모 아래(right:3/bottom:-12px)에 위치시킴.
+- **검증(probe108)**: 그립 상단 y537, content 하단 y535 → **갭 2px, 겹침 없음**. 실마우스 드래그
+  417×480 → 487×510 → 347×460 모두 유지, JS 예외 0건. 스크린샷 `screens/12_grip_below_arrow.png`.
+- **WHY**: 팝업 아래로 12px 매달려도 Leaflet 팝업 tip(.leaflet-popup-tip)과 같은
+  overflow(visible) 메커니즘이라 잘리지 않는다. 세모 클릭 영역을 완전히 비우는 게 겹침의 본질 해결.
+- **상태**: 로컬 검증 완료, **커밋·push 미완**(사용자 동의 대기). syncheck ALL OK, 서빙 사본 동기화 완료.
+
 
 
