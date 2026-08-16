@@ -12,6 +12,24 @@
 
 ---
 
+## 2026-08-16 (54) — opencode (AI 학습 크롤러 robots.txt 차단 — 배포 반영 확인 완료)
+
+> 사용자: "다른 AI 등이 matjip 사용 못하게 403 되게 만들 수 있나?" → GitHub Pages 제약 확인 후 robots.txt 방식 채택.
+
+### 결론 (한계 명시)
+- **GitHub Pages 정적 호스팅은 진짜 HTTP 403 불가**: 커스텀 헤더(X-Robots-Tag)·서버 설정(.htaccess) 미지원. 배포는 branch 기반(push 즉시 반영, 별도 배포 워크플로 없음).
+- **robots.txt = 차단 선언이지 강제 아님**: 정식 봇(OpenAI·Anthropic·Google 등)은 준수, 비정식 스크래퍼는 무시 가능.
+- 진짜 403 필요 시: 커스텀 도메인 + Cloudflare 프록시(Bot Fight Mode/WAF)로 전환해야 함 — 구조 변경 필요, 현재는 보류.
+
+### 적용 (커밋 `7e85af21`, push 완료, 배포 200 OK 확인)
+- `robots.txt` 신규: GPTBot·ChatGPT-User·OAI-SearchBot·ClaudeBot·Claude-Web·anthropic-ai·Google-Extended·CCBot·PerplexityBot·Bytespider·Amazonbot·Applebot-Extended·Meta-ExternalAgent·cohere-ai·YouBot·Diffbot = Disallow /, **정식 검색엔진(`*`)은 Allow** (검색 유입 유지).
+
+### ▶ 이어서 할 일
+1. (없음 — robots.txt는 즉시 반영됨. 크롤러별 실제 준수 여부는 검색 콘솔/로드에서 확인.)
+2. 추후 강한 차단이 필요하면 Cloudflare 전환 검토(커스텀 도메인 필요).
+
+---
+
 ## 2026-08-16 (53) — opencode (terms 저작권 출처 표기 최소화 + 정비 데이터 자동 갱신 — 결론 요약)
 
 > 사용자 질문: "공공데이터는 굳이 표기 안 해도 되지 않나?" → 근거 조사 후 **표기 최소화** 방향 결정.
