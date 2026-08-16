@@ -12,6 +12,28 @@
 
 ---
 
+## 2026-08-16 (52) — opencode (정비·urban 서울 데이터 자동 갱신 워크플로 추가 — 매일 07:00 KST)
+
+> 사용자 질문: "urban seoul 정보는 언제 업데이트 자동으로 이뤄지는거야" → 실측: 자동 갱신 없음(수동 `node tools/collect_redevelop.js`만 가능). 사용자 "웅" → 워크플로 추가.
+
+### 배경 (실측 근거)
+- `.github/workflows/`는 2개뿐이었고 둘 다 정비 데이터 미호출: `collect-auction.yml`(경매+SH공고, 매일 07:00 KST), `collect-realprice.yml`(실거래가, 매월 1일 07:00 KST).
+- 정비 데이터(`redevelop_seoul.json` ~2,964건 + `redevelop_polygons.json`)는 `tools/collect_redevelop.js`(urban.seoul.go.kr 공개 ArcGIS WMS UQ120, 레이어 94~122)가 생성하나 워크플로 연결 없음.
+
+### 적용
+- **`.github/workflows/collect-redevelop.yml` 신규**(커밋 `7a8274d0`):
+  - cron `0 22 * * *` = **매일 07:00 KST**(auction과 동일 주기, 구역 지정·해제 수시 반영). workflow_dispatch로 수동 실행 가능.
+  - 키·지오코딩 불필요(공개 WMS 직접 호출), 의존성 없음 → npm ci/playwright/VWORLD_PROXY 생략.
+  - **안전장치**: WMS 장애(0건)·부분 수집(직전 절반 미만)이면 커밋 거부(::error), diff 없으면 커밋 생략. cafe 필드는 스크립트 내 자치구+이름 매칭 보존.
+  - timeout 30분(29개 BZ 레이어 × 단일 쿼리, 수 분 내 완료 예상).
+- **배포 반영 확인 필요 없음**(정적 파일 아님) — 워크플로는 다음 실행부터 동작.
+
+### ▶ 이어서 할 일
+1. **다음 07:00 KST 워크플로 동작 확인**(Actions 탭): redevelop_seoul.json/polygons.json 커밋 여부, sanity check 통과.
+2. 필요 시 지금 `workflow_dispatch`로 수동 실행해 즉시 확인 가능.
+
+---
+
 ## 2026-08-16 (51) — opencode (배포 반영 확인 완료 + 기록 마무리 — 그립 4차 수정분 반영 확인)
 
 > 사용자: "확인하고 지금까지 기록남겨놓고 다른 AI가 파악할수있도록" → 배포본 검증 완료.
