@@ -1015,3 +1015,37 @@ gh api repos/conoc612-a11y/matjip/pages/builds/latest --jq '{status:.status, com
 - **그립 색 = 스크롤바 원래 색(2026-08-16 사용자 지시 "스크롤바 원래 색상 기준으로 통일")**: 팝업 스크롤바는 **오버레이**(마우스 hover 시에만 표시, `scrollbar-width:auto`)라 화면 픽셀 실측 불가(CDP 합성 마우스·OS 커서 모두 실패: 테스트 크롬 창이 화면 밖 -21333으로 저장·복원되는 환경 버그). **대안**: 시스템 스크롤바 원래 색을 레지스트리에서 직접 읽음 — `HKCU\Control Panel\Colors` → `Scrollbar: 200 200 200` = **#C8C8C8**. 그립 꺾은선을 이 값으로 통일(probe 실측 `borderRightColor: rgb(200,200,200)` 확인). 색 조정 시 시스템 기본값과 그립을 동시에 맞춰야 함.
 - **닫기 X ↔ 스크롤바 정렬(같은 날)**: 기본 `.leaflet-popup-close-button`은 `right:0`(팝업 코너)이라 X(x1285-1309)보다 스크롤바(x1293-1308)가 8px 오른쪽으로 나가 보인다(사용자 신고 "X에서 오른쪽으로 튀어나감"). 해결: `right:1px` + `display:flex` 가운데 정렬 → X 우측 1308 = 스크롤바 우측(content 우측) 일치(`closeRightVsContentRight:0`, 실측). X(24px)와 스크롤바(15px) 폭 차로 중심은 4px 어긋나지만 우측선은 일직선.
 
+---
+
+## 38. 보안 감사 (2026-08-16, 해커 페르소나 점검) — 발견된 취약점·수정 순서
+
+> 사용자: "네가 해커라 생각하고 matjip 해킹한다고 하면 어떻게 뚫릴 것 같아? 보안은 어떻게 해야 좋을지 분석해서 알려줘" → 전 Edge Function 17개 + schema.sql + 프론트 innerHTML 실측 점검.
+
+### 발견 (실측 근거·파일 경로 포함, 위험도 순)
+1. **[높음] `X-Forwarded-For` 위조로 관리자 잠금·레이트리밋 우회** — 전 함수가 IP를 `req.headers.get("x-forwarded-for")?.split(",")[0]`로 판정(`admin-login/index.ts:45-48` 등 공통). 이 헤더는 클라이언트가 임의 위조 가능 → admin-login의 "IP당 15분 5회 잠금"(`admin-login/index.ts:78-85`)이 무력화되고 **무제한 비밀번호 대입** 가능. ⚠️ Supabase가 클라이언트 XFF를 신뢰하는지는 배포 실측으로 확정 필요(아직 미확인 — 방어는 위험 가정으로 설계).
+2. **[높음] 상류 API 키가 502 에러로 유출 (`detail: String(e)`)** — Deno fetch 실패 메시지는 **요청 URL을 포함**한다(키가 쿼리스트링에 실림). molit-proxy(`molit-proxy/index.ts:120`)·kma-weather-proxy(`kma-weather-proxy/index.ts:146`)는 이미 2026-08-14에 "고정 문구로 반환" 수정했는데, 아래는 아직 그대로:
+   | 함수 | 위치 | 노출 키 |
+   |---|---|---|
+   | `chungak-proxy/index.ts:132` | `detail: String(e)` | CHUNGAK_API_KEY (URL에 `serviceKey=`) |
+   | `bizno-proxy/index.ts:134` | `detail: String(e)` | NTS_API_KEY (URL에 `serviceKey=`) |
+   | `eximbank-proxy/index.ts:94` | `detail: String(e)` | EXCHANGE/LOAN_RATE_KEY (URL에 `authkey=`) |
+   | `its-cctv-proxy/index.ts:117,137` | `lastErr`에 `e.message` | ITS_CCTV_KEY (URL에 `apiKey=`) |
+   | `naver-search/index.ts:91` | `detail: String(e)` | 낮음 — 키가 헤더라 URL에 없음 |
+   키 유출 시 공격자가 직접 상류 API를 호출해 일일 한도 소진(서비스 기능 마비).
+3. **[중간] 저장된 XSS — `ai.html:132` esc 누락** — `(r.tags||[]).join(', ')`를 innerHTML에 esc 없이 삽입. `mj_restaurants` insert가 로그인 사용자에게 열려 있으므로(`schema.sql:130`) **로그인 사용자가 태그에 `<img onerror=...>` 넣으면 타 사용자 세션 탈취**. main.js는 `esc(t)`로 안전(`main.js:479-480`), land.html jb_posts도 `esc()` 안전(`land.html:2763`).
+4. **[중간] `mj_restaurants` update RLS 남용** — `schema.sql:131` `for update to authenticated using (true) with check (true)` → **로그인만 하면 모든 식당의 이름·주소·좌표·태그 전부 변조**(사이트 신뢰 파괴). delete 정책 없음(기본 deny)이라 삭제는 안 됨.
+5. **[낮음] 기타** — `jb_posts` anon insert(`schema.sql:189`, 스팸 도배 가능·XSS는 esc로 막힘), `admin-request-reset` 인증 없이 호출 가능(30분당 메일 1통 폭탄, 활성 토큰 1개 제한으로 경미), CORS `*`+`--no-verify-jwt`(설계상 의도지만 제3자 사이트에서 호출 가능), visit-count 원본 IP 저장(마스킹은 admin-data:116에서만).
+
+### 확인된 견고한 부분 (회귀 주의)
+- admin-login: 상수시간 비교(`ctEqual`, sha256 XOR), 세션 토큰 DB 해시 저장+2h 만료+IP 잠금 — 설계 양호(단 1번 위조 우회).
+- delete-account·admin-delete-user: `admin.auth.getUser(token)`로 자기 JWT 검증 후 본인만 삭제.
+- admin-apply-reset: 토큰 해시 조회+1회 사용+30분 만료+활성 토큰 1개 제한. admin-notify: x-notify-secret 헤더 검증.
+- 프록시 레이트리밋(`rl_hit` DB 카운터, 버킷 분리 `datagokr:/naver:/its:/nts:/chungak:/eximbank:`), molit·chungak op 화이트리스트, bizno 입력 정제(10자리 숫자·100건).
+
+### 수정 순서 (빠른 것부터, 각 항목 실측 검증 포함)
+1. `ai.html:132` tags에 `esc()` 추가 — **한 줄**, HTML만 고치면 즉시 반영.
+2. 4개 프록시 `detail: String(e)` → 고정 문구("상류 API 호출 실패") — 파일당 1줄, `supabase functions deploy` 재배포 필요.
+3. `schema.sql` RLS — `mj_restaurants update`에서 authenticated 제거(관리자만), insert는 필요 시 name unique 제약+레이트리밋.
+4. admin-login XFF 방어 — 배포 실측(XFF 신뢰 여부) 후 설계(IP+UA 조합·전역 실패 카운터).
+- 배포 후 검증: 각 함수에 위조 XFF로 잠금 우회 시도 → 429/401 유지 확인. ai.html에 XSS 페이로드 태그 넣고 렌더 시 탈취 불가 확인.
+
