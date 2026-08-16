@@ -255,6 +255,28 @@ console.log('blocks:',i,'fails:',f);
 - **land.html 배선**: `loadAuction()`(line ~1600) 이 auction.json + auction_photos.json 을 `Promise.all` 병렬 fetch 후 cn 으로 photos 메타를 붙인다. 목록 행 = 첫 사진 썸네일(`.ap-thumb`, 64×48). **행 클릭 → 상세 패널**(#ap-detail): 사진 캐러셀(좌우 화살표 + 카운터 + 구분명 캡션) + 클릭 시 **라이트박스 확대**(#apd-lightbox) + 감정/최저/매각기일 카드 + D-day 배지 + 상세 그리드 + 즐겨찾기/지도에서 보기/법원 사이트 액션. `#apd-lightbox` 는 `display:flex` 가 `hidden` 의 `display:none` 을 덮어쓰므로 `#apd-lightbox[hidden] { display:none }` 규칙이 필수(없으면 상세 패널 조작을 라이트박스가 가로챔 — 버그 수정 2026-08-13). 라이트박스는 **`<script>` 실행 시점에 DOM 에 있어야** 하므로 body 상단(패널 뒤)에 배치.
 - **헤드리스 검증**: auth-guard 차단(§1) 후 커스텀 레이어 패널에서 '진행 물건' 토글을 켜면(`map.fire('overlayadd')` 대신 체크박스 change) 경매 마커 220개가 뜬다. 목록에서 썸네일 있는 행 클릭 → 상세 패널 → 다음장(`apd-nav-next`) → 이미지 `loaded:true` 확인. **수집기 자체 검증**: 임시로 auction.json 행 순서를 바꿔 신건 1건을 첫 행으로 → `--max 1` 실행 → 구분별 jpg 저장 확인 → auction.json·auction_photos.json 복원(테스트 산출물 디렉토리 `auction_photos/<신건>/` 도 삭제 필수).
 
+### 6-15. 법원경매 상세 데이터 수집 — `selectAuctnCsSrchRslt.on`의 `dma_result` 구조 (2026-08-17 실측)
+- **증상**: land.html 상세 패널의 기일내역·사건내역이 "새 탭으로 열리는 사건검색 화면"으로만 이어졌다(딥링크 불가 §6-12) → 사진 수집기(§6-14)와 같은 **사이트 내 클릭 자동화로 상세 응답을 캡처**하면 패널 안에서 렌더할 데이터를 얻는다.
+- **응답 위치(실측)**: 사건검색 `PGJ159M00.xml`(연도 셀렉트 → 사건번호 → 검색) → `input[value='물건상세조회']` 클릭 → **response URL 이 `/pgj/pgj15B/selectAuctnCsSrchRslt.on`** 인 POST 응답의 `data.dma_result` 에 전체 상세가 온다. 프로브 덤프: `%TEMP%\opencode\auction\dma_result_2025타경1604.json`.
+- **`dma_result` 키(2025타경1604 실측)**: `csBaseInfo / dstrtDemnInfo / dspslGdsDxdyInfo / picDvsIndvdCnt / csPicLst / gdsDspslDxdyLst / gdsDspslObjctLst / rgltLandLstAll / bldSdtrDtlLstAll / gdsNotSugtBldLsstAll / gdsRletStLtnoLstAll / aeeWevlMnpntLst`. 사진(`csPicLst`)은 §6-14 와 동일하므로 이 수집기는 재사용하지 않는다.
+- **핵심 필드 실측**:
+  - `csBaseInfo`: `csNo` = **법원 내부 번호(saNo)** 예 "20250130001604" (URL/검색에 못 쓰는 값 — 검색은 userCsNo 사용), `userCsNo` = "2025타경1604", `csRcptYmd`(접수일), `clmAmt`(청구금액, 원), `cortAuctnJdbnNm`(경매4계), `jdbnTelno`·`execrCsTelno`, `auctnSuspStatCd`("00"=정상).
+  - `dspslGdsDxdyInfo`(매각일정): `aeeEvlAmt`(감정평가액, **원 단위**) · `fstPbancLwsDspslPrc`(최초최저가, 원) · `dspslDxdyYmd/Hm`(매각기일) · `dspslDcsnDxdyYmd/Hm`(매각결정기일) · `dspslPlcNm`·`dspslDcsnPlcNm`(장소) · `prchDposRate`(입찰보증률, 10) · `dspslGdsRmk`·`ndstrcRghCtt`(인수 제한/고지) · `orvParam`(안티봇 서명 토큰 — **URL 쿼리로 쓰면 안 됨**).
+  - `gdsDspslDxdyLst`(기일내역 배열): `dxdyYmd`·`dxdyHm` · `auctnDxdyKndCd`(**"01"=매각기일, "02"=매각결정기일**) · `auctnDxdyRsltCd`(**"002"=유찰**) · `tsLwsDspslPrc`(차회최저가) · `dxdyPlcNm`. 코드 매핑은 **실측된 것만** 하드코딩(`KND_NM`·`RSLT_NM`), 모르는 코드는 원본 그대로 표시(§6-14의 "이름 추측 금지"와 같은 원칙).
+  - `gdsDspslObjctLst`(물건명세): `userPrintSt`·`mclDspslGdsLstUsgCd`(용도코드 20100=주거 등) · `objctArDts`(구조·면적) · `aeeEvlAmt`.
+  - `gdsNotSugtBldLsstAll`(제시외물건): **2차원 배열**(배열 속 배열)이라 `flat()` 후 사용 — 실측 `[[{...}]]` 형태. 필드: `etcUsgCtt`·`bldStrcDts`·`bldArDts`·`evlAmt`(예: 창고 0.5㎡ 37,500원, 태양광시설 3kw 1㎡ 3,000,000원).
+  - `aeeWevlMnpntLst`(감정평가요점): `aeeWevlMnpntCtt` 텍스트 행 배열.
+- **단위 환산 함정**: `dma_result` 값은 **원 단위**인데 auction.json 의 `appr`/`low` 는 **억 단위**(지표 `eok()`)다. detail JSON 에서는 원본을 보관하고, land.html 쪽에서 `(v/1e8).toLocaleString('ko-KR',{maximumFractionDigits:2})+'억원'`으로 변환한다.
+- **구현**: `tools/collect_auction_detail.js` — auction.json 을 읽어 **detail 없는 cn 만** PGJ159 사건검색으로 순회, 상세 응답 `dma_result` 를 정규화해 `auction_detail.json`(`{ cn: { t, base, dspsl, gihui, objct, notsugt, evlt } }`, cn = "법원명 사건번호" 전체 문자열)에 저장. §6-11 IP 차단 대응(사건당 검색 1회+상세 1회, GAP 1초), `--cn`(부분일치 `includes`)·`--max`·`--headful`·`--force` 옵션, 사건 단위 try/catch + 매 건 저장(crash-safe). **재실행 시 이미 있는 cn 은 스킵** — 전량(3,442건 ≈ 8~10시간)은 사용자 판단 하에 분산 실행.
+- **land.html 배선**: `loadAuction()`이 auction.json + auction_photos.json + **auction_detail.json** 3종 병렬 fetch, 행에 `detail: det[cn] || null` 병합 → 상세 패널에 사건내역·기일내역(유찰 빨강 배지·D-day)·물건명세·제시외·감정요약·고지사항 섹션 렌더. **기일내역/사건내역 버튼은 데이터가 있으면 새 탭 대신 패널 내 섹션으로 스크롤**(`APD_LOCAL_GO`), 없으면 기존 복사+새 탭 폴백.
+- **왜 개별 파일인가**: auction.json 행 1줄에 상세를 넣으면 목록 필터·정렬 때마다 1MB+ 파싱이 반복된다. 상세는 행 클릭 시에만 필요하므로 `auction_detail.json` 을 따로 fetch(§6-14 와 같은 "필요할 때만 로드" 원칙).
+
+### 6-16. auction.json 좌표 대량 소실 — V-World 해외 IP 차단이 캐시에 null 로 고정된 상태 (2026-08-17 실측)
+- **증상**: 재보강 `--regeo` 실행 시 **성공 0/2,309건** — 그런데 재보강 로직은 `geocode()`가 캐시(`tools/.geocache.json`)를 먼저 보고, **`has(addr)`면 null 이든 좌표든 그대로 반환**한다(collect_auction.js:145). 2026-08-14 CI 실행(45fae790)이 V-World 해외 IP 차단(§19)으로 실패한 결과 **null 2,309개가 캐시에 영구 박혀** 있었고, 재보강은 API 를 한 번도 안 쳤다.
+- **판별 방법(실측)**: ① 좌표 0인 행 수 → 2,391/3,442 (배포본 포함) ② 해당 주소가 캐시에 있나 → 2,309개 전부 `null` ③ 재보강 성공 0건 → API 호출 자체가 안 된 증거(로컬 한국 IP 는 정상 동작함을 §19 에서 실측).
+- **해결**: `--regeo` 실행 전에 **좌표 없는 행의 주소에 대한 null 캐시만 삭제** → 재실행 → **성공 2,258/2,309** (98%). 삭제는 캐시 파일에서 해당 주소 키만 `delete` 후 저장(전체 null 을 지우면 다른 수집기(notices 등)의 확정 NOT_FOUND 까지 재시도하게 돼 낭비).
+- **WHY**: 캐시는 "확정 실패(NOT_FOUND)"와 "일시 차단(BLOCKED)"을 구분해 저장해야 한다(§19 의 `if (pt || !blocked)` 수정이 그 목적). **차단 시점에 캐시에 남은 옛 null 은 자동으로 사라지지 않으므로**, 대량 좌표 손실 의심 시 먼저 "좌표 0 주소가 캐시에 null 로 있는지"를 확인하고 null 만 정리 후 재보강할 것.
+
 ---
 
 ## 7. 배포 (GitHub Pages)
