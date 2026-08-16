@@ -42,6 +42,13 @@
 1. 배포본(conoc612-a11y.github.io/matjip/land.html)에서 공인중개사 마커·아이콘 렌더 실측 확인 (probe121 패턴, 배포 후 ~60초).
 2. (선택) ev-station·cctv 저작자 확인 → 푸터 attribution 정정.
 
+### 후속 (같은 세션) — 공인중개사 "장소검색(카카오)을 불러오지 못했어요" 수정
+- **진단**: 배포본 land.html은 정상(probe_deploy4: auth-guard를 Fetch 인터셉트로 무력화 → kakaoReady=true, 중개사 15곳 표시, JS 오류 0). 키·도메인 문제 아님.
+- **원인**: 초기 로드 경쟁 — 페이지 로드 직후 `landMode='agents'`라 renderAgents가 SDK 준비 전에 800ms×8=6.4초를 넘기면 에러 고정, 이후 재시도 트리거 없음.
+- **수정** (land.html:1016): `ks.onload`의 `kakao.maps.load` 콜백에서 `kakaoReady=true` 후 `landMode==='agents' && typeof renderAgents==='function'`이면 renderAgents() 재호출 → SDK가 늦게 준비돼도 자동 복구.
+- **검증**: 로컬 파싱·JS 오류 0. 배포본에서 사용자가 새로고침으로 최종 확인 필요.
+- **커밋**: 본 커밋에 포함. TROUBLESHOOTING §34.
+
 ---
 
 ## 2026-08-16 (47) — opencode (정비 폴리곤 퇴화 링 임계값 수정: MIN_RING_M2 1000→100 — "반포 717-16 가로주택이 원으로 보인다")

@@ -974,3 +974,14 @@ gh api repos/conoc612-a11y/matjip/pages/builds/latest --jq '{status:.status, com
 - **함정 추가**: 테스트 site 폴더에 `evcharger.json`·`auction.json`이 없으면 EV/경매 마커가 안 뜬다(probe124에서 데이터 파일 누락 발견). 또 공인중개사 마커는 카카오 장소검색이라 **localhost에서 확인 불가** — 배포본에서 확인해야 한다(§1 참조).
 - **상태**: 로컬 검증 완료, 커밋·push 진행(사용자 동의).
 
+---
+
+## 34. 인근 공인중개사 "장소검색(카카오)을 불러오지 못했어요" — 초기 로드 경쟁 (2026-08-16)
+
+- **증상**: 배포본에서 인근 공인중개사 탭이 "장소검색(카카오)을 불러오지 못했어요. 즐겨찾기 탭은 정상 이용 가능합니다." 표시.
+- **원인(실측)**: **키·도메인 문제 아님** — 배포본 land.html을 auth-guard 없이 실행(CDP Fetch 인터셉트로 auth-guard.js 무력화)하니 kakaoReady=true, 장소검색 성공, 중개사 15곳 표시(probe_deploy4). 원인은 **초기 로드 경쟁**: 페이지 로드 직후 `landMode='agents'`라 `renderAgents()`가 SDK 준비 전에 호출되고, `kakao.maps.services` 없음이 800ms×8=6.4초 지속되면 에러 메시지가 고정됨. 이후 kakao가 준비돼도 renderAgents 재호출 트리거가 없어 에러가 남는다.
+- **해결(land.html:1016)**: `ks.onload`의 `kakao.maps.load` 콜백에서 `kakaoReady=true` 후 `landMode==='agents' && typeof renderAgents==='function'`이면 `renderAgents()` 재호출 → SDK가 늦게 준비돼도 에러가 목록으로 자동 교체.
+- **WHY**: renderAgents의 8회 재시도는 "로딩 중" 표시를 위한 것이지 복구 장치가 아니다. 복구는 SDK 로드 완료(유일한 확실한 시점)에서 트리거해야 한다.
+- **검증**: 배포본 실측(kakaoReady=true, 중개사 15곳, JS 오류 0) + 로컬 파싱 오류 0. 배포본 새로고침으로 최종 확인 필요.
+- **상태**: 커밋·push 진행(사용자 동의).
+
