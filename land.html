@@ -1293,6 +1293,7 @@
       return _rpPromise;
     }
     let rpRows = null;  // 실거래가 원본 (실거래가 레이어 켜면 로드됨) — 지도 클릭 정보/근처 실거래에서 참조. VWORLD 블록보다 먼저 선언(TDZ 방지)
+    let rpClusterRef = null; // 실거래 마커 클러스터 전역 참조 (VWORLD 블록 밖 검색 자동완성 openRpApt 에서 zoomToShowLayer 용) — 1593행에서 대입
     let _jbRowsGlobal = null; // 정비사업 행 전역 참조 (VWORLD 블록 밖 클릭 핸들러에서 참조)
     // redevelop_seoul.json(1.38MB) 로더 — 반드시 이 함수 하나만 거치게 한다.
     // 예전엔 두 곳(정비사업 레이어 overlayadd / 검색창 자동완성)이 각각 fetch 했고 서로
@@ -1591,6 +1592,7 @@
 
       // ── 아파트 실거래가·노후도 (서울+경기 9천여 단지) : 필터 + 범례 + 카드 팝업 ──
       const realpriceCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 60 });
+      rpClusterRef = realpriceCluster;
       // 팝업·툴팁은 마우스가 닿는 순간에만 생성 (9천개 미리 만들면 지도가 멈춘다)
       realpriceCluster.on('mouseover', (e) => {
         const m = e.layer, d = m && m._rp;
@@ -1608,13 +1610,19 @@
       const rpFilter = { price: 'all', age: 'all' };
       const inPrice = (p) => { if (rpFilter.price === 'all') return true; if (p == null) return false; const v = Number(p); return rpFilter.price === 'u10' ? v < 10 : rpFilter.price === '10_20' ? (v >= 10 && v < 20) : rpFilter.price === '20_30' ? (v >= 20 && v < 30) : v >= 30; };
       const inAge = (b) => { if (rpFilter.age === 'all') return true; const y = parseInt(b) || 0; return rpFilter.age === 'new' ? y >= 2015 : rpFilter.age === 'mid' ? (y >= 2000 && y < 2015) : (y > 0 && y < 2000); };
+      // 아파트 마커 팝업 HTML — rpBuild 마커와 검색 자동완성 선택(openRpApt)이 함께 쓴다.
+      // 저장/길찾기/거리뷰 버튼까지 전부 포함된 '완전체'라, 지도 클릭 팝업에는 넣지 않는다
+      // (클릭 팝업 자체에 저장 버튼이 있어 .rp-save/rt-start 클래스가 겹쳐 배선이 꼬인다).
+      function rpAptPopHtml(d) {
+        return `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${rpColorMode.v === 'move' ? rpMoveColor(d) : ageColor(d.build)};flex-shrink:0;"></span><span class="rp-name">${esc(d.name)}</span></div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div><div class="pc-price">매매 ${uPriceMain(d)}</div>${uPriceSub(d) ? `<div style="margin-top:3px;">${uPriceSub(d)}</div>` : ''}<div style="margin-top:3px;">전용 ${uAreaTxt(d.area)} · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="margin-top:3px;">${esc(d.build || '?')}년 건축${parseInt(d.build) <= 1994 ? '<span style="background:#e03131;color:#fff;font-size:12px;padding:2px 8px;border-radius:999px;margin-left:6px;">재건축연한 초과</span>' : ''}</div>${jeonseHtml(d, '평형 기준')}${rpFlagsHtml(d)}${rpTrendHtml(d)}${rpDealTableHtml(d)}<div class="rp-radius-stat rp-stat" style="display:none;"></div></div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline" style="border-color:var(--c-price) !important;color:var(--c-price);">저장</button><a href="https://map.naver.com/p/search/${encodeURIComponent(d.name + ' ' + (d.dong || d.gu || ''))}?c=${d.lng},${d.lat},17,0,0,0,dh" target="_blank" rel="noopener" class="pc-btn pc-btn-primary rp-naver">네이버 부동산</a><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline">출발</button><button class="rt-end pc-btn pc-btn-outline">도착</button></div><button class="sv-btn pc-btn pc-btn-outline">거리뷰</button></div></div>`;
+      }
       function rpBuild() {
         if (!rpRows) return;
         realpriceCluster.clearLayers();
         realpriceCluster.addLayers(rpRows.filter((d) => inPrice(d.priceEok) && inAge(d.build)).map((d) => {
           const m = L.circleMarker([d.lat, d.lng], { radius: 10, color: '#000', weight: 2, fillColor: rpColorMode.v === 'move' ? rpMoveColor(d) : ageColor(d.build), fillOpacity: 0.9 });
           m._rp = d;
-          m._pop = (() => `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${rpColorMode.v === 'move' ? rpMoveColor(d) : ageColor(d.build)};flex-shrink:0;"></span><span class="rp-name">${esc(d.name)}</span></div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div><div class="pc-price">매매 ${uPriceMain(d)}</div>${uPriceSub(d) ? `<div style="margin-top:3px;">${uPriceSub(d)}</div>` : ''}<div style="margin-top:3px;">전용 ${uAreaTxt(d.area)} · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="margin-top:3px;">${esc(d.build || '?')}년 건축${parseInt(d.build) <= 1994 ? '<span style="background:#e03131;color:#fff;font-size:12px;padding:2px 8px;border-radius:999px;margin-left:6px;">재건축연한 초과</span>' : ''}</div>${jeonseHtml(d, '평형 기준')}${rpFlagsHtml(d)}${rpTrendHtml(d)}${rpDealTableHtml(d)}<div class="rp-radius-stat rp-stat" style="display:none;"></div></div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline" style="border-color:var(--c-price) !important;color:var(--c-price);">저장</button><a href="https://map.naver.com/p/search/${encodeURIComponent(d.name + ' ' + (d.dong || d.gu || ''))}?c=${d.lng},${d.lat},17,0,0,0,dh" target="_blank" rel="noopener" class="pc-btn pc-btn-primary rp-naver">네이버 부동산</a><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline">출발</button><button class="rt-end pc-btn pc-btn-outline">도착</button></div><button class="sv-btn pc-btn pc-btn-outline">거리뷰</button></div></div>`);
+          m._pop = () => rpAptPopHtml(d);
           return m;
         }));
       }
@@ -4651,10 +4659,31 @@
         const buildClickPopup = (addr, bldName, jibun) => {
           if (!clickMarker) return;
           const bldHtml = bldName ? `<div style="font-weight:700;font-size:15px;margin-bottom:2px;">${esc(bldName)}</div>` : '';
+          // 클릭한 건물명이 주변(250m) 아파트 단지명의 일부이면 그 단지를 '이 건물의 아파트'로
+          // 보여준다. 실거래 등록명이 '동현아파트1~6'처럼 ~N동 형태라 검색된 건물명(동현아파트)과
+          // 어긋나는 사례(2026-08-16 사용자 실측)를 연결한다. 정확히 일치하면 같은 단지.
+          // 근거가 되는 '근처 참고'(nearHtml)는 한 단지만 표시하므로 매칭 성공 시 대체한다.
+          let mApHtml = '';
+          if (bldName && bldName.length >= 2 && rpRows && rpRows.length) {
+            for (const g of rpGroupMap().values()) {
+              if (mApHtml) break;
+              const r = g[g.length - 1];
+              const n = String(r.name || '');
+              if (!n || r.lat == null) continue;
+              if (!(n.startsWith(bldName) || bldName.startsWith(n))) continue;
+              if (kmDist(lat, lng, r.lat, r.lng) > 0.25) continue;
+              const nOld = parseInt(r.build) <= 1994 ? ' <span style="background:#e03131;color:#fff;font-size:11px;padding:1px 5px;border-radius:8px;">30년↑</span>' : '';
+              const npy = r.area && r.priceEok && uUnit.price === 'total' ? ' <span style="color:var(--c-muted);">' + uPriceSub(r).replace('평단가 ', '') + '</span>' : '';
+              mApHtml = `<div style="font-size:13px;margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;"><b>이 건물의 아파트 실거래</b> <span style="font-size:12px;color:var(--c-muted);">${esc(r.name)} · ${esc(r.gu)} ${esc(r.dong)}</span><br>`
+                + `<span class="pc-price">매매 ${uPriceMain(r)}</span>${npy}<br>`
+                + `전용 ${uAreaTxt(r.area)} · ${esc(r.floor || '?')}층 · 거래 ${esc(r.ymd)}${nOld}`
+                + `${jeonseHtml(r, '평형 기준')}${rpFlagsHtml(r)}${rpTrendHtml(r)}${rpDealTableHtml(r)}</div>`;
+            }
+          }
           // 건물명이 없으면(아파트는 역지오코딩 건물명이 비어 오는 경우가 많다) 100m 안 근처 실거래 단지명으로 검색한다.
           const searchName = bldName || (bd <= 0.1 && best && best.name ? (best.name + ' ' + (best.dong || best.gu || '')).trim() : '') || addr;
           const naverLand = addr ? `<a href="${naverSearchUrl(searchName, lat, lng)}" target="_blank" rel="noopener" class="pc-btn pc-btn-primary">네이버 부동산 검색</a>` : '';
-          clickMarker.setPopupContent(`<div class="pc"><div class="pc-head">위치 정보</div><div class="pc-body">${bldHtml}<div>${addr ? esc(addr) : '주소를 찾지 못했어요'}</div><div style="font-size:12px;color:var(--c-muted);margin-top:2px;">${lat.toFixed(5)}, ${lng.toFixed(5)}</div><div class="bld-info"></div><div class="poi-box" style="margin-top:6px;"><button class="poi-btn pc-btn pc-btn-outline" style="font-size:12px;padding:4px 8px;">이 부근 상호 보기</button></div>${nearHtml}${jbNearHtml}</div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline">저장</button>${naverLand}${rtBtns}</div></div>`).openPopup();
+          clickMarker.setPopupContent(`<div class="pc"><div class="pc-head">위치 정보</div><div class="pc-body">${bldHtml}<div>${addr ? esc(addr) : '주소를 찾지 못했어요'}</div><div style="font-size:12px;color:var(--c-muted);margin-top:2px;">${lat.toFixed(5)}, ${lng.toFixed(5)}</div><div class="bld-info"></div><div class="poi-box" style="margin-top:6px;"><button class="poi-btn pc-btn pc-btn-outline" style="font-size:12px;padding:4px 8px;">이 부근 상호 보기</button></div>${mApHtml || nearHtml}${jbNearHtml}</div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline">저장</button>${naverLand}${rtBtns}</div></div>`).openPopup();
           bindRtBtns();
           // 건축물 용도·층수·연면적·사용승인일을 비동기로 채운다 (아파트가 아닌 건물의 정체를 알려주는 핵심 정보)
           const _pel = clickMarker.getPopup().getElement();
@@ -5451,17 +5480,55 @@
     // 정비구역명 검색용 lazy preload (overlay와 무관하게 1회 로드, 폴리곤은 불필요).
     // 공용 로더를 쓰므로 정비사업 레이어가 이미 받아뒀으면 재요청하지 않는다.
     function ensureJbRows() { loadJbRows(); }
+    // 검색 자동완성에서 아파트 단지 선택 → 해당 마커로 이동 + 실거래 팝업 오픈.
+    // 마커는 거래 행마다 만들어지므로(name|구|동 그룹) 그룹 기준으로 찾는다.
+    function openRpApt(r) {
+      if (!r) return;
+      let found = null;
+      if (rpClusterRef) rpClusterRef.eachLayer((m) => { if (found || !m._rp) return; if (m._rp.name === r.name && m._rp.gu === r.gu && m._rp.dong === r.dong) found = m; });
+      if (found && rpClusterRef) {
+        rpClusterRef.zoomToShowLayer(found, () => {
+          if (!found.getPopup()) found.bindPopup(found._pop());
+          found.openPopup();
+        });
+        return;
+      }
+      // 가격/연식 필터로 마커가 걸러졌으면 임시 마커로 팝업만 띄운다.
+      const tmp = L.circleMarker([r.lat, r.lng], { radius: 10, color: '#000', weight: 2, fillColor: rpColorMode.v === 'move' ? rpMoveColor(r) : ageColor(r.build), fillOpacity: 0.9 });
+      tmp._rp = r; tmp._pop = () => rpAptPopHtml(r);
+      tmp.addTo(map).bindPopup(tmp._pop()).openPopup();
+      map.setView([r.lat, r.lng], Math.max(map.getZoom(), 15));
+    }
     function renderAC() {
       const raw = $('search').value.trim(), ac = $('ac');
       if (!raw) { ac.className = 'ac'; ac.innerHTML = ''; return; }
       ensureJbRows();
       const q = raw.toLowerCase();
       const jb = (_jbRowsGlobal || []).filter((d) => (d.name || '').toLowerCase().includes(q)).slice(0, 5);
+      // 아파트 단지 자동완성 (2026-08-16): 실거래 등록명이 '동현아파트1~6'처럼 검색어와
+      // 정확히 안 맞아 마커를 못 찾던 문제. 단지별 대표 행(최신 거래) 기준으로 일치 검색.
+      const apts = [];
+      if (rpRows && rpRows.length && q.length >= 2) {
+        for (const g of rpGroupMap().values()) {
+          if (apts.length >= 4) break;
+          const r = g[g.length - 1];
+          const n = String(r.name || '');
+          if (!n) continue;
+          if (n.toLowerCase().includes(q) && !apts.some((x) => x.name === n && x.gu === r.gu && x.dong === r.dong)) apts.push(r);
+        }
+      }
       const placeItem = `<div class="ac-item" data-place="1"><span style="opacity:.7;">⌖</span>'${esc(raw)}' 위치로 이동<span class="t">지명</span></div>`;
+      const aptItems = apts.map((d, i) => `<div class="ac-item" data-apt="${i}"><span style="opacity:.7;">●</span>${esc(d.name)}<span class="t">아파트</span></div>`).join('');
       const jbItems = jb.map((d, i) => `<div class="ac-item" data-jb="${i}"><span style="opacity:.7;">▣</span>${esc(d.name)}<span class="t">정비구역</span></div>`).join('');
-      ac.innerHTML = placeItem + jbItems;
+      ac.innerHTML = placeItem + aptItems + jbItems;
       ac.className = 'ac on';
       ac.querySelector('.ac-item[data-place="1"]').addEventListener('mousedown', (ev) => { ev.preventDefault(); runSearch(); ac.className = 'ac'; });
+      ac.querySelectorAll('.ac-item[data-apt]').forEach((el) => el.addEventListener('mousedown', (ev) => {
+        ev.preventDefault();
+        const d = apts[Number(el.dataset.apt)];
+        $('ac').className = 'ac';
+        openRpApt(d);
+      }));
       ac.querySelectorAll('.ac-item[data-jb]').forEach((el) => el.addEventListener('mousedown', (ev) => {
         ev.preventDefault();
         const d = jb[Number(el.dataset.jb)];
