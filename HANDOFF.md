@@ -12,6 +12,35 @@
 
 ---
 
+## 2026-08-16 (50) — opencode (팝업 그립 4차 수정: 창 밖 매달림·스크롤바 재겹침 종결·그립 아이콘 교체·닫기X 정렬·그립색=스크롤바색, 커밋·push 완료)
+
+> 사용자 신고 4건 → 실측·수정·검증 → 커밋·push. 변경: land.html + TROUBLESHOOTING §37 + HANDOFF 50.
+
+### 적용 (land.html)
+1. **그립 코너 고정** — `bottom:-12px`(팝업 밖 매달림, §43) → `bottom:3px; right:3px`(512).
+2. **스크롤바 겹침 종결(구조적)** — `.leaflet-popup-content-wrapper { padding-bottom:28px }`(519):
+   그립은 코너 고정, **스크롤 트랙은 그립 위에서 끝난다**. 실측 트랙 끝 590 < 그립 상단 604 = 14px 여유(수정 전 13px 겹침). 3차 반복 이력과 원칙을 TROUBLESHOOTING §37에 기록.
+3. **그립 아이콘 교체(사용자 지정)** — 불투명 네모 → "ㄴ 좌우반전(ㄱ) 꺾은선 2줄, 배경 없음": `.ui-grip` 오버라이드(background/border/box-shadow:none) + `::before`(16x16)/`::after`(9x9) border 2px 꺾은선(522-529).
+4. **닫기 X 정렬** — `right:1px` + flex 가운데 정렬(495-503) → X 우측선 = 스크롤바 우측선(`closeRightVsContentRight:0` 실측).
+5. **스크롤바 세모 중심 정렬** — content `margin:13px 4.5px 13px 20px` → 스크롤바 중심 = X 중심(`centerDiffX:0` 실측, 수정 전 4.5px 우측 치우침).
+6. **그립 색 = 스크롤바 원래 색** — 팝업 스크롤바는 **오버레이**(마우스 hover 시에만 표시, `scrollbar-width:auto`)라 화면 실측 불가(CDP 합성 마우스·OS 커서 모두 실패: 테스트 크롬 창이 화면 밖 -21333로 저장·복원되는 환경 버그). **레지스트리 시스템 색 근거**: `HKCU\Control Panel\Colors → Scrollbar: 200 200 200` = **#C8C8C8** → 그립 꺾은선 #555 → #C8C8C8(526). probe 실측 `borderRightColor: rgb(200,200,200)`.
+
+### 검증 (probe_grip2, 서버 8798 + Chrome 9223 CDP)
+- 팝업 정상 오픈(ct 283, cb 803, r 1304, scrollable true), 그립 배경 투명 + 꺾은선 200,200,200 확인. JS 오류 0.
+- 이전 실측(probe_grip): 그립 팝업 내 정착(팝업 bottom−3px), 트랙 14px 여유, X 우측선 일치, 세모 중심 정렬.
+
+### 커밋·배포 상태
+- **커밋 `77895052` push 완료**(사용자 "웅" 동의). 변경: land.html + TROUBLESHOOTING.md.
+- **배포 반영 확인 필요**: 배포본 land.html에 `padding-bottom: 28px`(그립 스크롤바 분리)·`#C8C8C8`(그립 색)·`bottom:3px; right:3px` 반영 확인.
+- 미사용 untracked(커밋 제외): `PLAN_auction_detail.md`, `icons/resize_2993541.png`·`resize_3042433.png`(기각된 Flaticon 후보), `land.backup-20260808.html`, `redevelop_seoul.backup-20260808.json`, `경쟁사_비교분석_20260808.hwpx`. icons 2종은 삭제 후보(사용자 확인 시).
+
+### ▶ 이어서 할 일
+1. **배포 반영 확인**: 배포본 land.html fetch로 위 3개 마커 확인(§37 참고).
+2. 사용자 실사용 확인: 팝업 우하단 ㄱ 꺾은선 그립(드래그 리사이즈), 그립이 스크롤바와 안 겹치는지, 닫기X·세모 정렬.
+3. (선택) 미사용 `resize_*.png` 2종 삭제 동의 여부.
+
+---
+
 ## 2026-08-16 (49) — opencode (모든 데이터 마커에 상호명 툴팁 + 자석기능 확장 — 실거래·EV·경매·CCTV, 커밋·push 완료)
 
 > 사용자 요청: "모든 마커에 상호명 + 자석기능". 확장 후 "확장 후 push" 선택 → 툴팁 4종 적용·실측 검증 완료 → 커밋·push.
