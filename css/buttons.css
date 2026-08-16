@@ -89,6 +89,9 @@ button,
 .footer-links { flex:1; display:flex; gap:14px; white-space:nowrap; }
 .footer-links a { font-size:13px; color:var(--muted); text-decoration:none; }
 .footer-links a:hover { color:var(--accent); }
+.footer-links .footer-attribution { font-size:13px; color:var(--muted); }
+.footer-links .footer-attribution a { color:var(--muted); }
+.footer-links .footer-attribution a:hover { color:var(--accent); }
 .footer-right { flex:1; display:flex; justify-content:flex-end; align-items:center; gap:16px; }
 .footer-stats { flex:0 0 auto; display:flex; gap:14px; align-items:center; font-size:13px; color:var(--muted); white-space:nowrap; }
 .footer-stats b { font-weight:600; color:var(--text); }

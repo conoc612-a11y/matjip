@@ -961,3 +961,16 @@ gh api repos/conoc612-a11y/matjip/pages/builds/latest --jq '{status:.status, com
   배포본/로컬 검증 시 데이터 파일(1.4MB + 10MB)이 서빙 디렉토리에 있는지 먼저 확인.
 - **상태**: 로컬 검증 완료, 커밋·push 진행(사용자 "정상이면 그냥 푸시해줘").
 
+---
+
+## 33. Flaticon 아이콘 다운로드: 사이트·SVG는 봇 차단(403), PNG CDN만 열림 (2026-08-16 실측)
+
+- **증상**: flaticon.com 아이콘을 받으려 했는데 페이지가 전부 403. SVG도 403.
+- **원인**: Flaticon은 봇/자동 다운로드를 차단. UA+Referer 헤더를 넣어도 차단됨.
+- **해결**: PNG CDN만 접근 가능 — `https://cdn-icons-png.flaticon.com/512/{아이콘ID앞4자리}/{아이콘ID}.png` (200 OK). 아이콘 ID는 검색 결과의 `free-icon/{slug}_{ID}`에서 확인.
+  - 아이콘은 검정 단색 + 투명 배경이라 지도 마커(색 원 배경)에서는 `filter:invert(1)`로 흰색화.
+- **WHY**: 무료 라이선스는 저작자 표시 필수. 푸터에 "아이콘 · 저작자명 (Flaticon)" 링크. 저작자는 검색으로 확인(Freepik 등)하되, 사이트가 403이면 미확정 아이콘은 표기를 임시로 두고 배포본에서 재확인.
+- **검증**: probe123·124(마커 렌더+이미지 로드), probe_iconload(4종 512x512 OK).
+- **함정 추가**: 테스트 site 폴더에 `evcharger.json`·`auction.json`이 없으면 EV/경매 마커가 안 뜬다(probe124에서 데이터 파일 누락 발견). 또 공인중개사 마커는 카카오 장소검색이라 **localhost에서 확인 불가** — 배포본에서 확인해야 한다(§1 참조).
+- **상태**: 로컬 검증 완료, 커밋·push 진행(사용자 동의).
+

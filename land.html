@@ -435,7 +435,7 @@
     .pc-btn-primary:hover { background:#1a63a8; color:#fff; }
     /* ── CCTV (ITS 국가교통정보센터) ── */
     .cctv-icon { width:34px; height:34px; margin:-34px 0 0 -17px; border-radius:50% 50% 50% 0; background:var(--c-danger); transform:rotate(-45deg); display:flex; align-items:center; justify-content:center; box-shadow:var(--c-shadow); }
-    .cctv-icon svg { width:20px; height:20px; color:#fff; transform:rotate(45deg); }
+    .cctv-icon img { width:20px; height:20px; transform:rotate(45deg); filter:invert(1); }
     .cctv-pc { width:100%; min-width:320px; max-width:100%; padding:0; box-sizing:border-box; overflow:hidden; display:flex; flex-direction:column; height:100%; }
     .cctv-pc-head { display:flex; align-items:center; justify-content:space-between; padding:11px 13px; border-bottom:1px solid var(--line); font-weight:700; font-size:14px; flex:none; }
     .cctv-pc-video { position:relative; flex:1 1 auto; min-height:180px; height:180px; background:#12151b; display:flex; align-items:center; justify-content:center; color:#9aa3af; font-size:13px; }
@@ -689,6 +689,7 @@
         <a href="terms.html#terms">이용약관</a>
         <a href="terms.html#privacy">개인정보처리방침</a>
         <a href="terms.html#copyright">저작권정책</a>
+        <span class="footer-attribution">아이콘 · <a href="https://www.flaticon.com" target="_blank" rel="noopener">Freepik (Flaticon)</a></span>
       </div>
       <div class="footer-stats">
         <span>회원수 <b id="f-members">—</b></span>
@@ -2079,7 +2080,7 @@
         evCluster.clearLayers();
         const evIcon = L.divIcon({
           className: '',
-          html: '<div style="width:26px;height:26px;background:#2f9e44;border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;font-size:14px;line-height:1;">⚡</div>',
+          html: '<div style="width:26px;height:26px;background:#2f9e44;border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;"><img src="icons/ev-station.png" style="width:15px;height:15px;filter:invert(1)" alt=""></div>',
           iconSize: [26, 26], iconAnchor: [13, 13],
         });
         evCluster.addLayers(evRows.map((d) => {
@@ -2155,7 +2156,7 @@
         if (!_aucIconCache[color]) {
           _aucIconCache[color] = L.divIcon({
             className: '',
-            html: `<div style="width:26px;height:26px;background:${color};border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;font-size:13px;line-height:1;">⚖️</div>`,
+            html: `<div style="width:26px;height:26px;background:${color};border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;"><img src="icons/auction-gavel.png" style="width:14px;height:14px;filter:invert(1)" alt=""></div>`,
             iconSize: [26, 26], iconAnchor: [13, 13],
           });
         }
@@ -3122,7 +3123,7 @@
       const cctvLayer = L.layerGroup();
       const cctvIcon = L.divIcon({
         className: '',
-        html: '<div class="cctv-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8l5 3v-2l5-3v8l-5-3v-2l-5 3z"/><rect x="14" y="6" width="8" height="10" rx="2"/></svg></div>',
+        html: '<div class="cctv-icon"><img src="icons/cctv.png" alt=""></div>',
         iconSize: [34, 34], iconAnchor: [17, 34],
       });
       // ITS 는 Supabase Edge Function 의 아웃바운드 IP 를 사실상 막고 있다
@@ -5231,7 +5232,7 @@
         if (a.lat == null || a.lng == null) return;
         const icon = L.divIcon({
           className: '',
-          html: '<div style="width:22px;height:22px;background:#7048e8;border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;">중</div>',
+          html: '<div style="width:22px;height:22px;background:#7048e8;border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;"><img src="icons/house-key.png" style="width:13px;height:13px;filter:invert(1)" alt=""></div>',
           iconSize: [22, 22],
           iconAnchor: [11, 11],
         });
@@ -5338,7 +5339,7 @@
         data.forEach((p) => {
           const icon = L.divIcon({
             className: '',
-            html: '<div style="width:24px;height:24px;background:#7048e8;border:2.5px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;">중</div>',
+            html: '<div style="width:24px;height:24px;background:#7048e8;border:2.5px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;"><img src="icons/house-key.png" style="width:14px;height:14px;filter:invert(1)" alt=""></div>',
             iconSize: [24, 24],
             iconAnchor: [12, 12],
           });
