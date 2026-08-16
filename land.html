@@ -4670,7 +4670,11 @@
               const r = g[g.length - 1];
               const n = String(r.name || '');
               if (!n || r.lat == null) continue;
-              if (!(n.startsWith(bldName) || bldName.startsWith(n))) continue;
+              // contains 매칭 (2026-08-16 보강): 지오코딩 건물명이 '잠원동월드메르디앙'처럼
+              // '동+단지명'으로 오는 경우 접두사만으론 '월드메르디앙'과 못 붙는다(실측). 짧은 쪽이
+              // 3자 이상이면 포함 관계로 매칭한다. 250m 거리 필터가 오매칭을 경계로 막아준다.
+              const ok = (bldName.length >= 3 && n.includes(bldName)) || (n.length >= 3 && bldName.includes(n));
+              if (!ok) continue;
               if (kmDist(lat, lng, r.lat, r.lng) > 0.25) continue;
               const nOld = parseInt(r.build) <= 1994 ? ' <span style="background:#e03131;color:#fff;font-size:11px;padding:1px 5px;border-radius:8px;">30년↑</span>' : '';
               const npy = r.area && r.priceEok && uUnit.price === 'total' ? ' <span style="color:var(--c-muted);">' + uPriceSub(r).replace('평단가 ', '') + '</span>' : '';
@@ -5514,7 +5518,9 @@
           const r = g[g.length - 1];
           const n = String(r.name || '');
           if (!n) continue;
-          if (n.toLowerCase().includes(q) && !apts.some((x) => x.name === n && x.gu === r.gu && x.dong === r.dong)) apts.push(r);
+          const nl = n.toLowerCase();
+          // '잠원동월드메르디앙' 같은 동명 붙은 검색어도 단지명('월드메르디앙')과 매칭되게 포함 검색(2026-08-16 실측 보강)
+          if ((nl.includes(q) || (q.includes(nl) && nl.length >= 3)) && !apts.some((x) => x.name === n && x.gu === r.gu && x.dong === r.dong)) apts.push(r);
         }
       }
       const placeItem = `<div class="ac-item" data-place="1"><span style="opacity:.7;">⌖</span>'${esc(raw)}' 위치로 이동<span class="t">지명</span></div>`;
