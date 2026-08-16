@@ -566,6 +566,8 @@
     .jb-chip.active { border-color:var(--c-primary); background:var(--c-primary); color:#fff; }
     /* ── Footer (CSS 는 css/buttons.css 공용으로 이동 — 푸터 크기조절 핸들 .footer-resize 와 함께) ── */
     .build-tag { opacity:.55; }
+    /* ── 커스텀 커서 자석 (2026-08-16): 지도 위에서만 진짜 커서 숨김 (#mag-cursor 로 대체) ── */
+    #map.mag-cursor-hidden, #map.mag-cursor-hidden * { cursor: none !important; }
     @media (max-width:640px) {
       header { padding:0 12px; }
       .brand-title { font-size:16px; }
@@ -1063,30 +1065,48 @@
 
     const map = L.map('map', { wheelPxPerZoomLevel: 120, preferCanvas: true }).setView([37.5665, 126.9780], 12);
 
-    // ── 마커 자석기능 (2026-08-16): 커서가 마커 45px 이내로 오면 마커가 커서 쪽으로 50% 당겨지는
-    // 원래 구현은 m.setLatLng 으로 실제 좌표를 옮겨 아이콘이 흔들리고 클릭 타겟이 어긋났다
-    // (사용자 신고: "아이콘이 마우스 커서로 이동"). 웹에서 OS 커서를 움직이는 건 보안상 불가하므로,
-    // 사용자 선택(2026-08-16)에 따라 마커는 고정하고 커서 근접 시 확대/강조로 대체한다.
-    // divIcon 은 CSS scale(transform 과 독립 속성 — Leaflet 위치 계산과 충돌 없음), circleMarker 는 setRadius.
+    // ── 커스텀 커서 자석 (2026-08-16 사용자 선택) ──────────────────────
+    // OS 마우스 커서 이동은 브라우저 보안상 불가 → 지도 위에서만 진짜 커서를 숨기고
+    // (#map.mag-cursor-hidden) 커스텀 커서(#mag-cursor)를 띄워, 커서가 마커 45px 반경 안으로
+    // 들어오면 커서가 마커 중심으로 당겨지는 것처럼 보이게 한다. 마커 좌표는 절대 건드리지 않는다.
+    // 실제 클릭은 진짜 커서 위치에서 발생하므로 자석 반경 안에서는 클릭이 미세하게 어긋날 수 있다.
     // ponytail: 클러스터 마커(실거래·EV·경매 수천 개)는 등록하지 않는다 — 계산 비용 + 클러스터와 충돌.
     const magMarks = new Set();
-    const MAG_R = 45, MAG_SCALE = 1.25;
+    const MAG_R = 45;
+    const magCur = document.createElement('div');
+    magCur.id = 'mag-cursor';
+    magCur.style.cssText = 'position:fixed;width:20px;height:20px;left:0;top:0;margin:-10px 0 0 -10px;border:2px solid #7048e8;border-radius:50%;background:rgba(112,72,232,.12);pointer-events:none;z-index:10000;opacity:0;transition:opacity .12s;';
+    document.body.appendChild(magCur);
+    let magShow = false, magX = 0, magY = 0, magRaf = null;
+    function magTick(tx, ty) {
+      magX += (tx - magX) * 0.22;
+      magY += (ty - magY) * 0.22;
+      magCur.style.left = magX + 'px';
+      magCur.style.top = magY + 'px';
+      if (Math.abs(tx - magX) > 0.5 || Math.abs(ty - magY) > 0.5) magRaf = requestAnimationFrame(() => magTick(tx, ty));
+      else magRaf = null;
+    }
+    function magHide() {
+      if (!magShow) return;
+      magShow = false;
+      magCur.style.opacity = '0';
+      map.getContainer().classList.remove('mag-cursor-hidden');
+      if (magRaf) { cancelAnimationFrame(magRaf); magRaf = null; }
+    }
     map.on('mousemove', (me) => {
+      const rc = map.getContainer().getBoundingClientRect();
+      let tx = null, ty = null, best = MAG_R;
       magMarks.forEach((m) => {
         const p = map.latLngToContainerPoint(m.getLatLng());
-        const dist = Math.hypot(me.containerPoint.x - p.x, me.containerPoint.y - p.y);
-        if (dist < MAG_R) {
-          if (m._icon) m._icon.style.scale = String(MAG_SCALE);
-          else if (m.getRadius && m._magBaseR == null) m._magBaseR = m.getRadius();
-          if (m._magBaseR != null) m.setRadius(m._magBaseR * MAG_SCALE);
-          m._magActive = true;
-        } else if (m._magActive) {
-          if (m._icon) m._icon.style.scale = '1';
-          if (m._magBaseR != null) m.setRadius(m._magBaseR);
-          m._magActive = false;
-        }
+        const d = Math.hypot(me.containerPoint.x - p.x, me.containerPoint.y - p.y);
+        if (d < best) { best = d; tx = rc.left + p.x; ty = rc.top + p.y; }
       });
+      if (tx == null) { magHide(); return; }
+      if (!magShow) { magShow = true; magCur.style.opacity = '1'; map.getContainer().classList.add('mag-cursor-hidden'); }
+      if (!magRaf) magRaf = requestAnimationFrame(() => magTick(tx, ty));
     });
+    map.on('mouseout', magHide);
+    map.on('dragstart zoomstart', magHide);
     function magnetize(m) { if (m && m.getLatLng) magMarks.add(m); return m; }
 
     // ── 팝업 공통 컨트롤: 크기 조절(우하단 아이콘) + 접기 ──────────────────
