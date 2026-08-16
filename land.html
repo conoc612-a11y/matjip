@@ -1128,7 +1128,11 @@
       el.appendChild(topH);
       el.appendChild(botH);
       // 핸들을 내용의 오른쪽 모서리(스크롤바 화살표 위치)에 맞춘다. offsetLeft/Top 은
-      // 루트 좌표계 CSS px 라 줌/팬과 무관하게 항상 화살표와 정렬된다. 스크롤 불가면 숨긴다.
+      // 루트 좌표계 CSS px 라 줌/팬과 무관하게 항상 화살표와 정렬된다.
+      // 스크롤 가능 여부와 무관하게 항상 표시한다 — 내용이 채워져 스크롤바가 사라진 상태(드래그로
+      // 키운 뒤)에서도 축소가 가능해야 한다(실측 2026-08-16: 키운 뒤 sh==ch 가 되면 스크롤바와
+      // 핸들이 사라져 "드래그로 크기 조절이 안 된다"는 사용자 보고. 스크롤바 위치는 그대로 두고
+      // 핸들만 항상 보여준다).
       const placeSbar = () => {
         const sbW = content.offsetWidth - content.clientWidth;
         const L = content.offsetLeft + content.offsetWidth - sbW;
@@ -1136,8 +1140,7 @@
         topH.style.top = content.offsetTop + 'px';
         botH.style.left = L + 'px';
         botH.style.bottom = (el.offsetHeight - content.offsetTop - content.offsetHeight) + 'px';
-        const scrollable = content.scrollHeight > content.clientHeight + 1;
-        topH.style.display = botH.style.display = scrollable ? '' : 'none';
+        topH.style.display = botH.style.display = '';
       };
       popup._placeSbar = placeSbar;
       const vResize = (hAnchor) => makeResizable(hAnchor, content, {
