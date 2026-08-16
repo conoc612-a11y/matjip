@@ -12,6 +12,29 @@
 
 ---
 
+## 2026-08-16 (51) — opencode (배포 반영 확인 완료 + 기록 마무리 — 그립 4차 수정분 반영 확인)
+
+> 사용자: "확인하고 지금까지 기록남겨놓고 다른 AI가 파악할수있도록" → 배포본 검증 완료.
+
+### 배포 반영 확인 (배포본 `https://conoc612-a11y.github.io/matjip/land.html`, 411,896 bytes)
+- fetch 5개 마커 전부 True:
+  - `padding-bottom: 28px` — 그립↔스크롤바 구조적 분리(트랙이 그립 위에서 끝남)
+  - `#C8C8C8` — 그립 꺾은선 색 = 시스템 스크롤바 색(레지스트리 Scrollbar 200 200 200)
+  - `bottom: 3px; right: 3px` — 그립 코너 고정(창 밖 매달림 해소)
+  - `margin: 13px 4.5px` — 스크롤바 세모 중심 = 닫기 X 중심
+  - `.leaflet-popup-close-button ... right: 1px` — X 우측선 = 스크롤바 우측선
+- 커밋 `77895052`(수정)·`23572449`(HANDOFF 50) push 반영 확인.
+
+### 기록 상태 (다른 AI가 이어받기 위한 요약)
+- **TROUBLESHOOTING §37** — 팝업 그립↔스크롤바 겹침 3차 이력 + 원칙("그립은 코너 고정, 스크롤 영역은 그립 위에서 끝나게 wrapper padding-bottom"), 그립 아이콘(ㄱ 꺾은선), 닫기X·세모 정렬, 그립색=스크롤바색(레지스트리 근거, 오버레이 스크롤바 실측 불가 함정 포함).
+- **미사용 untracked(커밋 제외)**: `PLAN_auction_detail.md`, `icons/resize_2993541.png`·`resize_3042433.png`(기각된 Flaticon 후보), `land.backup-20260808.html`, `redevelop_seoul.backup-20260808.json`, `경쟁사_비교분석_20260808.hwpx`. icons 2종 삭제는 사용자 확인 대기.
+
+### ▶ 이어서 할 일
+1. 사용자 실사용 확인(배포본): 팝업 우하단 ㄱ 꺾은선 그립 드래그 리사이즈 + 스크롤바와 안 겹침 + 닫기X·세모 정렬 + 그립색.
+2. (선택) 미사용 `resize_*.png` 2종 삭제 동의 여부.
+
+---
+
 ## 2026-08-16 (50) — opencode (팝업 그립 4차 수정: 창 밖 매달림·스크롤바 재겹침 종결·그립 아이콘 교체·닫기X 정렬·그립색=스크롤바색, 커밋·push 완료)
 
 > 사용자 신고 4건 → 실측·수정·검증 → 커밋·push. 변경: land.html + TROUBLESHOOTING §37 + HANDOFF 50.
