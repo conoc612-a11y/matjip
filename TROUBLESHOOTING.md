@@ -985,3 +985,20 @@ gh api repos/conoc612-a11y/matjip/pages/builds/latest --jq '{status:.status, com
 - **검증**: 배포본 실측(kakaoReady=true, 중개사 15곳, JS 오류 0) + 로컬 파싱 오류 0. 배포본 새로고침으로 최종 확인 필요.
 - **상태**: 커밋·push 진행(사용자 동의).
 
+## 35. CDP probe에서 "레이어 변수가 안 보인다" — `if (VWORLD_KEY) {}` 블록 스코프 (2026-08-16 실측)
+
+- **증상**: land.html에서 CDP `Runtime.evaluate`로 `evCluster`, `cctvLayer`, `auctionCluster`, `evRows`에 접근하면 `undefined`/`{}`. 반면 `loadEv`, `evBuild`, `loadAuction`, `loadCctv`는 정상 호출 가능. probe_ext → probe_scope2/3로 좁혀낸 함정.
+- **원인(실측)**: 이 변수들은 `if (VWORLD_KEY) { ... }` 블록(land.html ~1527–3620, 3620행 `}`에서 닫힘) **내부의 `const`/`let`** — ES6 블록 스코프라 전역에서 접근 불가. 같은 블록의 **함수 선언**(loadEv/evBuild/loadAuction/auctionBuild/loadCctv)은 sloppy mode에서 전역 객체로 호이스팅돼 보이고 호출도 된다. 즉 "함수는 실행되는데 변수가 안 보인다"는 모순이 블록 스코프로 설명된다.
+- **해결/방법**: ① probe에서 블록 내 `const`/`let`에 직접 접근하지 말 것 — 함수는 호출하되, 내부 상태는 DOM(`.leaflet-marker-icon`)이나 `map._targets[lid]`로 읽는다. ② probe에서 꼭 필요하면 함수 선언만 사용하거나, 전역이 필요한 값(uPriceShort 등)은 블록 밖(land.html ~1500 주석: "최상위 스코프에 둔다")에 선언한다.
+- **WHY**: 블록을 감싼 이유는 1532행 주석 — 키가 비어도 JB(정비사업) 기능이 동작해야 하기 때문(과거 ReferenceError 사고, §21·§16 참조). 검증 도구 관점에서는 "코드가 실행 안 된다"로 오판하기 쉬우니 반드시 함수 호출로 우회 확인.
+- **함정**: `map.closeTooltip()`을 직접 dispatch한 `mouseover`(마우스 이벤트 좌표 없음) 뒤에 호출하면 Leaflet 내부가 undefined 참조로 예외(`Cannot read properties of undefined (reading 'close')`) — 툴팁 검증은 `map._targets[lid]._tooltip._content`를 직접 읽는 게 안전.
+- **검증**: probe_scope2/3 — `evCluster/cctvLayer undefined`, `loadEv: function`; probe_final — `map._targets`로 레이어별 마커 툴팁 실측.
+
+## 36. 레이어 상태가 localStorage로 복원돼 "기본 켜짐" 레이어가 probe마다 다름 (2026-08-16 실측)
+
+- **증상**: probe마다 초기 지도 마커 수가 다르고(861/338/166) 경매·실거래·CCTV·EV가 처음부터 떠 있는 경우가 있다.
+- **원인(실측)**: `saveLayerState()`(land.html ~3505, 키 `mj_layer_tree_v1`)가 레이어 토글을 localStorage에 저장하고 로드 시 `restoreLayerState()`로 복원 — **이전 probe/세션이 켰던 레이어가 다음 로드에 기본 켜짐으로 복원**된다.
+- **해결/방법**: 검증 시 ① fresh 브라우저 프로필 사용, ② 검증 후 레이어 토글을 꺼둔 뒤 `localStorage.removeItem('mj_layer_tree_v1')`, ③ 아니면 `restoreLayerState()`가 없다고 가정하고 DOM 체크박스(`.lp-midcb`의 `checked`) 상태를 항상 먼저 덤프.
+- **관련**: 클러스터(실거래/연립) 마커는 성능상 mouseover 시점에 `bindTooltip`(1622-1627) — probe에서 마커에 `MouseEvent('mouseover')`를 dispatch하면 클러스터 이벤트 위임(`_eventParents`)으로 핸들러가 실행돼 툴팁이 생긴다(실측).
+- **자석(2026-08-16)**: `magnetize(m)`(~1060)은 마커를 `magMarks`에 등록, mousemove 시 45px 이내로 당김. 클러스터 내 마커는 지도에 직접 add되지 않아 자석이 안 먹히므로 **실거래/EV/경매 클러스터 제외**, CCTV(200개 제한, 직접 addTo)만 포함(3194행). 즐겨찾기 마커(5256/5271)·검색 결과(5378) 포함.
+

@@ -1036,6 +1036,29 @@
 
     const map = L.map('map', { wheelPxPerZoomLevel: 120, preferCanvas: true }).setView([37.5665, 126.9780], 12);
 
+    // ── 마커 자석기능 (2026-08-16): 커서가 마커 45px 이내로 오면 마커가 커서 쪽으로 50% 당겨진다.
+    // setLatLng으로 실제 좌표를 옮겨서 divIcon·circleMarker 모두 동작. 커서가 벗어나면 원위치 복귀.
+    // 매 mousemove마다 등록된 마커만 계산하므로 개별 표시 마커(중개사·즐겨찾기) 대상.
+    // ponytail: 클러스터 마커(실거래·EV·경매 수천 개)는 등록하지 않는다 — 계산 비용 + 클러스터와 충돌.
+    const magMarks = new Set();
+    map.on('mousemove', (me) => {
+      magMarks.forEach((m) => {
+        const p = map.latLngToContainerPoint(m.getLatLng());
+        const dx = me.containerPoint.x - p.x, dy = me.containerPoint.y - p.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > 0.5 && dist < 45) {
+          const f = (45 - dist) / 45 * 0.5;
+          if (!m._magOrig) m._magOrig = m.getLatLng();
+          m.setLatLng(map.containerPointToLatLng(L.point(p.x + dx * f, p.y + dy * f)));
+          m._magPulled = true;
+        } else if (m._magPulled) {
+          if (m._magOrig) m.setLatLng(m._magOrig);
+          m._magPulled = false; m._magOrig = null;
+        }
+      });
+    });
+    function magnetize(m) { if (m && m.getLatLng) magMarks.add(m); return m; }
+
     // ── 팝업 공통 컨트롤: 크기 조절(우하단 아이콘) + 접기 ──────────────────
     // Leaflet 은 popup._updateLayout() 이 content 폭을 다시 계산해 넣으므로, 리사이즈된
     // 크기는 팝업 객체(_lpW/_lpH)에 저장해 두고 _updateLayout 끝에 다시 적용한다.
@@ -1494,11 +1517,12 @@
       if (uUnit.price === 'total') { const a = uAreaVal(d.area); return a ? '평단가 ' + Math.round(d.priceEok * 10000 / a).toLocaleString() + uUnitTxt() : null; }
       return '총액 ' + d.priceEok + '억';
     };
-    const uPriceShort = (d) => {  // 마커 툴팁 (짧은 형식)
-      if (d.priceEok == null) return esc(d.name);
-      if (uUnit.price === 'total') return d.priceEok + '억';
+    const uPriceShort = (d) => {  // 마커 툴팁 — 2026-08-16: 상호명(단지명)이 항상 먼저 보이게
+      const n = d.name ? esc(d.name) : '';
+      if (d.priceEok == null) return n;
+      if (uUnit.price === 'total') return n + ' · ' + d.priceEok + '억';
       const a = uAreaVal(d.area);
-      return a ? Math.round(d.priceEok * 10000 / a).toLocaleString() + '만' : d.priceEok + '억';
+      return n + ' · ' + (a ? Math.round(d.priceEok * 10000 / a).toLocaleString() + '만' : d.priceEok + '억');
     };
 
     // ── [토지 레이어] V-World 국토·토지정보 오버레이 (토글) ─────────────────
@@ -2086,6 +2110,7 @@
         evCluster.addLayers(evRows.map((d) => {
           const m = L.marker([d.lat, d.lng], { icon: evIcon });
           m._pop = (() => evPopupHtml(d));
+          m.bindTooltip(esc(d.name), { direction: 'top' });
           return m;
         }));
       }
@@ -2169,6 +2194,7 @@
           const m = L.marker([d.lat, d.lng], { icon: aucIcon(aucColor(d.status)) });
           m._pop = (() => auctionPopupHtml(d));
           m._idx = i;
+          m.bindTooltip(esc(d.addr), { direction: 'top' });  // 경매는 주소가 식별자(상호명 없음)
           return m;
         }));
       }
@@ -3164,7 +3190,8 @@
           cctvLayer.clearLayers();
           items.slice(0, 200).forEach((it) => {
             if (!Number.isFinite(it.lat) || !Number.isFinite(it.lng)) return;
-            L.marker([it.lat, it.lng], { icon: cctvIcon }).addTo(cctvLayer).on('click', () => openCctvPopup(it));
+            const m = L.marker([it.lat, it.lng], { icon: cctvIcon }).addTo(cctvLayer).bindTooltip(esc(it.name), { direction: 'top' }).on('click', () => openCctvPopup(it));
+            magnetize(m);  // CCTV는 200개 제한이라 자석 계산 부담 없음
           });
         };
         itsDirect(minX, maxX, minY, maxY)
@@ -5224,7 +5251,9 @@
       list.forEach((d) => {
         if (d.lat == null || d.lng == null) return;
         const m = L.circleMarker([d.lat, d.lng], { radius: 10, color: '#000', weight: 2, fillColor: '#e8590c', fillOpacity: 0.95 }).addTo(map)
-          .bindPopup(`<b>${esc(d.name)}</b><br>${esc(d.gu || '')} ${esc(d.dong || '')}<br>${d.priceEok == null ? '-' : d.priceEok + '억'}${d.type && d.type !== '아파트' ? '<br>' + esc(d.type) : ''}`);
+          .bindPopup(`<b>${esc(d.name)}</b><br>${esc(d.gu || '')} ${esc(d.dong || '')}<br>${d.priceEok == null ? '-' : d.priceEok + '억'}${d.type && d.type !== '아파트' ? '<br>' + esc(d.type) : ''}`)
+          .bindTooltip(esc(d.name), { direction: 'top' });
+        magnetize(m);
         markers[d.id] = m;
       });
       // 공인중개사 마커 (보라색)
@@ -5237,7 +5266,9 @@
           iconAnchor: [11, 11],
         });
         const m = L.marker([a.lat, a.lng], { icon }).addTo(map)
-          .bindPopup(`<b>${esc(a.name)}</b><br>${esc(a.phone || '')}${a.url ? '<br><a href="' + safeUrl(a.url) + '" target="_blank" rel="noopener">카카오맵</a>' : ''}`);
+          .bindPopup(`<b>${esc(a.name)}</b><br>${esc(a.phone || '')}${a.url ? '<br><a href="' + safeUrl(a.url) + '" target="_blank" rel="noopener">카카오맵</a>' : ''}`)
+          .bindTooltip(esc(a.name), { direction: 'top' });
+        magnetize(m);
         markers['agent_' + a.id] = m;
       });
       const pts = [...list, ...agentList].map((d) => (d.lat != null && d.lng != null ? [d.lat, d.lng] : null)).filter(Boolean);
@@ -5343,7 +5374,8 @@
             iconSize: [24, 24],
             iconAnchor: [12, 12],
           });
-          const m = L.marker([Number(p.y), Number(p.x)], { icon }).addTo(map).bindPopup(`<b>${esc(p.place_name)}</b><br>${esc(p.phone || '')}${p.place_url ? '<br><a href="' + safeUrl(p.place_url) + '" target="_blank" rel="noopener">카카오맵</a>' : ''}`);
+          const m = L.marker([Number(p.y), Number(p.x)], { icon }).addTo(map).bindPopup(`<b>${esc(p.place_name)}</b><br>${esc(p.phone || '')}${p.place_url ? '<br><a href="' + safeUrl(p.place_url) + '" target="_blank" rel="noopener">카카오맵</a>' : ''}`).bindTooltip(esc(p.place_name), { direction: 'top' });
+          magnetize(m);
           agentMarkers.push(m);
         });
         lastAgentCenter = { lat: c.lat, lng: c.lng };
