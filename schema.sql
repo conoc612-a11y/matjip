@@ -128,7 +128,9 @@ drop policy if exists "mj_restaurants insert auth" on mj_restaurants;
 drop policy if exists "mj_restaurants update auth" on mj_restaurants;
 create policy "mj_restaurants read"        on mj_restaurants for select using (true);
 create policy "mj_restaurants insert auth" on mj_restaurants for insert to authenticated with check (true);
-create policy "mj_restaurants update auth" on mj_restaurants for update to authenticated using (true) with check (true);
+-- 2026-08-16 보안: 기존 update 정책(using(true) with check(true))은 로그인한 누구나
+-- 전 행을 변조할 수 있었다. 프론트에서 mj_restaurants를 update하는 호출이 없으므로
+-- 정책을 아예 제거한다(관리자는 service_role로 bypass — SQL Editor/seed에서 수정 가능).
 
 drop policy if exists "own saved" on saved_restaurants;
 create policy "own saved" on saved_restaurants for all to authenticated

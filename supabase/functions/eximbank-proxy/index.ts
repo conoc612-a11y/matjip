@@ -91,7 +91,12 @@ Deno.serve(async (req) => {
         return json({ searchdate, kind, items: arr });
       }
     } catch (e) {
-      if (back === 5) return json({ error: "한국수출입은행 API 호출 실패", detail: String(e) }, 502);
+      if (back === 5) {
+        // 2026-08-16 보안: detail 로 예외 문자열을 내보내면 Deno fetch 실패 메시지에 포함된
+        // 요청 URL(authkey 포함)이 익명 호출자에게 새어나간다. 로그로만 남기고 고정 문구 반환.
+        console.error("한국수출입은행 API 호출 실패:", e);
+        return json({ error: "한국수출입은행 API 호출 실패" }, 502);
+      }
     }
   }
   return json({ error: "최근 6일간 고시 데이터를 찾지 못했습니다.", kind }, 404);

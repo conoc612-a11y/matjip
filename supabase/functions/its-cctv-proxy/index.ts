@@ -114,7 +114,9 @@ Deno.serve(async (req) => {
         if (Array.isArray(arr)) return { rows: [] };   // 정상 응답인데 정말 0건
       } catch (e) {
         if ((e as Error).name === "AbortError") anyTimedOut = true;
-        lastErr = `${type}#${attempt}: ${(e as Error).name}: ${(e as Error).message}`.slice(0, 200);
+        // 2026-08-16 보안: e.message 는 Deno fetch 실패 시 요청 URL(apiKey 포함)을 담을 수 있어
+        // 익명 호출자에게 노출하면 안 된다. 진단은 예외 이름(type#attempt)만 남긴다.
+        lastErr = `${type}#${attempt}: ${(e as Error).name}`.slice(0, 200);
       } finally {
         clearTimeout(timer);
       }

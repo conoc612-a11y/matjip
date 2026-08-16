@@ -129,7 +129,7 @@
       $('result').style.display = 'block';
       $('result').innerHTML = ranked.map((r) =>
         `<div class="rec"><span class="score">${r.score}점</span><b>${esc(r.name)}</b>
-         <div style="font-size:12px;color:var(--muted)">${esc(r.category||'')} · ${(r.tags||[]).join(', ')}</div>
+         <div style="font-size:12px;color:var(--muted)">${esc(r.category||'')} · ${(r.tags||[]).map((t)=>esc(t)).join(', ')}</div>
          <div class="why">${r.hits.length ? '일치: ' + r.hits.join(', ') : '취향과 겹치는 태그 없음'}</div>
          <a href="detail.html?id=${r.id}" style="font-size:13px;color:var(--accent)">상세 · 길찾기 →</a></div>`
       ).join('');

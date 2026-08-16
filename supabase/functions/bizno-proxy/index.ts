@@ -131,6 +131,9 @@ Deno.serve(async (req) => {
       headers: { ...CORS, "content-type": r.headers.get("content-type") || "application/json; charset=utf-8" },
     });
   } catch (e) {
-    return json({ error: "국세청 API 호출 실패", detail: String(e) }, 502);
+    // 2026-08-16 보안: detail 로 예외 문자열을 내보내면 Deno fetch 실패 메시지에 포함된
+    // 요청 URL(serviceKey 포함)이 익명 호출자에게 새어나간다. 로그로만 남기고 고정 문구 반환.
+    console.error("국세청 API 호출 실패:", e);
+    return json({ error: "국세청 API 호출 실패" }, 502);
   }
 });
