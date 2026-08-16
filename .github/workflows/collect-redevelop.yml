@@ -1,0 +1,56 @@
+name: 정비(urban 서울) 데이터 자동 갱신
+
+# 서울도시공간포털(urban.seoul.go.kr) 공개 ArcGIS WMS(UQ120, 레이어 94~122)만 호출 —
+# 키·지오코딩 불필요, 의존성 없음(Node 20 내장 fetch). tools/collect_redevelop.js가
+# redevelop_seoul.json(구역 메타, ~2,964건) + redevelop_polygons.json(폴리곤)을 재생성한다.
+# cafe(정보공개 링크)는 기존 파일과 자치구+이름 매칭으로 보존한다.
+# 매일 07:00 KST(=22:00 UTC 전날) — 구역 지정·해제가 수시로 갱신되므로 auction과 동일 주기.
+# 변경이 없으면 diff 검사에서 커밋을 생략하고, 0건/절반 미만이면 커밋을 거부한다(§6 패턴).
+
+on:
+  schedule:
+    - cron: '0 22 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    # 29개 BZ 레이어 × 단일 WMS 쿼리 — 수 분 내 완료. 30분 여유.
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - run: node tools/collect_redevelop.js
+
+      # WMS 장애(0건)·부분 수집(절반 미만)이 커밋되는 것을 막는 방어선.
+      - name: redevelop*.json sanity check
+        run: |
+          new=$(node -e "process.stdout.write(String((require('./redevelop_seoul.json')).length))")
+          old=$(git show HEAD:redevelop_seoul.json 2>/dev/null | node -e "
+            let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{
+              try{process.stdout.write(String((JSON.parse(s)).length))}catch(e){process.stdout.write('0')}
+            });" || echo 0)
+          echo "직전 ${old}건 → 이번 ${new}건"
+          if [ "$new" -lt 1 ]; then echo "::error::수집 0건 — 커밋 거부"; exit 1; fi
+          if [ "$old" -gt 0 ] && [ "$new" -lt $((old / 2)) ]; then
+            echo "::error::직전(${old}건)의 절반 미만(${new}건) — 커밋 거부"; exit 1
+          fi
+
+      - name: redevelop*.json 변경 시 커밋·푸시
+        run: |
+          if git diff --quiet -- redevelop_seoul.json redevelop_polygons.json; then
+            echo "변경 없음 — 커밋 생략"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add redevelop_seoul.json redevelop_polygons.json
+          git commit -m "chore(collect): 정비(urban 서울) 데이터 자동 갱신 ($(date -u +%Y-%m-%d))"
+          git push
