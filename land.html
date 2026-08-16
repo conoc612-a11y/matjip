@@ -566,8 +566,6 @@
     .jb-chip.active { border-color:var(--c-primary); background:var(--c-primary); color:#fff; }
     /* ── Footer (CSS 는 css/buttons.css 공용으로 이동 — 푸터 크기조절 핸들 .footer-resize 와 함께) ── */
     .build-tag { opacity:.55; }
-    /* ── 커스텀 커서 자석 (2026-08-16): 지도 위에서만 진짜 커서 숨김 (#mag-cursor 로 대체) ── */
-    #map.mag-cursor-hidden, #map.mag-cursor-hidden * { cursor: none !important; }
     @media (max-width:640px) {
       header { padding:0 12px; }
       .brand-title { font-size:16px; }
@@ -1064,53 +1062,6 @@
     L.Popup.mergeOptions({ maxWidth: 340, minWidth: 220, autoPanPadding: [16, 24] });
 
     const map = L.map('map', { wheelPxPerZoomLevel: 120, preferCanvas: true }).setView([37.5665, 126.9780], 12);
-
-    // ── 커스텀 커서 자석 (2026-08-16 사용자 선택) ──────────────────────
-    // OS 마우스 커서 이동은 브라우저 보안상 불가 → 지도 위에서만 진짜 커서를 숨기고
-    // (#map.mag-cursor-hidden) 커스텀 커서(#mag-cursor)를 띄워, 커서가 마커 45px 반경 안으로
-    // 들어오면 커서가 마커 중심으로 당겨지는 것처럼 보이게 한다. 마커 좌표는 절대 건드리지 않는다.
-    // 실제 클릭은 진짜 커서 위치에서 발생하므로 자석 반경 안에서는 클릭이 미세하게 어긋날 수 있다.
-    // ponytail: 클러스터 마커(실거래·EV·경매 수천 개)는 등록하지 않는다 — 계산 비용 + 클러스터와 충돌.
-    const magMarks = new Set();
-    const MAG_R = 45;
-    const magCur = document.createElement('div');
-    magCur.id = 'mag-cursor';
-    // 브라우저 기본 손모양 커서와 같은 모양(흰 몸체 + 검은 외곽선)을 그대로 쓴다.
-    // 출처: Wikimedia Commons "Pointing hand cursor vector.svg" (CC0).
-    magCur.innerHTML = '<svg width="24" height="31" viewBox="-364.275 -463.175 728.602 926.3" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" fill="#fff" d="M209.5,105.85c0-0.4,0-0.817,0-1.25l-0.15-68.4l0.15-15.55l-0.15,15.55l0.15,68.4C209.5,105.033,209.5,105.45,209.5,105.85v32.8l8.4-1c9.167-0.667,22.7-1,40.6-1c30.833,0,52.25-13.667,64.25-41c3.767-8.533,6.35-17.933,7.75-28.2c0.7-5.133,1.033-9.4,1-12.8l-0.25-51c-6.167-121.433-18.083-214.5-35.75-279.2c-17.633-64.7-33.3-115.967-47-153.8l-364-1c-36.2,172.967-108.183,307.633-215.95,404C-306.75,88.383-249.1,89.7-158.5-22.4v373.05c0.1,3,0.417,6.55,0.95,10.649c1.3,10.267,3.683,19.667,7.15,28.2c10.367,25.533,28.333,39.134,53.9,40.8c25.6-1.666,43.583-15.267,53.95-40.8c3.466-8.533,5.85-17.934,7.15-28.2c0.533-4.1,0.833-7.649,0.9-10.649V225.55v-117v117h8.4c9.167-0.666,22.7-1,40.6-1c30.833,0,52.25-13.666,64.25-41c3.767-8.533,6.35-17.933,7.75-28.2c0.567-4.1,0.9-7.65,1-10.65v-75v75v42h8.4c9.167-0.667,22.7-1,40.6-1c30.833,0,52.25-13.667,64.25-41c3.767-8.534,6.35-17.934,7.75-28.2C209.067,112.4,209.4,108.85,209.5,105.85z M209.05,11.7l0.3,24.5L209.05,11.7z"/><path fill="none" stroke="#000" stroke-width="65.65" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="3" d="M209.5,105.85c-0.1,3-0.433,6.55-1,10.65c-1.4,10.267-3.983,19.667-7.75,28.2c-12,27.333-33.417,41-64.25,41c-17.9,0-31.433,0.333-40.6,1h-8.4v-42v-75M87.5,144.7c-0.1,3-0.433,6.55-1,10.65c-1.4,10.267-3.983,19.667-7.75,28.2c-12,27.334-33.417,41-64.25,41c-17.9,0-31.433,0.334-40.6,1h-8.4v-117M-34.5,225.55V350.65c-0.067,3-0.367,6.55-0.9,10.649c-1.3,10.267-3.684,19.667-7.15,28.2c-10.367,25.533-28.35,39.134-53.95,40.8c-25.567-1.666-43.533-15.267-53.9-40.8c-3.467-8.533-5.85-17.934-7.15-28.2c-0.534-4.1-0.85-7.649-0.95-10.649V-22.4c-90.6,112.1-148.25,110.783-172.95-3.95c107.767-96.367,179.75-231.033,215.95-404l364,1c13.7,37.833,29.367,89.1,47,153.8c17.667,64.7,29.583,157.767,35.75,279.2l0.25,51c0.033,3.4-0.3,7.667-1,12.8c-1.4,10.267-3.983,19.667-7.75,28.2c-12,27.333-33.417,41-64.25,41c-17.9,0-31.433,0.333-40.6,1l-8.4,1v-32.8c0-0.4,0-0.817,0-1.25l-0.15-68.4l0.15-15.55M209.05,11.7l0.3,24.5"/></svg>';
-    magCur.style.cssText = 'position:fixed;left:0;top:0;transform:translate(-50%,-50%);pointer-events:none;z-index:10000;opacity:0;transition:opacity .12s;';
-    document.body.appendChild(magCur);
-    let magShow = false, magX = 0, magY = 0, magRaf = null;
-    function magTick(tx, ty) {
-      magX += (tx - magX) * 0.22;
-      magY += (ty - magY) * 0.22;
-      magCur.style.left = magX + 'px';
-      magCur.style.top = magY + 'px';
-      if (Math.abs(tx - magX) > 0.5 || Math.abs(ty - magY) > 0.5) magRaf = requestAnimationFrame(() => magTick(tx, ty));
-      else magRaf = null;
-    }
-    function magHide() {
-      if (!magShow) return;
-      magShow = false;
-      magCur.style.opacity = '0';
-      map.getContainer().classList.remove('mag-cursor-hidden');
-      if (magRaf) { cancelAnimationFrame(magRaf); magRaf = null; }
-    }
-    map.on('mousemove', (me) => {
-      const rc = map.getContainer().getBoundingClientRect();
-      let tx = null, ty = null, best = MAG_R;
-      magMarks.forEach((m) => {
-        const p = map.latLngToContainerPoint(m.getLatLng());
-        const d = Math.hypot(me.containerPoint.x - p.x, me.containerPoint.y - p.y);
-        if (d < best) { best = d; tx = rc.left + p.x; ty = rc.top + p.y; }
-      });
-      if (tx == null) { magHide(); return; }
-      if (!magShow) { magShow = true; magCur.style.opacity = '1'; map.getContainer().classList.add('mag-cursor-hidden'); }
-      if (!magRaf) magRaf = requestAnimationFrame(() => magTick(tx, ty));
-    });
-    map.on('mouseout', magHide);
-    map.on('dragstart zoomstart', magHide);
-    function magnetize(m) { if (m && m.getLatLng) magMarks.add(m); return m; }
 
     // ── 팝업 공통 컨트롤: 크기 조절(우하단 아이콘) + 접기 ──────────────────
     // Leaflet 은 popup._updateLayout() 이 content 폭을 다시 계산해 넣으므로, 리사이즈된
@@ -3244,7 +3195,6 @@
           items.slice(0, 200).forEach((it) => {
             if (!Number.isFinite(it.lat) || !Number.isFinite(it.lng)) return;
             const m = L.marker([it.lat, it.lng], { icon: cctvIcon }).addTo(cctvLayer).bindTooltip(esc(it.name), { direction: 'top' }).on('click', () => openCctvPopup(it));
-            magnetize(m);  // CCTV는 200개 제한이라 자석 계산 부담 없음
           });
         };
         itsDirect(minX, maxX, minY, maxY)
@@ -5306,7 +5256,6 @@
         const m = L.circleMarker([d.lat, d.lng], { radius: 10, color: '#000', weight: 2, fillColor: '#e8590c', fillOpacity: 0.95 }).addTo(map)
           .bindPopup(`<b>${esc(d.name)}</b><br>${esc(d.gu || '')} ${esc(d.dong || '')}<br>${d.priceEok == null ? '-' : d.priceEok + '억'}${d.type && d.type !== '아파트' ? '<br>' + esc(d.type) : ''}`)
           .bindTooltip(esc(d.name), { direction: 'top' });
-        magnetize(m);
         markers[d.id] = m;
       });
       // 공인중개사 마커 (보라색)
@@ -5321,7 +5270,6 @@
         const m = L.marker([a.lat, a.lng], { icon }).addTo(map)
           .bindPopup(`<b>${esc(a.name)}</b><br>${esc(a.phone || '')}${a.url ? '<br><a href="' + safeUrl(a.url) + '" target="_blank" rel="noopener">카카오맵</a>' : ''}`)
           .bindTooltip(esc(a.name), { direction: 'top' });
-        magnetize(m);
         markers['agent_' + a.id] = m;
       });
       const pts = [...list, ...agentList].map((d) => (d.lat != null && d.lng != null ? [d.lat, d.lng] : null)).filter(Boolean);
@@ -5428,7 +5376,6 @@
             iconAnchor: [12, 12],
           });
           const m = L.marker([Number(p.y), Number(p.x)], { icon }).addTo(map).bindPopup(`<b>${esc(p.place_name)}</b><br>${esc(p.phone || '')}${p.place_url ? '<br><a href="' + safeUrl(p.place_url) + '" target="_blank" rel="noopener">카카오맵</a>' : ''}`).bindTooltip(esc(p.place_name), { direction: 'top' });
-          magnetize(m);
           agentMarkers.push(m);
         });
         lastAgentCenter = { lat: c.lat, lng: c.lng };
