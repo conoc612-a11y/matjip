@@ -697,7 +697,7 @@
         <span class="footer-note">동일 IP는 하루 1회만 집계됩니다</span>
       </div>
       <div class="footer-right">
-        <span class="footer-contact">호룡리싱앤리얼리티 · 오재호 010.4353.6501 · conoc@naver.com
+        <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           <!-- 빌드 태그: 브라우저가 옛 파일을 캐시하고 있는지 한눈에 확인하는 용도. 배포마다 올린다. -->
           · <span class="build-tag">build 2026-08-04-b36</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
@@ -1616,12 +1616,36 @@
       function rpAptPopHtml(d) {
         return `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${rpColorMode.v === 'move' ? rpMoveColor(d) : ageColor(d.build)};flex-shrink:0;"></span><span class="rp-name">${esc(d.name)}</span></div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div><div class="pc-price">매매 ${uPriceMain(d)}</div>${uPriceSub(d) ? `<div style="margin-top:3px;">${uPriceSub(d)}</div>` : ''}<div style="margin-top:3px;">전용 ${uAreaTxt(d.area)} · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="margin-top:3px;">${esc(d.build || '?')}년 건축${parseInt(d.build) <= 1994 ? '<span style="background:#e03131;color:#fff;font-size:12px;padding:2px 8px;border-radius:999px;margin-left:6px;">재건축연한 초과</span>' : ''}</div>${jeonseHtml(d, '평형 기준')}${rpFlagsHtml(d)}${rpTrendHtml(d)}${rpDealTableHtml(d)}<div class="rp-radius-stat rp-stat" style="display:none;"></div></div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline" style="border-color:var(--c-price) !important;color:var(--c-price);">저장</button><a href="https://map.naver.com/p/search/${encodeURIComponent(d.name + ' ' + (d.dong || d.gu || ''))}?c=${d.lng},${d.lat},17,0,0,0,dh" target="_blank" rel="noopener" class="pc-btn pc-btn-primary rp-naver">네이버 부동산</a><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline">출발</button><button class="rt-end pc-btn pc-btn-outline">도착</button></div><button class="sv-btn pc-btn pc-btn-outline">거리뷰</button></div></div>`;
       }
+      // 마커 아이콘: 색 점(건축년도/등락) + 가격 라벨. 가격이 마커에 그대로 보여야 하므로
+      // circleMarker 대신 divIcon 을 쓴다. 라벨은 uUnit(총액↔평단가)을 읽으므로 단위 토글 시
+      // rpRefresh() 가 m.setIcon(rpMarkerIcon(m._rp)) 로 다시 만들어 준다. divIcon html 은
+      // 문자열일 뿐이고 DOM 은 마커가 지도에 나타날 때(클러스터 렌더) 만들어지므로, 마커 1.2만 개
+      // 모두에 divIcon 인스턴스를 만들어도 circleMarker 재생성(33,810개)처럼 비싸지 않다.
+      function rpMarkerIcon(d) {
+        const color = rpColorMode.v === 'move' ? rpMoveColor(d) : ageColor(d.build);
+        return L.divIcon({
+          className: '',
+          html: `<div style="transform:translate(-50%,-100%);white-space:nowrap;display:flex;align-items:center;gap:4px;background:#fff;border:1.5px solid ${color};border-radius:12px;padding:1px 6px;font-size:11px;font-weight:700;color:#111;line-height:1;box-shadow:0 1px 4px rgba(0,0,0,.35);"><span style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0;"></span><span>${uPriceShort(d)}</span></div><div style="position:absolute;left:50%;top:0;transform:translate(-50%,-4px);width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;border-top:6px solid ${color};"></div>`,
+          iconSize: [0, 0], iconAnchor: [0, 0],
+        });
+      }
       function rpBuild() {
         if (!rpRows) return;
         realpriceCluster.clearLayers();
-        realpriceCluster.addLayers(rpRows.filter((d) => inPrice(d.priceEok) && inAge(d.build)).map((d) => {
-          const m = L.circleMarker([d.lat, d.lng], { radius: 10, color: '#000', weight: 2, fillColor: rpColorMode.v === 'move' ? rpMoveColor(d) : ageColor(d.build), fillOpacity: 0.9 });
+        // 거래 행마다 마커를 만들면 같은 단지(같은 좌표)에 수십 개가 겹쳐 가격 라벨이 쓸모없어진다.
+        // 단지(name|구|동)별로 최신 거래 행 1개씩만 마커로 만든다 — 팝업은 rpGroup()으로 그 단지의
+        // 전체 거래 표를 여전히 보여주므로 정보 손실이 없다(2026-08-16 사용자 요청: 마커에 가격 표시).
+        const rep = new Map();
+        for (const d of rpRows) {
+          if (!inPrice(d.priceEok) || !inAge(d.build)) continue;
+          const k = (d.name || '') + '|' + (d.gu || '') + '|' + (d.dong || '');
+          const cur = rep.get(k);
+          if (!cur || (d.ymd || '') > (cur.ymd || '')) rep.set(k, d);
+        }
+        realpriceCluster.addLayers([...rep.values()].map((d) => {
+          const m = L.marker([d.lat, d.lng], { icon: rpMarkerIcon(d) });
           m._rp = d;
+          m._rpIcon = 1;
           m._pop = () => rpAptPopHtml(d);
           return m;
         }));
@@ -1704,17 +1728,14 @@
       // 단위 토글 후 마커가 새 팝업(클로저)을 들고 다시 그려져야 한다.
       // jb 팝업은 lazy 생성이라 열 때마다 새 단위를 읽는다.
       // 표시 단위(총액↔평단가, ㎡↔평) 토글 전용 갱신.
-      // 단위는 마커 자체와 무관하다 — 위치도 색(건축년도)도 그대로고, 바뀌는 건 툴팁·팝업의
-      // '텍스트'뿐이다. 예전엔 여기서 rpBuild/villaBuild/officelBuild 로 세 클러스터를 통째로
-      // 다시 만들어, 칩 한 번 누를 때마다 아파트 9,030 + 연립 23,708 + 오피스텔 1,072 =
-      // 33,810개 circleMarker 를 새로 생성했다(2026-08-14 코드리뷰).
-      // 팝업은 m._pop() 이 호출 시점에 uPriceMain 등을 읽는 클로저라, 캐시된 것만 버리면
-      // 다음에 열릴 때 저절로 새 단위로 만들어진다. 툴팁도 _ttDone 만 되돌리면 된다.
-      // (가격·건축년도 필터는 표시할 마커 집합 자체가 바뀌므로 지금처럼 rpBuild 를 쓴다.)
+      // 아파트/연립/오피스텔 마커 중 가격 라벨을 가진 건 아파트뿐(rpMarkerIcon, m._rpIcon).
+      // 라벨 텍스트(uPriceShort)가 단위에 따라 달라지므로 setIcon 으로 갱신한다 — 위치·색은 그대로고
+      // DOM 만 새로 만들어지니 클러스터 통째로 재생성(예전 33,810개)보다 훨씬 싸다.
       function rpRefresh() {
         [realpriceCluster, villaCluster, officelCluster].forEach((cl) => {
           if (!cl) return;
           cl.eachLayer((m) => {
+            if (m._rpIcon) { try { m.setIcon(rpMarkerIcon(m._rp)); } catch (e) {} }
             if (m._ttDone) { m._ttDone = 0; try { m.unbindTooltip(); } catch (e) {} }
             if (m._pop && m.getPopup()) {
               const wasOpen = !!(m.isPopupOpen && m.isPopupOpen());
@@ -5485,7 +5506,8 @@
     // 공용 로더를 쓰므로 정비사업 레이어가 이미 받아뒀으면 재요청하지 않는다.
     function ensureJbRows() { loadJbRows(); }
     // 검색 자동완성에서 아파트 단지 선택 → 해당 마커로 이동 + 실거래 팝업 오픈.
-    // 마커는 거래 행마다 만들어지므로(name|구|동 그룹) 그룹 기준으로 찾는다.
+    // 마커는 단지(name|구|동)당 1개(대표=최신 거래 행)다 — 2026-08-16 가격 라벨 도입과 함께
+    // 거래 행마다 만들던 걸 단지별 1개로 줄여 같은 좌표 중첩 라벨을 없앴다.
     function openRpApt(r) {
       if (!r) return;
       let found = null;
