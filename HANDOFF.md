@@ -17,21 +17,22 @@
 > 사용자: "네가 해커라 생각하고 matjip 해킹한다고 하면 어떻게 뚫릴 것 같아?" → 전 Edge Function 17개 + schema.sql + 프론트 innerHTML 실측 점검 완료, **TROUBLESHOOTING §38에 전체 기록**. 수정은 아직 안 함(사용자 동의 대기 — "가장 빠르게 수정 가능한 것부터 순서 알려줘" 상태).
 
 ### 발견 요약 (상세 = TROUBLESHOOTING §38, 근거·줄번호 전부 있음)
-1. **[높음] XFF 위조 → 관리자 잠금·레이트리밋 무력화** — 전 함수 IP 판정이 `x-forwarded-for` 단독 신뢰(`admin-login/index.ts:45`). admin-login 5회 잠금이 무제한 비밀번호 대입으로 우회 가능. (Supabase XFF 신뢰 여부는 배포 실측 필요 — 미확인)
+1. ~~[높음] XFF 위조 → 관리자 잠금·레이트리밋 무력화~~ → **실측으로 기각(2026-08-16)**: 위조 IP로 5회 실패 후 6회째 잠금 429, 위조 IP를 바꿔도(.88/.99) 계속 429 → **Supabase 엣지가 클라이언트 XFF를 무시하고 실제 IP를 첫 값으로 세팅** → 잠금은 실제 IP 기준 정상 동작. 조치 불필요.
 2. **[높음] 4개 프록시 `detail: String(e)` → 상류 API 키 502 유출** — chungak:132, bizno:134, eximbank:94, its-cctv:117·137. molit:120·kma:146은 이미 고정 문구로 수정했는데 이 4곳은 누락. naver-search:91은 키가 헤더라 무해.
 3. **[중간] 저장된 XSS — `ai.html:132` tags esc 누락** — mj_restaurants insert가 로그인 열려 있어(`schema.sql:130`) 태그로 세션 탈취 가능. main.js:479·land.html:2763은 esc 처리됨.
 4. **[중간] `mj_restaurants update` RLS 남용** — `schema.sql:131` `using(true)` → 로그인 사용자가 전 행 변조 가능.
 
-### 수정 순서 (사용자가 "가장 빠른 것부터" 요청 — 동의 대기)
-1. `ai.html:132` esc() 한 줄 (즉시 반영)
-2. 4개 프록시 오류 문구 고정 (Edge Function 재배포)
-3. schema.sql RLS 조정 (update 정책 수정)
-4. admin-login XFF 방어 (실측 선행)
+### 적용 완료 (커밋 b952508c, 2026-08-16) — 검증까지 끝남
+1. `ai.html:132` esc() 추가 → 배포본 `.map((t)=>esc(t))` 확인
+2. 4개 프록시 오류 문구 고정 → 재배포 후 실제 호출 200 확인
+3. schema.sql RLS update 정책 제거 → migration 20260816000000 Local=Remote 반영
+4. admin-login XFF → 실측 결과 기각, 수정 안 함
 
 ### ▶ 이어서 할 일
-1. **사용자 동의 받고 위 순서대로 수정** — 각 항목 실측 검증 후 커밋·push·배포(배포는 항상 사용자 동의 후).
-2. ⚠️ **1번(XFF)은 배포 실측 먼저**: Supabase가 클라이언트 XFF를 신뢰하는지 위조 요청으로 확인 후 설계.
-3. 수정 완료 시 TROUBLESHOOTING §38에 "적용 완료" 표기 + HANDOFF 다음 번호로 갱신.
+1. ~~사용자 동의 받고 위 순서대로 수정~~ → 완료. (보안 4건 모두 종결)
+2. **남은 관찰(저위험, 기록만)**: jb_posts anon insert 스팸, admin-request-reset 메일 폭탄(30분 간격), CORS `*` — 사용자가 요청할 때만 진행.
+3. ⚠️ **admin-login 잠금 상태 확인**: 실측 테스트로 실제 IP 실패 카운터가 쌓여 잠겼을 수 있음 — 15분(2026-08-16 실측 시각 기준) 지나면 자동 해제. 사용자가 관리자 로그인 시도 전 15분 대기 권고.
+4. **마커 자석기능 개선(커밋 81425f9f)**: 마커 커서 이동 → 고정+확대/강조로 교체(divIcon scale·circleMarker setRadius), 배포 반영 확인. 동작 최종 확인은 사용자 실기기.
 
 ---
 
