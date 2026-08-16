@@ -481,7 +481,7 @@
        2026-08-16: "팝업크기 상관없이 스크롤바 나오게"). 내용이 채워져 스크롤이 필요 없어도 트랙이
        남아 리사이즈 조작 위치를 알려준다. max-width 는 리사이즈 상한이 되어 '넓히기'를 막으므로
        넉넉히 준다(화면 폭까지). 내용은 .pc 가 width:100% 라 늘어난 폭에 맞춰 자동으로 다시 흐른다. */
-    .leaflet-popup-content { max-height:var(--popup-max-h, min(62vh, 520px)); overflow-y:scroll; overflow-x:hidden; overflow-wrap:anywhere; word-break:break-word; min-width:220px; max-width:calc(100vw - 40px); margin:13px 0 13px 20px; padding-right:24px; }
+    .leaflet-popup-content { max-height:var(--popup-max-h, min(62vh, 520px)); overflow-y:scroll; overflow-x:hidden; overflow-wrap:anywhere; word-break:break-word; min-width:220px; max-width:calc(100vw - 40px); margin:13px 4.5px 13px 20px; padding-right:24px; }
     /* 스크롤바를 팝업 오른쪽 끝에 붙인다(2026-08-16): content margin-right 를 0으로, 텍스트 여백은
        padding-right 가 대신한다. 이전엔 스크롤바가 오른쪽에서 24px 들어가 "맨 우측에 없다"는 지적이 있었다.
        .leaflet-popup-pane z-index: 기본 700 은 컨트롤 컨테이너 1000 아래라, 열린 레이어 패널(.lp-body,
@@ -492,18 +492,45 @@
     /* 리사이즈 그립이 둥근 모서리에 잘리지 않도록 */
     .leaflet-popup-content-wrapper { overflow:visible; }
     .leaflet-popup-tip { background:var(--card); }
-    .leaflet-container a.leaflet-popup-close-button { color:var(--muted); }
+    .leaflet-container a.leaflet-popup-close-button {
+      color:var(--muted);
+      /* right:1px 로 스크롤바 우측(content 우측)과 일치 — 실측 08-16: 기본 right:0 이면
+         닫기 X(x1285-1309)보다 스크롤바(x1293-1308)가 8px 오른쪽으로 나가 보임. */
+      right:1px;
+      display:flex; align-items:center; justify-content:center;
+      font-size:16px; line-height:1; text-decoration:none;
+    }
     /* ── 팝업 공통 컨트롤 (우하단 코너 리사이즈 아이콘 + 접기) — 2026-08-16 ── */
     /* 리사이즈: 20260815 백업의 makeResizable() 기반 드래그 코드를 그대로 복원(사용자 지시 —
        하단 스트립 핸들 3차 재작업은 기각). 트리거는 스크롤바가 있는 오른쪽 세로줄 바로 아래
        우하단 아이콘(.ui-grip, css/buttons.css 공용, 항상 표시). makeResizable 의
        setPointerCapture 덕에 드래그 후 합성 click 이 팝업 컨테이너에 머물러 지도 click
        (위치정보 팝업 재오픈)이 유발되지 않는다. */
-    /* 스크롤바 하단 세모와 겹치지 않도록 세로줄 바로 아래로 내린다(실측 2026-08-16:
-       스크롤바 하단=content 하단 y535, 팝업 하단 y549 → bottom:-12px 면 그립 상단 y537 =
-       세모 아래 2px). 팝업 아래로 12px 매달리지만 tip(.leaflet-popup-tip)과 같은 메커니즘으로
-       잘리지 않는다. */
-    .leaflet-popup .ui-grip-corner { bottom: -12px; }
+    /* 그립은 팝업 우하단 코너 안쪽(right/bottom:3px, css/buttons.css 공용)에 둔다.
+       2026-08-16에 bottom:-12px 로 팝업 밖으로 매달리게 했다가 사용자 신고("팝업 창을 넘어가고
+       삐뚤어짐")로 되돌림 — 그립은 창 안에 정렬돼야 자연스럽다. */
+    .leaflet-popup .ui-grip-corner { bottom: 3px; right: 3px; }
+    /* ── 그립↔스크롤바 겹침 방지 (2026-08-16 사용자 지시 "항시 겹치지 않게", 3차 수정) ──
+       원칙: 그립은 우하단 코너 고정, 스크롤 영역은 그립 위에서 끝나게 한다.
+       wrapper 하단에 padding-bottom 28px(그립 24px + 여유)을 두면 스크롤바 트랙이
+       그 위에서 끝나 구조적으로 절대 겹치지 않는다. 위치(bottom)를 비틀지 말 것 —
+       과거 실패 이력: ① 화살표와 겹침(39/40) → ② bottom:-12px 로 팝업 밖 매달림(43,
+       사용자 신고) → ③ bottom:3px 복귀로 스크롤바와 재겹침(이번). TROUBLESHOOTING §37 참고. */
+    .leaflet-popup .leaflet-popup-content-wrapper { padding-bottom: 28px; }
+    /* 2026-08-16 사용자 지정: 그립 아이콘을 불투명 네모 → "ㄴ 좌우반전(ㄱ) 꺾은선 2줄,
+        배경 없음"으로 교체. 팝업 흰 배경 위에서 또렷하게 회색 선만 남긴다.
+       색 #C8C8C8 = 시스템 스크롤바 원래 색(HKCU\Control Panel\Colors → Scrollbar: 200 200 200).
+       "스크롤바 원래 색상 기준으로 통일하라"는 사용자 지시(2026-08-16). 스크롤바가 오버레이
+       (마우스 hover 시에만 표시)라 화면 실측이 불가해 레지스트리 시스템 색을 근거로 사용.
+       색 조정 시 그립과 스크롤바가 동시에 어울리도록 시스템 기본값 유지할 것. */
+    .leaflet-popup .ui-grip { background:none; border:none; box-shadow:none; padding:0; }
+    .leaflet-popup .ui-grip:hover, .leaflet-popup .ui-grip:active { background:none; }
+    .leaflet-popup .ui-grip::before,
+    .leaflet-popup .ui-grip::after {
+      content:''; position:absolute; border-right:2px solid #C8C8C8; border-bottom:2px solid #C8C8C8; border-radius:0 0 3px;
+    }
+    .leaflet-popup .ui-grip::before { right:3px; bottom:3px; width:16px; height:16px; }
+    .leaflet-popup .ui-grip::after { right:6px; bottom:6px; width:9px; height:9px; }
     /* 실거래 최근 거래 표 (2026-08-16, 참조분석 — 네이버부동산 거래 테이블 형식) */
     .leaflet-popup .pc table.rp-deals { width:100%; border-collapse:collapse; font-size:12px; }
     .leaflet-popup .pc table.rp-deals th { text-align:left; font-weight:600; color:var(--c-muted); padding:3px 4px 3px 0; border-bottom:1px solid var(--line); white-space:nowrap; }

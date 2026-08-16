@@ -1002,3 +1002,16 @@ gh api repos/conoc612-a11y/matjip/pages/builds/latest --jq '{status:.status, com
 - **관련**: 클러스터(실거래/연립) 마커는 성능상 mouseover 시점에 `bindTooltip`(1622-1627) — probe에서 마커에 `MouseEvent('mouseover')`를 dispatch하면 클러스터 이벤트 위임(`_eventParents`)으로 핸들러가 실행돼 툴팁이 생긴다(실측).
 - **자석(2026-08-16)**: `magnetize(m)`(~1060)은 마커를 `magMarks`에 등록, mousemove 시 45px 이내로 당김. 클러스터 내 마커는 지도에 직접 add되지 않아 자석이 안 먹히므로 **실거래/EV/경매 클러스터 제외**, CCTV(200개 제한, 직접 addTo)만 포함(3194행). 즐겨찾기 마커(5256/5271)·검색 결과(5378) 포함.
 
+---
+
+## 37. 팝업 그립 ↔ 스크롤바 겹침: 위치를 비틀지 말고 스크롤 영역을 그립 위에서 끝나게 (2026-08-16, 3차 수정)
+
+- **증상**: 팝업 우하단 리사이즈 그립이 (1차) 스크롤바 상단 화살표와 겹침 → (2차) `bottom:-12px`로 팝업 밖에 매달려 "창을 넘어가고 삐뚤어 보임" 사용자 신고 → (3차) `bottom:3px` 복귀 후 **스크롤바 트랙과 13px 재겹침** 사용자 신고. 사용자: "상습범이다, 기록해놓고 항시 겹치지 않게 해줘".
+- **원인(실측)**: 그립은 우하단 코너(right/bottom:3px, 24x24) 고정 → 우측 15px 스크롤바와 x축이 필연적으로 겹침(y축도 트랙 하단과 맞물림). 위치(bottom)만 조정하면 팝업 밖으로 나가거나 재겹침 — 둘 중 하나.
+- **해결(구조적)**: 위치를 안 비튼다. `.leaflet-popup .leaflet-popup-content-wrapper { padding-bottom: 28px; }`(land.html)로 wrapper 하단에 그립 공간(24px+여유)을 두면 **스크롤바 트랙이 그립 위에서 끝나 구조적으로 절대 안 겹친다**. 그립은 코너 고정(right/bottom:3px).
+- **실측 검증**: probe_grip.js — 팝업 y102-631(h528), content y116-590(h473, 트랙 끝=590), 그립 y604-628 → 트랙 끝(590) < 그립 상단(604) = 14px 여유. 수정 전엔 content 하단 830 vs 그립 상단 817 = 13px 겹침.
+- **원칙**: 그립은 우하단 코너 고정, **스크롤 영역이 그립 위에서 끝나도록 wrapper에 하단 여백을 확보**한다. `bottom:-12px` 같은 위치 비틀기는 다시 금지.
+- **그립 아이콘(2026-08-16 사용자 지정)**: 불투명 네모 → "ㄴ 좌우반전(ㄱ) 꺾은선 2줄 배경 없음"으로 교체. `.leaflet-popup .ui-grip` 오버라이드(background:none, border:none), `::before`(16x16)/`::after`(9x9)가 `border-right/bottom:2px solid #C8C8C8` 꺾은선. 팝업 흰 배경 위에서 회색 선만 남는다.
+- **그립 색 = 스크롤바 원래 색(2026-08-16 사용자 지시 "스크롤바 원래 색상 기준으로 통일")**: 팝업 스크롤바는 **오버레이**(마우스 hover 시에만 표시, `scrollbar-width:auto`)라 화면 픽셀 실측 불가(CDP 합성 마우스·OS 커서 모두 실패: 테스트 크롬 창이 화면 밖 -21333으로 저장·복원되는 환경 버그). **대안**: 시스템 스크롤바 원래 색을 레지스트리에서 직접 읽음 — `HKCU\Control Panel\Colors` → `Scrollbar: 200 200 200` = **#C8C8C8**. 그립 꺾은선을 이 값으로 통일(probe 실측 `borderRightColor: rgb(200,200,200)` 확인). 색 조정 시 시스템 기본값과 그립을 동시에 맞춰야 함.
+- **닫기 X ↔ 스크롤바 정렬(같은 날)**: 기본 `.leaflet-popup-close-button`은 `right:0`(팝업 코너)이라 X(x1285-1309)보다 스크롤바(x1293-1308)가 8px 오른쪽으로 나가 보인다(사용자 신고 "X에서 오른쪽으로 튀어나감"). 해결: `right:1px` + `display:flex` 가운데 정렬 → X 우측 1308 = 스크롤바 우측(content 우측) 일치(`closeRightVsContentRight:0`, 실측). X(24px)와 스크롤바(15px) 폭 차로 중심은 4px 어긋나지만 우측선은 일직선.
+
