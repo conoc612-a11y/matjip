@@ -504,6 +504,11 @@
        세모 아래 2px). 팝업 아래로 12px 매달리지만 tip(.leaflet-popup-tip)과 같은 메커니즘으로
        잘리지 않는다. */
     .leaflet-popup .ui-grip-corner { bottom: -12px; }
+    /* 실거래 최근 거래 표 (2026-08-16, 참조분석 — 네이버부동산 거래 테이블 형식) */
+    .leaflet-popup .pc table.rp-deals { width:100%; border-collapse:collapse; font-size:12px; }
+    .leaflet-popup .pc table.rp-deals th { text-align:left; font-weight:600; color:var(--c-muted); padding:3px 4px 3px 0; border-bottom:1px solid var(--line); white-space:nowrap; }
+    .leaflet-popup .pc table.rp-deals td { padding:3px 4px 3px 0; border-bottom:1px solid var(--line); white-space:nowrap; }
+    .leaflet-popup .pc table.rp-deals tr:last-child td { border-bottom:none; }
     /* 접기 버튼 위치만 잡고, 24px 아이콘 버튼 외형은 .ui-pop-btn 공용.
        우상단(right:30px)이어야 한다 — 좌측 상단(left:6px)은 좌측 사이드 패널(#rp-panel) 헤더와 겹쳐
        클릭을 가로챘다(실측 2026-08-16, elementFromPoint로 확인). */
@@ -1376,6 +1381,16 @@
       if (same.length < 2) return false;
       return same[same.length - 1] === d && same.every((r) => r.priceEok <= d.priceEok + 1e-9);
     };
+    // 최저가 여부: 신고가(rpNewHigh)의 반대 — 해당 평형의 이전 거래들보다 최신 거래가 최저가이면 true.
+    const rpNewLow = (d) => {
+      if (d.priceEok == null) return false;
+      const g = rpGroup(d);
+      if (!g || g.length < 2) return false;
+      const a = Math.round(Number(d.area) * 2) / 2;
+      const same = g.filter((r) => Math.round(Number(r.area) * 2) / 2 === a && r.priceEok != null);
+      if (same.length < 2) return false;
+      return same[same.length - 1] === d && same.every((r) => r.priceEok >= d.priceEok - 1e-9);
+    };
     // 팝업 시계열 그래프: 단지 거래를 평단가 기준으로 최근 8건만 점·선으로 그린다.
     const rpTrendHtml = (d) => {
       const g = rpGroup(d);
@@ -1396,6 +1411,32 @@
       const col = chg >= 0 ? 'var(--c-danger)' : 'var(--c-price)';
       const pct = `${chg >= 0 ? '+' : ''}${chg.toFixed(1)}%`;
       return `<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--line);"><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--c-muted);margin-bottom:2px;"><span>최근 ${n}건 평단가</span><b style="color:${col};">${pct}</b></div><svg viewBox="0 0 ${W} ${H}" style="width:100%;height:56px;display:block;"><path d="${line}" fill="none" stroke="${col}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>${dots}</svg><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--c-muted);"><span>${esc(show[0].ymd)}</span><span>${esc(show[n - 1].ymd)}</span></div></div>`;
+    };
+    // 최근 거래 표: 단지의 과거 거래를 거래월 내림차순으로 최대 10건을 표로 보여준다.
+    // (2026-08-16 참조분석 — 네이버부동산 실거래 탭의 거래 테이블: 거래일·가격·면적·층.)
+    // rpTrendHtml 과 달리 개별 거래 건을 전부 나열해 신고가·최저가·계약해제를 건별로 표시한다.
+    // 거래 1건 = 행 1개라 단지 내 거래가 많은 곳은 최근 10건까지만 보여주고, 헤더에 전체 건수와
+    // 최근 6개월 거래량(호갱노노·재개발닷컴이 강조하는 지표)을 함께 보여준다.
+    const rpDealTableHtml = (d) => {
+      const g = rpGroup(d);
+      if (!g || !g.length) return '';
+      const ym = (r) => { const p = (r.ymd || '').split('.').map(Number); return (p[0] || 0) * 12 + (p[1] || 0); };
+      const nowYm = new Date().getFullYear() * 12 + (new Date().getMonth() + 1) - 6;
+      const halfCnt = g.filter((r) => ym(r) >= nowYm).length;
+      const rows = [...g].sort((a, b) => (b.ymd || '').localeCompare(a.ymd || '')).slice(0, 10);
+      const chip = (txt, bg) => `<span style="background:${bg};color:#fff;font-size:10px;padding:0 5px;border-radius:6px;margin-left:4px;">${txt}</span>`;
+      const rowHtml = rows.map((r) => {
+        const a = uAreaVal(r.area);
+        const u = a ? Math.round(r.priceEok * 10000 / a).toLocaleString() : null;
+        let c = '';
+        if (rpNewHigh(r)) c += chip('신고', '#c92a2a');
+        else if (rpNewLow(r)) c += chip('최저', '#1971c2');
+        if (r.cancel) c += chip('해제', '#e03131');
+        if (r.gbn && r.gbn.indexOf('직거래') >= 0) c += chip('직거래', '#f08c00');
+        if (r.lease) c += chip('임대', '#7048e8');
+        return `<tr><td>${esc(r.ymd)}</td><td>${r.priceEok != null ? r.priceEok + '억' : '-'}</td><td>${u != null ? u : '-'}</td><td>${uAreaTxt(r.area)}·${esc(r.floor)}층</td><td>${c}</td></tr>`;
+      }).join('');
+      return `<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--line);"><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--c-muted);margin-bottom:2px;"><span>최근 거래 <b style="color:var(--c-text);">${g.length}건</b></span><span>최근 6개월 <b style="color:var(--c-text);">${halfCnt}건</b></span></div><table class="rp-deals"><thead><tr><th>거래월</th><th>매매가</th><th>평단가</th><th>면적·층</th><th></th></tr></thead><tbody>${rowHtml}</tbody></table></div>`;
     };
     // 두 좌표 사이 대략 거리(km). 서울권 한정 근사식(위도 1도≈111km, 경도 1도≈88km).
     const kmDist = (lat1, lng1, lat2, lng2) => { const dy = (lat1 - lat2) * 111, dx = (lng1 - lng2) * 88; return Math.sqrt(dx * dx + dy * dy); };
@@ -1573,7 +1614,7 @@
         realpriceCluster.addLayers(rpRows.filter((d) => inPrice(d.priceEok) && inAge(d.build)).map((d) => {
           const m = L.circleMarker([d.lat, d.lng], { radius: 10, color: '#000', weight: 2, fillColor: rpColorMode.v === 'move' ? rpMoveColor(d) : ageColor(d.build), fillOpacity: 0.9 });
           m._rp = d;
-          m._pop = (() => `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${rpColorMode.v === 'move' ? rpMoveColor(d) : ageColor(d.build)};flex-shrink:0;"></span><span class="rp-name">${esc(d.name)}</span></div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div><div class="pc-price">매매 ${uPriceMain(d)}</div>${uPriceSub(d) ? `<div style="margin-top:3px;">${uPriceSub(d)}</div>` : ''}<div style="margin-top:3px;">전용 ${uAreaTxt(d.area)} · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="margin-top:3px;">${esc(d.build || '?')}년 건축${parseInt(d.build) <= 1994 ? '<span style="background:#e03131;color:#fff;font-size:12px;padding:2px 8px;border-radius:999px;margin-left:6px;">재건축연한 초과</span>' : ''}</div>${jeonseHtml(d, '평형 기준')}${rpFlagsHtml(d)}${rpTrendHtml(d)}<div class="rp-radius-stat rp-stat" style="display:none;"></div></div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline" style="border-color:var(--c-price) !important;color:var(--c-price);">저장</button><a href="https://map.naver.com/p/search/${encodeURIComponent(d.name + ' ' + (d.dong || d.gu || ''))}?c=${d.lng},${d.lat},17,0,0,0,dh" target="_blank" rel="noopener" class="pc-btn pc-btn-primary rp-naver">네이버 부동산</a><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline">출발</button><button class="rt-end pc-btn pc-btn-outline">도착</button></div><button class="sv-btn pc-btn pc-btn-outline">거리뷰</button></div></div>`);
+          m._pop = (() => `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${rpColorMode.v === 'move' ? rpMoveColor(d) : ageColor(d.build)};flex-shrink:0;"></span><span class="rp-name">${esc(d.name)}</span></div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div><div class="pc-price">매매 ${uPriceMain(d)}</div>${uPriceSub(d) ? `<div style="margin-top:3px;">${uPriceSub(d)}</div>` : ''}<div style="margin-top:3px;">전용 ${uAreaTxt(d.area)} · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="margin-top:3px;">${esc(d.build || '?')}년 건축${parseInt(d.build) <= 1994 ? '<span style="background:#e03131;color:#fff;font-size:12px;padding:2px 8px;border-radius:999px;margin-left:6px;">재건축연한 초과</span>' : ''}</div>${jeonseHtml(d, '평형 기준')}${rpFlagsHtml(d)}${rpTrendHtml(d)}${rpDealTableHtml(d)}<div class="rp-radius-stat rp-stat" style="display:none;"></div></div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline" style="border-color:var(--c-price) !important;color:var(--c-price);">저장</button><a href="https://map.naver.com/p/search/${encodeURIComponent(d.name + ' ' + (d.dong || d.gu || ''))}?c=${d.lng},${d.lat},17,0,0,0,dh" target="_blank" rel="noopener" class="pc-btn pc-btn-primary rp-naver">네이버 부동산</a><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline">출발</button><button class="rt-end pc-btn pc-btn-outline">도착</button></div><button class="sv-btn pc-btn pc-btn-outline">거리뷰</button></div></div>`);
           return m;
         }));
       }
