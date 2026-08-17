@@ -34,19 +34,19 @@
   - ⚠️ **컴퓨터가 완전히 꺼지면(Shut Down) 스케줄러 미동작** → 수면(Sleep) 상태여야 함
   - 수면 해제 시 `node tools/collect_auction_detail.js` 자동 실행, 증분 구조라 이어서 수집
 
-### 3. CCTV 확장 — 조사 진행 중 (미구현)
-- **현재 상태**: ITS 국가교통정보센터만 사용(고속도로·국도 특화, 서울 전역 240건, 강남 0건)
-- **데이터 소스 확인**: 
-  - 전국 CCTV 표준데이터(행정안전부, data.go.kr/15013094): 353,263건 CSV, API키 불필요
-  - CSV 다운로드URL: `https://file.localdata.go.kr/file/cctv_info/info` (로그인 불필요 확인)
-  - OpenAPI: `https://apis.data.go.kr/1741000/cctv_info/info` (키 필요)
-- **다음 작업**: `tools/collect_cctv.js` 구현 — CSV 다운로드 → 서울시 필터 → `cctv_static.json` 생성
+### 3. CCTV 확장 — ITS 서울 전역 278건 정적 데이터 + land.html 렌더 병합 완료
+- **현재 상태**: ITS 고속도로·국도만 커버(서울 240건, 강남 0건)
+- **수집 완료**: `tools/collect_cctv.js` 신규 — ITS 직접 호출 → 서울시 경계 필터 → `cctv_static.json` 278건 저장
+- **land.html 렌더 병합**: `loadCctv()`가 `cctv_static.json`(정적) + ITS 실시간을 병합. 중복 좌표 제거(소수점 4자리), 300건 상한.
+  - 정적 데이터 장점: ITS 직접 호출 실패 시에도 기본 마커 표시, Purpose(목적) 툴팁 추가
+- **TOPIS(서울시 도심 CCTV) 추가 필요 시**: `TOPIS_KEY=xxx node tools/collect_cctv.js`로 재실행하면 자동 병합. data.seoul.go.kr에서 API키 신청 필요(자동승인).
+- **참조 조사 완료**: 전국 CCTV 표준데이터(data.go.kr/15013094, 353,263건)는 CSV 다운로드가 브라우저 상호작용 필요(CSRF 토큰)라 프로그래밍 방식으로는 불가. OpenAPI(15155042)는 서비스키 등록 필요.
 
 ### ▶ 이어서 할 일
 1. **08:00 전**: HANDOFF 갱신 + 컴퓨터 수면 상태 확인 (Shut Down 아님)
 2. **09:00 자동 재개**: 스케줄러가 상세 수집 재시작 → 완료 시 `auction_detail.json` 2,756건 확인
-3. **CCTV 확장**: `tools/collect_cctv.js` 구현 (전국 표준데이터 CSV → 서울 필터 → JSON). land.html CCTV 렌더에 병합.
-4. **배포**: 상세 수집 완료 + CCTV 확장 반영 후 푸터 build 태그 갱신.
+3. **(선택) TOPIS 키 확보**: data.seoul.go.kr에서 서울시 교통 CCTV API 신청 → 키 확보 시 `collect_cctv.js` 재실행으로 도심 CCTV 추가
+4. **배포**: 상세 수집 완료 + 추가 CCTV 확장 반영 후 푸터 build 태그 갱신.
 
 ---
 
