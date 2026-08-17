@@ -12,57 +12,41 @@
 
 ---
 
-## 2026-08-17 (59) — opencode (사건검색 링크 pgjId 통일 + 상세 수집 39% 진행 중 CCTV 확장 조사 시작)
+## 2026-08-18 (60) — opencode (사건검색 링크 커밋·push 완료 + 상세 수집 53% 자동 재개)
 
-> 사용자: "1번(전량 상세 수집)과 2번(사건검색 링크 정리) 동시에 가능한가?" → "웅"으로 승인 → 둘 다 진행. 이후 "CCTV 지도에 더 늘려줘" + 참고 repo 전달 → 표준데이터·서울시 데이터 조사 시작. 컴퓨터 종료로 기록.
+> HANDOFF 59 이어받음. 사용자: "4번/2번 먼저하고 지금까지 한것 푸시배포해주고" → 사건검색 링크 4곳 pgjId 통일 + 커밋·push 완료. "1/3번 동시에 진행되나?" → 상세 수집 백그라운드 재개 + CCTV 조사 진행.
 
-### 1. 사건검색 링크 정리 ( land.html, 로컬 편집 — 커밋·push 미완)
-- **656행** (경매 패널 헤더 <a href>): `w2xPath=...PGJ159M00.xml` → `pgjId=159M01&w2xPath=...` (인라인 리터럴)
-- **2302행** (행 클릭 → 사건검색 새 탭): `window.open('...w2xPath=...')` → `window.open(AUC_SEARCH_URL)` (2339행 const 참조, onclick 핸들러라 호출 시점에 이미 정의됨)
-- **2493행** (apd-link 버튼): `window.open('...w2xPath=...')` → `window.open(AUC_SEARCH_URL)`
-- **미처리**: 657행 물건검색 링크(`PGJ151F00.xml`) — pgjId가 다를 수 있어 확인 필요(보류).
-- **검증**: `grep w2xPath` = 3건(656 pgjId 포함 · 657 물건검색 미처리 · 2339 AUC_SEARCH_URL 정의). JS 문법 `node --check` 미실행(종료 전).
+### 1. 사건검색 링크 — 커밋·push 완료 (커밋 `1ec1ff03`)
+- **656행**: `w2xPath=...PGJ159M00.xml` → `pgjId=159M01&w2xPath=...` (URL 인코딩 포함)
+- **657행**: `w2xPath=...PGJ151F00.xml` → `pgjId=151F01&w2xPath=...` (패턴: PGJ159→159M01, PGJ151→151F01)
+- **2302행**: `window.open('...w2xPath=...')` → `window.open(AUC_SEARCH_URL, ...)`
+- **2493행**: `$('apd-link').onclick` → `window.open(AUC_SEARCH_URL, ...)`
+- `grep w2xPath` = 2건(656·657 pgjId 포함) + AUC_SEARCH_URL 정의 1건. JS 문법 미점검(종료 전).
+- 빌드 태그: `2026-08-17-b39` (갱신 불필요, 59번에 이미 갱신됨)
 
-### 2. 전량 상세 수집 (백그라운드 실행 중 — 종료 시 중단)
+### 2. 상세 수집 — 백그라운드 재개 (00:20 기준 53%)
 - `node tools/collect_auction_detail.js` 전체 대상(2,756건 고유 cn)
-- **1,081 / 2,756건 (39%)** 진행 중종료 시점 기준. 증분 구조라 재실행 시 1,081건은 자동 스킵하고 이어서 수집.
-- 테스트(`--max 3`) 3건 성공 후 전체 실행 → `Start-Process`로 백그라운드, 로그 파일 기대 경로: `%TEMP%\opencode\auction_detail_log.txt`
+- **1,473 / 2,756건 (53%)** — 이전 세션 1,081건에서 392건 추가 (8/18 00:20 기준)
+- 증분 구조라 재실행 시 수집된 건은 자동 스킵.
+- 속도: **약 0.5건/분** (사건당 검색+상세 3회 페이지 로드, IP 차단 방지 1초 간격)
+- 잔여 1,283건 → **예상 완료: 약 43시간** (매우 느림)
+- **스케줄러 등록 완료**: `matjip-auction-resume` — 8/18 09:00 KST 자동 재개 (WakeToRun=True)
+  - ⚠️ **컴퓨터가 완전히 꺼지면(Shut Down) 스케줄러 미동작** → 수면(Sleep) 상태여야 함
+  - 수면 해제 시 `node tools/collect_auction_detail.js` 자동 실행, 증분 구조라 이어서 수집
 
-### 3. CCTV 확장 분석 완료 (미구현, 다음 세션 구현 대상)
-- **현재 상태**: ITS 국가교통정보센터만 사용(고속도로·국도 특화, 서울 전역 240건, 강남 0건 — land.html:3302 실측 주석)
-- **참조 repo**: `wannahappyaroundme/satellite_vehicle_tracker/PUBLIC_DATA_INTEGRATION_GUIDE.md`
-
-#### 데이터 소스 분석 (전부 무료)
-| 소스 | 제공기관 | URL | 규모 | API키 | 좌표 | 실시간 영상 |
-|------|----------|-----|------|-------|------|-------------|
-| 전국 CCTV 표준데이터 | 행정안전부 | data.go.kr/15013094 | 수만 개 | 불필요(CSV 직접 다운로드) | WGS84 | ❌ |
-| ITS 교통 CCTV | 국토교통부 | openapi.its.go.kr:9443 | ~10,000 | 필요(즉시 발급) | WGS84 | ✅ JPEG 5초 간격 |
-| 서울시 CCTV | 서울특별시 | data.seoul.go.kr/OA-2734 | ~80,000 | 필요(즉시 발급) | WGS84 | ❌ |
-| 지자체별 CCTV | 부산·경기·인천 등 | 각 data.*.go.kr | 미확인 | 일부 필요 | WGS84 | ❌ |
-
-#### 표준데이터 항목 (전국 CCTV 표준데이터)
-```
-관리기관명, 설치위치(도로명/지번), 설치목적(교통정보수집/방범/시설물관리 등),
-카메라대수, 촬영방향, 위도(WGS84), 경도(WGS84), 설치년월, 관리기관전화번호
-```
-
-#### 적용 방안 (다음 세션 구현)
-1. **`tools/collect_cctv.js` 신규**: data.go.kr CSV 다운로드(로그인 불필요) → 서울시 필터 → `cctv_static.json` 생성. ITS 키가 있으면 ITS 실시간 영상도 병합.
-2. **land.html CCTV 렌더 확장**: 현재 `loadCctv()`가 ITS만 부르는데, `cctv_static.json`을 추가 fetch → ITS(실시간) + 표준데이터(위치 표시) 병합 렌더. ITS는 영상 재생 가능(클릭 시 영상 팝업), 표준데이터는 이름+목적 툴팁만.
-3. **보안**: 표준데이터는 위치 정보(방범 CCTV 포함)라 익명화 검토 필요 — 매칭 주소·관리기관 노출 여부.
-
-#### 참고: ITS API 구조 (현재 사용 중)
-- **Base URL**: `https://openapi.its.go.kr:9443/cctvInfo`
-- **파라미터**: `apiKey`, `type`(ex/its), `cctvType`(1=고속도로, 2=국도), `minX/maxX/minY/maxY`
-- **응답**: `response.data[]` → `cctvname`, `cctvurl`(JPEG), `coordy`(위도), `coordx`(경도), `cctvformat`
-- **제약**: 브라우저 직접 호출만 가능(Edge Function IP 차단 — land.html:3279-3284 주석)
-- **현재 키**: `143145cd464a4522b3a9347a9d768d4f` (프론트 노출, ITS 공개 API)
+### 3. CCTV 확장 — 조사 진행 중 (미구현)
+- **현재 상태**: ITS 국가교통정보센터만 사용(고속도로·국도 특화, 서울 전역 240건, 강남 0건)
+- **데이터 소스 확인**: 
+  - 전국 CCTV 표준데이터(행정안전부, data.go.kr/15013094): 353,263건 CSV, API키 불필요
+  - CSV 다운로드URL: `https://file.localdata.go.kr/file/cctv_info/info` (로그인 불필요 확인)
+  - OpenAPI: `https://apis.data.go.kr/1741000/cctv_info/info` (키 필요)
+- **다음 작업**: `tools/collect_cctv.js` 구현 — CSV 다운로드 → 서울시 필터 → `cctv_static.json` 생성
 
 ### ▶ 이어서 할 일
-1. **컴퓨터 켜면**: `node tools/collect_auction_detail.js` 재실행 → 1,081건 이후 이어서 수집. 완료 시 `auction_detail.json` 2,756건 확인.
-2. **사건검색 링크**: land.html 3곳 수정분 커밋·push + 657행 물건검색 pgjId 확인 후 추가 수정.
-3. **CCTV 확장**: `tools/collect_cctv.js` 구현 (전국 표준데이터 CSV 다운로드 → 서울 필터 → JSON). land.html CCTV 렌더에 병합.
-4. **배포**: 링크 정리 + CCTV 확장 반영 후 푸터 build 태그 갱신.
+1. **08:00 전**: HANDOFF 갱신 + 컴퓨터 수면 상태 확인 (Shut Down 아님)
+2. **09:00 자동 재개**: 스케줄러가 상세 수집 재시작 → 완료 시 `auction_detail.json` 2,756건 확인
+3. **CCTV 확장**: `tools/collect_cctv.js` 구현 (전국 표준데이터 CSV → 서울 필터 → JSON). land.html CCTV 렌더에 병합.
+4. **배포**: 상세 수집 완료 + CCTV 확장 반영 후 푸터 build 태그 갱신.
 
 ---
 
