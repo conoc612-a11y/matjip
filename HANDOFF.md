@@ -12,24 +12,57 @@
 
 ---
 
-## 2026-08-17 (58) — opencode (경매 상세 데이터 확장: 수집기 + 패널 내 기일내역·사건내역 렌더, 좌표 대량 소실 복구)
+## 2026-08-17 (59) — opencode (사건검색 링크 pgjId 통일 + 상세 수집 39% 진행 중 CCTV 확장 조사 시작)
 
-> 사용자: "2025타경1604(사당동 1026-50) 정보가 보인다? 1604 검색해" → PLAN §8.4 로드맵 중 **상세 데이터 확장**을 실행 선택. 사건검색→상세 응답(`selectAuctnCsSrchRslt.on`의 `dma_result`)에서 기일내역·사건기본·매각일정·물건명세·제시외·감정요약을 수집해 `auction_detail.json`으로 저장, land.html 경매 패널에 검색창 추가 + 6종 버튼(기일내역·사건내역)을 패널 내 섹션 렌더로 교체. 검증 중 **auction.json 좌표 69% 소실** 발견 → null 캐시 정리 + `--regeo`로 98.3% 복구.
+> 사용자: "1번(전량 상세 수집)과 2번(사건검색 링크 정리) 동시에 가능한가?" → "웅"으로 승인 → 둘 다 진행. 이후 "CCTV 지도에 더 늘려줘" + 참고 repo 전달 → 표준데이터·서울시 데이터 조사 시작. 컴퓨터 종료로 기록.
 
-### 구현 (커밋 전 상태에서 정리)
-- **`tools/collect_auction_detail.js` 신규**: §6-14 사진 수집기와 동일한 PGJ159 흐름(연도 셀렉트→사건번호→검색→물건상세조회 클릭) → response URL `/pgj/pgj15B/selectAuctnCsSrchRslt.on` 의 `data.dma_result` 정규화 → `auction_detail.json`(키 = `cn` 전체 문자열 "법원명 사건번호"). 옵션 `--court/--cn(부분일치 includes)/--max/--headful/--force`, 사건 단위 try/catch + 매 건 저장, 재실행 시 수집된 cn 스킵(증분). IP 차단 대비 GAP 1초(§6-11).
-- **`auction_detail.json`**: 1건 수집("서울중앙지방법원 2025타경1604") — base(사건기본: saNo `20250130001604`·userCsNo·접수일·청구금액 1,570,362,480원·경매4계·담당전화)·dspsl(매각일정: 감정 260,380,740원·최초최저 208,305,000원·기일 20260819·결정 20260826·보증률 10·고지)·gihui(기일내역 3건: **20260715 유찰 → 20260819 매각기일 → 20260826 매각결정기일**, 회차별 최저가)·objct(물건명세 1건)·notsugt(제시외 2건: 창고 0.5㎡ 37,500원·태양광시설 3kw 1㎡ 3,000,000원)·evlt(감정평가요점 6행).
-- **land.html** (build 태그 b38→**b39**): 경매 패널 상단 검색창(`#ap-search`, 사건번호·주소·법원 부분일치, 카운트 "shown/total건") · `loadAuction()`이 auction_detail.json 3번째 병렬 fetch · 상세 패널에 사건내역·기일내역·물건명세·제시외목록·감정요약·고지사항 섹션(`d.detail` 있을 때) · **기일내역/사건내역 버튼은 새 탭 대신 패널 내 섹션 scrollIntoView**(`APD_LOCAL_GO`, 데이터 없으면 기존 복사+새 탭 폴백).
-- **좌표 복구**: 2026-08-14 CI(45fae790)가 §19 해외 IP 차단으로 좌표 0이 2,391/3,442건 → 재보강이 캐시의 **null** 때문에 0/2,309로 무시당하는 것 확인(§6-16) → 해당 주소 null 캐시 2,309개 삭제 후 `node tools/collect_auction.js --regeo` → **성공 2,258/2,309, 최종 좌표 3,382/3,442 (98.3%)**. 남은 60건은 "사용본거지 : " 접두사 주소 등 지오코딩 불가 주소.
+### 1. 사건검색 링크 정리 ( land.html, 로컬 편집 — 커밋·push 미완)
+- **656행** (경매 패널 헤더 <a href>): `w2xPath=...PGJ159M00.xml` → `pgjId=159M01&w2xPath=...` (인라인 리터럴)
+- **2302행** (행 클릭 → 사건검색 새 탭): `window.open('...w2xPath=...')` → `window.open(AUC_SEARCH_URL)` (2339행 const 참조, onclick 핸들러라 호출 시점에 이미 정의됨)
+- **2493행** (apd-link 버튼): `window.open('...w2xPath=...')` → `window.open(AUC_SEARCH_URL)`
+- **미처리**: 657행 물건검색 링크(`PGJ151F00.xml`) — pgjId가 다를 수 있어 확인 필요(보류).
+- **검증**: `grep w2xPath` = 3건(656 pgjId 포함 · 657 물건검색 미처리 · 2339 AUC_SEARCH_URL 정의). JS 문법 `node --check` 미실행(종료 전).
 
-### 검증 (헤드리스, localhost:8399, auth-guard route-abort)
-- 목록 3,382행 로드, 검색 "1604" → 사당동 포함 필터 + "4/3382건" 표시, 상세 패널 6개 섹션 전부 렌더(기일내역 2026.07.15 유찰·08.19·08.26, saNo `20250130001604` 포함), 기일내역/사건내역 버튼 = 패널 내 스크롤(새 탭 안 열림, 버튼 텍스트 유지), **JS 오류 0건**.
-- 문법: land.html 인라인 스크립트 2개 `node --check` 통과. 수집기 실행: `--cn 2025타경1604`(+`--force`) 정상.
+### 2. 전량 상세 수집 (백그라운드 실행 중 — 종료 시 중단)
+- `node tools/collect_auction_detail.js` 전체 대상(2,756건 고유 cn)
+- **1,081 / 2,756건 (39%)** 진행 중종료 시점 기준. 증분 구조라 재실행 시 1,081건은 자동 스킵하고 이어서 수집.
+- 테스트(`--max 3`) 3건 성공 후 전체 실행 → `Start-Process`로 백그라운드, 로그 파일 기대 경로: `%TEMP%\opencode\auction_detail_log.txt`
+
+### 3. CCTV 확장 분석 완료 (미구현, 다음 세션 구현 대상)
+- **현재 상태**: ITS 국가교통정보센터만 사용(고속도로·국도 특화, 서울 전역 240건, 강남 0건 — land.html:3302 실측 주석)
+- **참조 repo**: `wannahappyaroundme/satellite_vehicle_tracker/PUBLIC_DATA_INTEGRATION_GUIDE.md`
+
+#### 데이터 소스 분석 (전부 무료)
+| 소스 | 제공기관 | URL | 규모 | API키 | 좌표 | 실시간 영상 |
+|------|----------|-----|------|-------|------|-------------|
+| 전국 CCTV 표준데이터 | 행정안전부 | data.go.kr/15013094 | 수만 개 | 불필요(CSV 직접 다운로드) | WGS84 | ❌ |
+| ITS 교통 CCTV | 국토교통부 | openapi.its.go.kr:9443 | ~10,000 | 필요(즉시 발급) | WGS84 | ✅ JPEG 5초 간격 |
+| 서울시 CCTV | 서울특별시 | data.seoul.go.kr/OA-2734 | ~80,000 | 필요(즉시 발급) | WGS84 | ❌ |
+| 지자체별 CCTV | 부산·경기·인천 등 | 각 data.*.go.kr | 미확인 | 일부 필요 | WGS84 | ❌ |
+
+#### 표준데이터 항목 (전국 CCTV 표준데이터)
+```
+관리기관명, 설치위치(도로명/지번), 설치목적(교통정보수집/방범/시설물관리 등),
+카메라대수, 촬영방향, 위도(WGS84), 경도(WGS84), 설치년월, 관리기관전화번호
+```
+
+#### 적용 방안 (다음 세션 구현)
+1. **`tools/collect_cctv.js` 신규**: data.go.kr CSV 다운로드(로그인 불필요) → 서울시 필터 → `cctv_static.json` 생성. ITS 키가 있으면 ITS 실시간 영상도 병합.
+2. **land.html CCTV 렌더 확장**: 현재 `loadCctv()`가 ITS만 부르는데, `cctv_static.json`을 추가 fetch → ITS(실시간) + 표준데이터(위치 표시) 병합 렌더. ITS는 영상 재생 가능(클릭 시 영상 팝업), 표준데이터는 이름+목적 툴팁만.
+3. **보안**: 표준데이터는 위치 정보(방범 CCTV 포함)라 익명화 검토 필요 — 매칭 주소·관리기관 노출 여부.
+
+#### 참고: ITS API 구조 (현재 사용 중)
+- **Base URL**: `https://openapi.its.go.kr:9443/cctvInfo`
+- **파라미터**: `apiKey`, `type`(ex/its), `cctvType`(1=고속도로, 2=국도), `minX/maxX/minY/maxY`
+- **응답**: `response.data[]` → `cctvname`, `cctvurl`(JPEG), `coordy`(위도), `coordx`(경도), `cctvformat`
+- **제약**: 브라우저 직접 호출만 가능(Edge Function IP 차단 — land.html:3279-3284 주석)
+- **현재 키**: `143145cd464a4522b3a9347a9d768d4f` (프론트 노출, ITS 공개 API)
 
 ### ▶ 이어서 할 일
-1. **전량 상세 수집 결정 대기**: `node tools/collect_auction_detail.js`로 3,442건 전량 시 ≈ 8~10시간(사건당 검색+상세, GAP 1초) + IP 차단 리스크(§6-11). 증분이라 언제 중단해도 안전. **CI 에는 상세 수집 미포함**(사진과 동일 정책, 로컬 수동 실행).
-2. land.html 기존 사건검색 링크(636-637)·apd-link(~2373)는 pgjId 없는 w2xPath URL이라 신규 탭 접속 시 깨질 위험 — 다음에 land.html 손댈 때 `AUC_SEARCH_URL`(pgjId 포함)로 통일 권장(57회 항목 이어짐).
-3. 배포 후 푸터 `build 2026-08-17-b39`·`apd-sec-gihui` 배포본 확인.
+1. **컴퓨터 켜면**: `node tools/collect_auction_detail.js` 재실행 → 1,081건 이후 이어서 수집. 완료 시 `auction_detail.json` 2,756건 확인.
+2. **사건검색 링크**: land.html 3곳 수정분 커밋·push + 657행 물건검색 pgjId 확인 후 추가 수정.
+3. **CCTV 확장**: `tools/collect_cctv.js` 구현 (전국 표준데이터 CSV 다운로드 → 서울 필터 → JSON). land.html CCTV 렌더에 병합.
+4. **배포**: 링크 정리 + CCTV 확장 반영 후 푸터 build 태그 갱신.
 
 ---
 

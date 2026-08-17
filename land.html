@@ -653,8 +653,8 @@
           <b class="ap-title">법원경매</b>
           <span class="ap-count" id="ap-count"></span>
           <div class="ap-links">
-            <a href="https://www.courtauction.go.kr/pgj/index.on?w2xPath=/pgj/ui/pgj100/PGJ159M00.xml" target="_blank" rel="noopener" title="courtauction.go.kr 사건검색 — 사건번호로 검색">사건검색</a>
-            <a href="https://www.courtauction.go.kr/pgj/index.on?w2xPath=/pgj/ui/pgj100/PGJ151F00.xml" target="_blank" rel="noopener" title="courtauction.go.kr 물건상세검색 — 주소·지역으로 검색">물건검색</a>
+            <a href="https://www.courtauction.go.kr/pgj/index.on?pgjId=159M01&w2xPath=%2Fpgj%2Fui%2Fpgj100%2FPGJ159M00.xml" target="_blank" rel="noopener" title="courtauction.go.kr 사건검색 — 사건번호로 검색">사건검색</a>
+            <a href="https://www.courtauction.go.kr/pgj/index.on?pgjId=151F01&w2xPath=/pgj/ui/pgj100/PGJ151F00.xml" target="_blank" rel="noopener" title="courtauction.go.kr 물건상세검색 — 주소·지역으로 검색">물건검색</a>
           </div>
           <button id="ap-fav" class="ap-fav" title="즐겨찾기한 물건만 보기">☆즐겨찾기</button>
           <button id="ap-close" class="ap-close" title="패널 닫기 (레이어는 유지)" aria-label="패널 닫기">✕</button>
@@ -2299,7 +2299,7 @@
           star.textContent = on ? '★' : '☆';
           return;
         }
-        if (cn) { e.stopPropagation(); window.open('https://www.courtauction.go.kr/pgj/index.on?w2xPath=/pgj/ui/pgj100/PGJ159M00.xml', '_blank', 'noopener'); return; }
+        if (cn) { e.stopPropagation(); window.open(AUC_SEARCH_URL, '_blank', 'noopener'); return; }
         // 행 클릭 = 상세 패널로 전환
         auctionOpenDetail(d);
       };
@@ -2490,7 +2490,7 @@
             });
           } else { map.setView([d.lat, d.lng], 16); }
         };
-        $('apd-link').onclick = () => window.open('https://www.courtauction.go.kr/pgj/index.on?w2xPath=/pgj/ui/pgj100/PGJ159M00.xml', '_blank', 'noopener');
+        $('apd-link').onclick = () => window.open(AUC_SEARCH_URL, '_blank', 'noopener');
       }
       // 라이트박스 (사진 확대)
       const lightbox = $('apd-lightbox');
