@@ -116,8 +116,14 @@ async function fetchStandard(apiKey) {
         const lat = parseFloat(it.WGS84_LAT);
         const lng = parseFloat(it.WGS84_LOT);
         if (!lat || !lng) continue;
-        // 서울시 경계 필터
-        if (lat < SEOUL.minY || lat > SEOUL.maxY || lng < SEOUL.minX || lng > SEOUL.maxX) continue;
+        // 서울시 필터: 좌표 박스 + 주소 검증
+        // - 좌표 박스 밖 → 무조건 스킵
+        // - 좌표 박스 안인데 주소가 있고 '서울'로 안 시작 → 스킵 (광명시·김포시 등)
+        // - 좌표 박스 안인데 주소 없거나 '서울' 시작 → 통과
+        const addr = it.LCTN_ROAD_NM_ADDR || it.LCTN_LOTNO_ADDR || '';
+        const inBox = lat >= SEOUL.minY && lat <= SEOUL.maxY && lng >= SEOUL.minX && lng <= SEOUL.maxX;
+        if (!inBox) continue;
+        if (addr && !addr.startsWith('서울')) continue;
 
         results.push({
           name: it.FCLT_NM || it.MNG_NO || '',
