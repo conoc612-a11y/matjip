@@ -1071,3 +1071,26 @@ gh api repos/conoc612-a11y/matjip/pages/builds/latest --jq '{status:.status, com
 4. ~~admin-login XFF 방어~~ → **실측 결과 조치 불필요로 종결(2026-08-16)** — 위조 XFF 무시 확인(위 항목 1 참조).
 - 배포 후 검증: 각 함수에 위조 XFF로 잠금 우회 시도 → 429 유지 확인(실측 완료). ai.html에 XSS 페이로드 태그 넣고 렌더 시 탈취 불가 확인(코드상 esc 적용 확인).
 
+---
+
+## 39. CCTV 표준데이터(data.go.kr 15155042) 수집 — TOPIS 폐쇄 대체 + 인코딩·필터 주의 (2026-08-18)
+
+> 서울시 도심 CCTV(TOPIS, OA-20477) 서비스가 폐쇄됨 → data.go.kr 전국 CCTV 표준데이터 OpenAPI로 대체.
+> 377,278건 전국 데이터 중 서울 좌표 필터링으로 54,238건 확보.
+
+### 상세
+- **API**: `https://apis.data.go.kr/1741000/cctv_info/info` (활용신청 자동승인, 별도 키 불필요 — data.go.kr 계정키(DGK) 재사용)
+- **파라미터**: `serviceKey`, `pageNo`, `numOfRows`(최대 100), `returnType=json`
+- **좌표 필터**: lat 37.413–37.715, lng 126.734–127.269 (서울 경계)
+- **응답 필드**: WGS84_LAT, WGS84_LOT, INSTL_PRPS_SE_NM(목적), MNG_INST_NM(기관), MNG_INST_TELNO(전화번호), CAM_CNTOM(카메라수), SHT_ANGLE_INFO(촬영방향), KPNG_DAY_CNT(보관일), INSTL_YM(설치연월), LCTN_ROAD_NM_ADDR(도로명주소)
+- **인코딩**: API 응답은 **UTF-8 정상** (PowerShell 콘솔에서 깨지는 건 인코딩 문제 아님)
+- **좌표 필터 한계**: 광명시(경기도) 등 서울 인접 도시가 좌표 박스에 포함됨 → address.startsWith('서울') 필터 필요
+
+### 함정
+| 함정 | 증상 | 해결 |
+|------|------|------|
+| TOPIS(OA-20477) 서비스 종료 | `ERR-402`UnauthorizedResponse | 해당 데이터셋 더 이상 사용 불가 |
+| 좌표 박스가 서울 외 포함 | 광명시·김포시 등이 필터 통과 | address 필드로 서울 여부 확인 |
+| data.go.kr CSV(15013094) | CSV 다운로드 시 CSRF 토큰 필요 | 프로그래밍 방식 수집 불가, OpenAPI(15155042) 사용 |
+| 렌더 300건 제한 | 54K건 중300건만 표시 | 뷰포트 내 필터링 + 제한 확대 필요 |
+

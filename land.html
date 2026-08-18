@@ -464,6 +464,10 @@
     .cctv-pc-live span { width:5px; height:5px; border-radius:50%; background:#fff; animation:cctv-blink 1.4s infinite; }
     @keyframes cctv-blink { 50%{opacity:.25;} }
     .cctv-pc-meta { padding:9px 13px 12px; font-size:12px; color:var(--muted); flex:none; }
+    .cctv-pc-info { padding:11px 13px; display:flex; flex-direction:column; gap:6px; flex:1 1 auto; overflow-y:auto; }
+    .cctv-info-row { display:flex; gap:8px; font-size:12px; line-height:1.5; }
+    .cctv-info-k { color:var(--muted); white-space:nowrap; min-width:60px; flex:none; }
+    .cctv-info-v { color:var(--fg); word-break:break-word; }
     /* Leaflet 이 .leaflet-container a { color:#0078A8 } 를 깔아 두어 흰 글씨 버튼이 파란 배경에
        묻힌다(실측 대비 1.02:1). a + 클래스로 상세도를 높여 흰 글씨를 지킨다. */
     a.pc-btn-primary { color:#fff; }
