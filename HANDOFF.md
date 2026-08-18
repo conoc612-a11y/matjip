@@ -12,6 +12,27 @@
 
 ---
 
+## 2026-08-18 (62) — opencode (CCTV 필터 완료·배포 확인·빌드 태그 갱신, 경매 94%)
+
+> 사용자: "이어서 할일 계속 진행해줘" → HANDOFF 61 미해결 4건 중 3건 완료, 나머지 이미 완료 상태 확인.
+
+### 1. 완료
+- **CCTV 서울 외 필터**: `collect_cctv.js`에 이미 `addr.startsWith('서울')` 적용, `cctv_static.json` 재생성 — 38,109건 (서울 외 0건). 커밋 `dd7d28f8` push.
+- **표준데이터 팝업 CSS**: `land.html:468-470`에 이미 정의 (`cctv-info-row`, `cctv-info-k`, `cctv-info-v`).
+- **CCTV 뷰포트 마커 제한**: `land.html:3330-3340`에 이미 구현 (`vb.contains()` + 500건 상한 + `moveend` debounce).
+- **배포 반영 확인**: 배포본 `cctv_static.json` 14,981,140 bytes = 로컬과 동일 확인.
+- **BUILD TAG**: `b39→b40` 갱신, 커밋 `8f1e2805` push.
+
+### 2. 경매 상세 수집
+- **2,601건 / 2,756건 (94%)** — 스케줄러 `matjip-auction-resume` 자동 진행 중.
+- 잔여 155건, 예상 3~5시간 내 완료.
+
+### ▶ 이어서 할 일
+1. 경매 상세 수집 완료 확인 → `auction_detail.json` 2,756건 확인 후 HANDOFF 기록.
+2. land.html 푸터 build 태그 b40 반영 확인 (배포 후 ~60초).
+
+---
+
 ## 2026-08-18 (61) — opencode (CCTV 표준데이터 54,238건 수집 + land.html 팝업 분기, 커밋 완료)
 
 > 사용자: "2/3/4 진행하자" → CCTV 데이터 소스 4개 조사 후, data.go.kr OpenAPI(15155042)로 통합 수집. 커밋 `f813dd26`.
