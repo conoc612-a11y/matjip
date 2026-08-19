@@ -457,7 +457,7 @@
     .cctv-icon { width:34px; height:34px; margin:-34px 0 0 -17px; border-radius:50% 50% 50% 0; background:var(--c-danger); transform:rotate(-45deg); display:flex; align-items:center; justify-content:center; box-shadow:var(--c-shadow); }
     .cctv-icon img { width:20px; height:20px; transform:rotate(45deg); filter:invert(1); }
     .cctv-pc { width:100%; min-width:320px; max-width:100%; padding:0; box-sizing:border-box; overflow:hidden; display:flex; flex-direction:column; height:100%; }
-    .cctv-pc-head { display:flex; align-items:center; padding:11px 13px; border-bottom:1px solid var(--line); font-weight:700; font-size:14px; flex:none; }
+    .cctv-pc-head { display:flex; align-items:center; justify-content:space-between; padding:11px 13px; border-bottom:1px solid var(--line); font-weight:700; font-size:14px; flex:none; gap:8px; }
     .cctv-pc-head span { flex:1 1 0; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .cctv-pc .leaflet-popup-close-button { display:none !important; }
     .cctv-pc-video { position:relative; flex:1 1 auto; min-height:180px; height:180px; background:#12151b; display:flex; align-items:center; justify-content:center; color:#9aa3af; font-size:13px; }
@@ -466,7 +466,7 @@
     .cctv-pc-live span { width:5px; height:5px; border-radius:50%; background:#fff; animation:cctv-blink 1.4s infinite; }
     @keyframes cctv-blink { 50%{opacity:.25;} }
     .cctv-pc-meta { padding:9px 13px 12px; font-size:12px; color:var(--muted); flex:none; }
-    .cctv-pc-info { padding:11px 13px 11px 13px; padding-right:48px; display:flex; flex-direction:column; gap:6px; flex:1 1 auto; overflow-y:auto; }
+    .cctv-pc-info { padding:11px 13px 11px 13px; display:flex; flex-direction:column; gap:6px; flex:1 1 auto; overflow-y:auto; }
     .cctv-info-row { display:flex; gap:8px; font-size:12px; line-height:1.5; }
     .cctv-info-k { color:var(--muted); white-space:nowrap; min-width:60px; flex:none; }
     .cctv-info-v { color:var(--fg); word-break:break-word; }
@@ -3397,10 +3397,9 @@
         // ITS(영상 있음) vs 표준데이터(위치+정보)
         if (it.url) {
           const html = '<div class="cctv-pc">'
-            + `<div class="cctv-pc-head"><span>${esc(it.name || 'CCTV')}</span></div>`
+            + `<div class="cctv-pc-head"><span>${esc(it.name || 'CCTV')}</span><button type="button" class="cctv-pc-close ui-pop-btn" aria-label="닫기">&times;</button></div>`
             + '<div class="cctv-pc-video" id="cctv-video-slot">불러오는 중…</div>'
-            + '<div class="cctv-pc-meta">ITS 국가교통정보센터 실시간 도로 영상</div></div>'
-            + '<button type="button" class="cctv-pc-close ui-pop-btn" aria-label="닫기" style="position:absolute;top:3px;right:3px;z-index:1100">&times;</button>';
+            + '<div class="cctv-pc-meta">ITS 국가교통정보센터 실시간 도로 영상</div></div>';
           const popup = L.popup({ closeButton: false, maxWidth: 760 }).setLatLng([it.lat, it.lng]).setContent(html).openOn(map);
           setTimeout(() => {
             const node = popup.getElement();
@@ -3422,10 +3421,9 @@
           if (it.address) rows.push(['주소', it.address]);
           const metaHtml = rows.map(([k, v]) => `<div class="cctv-info-row"><span class="cctv-info-k">${esc(k)}</span><span class="cctv-info-v">${esc(v)}</span></div>`).join('');
           const html = '<div class="cctv-pc">'
-            + `<div class="cctv-pc-head"><span>${esc(it.name || 'CCTV')}</span></div>`
+            + `<div class="cctv-pc-head"><span>${esc(it.name || 'CCTV')}</span><button type="button" class="cctv-pc-close ui-pop-btn" aria-label="닫기">&times;</button></div>`
             + `<div class="cctv-pc-info">${metaHtml || '<div class="cctv-info-row"><span class="cctv-info-v">상세 정보 없음</span></div>'}</div>`
-            + `<div class="cctv-pc-meta">행정안전부 전국 CCTV 표준데이터 · 좌표 ${it.lat.toFixed(5)}, ${it.lng.toFixed(5)}</div></div>`
-            + '<button type="button" class="cctv-pc-close ui-pop-btn" aria-label="닫기" style="position:absolute;top:3px;right:3px;z-index:1100">&times;</button>';
+            + `<div class="cctv-pc-meta">행정안전부 전국 CCTV 표준데이터 · 좌표 ${it.lat.toFixed(5)}, ${it.lng.toFixed(5)}</div></div>`;
           const popup = L.popup({ closeButton: false, maxWidth: 400 }).setLatLng([it.lat, it.lng]).setContent(html).openOn(map);
           setTimeout(() => {
             const node = popup.getElement();
