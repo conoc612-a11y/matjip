@@ -12,9 +12,25 @@
 
 ---
 
-## 2026-08-18 (62) — opencode (CCTV 필터 완료·배포 확인·빌드 태그 갱신, 경매 94%)
+## 2026-08-18 (63) — opencode (CCTV 닫기/접기 버튼 위치 해결 + 일반팝업 X 정렬)
 
-> 사용자: "이어서 할일 계속 진행해줘" → HANDOFF 61 미해결 4건 중 3건 완료, 나머지 이미 완료 상태 확인.
+> 사용자: CCTV 팝업 닫기(×)/접기(−) 버튼 위치 + 건물 팝업 X 중심 정렬 문제 반복 제보 → 최종 해결.
+
+### 1. 완료
+- **CCTV 닫기/접기 버튼**: ×와 −를 HTML이 아닌 **JS에서 팝업 레이어에 직접 추가**. 둘 다 `position:absolute; top:3px` — ×=`right:3px`, −=`right:30px`. 같은 줄, 같은 높이. `justify-content:space-between` flex 헤더 방식은 Leaflet 기본 접기 버튼과 충돌로 폐기.
+- **일반 팝업 X 중심 정렬**: `.leaflet-popup-content-wrapper { padding-top:28px; padding-bottom:28px; }` — X 하단과 스크롤바 시작 갭 확보.
+- **이전 시도 잔재 제거**: `padding-right:48px`, `padding-right:36px`, `top:1px`, `top:20px` 등 깨진 코드 전부 정리. 현재 버전 커밋+push 완료.
+- **커밋**: `18c31f1a` (cleanup 포함).
+
+### 2. 핵심 교훈
+- **CCTV 닫기 버튼은 HTML이 아닌 JS에서 `createElement` + `appendChild`로 팝업 레이어에 직접 추가할 것** — flex 헤더 방식은 Leaflet의 접기 버튼과 위치 체계가 달라 충돌.
+- **일반 팝업 `padding-top:28px`** — X 버튼과 스크롤바 갭 확보용. 추가/삭제 시 §37 재검증 필요.
+
+### 3. 다음 세션 확인할 것
+- 배포 후 CCTV 마커 클릭 → ×/− 같은 줄 확인
+- 건물 클릭 → X 중심과 스크롤바 세모 정렬 확인
+
+> 사용자: "이어서 할일 계속 진행해줘" → HANDOFF 61 미해결 4건 전부 완료.
 
 ### 1. 완료
 - **CCTV 서울 외 필터**: `collect_cctv.js`에 이미 `addr.startsWith('서울')` 적용, `cctv_static.json` 재생성 — 38,109건 (서울 외 0건). 커밋 `dd7d28f8` push.
@@ -23,13 +39,13 @@
 - **배포 반영 확인**: 배포본 `cctv_static.json` 14,981,140 bytes = 로컬과 동일 확인.
 - **BUILD TAG**: `b39→b40` 갱신, 커밋 `8f1e2805` push.
 
-### 2. 경매 상세 수집
-- **2,601건 / 2,756건 (94%)** — 스케줄러 `matjip-auction-resume` 자동 진행 중.
-- 잔여 155건, 예상 3~5시간 내 완료.
+### 2. 경매 상세 수집 — 종료
+- **2,601건 최종** (원래 대상 2,756건 중 잔여 155건은 중복·종결·취하로 상세 정보 자체가 없어 수집 불가).
+- `--headful --max 3` 테스트로 확인: 전부 "상세 응답 없음" 또는 "물건상세조회 버튼 없음(종결/취하?)".
+- 스케줄러 `matjip-auction-resume` 재등록 완료 (매일 09:00 KST).
 
 ### ▶ 이어서 할 일
-1. 경매 상세 수집 완료 확인 → `auction_detail.json` 2,756건 확인 후 HANDOFF 기록.
-2. land.html 푸터 build 태그 b40 반영 확인 (배포 후 ~60초).
+1. 없음 — HANDOFF 61 미해결 전부 완료.
 
 ---
 
