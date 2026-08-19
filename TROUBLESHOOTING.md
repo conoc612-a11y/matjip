@@ -1096,3 +1096,14 @@ gh api repos/conoc612-a11y/matjip/pages/builds/latest --jq '{status:.status, com
 | data.go.kr CSV(15013094) | CSV 다운로드 시 CSRF 토큰 필요 | 프로그래밍 방식 수집 불가, OpenAPI(15155042) 사용 |
 | 렌더 300건 제한 | 54K건 중300건만 표시 | 뷰포트 내 필터링 + 제한 확대 필요 |
 
+## 40. CCTV 팝업 닫기(×)/접기(−) 버튼 위치 — flex 헤더 vs absolute (2026-08-18, 7차 수정 끝에 해결)
+
+- **증상**: ×가 접기 −보다 왼쪽에 있음, ×가 −보다 한 줄 아래에 있음. 반복 제보 7회.
+- **원인(근본)**: ×를 flex 헤더(`justify-content:space-between`)에 넣으면 ×는 `.leaflet-popup-content` 안에 위치하지만, 접기 −는 JS에서 `.leaflet-popup`(래퍼)에 `position:absolute`로 추가됨. **다른 레이어** → ×는 content 패딩(13px)만큼 왼쪽, −는 래퍼 오른쪽 끝. top도 다름(−는 top:3px, ×는 헤더 시작점).
+- **해결(구조적)**: ×도 HTML이 아닌 **JS에서 `createElement` + `appendChild`로 래퍼에 직접 추가**. 둘 다 `position:absolute; top:3px` — ×=`right:3px`, −=`right:30px`. 같은 레이어, 같은 줄.
+- **잘못된 접근(재발 방지)**:
+  - ❌ flex 헤더 방식 — ×와 −가 다른 레이어에 위치하게 됨.
+  - ❌ `padding-right:48px` / `padding-right:36px` / `top:20px` — 스크롤바 위치를 비틀어 다른 문제 유발.
+  - ❌ `style="right:3px"` 인라인으로 `.lp-min-btn` CSS 오버라이드 — 특정성(specIFICITY) 문제로 불안정.
+- **원칙**: Leaflet 팝업의 컨트롤(닫기/접기/그립)은 **반드시 `.leaflet-popup` 래퍼에 직접 추가**할 것. `.leaflet-popup-content` 안에 넣으면 content 패딩으로 인해 위치가 어긋남.
+
