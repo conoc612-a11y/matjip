@@ -457,9 +457,7 @@
     .cctv-icon { width:34px; height:34px; margin:-34px 0 0 -17px; border-radius:50% 50% 50% 0; background:var(--c-danger); transform:rotate(-45deg); display:flex; align-items:center; justify-content:center; box-shadow:var(--c-shadow); }
     .cctv-icon img { width:20px; height:20px; transform:rotate(45deg); filter:invert(1); }
     .cctv-pc { width:100%; min-width:320px; max-width:100%; padding:0; box-sizing:border-box; overflow:hidden; display:flex; flex-direction:column; height:100%; }
-    .cctv-pc-head { display:flex; align-items:center; padding:11px 13px; border-bottom:1px solid var(--line); font-weight:700; font-size:14px; flex:none; }
-    .cctv-pc-head span { flex:1 1 0; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .cctv-pc .leaflet-popup-close-button { display:none !important; }
+    .cctv-pc-head { display:flex; align-items:center; justify-content:space-between; padding:11px 13px; border-bottom:1px solid var(--line); font-weight:700; font-size:14px; flex:none; }
     .cctv-pc-video { position:relative; flex:1 1 auto; min-height:180px; height:180px; background:#12151b; display:flex; align-items:center; justify-content:center; color:#9aa3af; font-size:13px; }
     .cctv-pc-video video, .cctv-pc-video img { width:100%; height:100%; object-fit:cover; display:block; }
     .cctv-pc-live { position:absolute; top:8px; left:8px; background:var(--c-danger); color:#fff; font-size:12px; font-weight:700; padding:2px 7px; border-radius:5px; display:flex; align-items:center; gap:4px; }
@@ -521,10 +519,8 @@
     .leaflet-container a.leaflet-popup-close-button {
       color:var(--muted);
       /* right:1px 로 스크롤바 우측(content 우측)과 일치 — 실측 08-16: 기본 right:0 이면
-         닫기 X(x1285-1309)보다 스크롤바(x1293-1308)가 8px 오른쪽으로 나가 보임.
-         top:1px → X 중심(y=13) = 스크롤바 세모 꼭짓점(y≈13) 정렬(§37). */
+         닫기 X(x1285-1309)보다 스크롤바(x1293-1308)가 8px 오른쪽으로 나가 보임. */
       right:1px;
-      top:1px;
       display:flex; align-items:center; justify-content:center;
       font-size:16px; line-height:1; text-decoration:none;
     }
@@ -544,7 +540,7 @@
        그 위에서 끝나 구조적으로 절대 겹치지 않는다. 위치(bottom)를 비틀지 말 것 —
        과거 실패 이력: ① 화살표와 겹침(39/40) → ② bottom:-12px 로 팝업 밖 매달림(43,
        사용자 신고) → ③ bottom:3px 복귀로 스크롤바와 재겹침(이번). TROUBLESHOOTING §37 참고. */
-    .leaflet-popup .leaflet-popup-content-wrapper { padding-bottom: 28px; }
+    .leaflet-popup .leaflet-popup-content-wrapper { padding-top: 28px; padding-bottom: 28px; }
     /* 2026-08-16 사용자 지정: 그립 아이콘을 불투명 네모 → "ㄴ 좌우반전(ㄱ) 꺾은선 2줄,
         배경 없음"으로 교체. 팝업 흰 배경 위에서 또렷하게 회색 선만 남긴다.
        색 #C8C8C8 = 시스템 스크롤바 원래 색(HKCU\Control Panel\Colors → Scrollbar: 200 200 200).
@@ -3401,14 +3397,19 @@
           const html = '<div class="cctv-pc">'
             + `<div class="cctv-pc-head"><span>${esc(it.name || 'CCTV')}</span></div>`
             + '<div class="cctv-pc-video" id="cctv-video-slot">불러오는 중…</div>'
-            + '<div class="cctv-pc-meta">ITS 국가교통정보센터 실시간 도로 영상</div></div>'
-            + '<button type="button" class="cctv-pc-close ui-pop-btn lp-min-btn" aria-label="닫기" style="right:3px;top:20px">&times;</button>';
+            + '<div class="cctv-pc-meta">ITS 국가교통정보센터 실시간 도로 영상</div></div>';
           const popup = L.popup({ closeButton: false, maxWidth: 760 }).setLatLng([it.lat, it.lng]).setContent(html).openOn(map);
           setTimeout(() => {
             const node = popup.getElement();
             if (!node) return;
-            const closeBtn = node.querySelector('.cctv-pc-close');
-            if (closeBtn) closeBtn.onclick = () => map.closePopup(popup);
+            const closeBtn = document.createElement('button');
+            closeBtn.type = 'button';
+            closeBtn.className = 'ui-pop-btn';
+            closeBtn.setAttribute('aria-label', '닫기');
+            closeBtn.innerHTML = '&times;';
+            closeBtn.style.cssText = 'position:absolute;top:3px;right:3px;z-index:1100';
+            node.appendChild(closeBtn);
+            closeBtn.onclick = () => map.closePopup(popup);
             mountCctvVideo(node.querySelector('#cctv-video-slot'), it.url);
           }, 0);
         } else {
@@ -3426,14 +3427,19 @@
           const html = '<div class="cctv-pc">'
             + `<div class="cctv-pc-head"><span>${esc(it.name || 'CCTV')}</span></div>`
             + `<div class="cctv-pc-info">${metaHtml || '<div class="cctv-info-row"><span class="cctv-info-v">상세 정보 없음</span></div>'}</div>`
-            + `<div class="cctv-pc-meta">행정안전부 전국 CCTV 표준데이터 · 좌표 ${it.lat.toFixed(5)}, ${it.lng.toFixed(5)}</div></div>`
-            + '<button type="button" class="cctv-pc-close ui-pop-btn lp-min-btn" aria-label="닫기" style="right:3px;top:20px">&times;</button>';
+            + `<div class="cctv-pc-meta">행정안전부 전국 CCTV 표준데이터 · 좌표 ${it.lat.toFixed(5)}, ${it.lng.toFixed(5)}</div></div>`;
           const popup = L.popup({ closeButton: false, maxWidth: 400 }).setLatLng([it.lat, it.lng]).setContent(html).openOn(map);
           setTimeout(() => {
             const node = popup.getElement();
             if (!node) return;
-            const closeBtn = node.querySelector('.cctv-pc-close');
-            if (closeBtn) closeBtn.onclick = () => map.closePopup(popup);
+            const closeBtn = document.createElement('button');
+            closeBtn.type = 'button';
+            closeBtn.className = 'ui-pop-btn';
+            closeBtn.setAttribute('aria-label', '닫기');
+            closeBtn.innerHTML = '&times;';
+            closeBtn.style.cssText = 'position:absolute;top:3px;right:3px;z-index:1100';
+            node.appendChild(closeBtn);
+            closeBtn.onclick = () => map.closePopup(popup);
           }, 0);
         }
       }
