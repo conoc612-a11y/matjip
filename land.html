@@ -457,7 +457,9 @@
     .cctv-icon { width:34px; height:34px; margin:-34px 0 0 -17px; border-radius:50% 50% 50% 0; background:var(--c-danger); transform:rotate(-45deg); display:flex; align-items:center; justify-content:center; box-shadow:var(--c-shadow); }
     .cctv-icon img { width:20px; height:20px; transform:rotate(45deg); filter:invert(1); }
     .cctv-pc { width:100%; min-width:320px; max-width:100%; padding:0; box-sizing:border-box; overflow:hidden; display:flex; flex-direction:column; height:100%; }
-    .cctv-pc-head { display:flex; align-items:center; justify-content:space-between; padding:11px 13px; border-bottom:1px solid var(--line); font-weight:700; font-size:14px; flex:none; }
+    .cctv-pc-head { display:flex; align-items:center; justify-content:space-between; padding:11px 13px; border-bottom:1px solid var(--line); font-weight:700; font-size:14px; flex:none; gap:8px; }
+    .cctv-pc-head span { flex:1 1 0; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .cctv-pc .leaflet-popup-close-button { display:none !important; }
     .cctv-pc-video { position:relative; flex:1 1 auto; min-height:180px; height:180px; background:#12151b; display:flex; align-items:center; justify-content:center; color:#9aa3af; font-size:13px; }
     .cctv-pc-video video, .cctv-pc-video img { width:100%; height:100%; object-fit:cover; display:block; }
     .cctv-pc-live { position:absolute; top:8px; left:8px; background:var(--c-danger); color:#fff; font-size:12px; font-weight:700; padding:2px 7px; border-radius:5px; display:flex; align-items:center; gap:4px; }
