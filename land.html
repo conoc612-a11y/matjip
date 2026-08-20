@@ -516,17 +516,8 @@
     /* 리사이즈 그립이 둥근 모서리에 잘리지 않도록 */
     .leaflet-popup-content-wrapper { overflow:visible; }
     .leaflet-popup-tip { background:var(--card); }
-    .leaflet-container a.leaflet-popup-close-button {
-      color:var(--muted);
-      /* X 중심을 스크롤바 트랙과 정렬 (2026-08-20)
-         가로: content margin-right(4.5) + padding-right(24) + scrollbar/2(7.5) ≈ 36
-               X 폭(~24) 절반 빼면 right ≈ 49px → X 중심 = 스크롤바 중심
-         세로: wrapper padding-top(28) = content 시작점 → top:28px = 스크롤바 시작점 */
-      right:49px;
-      top:28px;
-      display:flex; align-items:center; justify-content:center;
-      font-size:16px; line-height:1; text-decoration:none;
-    }
+    /* 닫기 X는 JS에서 래퍼에 직접 추가(§40 원칙). Leaflet 기본 버튼은 숨긴다. */
+    .leaflet-container a.leaflet-popup-close-button { display:none; }
     /* ── 팝업 공통 컨트롤 (우하단 코너 리사이즈 아이콘 + 접기) — 2026-08-16 ── */
     /* 리사이즈: 20260815 백업의 makeResizable() 기반 드래그 코드를 그대로 복원(사용자 지시 —
        하단 스트립 핸들 3차 재작업은 기각). 트리거는 스크롤바가 있는 오른쪽 세로줄 바로 아래
@@ -1193,6 +1184,18 @@
         onResize: (w, h) => { popup._lpW = w; popup._lpH = h; popup._updateLayout(); popup._updatePosition(); },
         onEnd: () => { if (autoPanPrev != null) { popup.options.autoPan = autoPanPrev; autoPanPrev = null; } }
       });
+      // 닫기 버튼 — 래퍼에 직접 추가 (§40 원칙: Leaflet 기본 버튼은 숨기고 JS에서 추가)
+      // CCTV 팝업은 별도 setTimeout에서 이미 추가했을 수 있으므로 중복 방지
+      if (!el.querySelector('[aria-label="닫기"]')) {
+        const closeBtn = document.createElement('button');
+        closeBtn.type = 'button';
+        closeBtn.className = 'ui-pop-btn';
+        closeBtn.setAttribute('aria-label', '닫기');
+        closeBtn.innerHTML = '&times;';
+        closeBtn.style.cssText = 'position:absolute;top:3px;right:3px;z-index:1100';
+        el.appendChild(closeBtn);
+        closeBtn.onclick = () => map.closePopup(popup);
+      }
       // 접기 버튼 — 팝업을 닫고 지도 우하단에 복원 칩을 남긴다 (내용은 그대로 유지)
       const minBtn = document.createElement('button');
       minBtn.type = 'button';
