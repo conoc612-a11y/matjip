@@ -393,7 +393,7 @@ console.log('blocks:',i,'fails:',f);
 
 | 키 | 위치 | 비고 |
 |---|---|---|
-| VWORLD / KAKAO_JS / NAVER_MAPS / ODSAY | 프론트 허용 — **`js/common.js` 공용 상수** | 도메인 잠금이 방어 수단. 콘솔에 도메인 등록 필수 |
+| VWORLD / KAKAO_JS / NAVER_MAPS / ODSAY | 프론트 허용 (도메인 잠금이 방어 수단, 콘솔에 도메인 등록 필수). ⚠️ **"전부 `js/common.js` 공용 상수"는 사실이 아니다 — 아래 실측 표 참고** |
 | **ITS_CCTV_KEY** | **프론트 허용(정책 변경)** | 서버 경유 불가(6-3). 남용 시 its.go.kr 재발급 |
 | MOLIT / NAVER_CLIENT_SECRET / CHUNGAK / NTS | **서버 전용** | Supabase Edge Function env 에만. HTML 금지 |
 | ADMIN_PASSWORD / ADMIN_EMAIL / ADMIN_BACKUP_EMAIL / RESEND_API_KEY / ADMIN_MGMT_TOKEN | **서버 전용** | 관리자 인증·메일용. HTML·DB에 두지 말 것. ADMIN_MGMT_TOKEN 은 Edge Function 이 비밀번호를 바꿀 때 사용(11-3) |
@@ -552,6 +552,27 @@ npx -y supabase projects list
 - **top-level `const` 재선언 = 같은 페이지 SyntaxError**: 6개 페이지가 `SUPABASE_URL/KEY`·`$`·`esc`를 각자 복붙하고 있어 `js/common.js`로 통합. 이때 페이지가 common.js 로딩 후 **자기 인라인 스크립트에서 `const $`·`const esc`를 다시 선언하면**(ai.html 실측) 두 번째 스크립트 전체가 파싱 실패로 죽는다. 글로벌 lexical 환경은 스크립트 태그를 가로질러 공유되므로 **상수는 한 곳에서만 선언**할 것. auth-guard.js는 IIFE 내부라 충돌 없음(형태 확인만).
 - **HTML 인라인 스크립트 문법 검사**: `node --check`는 외부 `.js`만 검사한다. 인라인 블록은 `<script(?![^>]*src=)>` 정규식으로 추출해 임시 파일로 검사할 것. **PowerShell 5.1은 `Get-Content` 기본 인코딩이 ANSI**라 UTF-8 한글 파일이 깨져 "Invalid regular expression"으로 오판한다 — `-Encoding UTF8`로 읽고 UTF8(BOM)로 저장해야 정확하다.
 - **프록시 URL도 중복 제거 가능**: Edge Function 프록시(chungak/bizno/KMA/EXIM/CCTV/MOLIT) URL 7곳이 하드코딩돼 있었는데, common.js 로딩 후(land.html 스크립트 상단)에는 `SUPABASE_URL + '/functions/v1/...'`로 참조 가능 — 키가 한 곳으로 모이면 URL도 함께 모이는지 함께 확인할 것.
+
+### 공용화 실제 현황 (2026-08-20 실측 — §9 표가 "전부 공용 상수"라 적어놨던 것을 정정)
+
+`js/common.js` 에 실제로 있는 것은 **4개뿐**이다: `SUPABASE_URL`, `SUPABASE_KEY`, `ODSAY_KEY`, `VWORLD_KEY`.
+
+| 키 | 공용화 | 실제 위치 |
+|---|---|---|
+| `SUPABASE_URL` / `SUPABASE_KEY` | ✅ | `js/common.js:4-5` |
+| `ODSAY_KEY` | ✅ | `js/common.js:6` |
+| `VWORLD_KEY` | ✅ | `js/common.js:7` |
+| **`KAKAO_JS_KEY`** | ❌ **3곳 중복** | `land.html:1079`, `ai.html:78`, **`main.html:17`** |
+| **네이버 지도 키**(`ncpKeyId`) | ❌ **2곳 중복** | `land.html:5220`(`NAVER_KEY`), **`main.html:15`** |
+
+**공용화가 안 끝난 이유(추정 아님, 구조적 제약)**: `main.html` 은 두 키를 `<head>` 의
+**정적 `<script src>` 속성**에 박아 SDK 를 로드한다(`...sdk.js?appkey=...`). `common.js` 보다
+먼저 파싱되므로 JS 상수를 쓸 수 없다. 공용화하려면 SDK 로드를 동적 스크립트 주입으로
+바꿔야 하는데(land.html·ai.html 방식) 그건 로드 타이밍 변경이라 별건이다.
+
+**주의**: 이 키들을 교체할 일이 생기면 **`js/common.js` 만 고치면 안 된다.** 위 표의 5곳을
+전부 바꿔야 한다. 도메인 잠금 키라 노출 자체는 설계상 안전하지만, **한 곳만 바꾸면 그
+페이지만 조용히 깨진다** — §12 형제 페이지 누락과 같은 유형의 재발 경로다.
 
 ## 15. "기능/정보가 삭제됐다" 보고 = 브라우저 캐시 먼저 의심 (2026-08-13 실측)
 
@@ -826,7 +847,16 @@ gh api repos/conoc612-a11y/matjip/pages/builds/latest --jq '{status:.status, com
 ### ② "스크롤바가 맨 우측에 없다" — content margin-right 24px 가 스크롤바를 안쪽으로 밀었음
 - **원인**: `.leaflet-popup-content` 기본 `margin: 13px 24px 13px 20px` — 네이티브 스크롤바가
   content 의 오른쪽 테두리에 붙으므로 오른쪽에서 24px 들어간 자리에 생김.
-- **해결**: `margin: 13px 0 13px 20px` + `padding-right: 24px` (텍스트 여백은 padding 이 대신).
+- **해결**: `margin-right` 를 크게 줄이고 텍스트 여백은 `padding-right: 24px` 가 대신한다.
+  ⚠️ **2026-08-20 실측 정정** — 여기 `margin: 13px 0 13px 20px` 라고 적혀 있었으나
+  **실제 코드는 `margin: 13px 4.5px 13px 20px`** 다(우측 0 이 아니라 4.5px).
+  4.5px 는 커밋에서 "닫기 X 를 `right:1px` 에 맞추려고" 넣은 값인데, §40 최종안에서 X 가
+  `right:3px` 로 옮겨졌으므로 **정렬 근거 자체는 낡았다.** 다만:
+  - 실측 비교: `4.5px` → 스크롤바가 팝업 우단에서 **6px** 안쪽 / `0` → **1px** 안쪽
+  - 원래 불만은 "**24px** 들어가 있다"였으므로 6px 는 이미 해결된 수준이다
+  - **2026-08-20 사용자가 현재 코드(4.5px) 상태를 정상으로 확인했다.**
+  → 그래서 **코드를 바꾸지 않고 이 문서를 코드에 맞췄다.** 값을 0 으로 "복원"하지 말 것 —
+  문서가 틀렸던 것이지 코드가 틀린 게 아니다.
   content 는 `box-sizing: border-box` 라 padding 24px 를 포함해도 `offsetWidth` 동일, 스크롤바가
   팝업의 오른쪽 끝에 붙음(실측 repro86: content x413 w480, 오른쪽 893 = 팝업 오른쪽 894-1).
 
@@ -1110,7 +1140,13 @@ gh api repos/conoc612-a11y/matjip/pages/builds/latest --jq '{status:.status, com
 
 - **증상**: 팝업 우하단 리사이즈 그립이 (1차) 스크롤바 상단 화살표와 겹침 → (2차) `bottom:-12px`로 팝업 밖에 매달려 "창을 넘어가고 삐뚤어 보임" 사용자 신고 → (3차) `bottom:3px` 복귀 후 **스크롤바 트랙과 13px 재겹침** 사용자 신고. 사용자: "상습범이다, 기록해놓고 항시 겹치지 않게 해줘".
 - **원인(실측)**: 그립은 우하단 코너(right/bottom:3px, 24x24) 고정 → 우측 15px 스크롤바와 x축이 필연적으로 겹침(y축도 트랙 하단과 맞물림). 위치(bottom)만 조정하면 팝업 밖으로 나가거나 재겹침 — 둘 중 하나.
-- **해결(구조적)**: 위치를 안 비튼다. `.leaflet-popup .leaflet-popup-content-wrapper { padding-bottom: 28px; }`(land.html)로 wrapper 하단에 그립 공간(24px+여유)을 두면 **스크롤바 트랙이 그립 위에서 끝나 구조적으로 절대 안 겹친다**. 그립은 코너 고정(right/bottom:3px).
+- **해결(구조적)**: 위치를 안 비튼다. wrapper 하단에 그립 공간(24px+여유)을 두면 **스크롤바 트랙이 그립 위에서 끝나 구조적으로 절대 안 겹친다**. 그립은 코너 고정(right/bottom:3px).
+  실제 CSS 는 **위아래 둘 다** 준다(2026-08-20 실측 보정 — 예전엔 `padding-bottom` 만 적혀 있었다):
+  ```css
+  .leaflet-popup .leaflet-popup-content-wrapper { padding-top: 28px; padding-bottom: 28px; }
+  ```
+  `padding-top: 28px` 은 상단 닫기(×)·접기(−) 버튼 줄과 내용이 겹치지 않게 하는 몫이다
+  (세션 63 에서 추가). **한쪽만 남기면 위 또는 아래에서 겹침이 재발한다.**
 - **실측 검증**: probe_grip.js — 팝업 y102-631(h528), content y116-590(h473, 트랙 끝=590), 그립 y604-628 → 트랙 끝(590) < 그립 상단(604) = 14px 여유. 수정 전엔 content 하단 830 vs 그립 상단 817 = 13px 겹침.
 - **원칙**: 그립은 우하단 코너 고정, **스크롤 영역이 그립 위에서 끝나도록 wrapper에 하단 여백을 확보**한다. `bottom:-12px` 같은 위치 비틀기는 다시 금지.
 - **그립 아이콘(2026-08-16 사용자 지정)**: 불투명 네모 → "ㄴ 좌우반전(ㄱ) 꺾은선 2줄 배경 없음"으로 교체. `.leaflet-popup .ui-grip` 오버라이드(background:none, border:none), `::before`(16x16)/`::after`(9x9)가 `border-right/bottom:2px solid #C8C8C8` 꺾은선. 팝업 흰 배경 위에서 회색 선만 남는다.

@@ -52,11 +52,22 @@
 - 팝업을 `.lp-body` 아래로 내리면 → 레이어 패널이 팝업 닫기·스크롤바·그립을 덮는다 (2026-08-16 버그)
 - 팝업을 `.ctl-row` 위로 올리면 → 팝업이 배경지도 썸네일을 덮는다 (2026-08-20 버그)
 
+⚠️ **`.lp-body` 의 1000 은 CSS 에 선언돼 있지 않다.** Leaflet 이 컨트롤 컨테이너
+(`.leaflet-top` / `.leaflet-right` 등)에 주는 기본값이며, `.lp-body` 규칙에는 `z-index` 가 없다
+(실측 2026-08-20). **"순서를 맞추려면 `.lp-body` 에 `z-index:1000` 을 명시해야 한다"고 오해해
+CSS 를 추가하지 말 것** — 스택 문맥이 바뀌어 오히려 어긋날 수 있다.
+직접 선언한 값은 `.leaflet-popup-pane`(1200)과 `.ctl-row`(1300) **둘뿐**이다.
+
 ---
 
 ## 2. 복원용 코드 (verbatim — 그대로 붙여넣으면 된다)
 
-### BLOCK-A — `.ctl-row` z-index (CSS, `land.html` 약 423행)
+> ⚠️ **줄번호는 참고용이다.** `land.html` 은 43만 자가 넘고 편집마다 줄이 밀린다
+> (2026-08-20 실측 기준으로 갱신했다). **줄번호로 찾지 말고 아래 식별자로 grep 하라** —
+> 그게 항상 맞다: `.ctl-row {`, `leaflet-popup-pane { z-index`, `POPUP_H_CAP`,
+> `nudgePopupBelowControls`, `_pointerDownAt`.
+
+### BLOCK-A — `.ctl-row` z-index (CSS, `land.html` 427행 근처)
 
 ```css
     /* z-index 는 팝업 페인(1200)보다 높다. 팝업은 앵커에서 위로 자라기 때문에 지도 가운데를
@@ -67,13 +78,13 @@
       display:flex; align-items:stretch; gap:6px; margin:0; }
 ```
 
-### BLOCK-B — 팝업 페인 z-index (CSS, `land.html` 약 527행)
+### BLOCK-B — 팝업 페인 z-index (CSS, `land.html` 538행 근처)
 
 ```css
     .leaflet-popup-pane { z-index: 1200; }
 ```
 
-### BLOCK-C — 팝업 최대 높이 + 줌 비례 축소 (JS, `land.html` 약 1260행)
+### BLOCK-C — 팝업 최대 높이 + 줌 비례 축소 (JS, `land.html` 1271행 근처)
 
 ```js
     const POPUP_H_CAP = 420;
@@ -148,7 +159,7 @@
     [0, 400, 1500].forEach((ms) => setTimeout(syncPopupMaxHeight, ms));
 ```
 
-### BLOCK-E — 드래그/클릭 구분 가드 (JS, `map.on('click')` 바로 앞, 약 4940행)
+### BLOCK-E — 드래그/클릭 구분 가드 (JS, `map.on('click')` 바로 앞, 4966행 근처)
 
 ```js
     // ── 드래그를 클릭으로 오인하지 않게 하는 가드 (2026-08-20) ──────────

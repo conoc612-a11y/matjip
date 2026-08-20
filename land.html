@@ -510,8 +510,13 @@
        남아 리사이즈 조작 위치를 알려준다. max-width 는 리사이즈 상한이 되어 '넓히기'를 막으므로
        넉넉히 준다(화면 폭까지). 내용은 .pc 가 width:100% 라 늘어난 폭에 맞춰 자동으로 다시 흐른다. */
     .leaflet-popup-content { max-height:var(--popup-max-h, min(62vh, 520px)); overflow-y:scroll; overflow-x:hidden; overflow-wrap:anywhere; word-break:break-word; min-width:220px; max-width:calc(100vw - 40px); margin:13px 4.5px 13px 20px; padding-right:24px; }
-    /* 스크롤바를 팝업 오른쪽 끝에 붙인다(2026-08-16): content margin-right 를 0으로, 텍스트 여백은
-       padding-right 가 대신한다. 이전엔 스크롤바가 오른쪽에서 24px 들어가 "맨 우측에 없다"는 지적이 있었다.
+    /* 스크롤바를 팝업 오른쪽 끝 쪽으로 붙인다(2026-08-16): content margin-right 를 크게 줄이고
+       텍스트 여백은 padding-right 가 대신한다. 이전엔 스크롤바가 오른쪽에서 24px 들어가
+       "맨 우측에 없다"는 지적이 있었다.
+       ⚠️ margin-right 실제 값은 0 이 아니라 4.5px 다(위 .leaflet-popup-content 참고).
+       실측: 4.5px → 스크롤바가 팝업 우단에서 6px 안쪽 / 0 → 1px 안쪽. 원래 불만이 24px
+       이었으므로 6px 로 해결됐고, 2026-08-20 사용자가 현재 상태를 정상 확인했다.
+       "0 으로 되돌리기"는 하지 말 것 — 옛 주석·문서가 0 이라고 적혀 있던 것이 오류였다.
        .leaflet-popup-pane z-index: 기본 700 은 컨트롤 컨테이너 1000 아래라, 열린 레이어 패널(.lp-body,
        z1000)이 팝업의 닫기·접기 버튼과 스크롤바·하단 드래그 핸들을 덮었다(실측 2026-08-16: 1440px에서
        팝업 우측 124px 를 패널이 가림 → 하단 핸들 드래그 무반응, 스크롤바/버튼 가림).
@@ -521,6 +526,12 @@
        '일반지도/위성지도/…' 썸네일을 덮는다. 확정된 3단 순서는 아래 하나뿐이다:
 
             .lp-body (1000)  <  .leaflet-popup-pane (1200)  <  .ctl-row (1300)
+
+       ⚠️ .lp-body 의 1000 은 **Leaflet 이 컨트롤 컨테이너(.leaflet-top/.leaflet-right 등)에
+       주는 기본값**이다. .lp-body 규칙에는 z-index 선언이 없고, 넣을 필요도 없다.
+       "3단 순서를 맞추려면 .lp-body 에 z-index:1000 을 명시해야 한다"고 오해해
+       CSS 를 추가하지 말 것 — 스택 문맥이 달라져 오히려 어긋날 수 있다.
+       실제로 값을 직접 선언한 것은 아래 두 개(.leaflet-popup-pane, .ctl-row)뿐이다.
 
        세 값 중 하나만 바꾸면 과거 버그 둘 중 하나가 반드시 재발한다.
        근거·복원 방법은 LOCKED_POPUP_SPEC.md, TROUBLESHOOTING §42 참고. */
