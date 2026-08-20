@@ -1037,7 +1037,7 @@ gh api repos/conoc612-a11y/matjip/pages/builds/latest --jq '{status:.status, com
 - **원칙**: 그립은 우하단 코너 고정, **스크롤 영역이 그립 위에서 끝나도록 wrapper에 하단 여백을 확보**한다. `bottom:-12px` 같은 위치 비틀기는 다시 금지.
 - **그립 아이콘(2026-08-16 사용자 지정)**: 불투명 네모 → "ㄴ 좌우반전(ㄱ) 꺾은선 2줄 배경 없음"으로 교체. `.leaflet-popup .ui-grip` 오버라이드(background:none, border:none), `::before`(16x16)/`::after`(9x9)가 `border-right/bottom:2px solid #C8C8C8` 꺾은선. 팝업 흰 배경 위에서 회색 선만 남는다.
 - **그립 색 = 스크롤바 원래 색(2026-08-16 사용자 지시 "스크롤바 원래 색상 기준으로 통일")**: 팝업 스크롤바는 **오버레이**(마우스 hover 시에만 표시, `scrollbar-width:auto`)라 화면 픽셀 실측 불가(CDP 합성 마우스·OS 커서 모두 실패: 테스트 크롬 창이 화면 밖 -21333으로 저장·복원되는 환경 버그). **대안**: 시스템 스크롤바 원래 색을 레지스트리에서 직접 읽음 — `HKCU\Control Panel\Colors` → `Scrollbar: 200 200 200` = **#C8C8C8**. 그립 꺾은선을 이 값으로 통일(probe 실측 `borderRightColor: rgb(200,200,200)` 확인). 색 조정 시 시스템 기본값과 그립을 동시에 맞춰야 함.
-- **닫기 X ↔ 스크롤바 정렬(같은 날)**: 기본 `.leaflet-popup-close-button`은 `right:0`(팝업 코너)이라 X(x1285-1309)보다 스크롤바(x1293-1308)가 8px 오른쪽으로 나가 보인다(사용자 신고 "X에서 오른쪽으로 튀어나감"). 해결: `right:1px` + `display:flex` 가운데 정렬 → X 우측 1308 = 스크롤바 우측(content 우측) 일치(`closeRightVsContentRight:0`, 실측). X(24px)와 스크롤바(15px) 폭 차로 중심은 4px 어긋나지만 우측선은 일직선.
+- **닫기 X ↔ 스크롤바 정렬**: §40으로 해결 — X는 CSS가 아닌 JS에서 래퍼에 직접 추가하므로 content-wrapper 레이어 문제 자체가 없어짐. 스크롤바는 wrapper `padding-bottom:28px`로 그립과 겹치지 않음(위).
 
 ---
 
@@ -1096,11 +1096,13 @@ gh api repos/conoc612-a11y/matjip/pages/builds/latest --jq '{status:.status, com
 | data.go.kr CSV(15013094) | CSV 다운로드 시 CSRF 토큰 필요 | 프로그래밍 방식 수집 불가, OpenAPI(15155042) 사용 |
 | 렌더 300건 제한 | 54K건 중300건만 표시 | 뷰포트 내 필터링 + 제한 확대 필요 |
 
-## 40. 팝업 닫기(×)/접기(−) 버튼 위치 — Leaflet 기본 vs JS 추가 레이어 충돌 (2026-08-18~20, 최종 해결)
+## 40. 팝업 닫기(×)/접기(−) 버튼 위치 — Leaflet 기본 vs JS 추가 레이어 충돌 (2026-08-18~20, ✅ 최종 확정)
+
+> **현재 정상 상태 (2026-08-20)**: 건물·CCTV·정비·실거래 모든 팝업에서 ×/− 같은 줄, 같은 높이. 아래 해결법이 현재 유효한 유일한 정답.
 
 - **증상**: ×가 접기 −보다 왼쪽에 있음, ×가 −보다 한 줄 아래에 있음. CCTV·건물 팝업 모두 반복 제보.
 - **원인(근본)**: ×를 Leaflet 기본(`.leaflet-popup-close-button` in `.leaflet-popup-content-wrapper`)으로 쓰면, 접기 −는 JS에서 `.leaflet-popup`(래퍼)에 `position:absolute`로 추가됨. **다른 레이어** → ×는 content 패딩(13px)만큼 왼쪽, −는 래퍼 오른쪽 끝. top도 다름.
-- **해결(구조적, 2026-08-20 확정)**:
+- **해결(구조적, 2026-08-20 확정 — 이것이 정상 코드)**:
   1. Leaflet 기본 X 숨김: `.leaflet-container a.leaflet-popup-close-button { display:none; }`
   2. `attachPopupControls()`에서 X도 **JS로 래퍼에 직접 추가**(`top:3px; right:3px`)
   3. −는 기존대로 `top:3px; right:30px`
