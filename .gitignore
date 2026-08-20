@@ -7,3 +7,4 @@ supabase/.temp/
 _mockup_*.html
 tools/.r2_uploaded.json
 auction_photos/
+*_collect.log
