@@ -8,3 +8,4 @@ _mockup_*.html
 tools/.r2_uploaded.json
 auction_photos/
 *_collect.log
+tools/finish_auction_collect.log

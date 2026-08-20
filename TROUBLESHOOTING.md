@@ -1279,3 +1279,48 @@ gh api repos/conoc612-a11y/matjip/pages/builds/latest --jq '{status:.status, com
   sed 's#<script[^>]*js/auth-guard\.js[^>]*></script>##' land.html > _mockup_land_test.html
   ```
 - 상대 경로 자원(js/, css/, *.json)을 쓰므로 **반드시 저장소 루트에 두고** 로컬 서버(`node tools/static-server.js`, 포트 **8181**)로 열어야 한다. `file://` 로는 V-World·카카오가 전부 실패한다(§ 로컬호스트 항목 참고).
+
+## 45. 경매 사진 수집 뒤처리 무인 자동화 — `tools/finish_auction_collect.ps1` (2026-08-21)
+
+- **왜 필요한가**: 사진 수집은 사건당 10~15초라 전량 6~8시간이다. 그동안 사람이 붙어 있을 수 없는데, **수집만 끝나고 멈추면 새 사진이 R2 에 없어서 사이트에서 404** 가 된다(§41 R2 이전 이후 `upload_r2.mjs` 실행이 필수 절차가 됐다).
+- **하는 일**: 수집기 프로세스 종료 대기 → 축소 검증(필요하면 직접 축소) → `upload_r2.mjs` → **R2 에 직접 LIST 해 로컬 파일 수와 대조** → `auction_photos.json` 커밋·push → 전 단계 성공 시에만 컴퓨터 종료.
+- **축소는 따로 기다리지 않아도 된다**: 수집기가 종료 직전 `shrink_auction_photos.py` 를 **`spawnSync`(동기)** 로 실행한다(`collect_auction_photos.js`). 즉 **수집기 프로세스가 사라진 시점엔 축소도 끝나 있다.**
+- **프로세스 탐지**: `Get-CimInstance Win32_Process -Filter "Name='node.exe'"` 에서 `CommandLine -like '*collect_auction_photos*'`. `tasklist` 는 커맨드라인을 안 주므로 같은 node 프로세스를 구분할 수 없다.
+- **축소 여부는 평균 파일 크기로 판정**: 법원 원본은 장당 약 148KB, 400px 축소본은 약 18.5KB. **임계값 60KB**. 실측(2026-08-21 수집 중간): 24,215개 / 1,440MB / 장당 **60.9KB** → "축소 필요"로 정상 판정.
+  - 수집 중에는 새 사진이 원본 크기로 쌓여 용량이 크게 늘어난다(298MB → 1.4GB 이상). 정상이다. 축소는 마지막에 한 번에 돈다.
+
+### ⚠️ 무인 스크립트라서 특별히 지킨 원칙 (바꾸지 말 것)
+
+| 원칙 | 이유 |
+|---|---|
+| **실패하면 종료하지 않고 그 자리에서 멈춘다** | 실패한 채로 꺼버리면 아침에 원인을 찾을 수 없다. 로그가 유일한 증거다 |
+| **커밋 대상을 `auction_photos.json` 하나로 못박는다** | 작업트리엔 늘 다른 변경(`auction_detail.json`, `cctv_static.json` 등 수집기 산출물)이 있다. 무인 스크립트가 `git add .` 로 휩쓸면 사람이 판단해야 할 것을 대신 결정해 버린다 |
+| **매니페스트를 믿지 않고 R2 에 직접 LIST 해 대조** | `tools/.r2_uploaded.json` 은 스크립트가 스스로 쓴 기록이다. 그걸로 자기 성공을 판정하면 순환 논리다 |
+| **종료 전 120초 유예 + `shutdown /a` 안내** | 사람이 그 앞에 있을 수도 있다 |
+
+### 함정 — `.ps1` 은 UTF-8 **BOM** 으로 저장해야 한다
+
+한글 주석이 든 `.ps1` 을 BOM 없는 UTF-8 로 저장하면 **Windows PowerShell 5.1 이 ANSI 로 읽어 파싱이 깨진다.** 실측: 문법 오류 17건, `Unexpected token '?ъ쭊'` 같은 모지바케. BOM 을 붙이면 오류 0. (§14 의 "PowerShell 5.1 기본 인코딩 ANSI" 와 같은 뿌리다.)
+
+```bash
+# BOM 추가
+python -c "p='tools/finish_auction_collect.ps1';d=open(p,'rb').read();open(p,'wb').write(d if d[:3]==b'\xef\xbb\xbf' else b'\xef\xbb\xbf'+d)"
+```
+
+### 세션과 무관하게 살아있게 하려면
+
+AI 세션의 백그라운드 작업으로 띄우면 세션이 끝날 때 함께 죽을 수 있다. **분리된 프로세스로 띄운다**:
+
+```powershell
+Start-Process powershell -ArgumentList '-ExecutionPolicy','Bypass','-NoProfile','-File','tools\finish_auction_collect.ps1' -WindowStyle Minimized
+```
+
+### 사용법
+
+```
+powershell -ExecutionPolicy Bypass -File tools\finish_auction_collect.ps1              # 전체(종료 포함)
+powershell -ExecutionPolicy Bypass -File tools\finish_auction_collect.ps1 -NoShutdown  # 안 끔
+powershell -ExecutionPolicy Bypass -File tools\finish_auction_collect.ps1 -DryRun      # 점검만
+```
+
+로그: `tools/finish_auction_collect.log` (gitignored — 무인 실행의 유일한 증거이므로 지우지 말 것)
