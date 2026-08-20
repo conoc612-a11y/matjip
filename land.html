@@ -420,7 +420,11 @@
     .lp-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     /* 줌(+/−)+배경지도 선택을 지도 상단 중앙으로 옮긴다(2026-08-13, 사용자 요청).
        leaflet-top/leaflet-left 코너 흐름에서 빼내 지도 컨테이너에 직접 절대배치한다. */
-    .ctl-row { position:absolute; top:10px; left:50%; transform:translateX(-50%); z-index:1000;
+    /* z-index 는 팝업 페인(1200)보다 높다. 팝업은 앵커에서 위로 자라기 때문에 지도 가운데를
+       클릭하면 팝업 상단이 이 줄까지 올라와 '일반지도/위성지도/…' 썸네일을 덮었다
+       (사용자 지적 2026-08-20). 배경지도 선택은 항상 조작 가능해야 하므로 팝업 위에 둔다.
+       위치·크기 차원의 해결(팝업이 이 줄 아래로만 들어가게)은 syncPopupMaxHeight 참고. */
+    .ctl-row { position:absolute; top:10px; left:50%; transform:translateX(-50%); z-index:1300;
       display:flex; align-items:stretch; gap:6px; margin:0; }
     .ctl-row > .leaflet-control { margin:0 !important; float:none; }
     /* 줌(+/−)은 기본 26px×2 라 썸네일 피커(약 82px)보다 28px 짧아, 피커만 아래로 튀어나왔다.
@@ -1230,14 +1234,90 @@
 
     // 팝업 최대 높이를 지도 높이에 맞춘다. vh 고정이면 지도가 화면 일부일 때 팝업이 지도 밖으로 넘친다.
     // 내용은 건드리지 않는다 — popup.update() 는 innerHTML 을 다시 그려서 비동기로 채운 내용을 지운다.
+    // 상단 컨트롤 줄(.ctl-row = 줌 + 배경지도 썸네일)은 지도 위에 절대배치돼 있고, 팝업은
+    // 앵커에서 위로 자란다. 그래서 예전엔 팝업이 그 줄을 덮었다(사용자 지적 2026-08-20).
+    // 두 갈래로 막는다:
+    //  ① 최대 높이에서 컨트롤 높이를 빼 팝업이 애초에 그 아래에 들어갈 크기만 갖게 한다.
+    //  ② 같은 값을 Leaflet autoPan 상단 여백으로 줘서, 팝업이 열릴 때 지도가 알아서
+    //     팝업 전체가 컨트롤 아래에 놓이도록 이동한다.
+    // 줌 레벨에 따라 팝업을 줄인다 — 줌아웃하면 지도 축척만 작아지고 팝업 픽셀 크기는
+    // 그대로라 팝업이 화면을 압도해 보였다(사용자 지적 2026-08-20). 줌이 낮을 때는 넓은
+    // 지역을 훑어보는 상황이라 팝업이 지도를 가리면 안 되고, 줌이 높을 때는 특정 건물을
+    // 들여다보는 상황이라 정보를 넉넉히 보여주는 게 맞다.
+    //   z>=16(건물 단위) → 100% / z13 → 70% / z<=11(도시 단위) → 50%
+    const POPUP_H_CAP = 420;
+    function popupZoomFactor() {
+      const z = map.getZoom();
+      if (z >= 16) return 1;
+      if (z <= 11) return 0.5;
+      return 0.5 + (z - 11) * 0.1;
+    }
     function syncPopupMaxHeight() {
       // getSize() 는 캐시값이라 레이아웃이 잡히기 전엔 0 이 나온다. 그때는 실제 DOM 높이를 쓴다.
       const el = map.getContainer();
       const h = map.getSize().y || el.clientHeight || 0;
       if (h < 120) return;   // 아직 레이아웃 전 — 기본값(CSS)을 그대로 둔다
-      document.documentElement.style.setProperty('--popup-max-h', Math.round(h * 0.62) + 'px');
+      const row = el.querySelector('.ctl-row');
+      // top:10px + 컨트롤 높이 + 여유 8px. 컨트롤이 아직 없으면 0.
+      const reserve = row ? Math.round(row.getBoundingClientRect().height) + 18 : 0;
+      // 팝업 껍데기(래퍼 padding 28+28, tip, 여백)에 약 90px 쓰이므로 그만큼 더 뺀다.
+      // 150px 하한 — 이보다 작으면 제목 한 줄도 안 보인다. 부족한 만큼은 스크롤로 본다.
+      const avail = Math.max(150, Math.round(Math.min(h - reserve - 90, POPUP_H_CAP) * popupZoomFactor()));
+      document.documentElement.style.setProperty('--popup-max-h', avail + 'px');
+      // autoPan 여백은 팝업이 열릴 때마다 프로토타입 옵션에서 읽히므로 여기서 갱신해두면
+      // 개별 bindPopup 호출을 전부 고치지 않아도 모든 팝업에 적용된다.
+      L.Popup.prototype.options.autoPanPaddingTopLeft = L.point(12, reserve + 6);
+      L.Popup.prototype.options.autoPanPaddingBottomRight = L.point(12, 12);
     }
     map.on('resize zoomend', syncPopupMaxHeight);
+    // 팝업은 대부분 '정보 불러오는 중…'으로 작게 열린 뒤 비동기로 내용이 채워진다. 팝업은
+    // 앵커에서 위로 자라므로, 열릴 때는 상단 컨트롤 줄 아래에 잘 들어갔다가 내용이 도착한
+    // 순간 위로 커지며 '일반지도/위성지도/…' 썸네일을 덮었다(실측 2026-08-20: 세로 87px 겹침).
+    // Leaflet autoPan 은 open 시점에 한 번만 돌아 이 성장을 못 잡는다.
+    // popup._adjustPan() 을 다시 부르는 방법은 실패했다 — dy 를 -101 로 계산해 놓고도 실제
+    // 지도를 움직이지 않았다(내부 조기 반환 조건). map.panBy 자체는 정상이라(실측: 팝업
+    // 104→205px) Leaflet 내부에 의존하지 않고 겹침을 DOM 좌표로 직접 재서 그만큼 밀어낸다.
+    // update() 는 쓰지 않는다 — innerHTML 을 다시 그려서 비동기로 채운 내용을 지운다.
+    const CTL_GAP = 8;          // 컨트롤 줄과 팝업 사이 최소 여백(px)
+    let _nudging = false;
+    function nudgePopupBelowControls(pop) {
+      if (_nudging || !pop || !pop._map) return;
+      const el = pop.getElement();
+      const mc = map.getContainer();
+      const row = mc && mc.querySelector('.ctl-row');
+      if (!el || !row) return;
+      const pr = el.getBoundingClientRect(), rr = row.getBoundingClientRect();
+      // 컨트롤 줄은 가로 중앙에만 있다. 팝업이 그 폭과 안 겹치면 밀어낼 이유가 없다.
+      if (Math.min(pr.right, rr.right) - Math.max(pr.left, rr.left) <= 0) return;
+      const need = Math.round(rr.bottom + CTL_GAP - pr.top);
+      if (need <= 1) return;
+      _nudging = true;
+      map.panBy([0, -need], { animate: false });
+      // panBy 가 유발하는 move/resize 연쇄에 다시 끌려들어가지 않게 한 프레임 뒤 해제한다.
+      requestAnimationFrame(() => { _nudging = false; });
+    }
+    let _popRO = null;
+    map.on('popupopen', (ev) => {
+      const pop = ev.popup;
+      const el = pop && pop.getElement();
+      if (!el) return;
+      nudgePopupBelowControls(pop);
+      if (typeof ResizeObserver !== 'function') return;
+      if (_popRO) _popRO.disconnect();
+      let raf = 0;
+      _popRO = new ResizeObserver(() => {
+        // rAF 로 묶는다 — 내용이 여러 번 갱신되면 옵저버가 연달아 불린다.
+        if (raf) return;
+        raf = requestAnimationFrame(() => { raf = 0; nudgePopupBelowControls(pop); });
+      });
+      _popRO.observe(el);
+    });
+    map.on('popupclose', () => { if (_popRO) { _popRO.disconnect(); _popRO = null; } });
+    // 초기 로드 때는 지도가 아직 레이아웃되지 않아(높이 <120) 위 함수가 조기 반환하고,
+    // 그 뒤 resize/zoomend 가 한 번도 안 오면 상단 예약 높이가 반영되지 않은 채 남는다
+    // (실측 2026-08-20: 첫 로드 후 --popup-max-h 가 비어 있었다). 레이아웃이 안정될 때까지
+    // 몇 번 더 시도한다. getBoundingClientRect 한 번씩이라 비용은 무시할 수준.
+    [0, 400, 1500].forEach((ms) => setTimeout(syncPopupMaxHeight, ms));
     // 컨테이너 크기가 바뀌면 Leaflet 에 알려야 한다. 안 그러면 캐시된 크기(0일 수도)로
     // 타일·클러스터·팝업 위치를 계산해 화면과 어긋난다.
     // rAF로 묶는다 — 우측 패널을 드래그로 리사이즈하는 동안 ResizeObserver가 프레임마다
@@ -3819,6 +3899,11 @@
         map.getContainer().appendChild(row);
         L.DomEvent.disableClickPropagation(row);
         L.DomEvent.disableScrollPropagation(row);
+        // 이 줄이 생기기 전에 이미 syncPopupMaxHeight 가 돌았을 수 있다(그때는 .ctl-row 가
+        // 없어 상단 예약 높이가 0). 실제 높이가 잡힌 뒤 한 번 더 갱신해 팝업이 이 줄을
+        // 덮지 않도록 한다. 썸네일 이미지가 늦게 로드돼 높이가 바뀌는 경우까지 잡으려고
+        // rAF 로 한 프레임 미룬다.
+        requestAnimationFrame(syncPopupMaxHeight);
       }
     }
     // 실거래가 데이터는 초기 렌더를 막지 않도록 브라우저가 한가할 때 미리 로드 (클릭 팝업의 '근처 실거래'에 사용)
@@ -4834,7 +4919,37 @@
       msr.ctrl._container.querySelector('#msr-stat').textContent = msr.pts.length + '개 지점 · ' + (tot >= 1000 ? (tot / 1000).toFixed(2) + 'km' : Math.round(tot) + 'm');
     }
 
+    // ── 드래그를 클릭으로 오인하지 않게 하는 가드 (2026-08-20) ──────────
+    // 지도를 잡아 끌어 위치를 옮기면, 끌기 시작 지점의 건물 팝업이 열리는 문제가 있었다.
+    // Leaflet 자체 판정(map.dragging.moved())은 dragend 에서 _moved 가 리셋된 뒤 click 이
+    // 도착하는 순서가 있어 걸러지지 않는 경우가 있다. 그래서 포인터 이동 거리를 직접 재서
+    // 임계값을 넘으면 이어지는 click 한 번을 버린다.
+    // capture 단계에서 듣는다 — Leaflet 이 이벤트를 소비하기 전에 좌표를 확보해야 한다.
+    let _pointerDownAt = null, _pointerDragged = false;
+    const DRAG_SLOP = 6;   // px. 손떨림·트랙패드 미세 이동은 클릭으로 인정한다.
+    {
+      const mc = map.getContainer();
+      mc.addEventListener('pointerdown', (ev) => {
+        if (!ev.isPrimary) return;
+        _pointerDownAt = [ev.clientX, ev.clientY];
+        _pointerDragged = false;
+      }, true);
+      mc.addEventListener('pointermove', (ev) => {
+        if (!_pointerDownAt || !ev.isPrimary) return;
+        if (Math.abs(ev.clientX - _pointerDownAt[0]) > DRAG_SLOP
+          || Math.abs(ev.clientY - _pointerDownAt[1]) > DRAG_SLOP) _pointerDragged = true;
+      }, true);
+      mc.addEventListener('pointerup', () => { _pointerDownAt = null; }, true);
+      // 포인터가 지도 밖에서 떨어지면 pointerup 이 안 올 수 있다 — 그때도 상태를 정리한다.
+      mc.addEventListener('pointercancel', () => { _pointerDownAt = null; _pointerDragged = false; }, true);
+    }
+
     map.on('click', (e) => {
+      // 드래그로 지도를 옮긴 직후의 click 은 버린다(위 가드 참고). 한 번만 버리고 리셋한다.
+      if (_pointerDragged) { _pointerDragged = false; return; }
+      // 팝업이 열리기 직전에 상단 컨트롤 예약 높이를 다시 잰다. 배경지도 썸네일이 늦게
+      // 로드되거나 창 폭이 바뀌어 .ctl-row 높이가 달라졌어도 이 시점 값이 맞다.
+      syncPopupMaxHeight();
       // 팝업 안에서 시작된 클릭은 지도 클릭으로 취급하지 않는다.
       // '건축물대장 상세 보기' 같은 팝업 내부 버튼을 누르면 클릭이 지도까지 올라와,
       // 버튼이 놓인 화면 지점의 좌표로 새 팝업이 열리며 다른 필지로 갈아타는 문제가 있었다.
