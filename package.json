@@ -4,6 +4,7 @@
   "description": "서울 맛집을 취향 기반으로 추천받고 지도·길찾기로 찾아가는 서비스 + 부동산 투자자를 위한 원격 임장 지도.",
   "main": "index.js",
   "dependencies": {
+    "aws4fetch": "^1.0.20",
     "playwright-core": "^1.62.1",
     "polygon-clipping": "^0.15.7",
     "robust-predicates": "^3.0.3",

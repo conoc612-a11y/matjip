@@ -2190,13 +2190,20 @@
       }
       const wonEok = (v) => v ? v.toLocaleString('ko-KR', { maximumFractionDigits: 2 }) + '억원' : '';
       const aucColor = (s) => (s || '').includes('유찰') ? '#fa5252' : '#f08c00';
+      // 경매 사진 호스팅 — 사진 바이너리는 git 밖(Cloudflare R2)에 둔다. 16,000장이 넘어
+      // 300MB 를 넘겼고, git 에 두면 GitHub Pages 게시 1GB 제한과 .git 비대화에 걸린다.
+      // auction_photos.json 의 file 값이 R2 오브젝트 키와 동일한 상대경로라, 여기서
+      // 공개 URL 만 앞에 붙이면 되고 JSON 은 손댈 필요가 없다.
+      // 빈 문자열로 두면 저장소 안의 로컬 파일을 그대로 쓴다(오프라인 개발용).
+      const PHOTO_BASE = 'https://pub-a6a10fc408f54f35af0436f2731a7e80.r2.dev/';
+      const photoUrl = (p) => (p && p.file ? PHOTO_BASE + p.file : '');
       // 팝업용 사진 그리드 — photos 는 { dvs, name, file } 메타 배열, file 은 상대 경로
       function auctionPhotoHtml(d) {
         const ph = (label) => `<div class="auc-photo"><span class="auc-photo-ph">${label}</span></div>`;
         if (!d.photos || !d.photos.length) {
           return `<div class="auc-photos">${ph('📷 사진<br>준비 중')}${ph('')}${ph('')}</div>`;
         }
-        const cells = d.photos.slice(0, 3).map((p, i) => `<div class="auc-photo"><img src="${esc(p.file)}" alt="물건 사진 ${i + 1}" loading="lazy"></div>`);
+        const cells = d.photos.slice(0, 3).map((p, i) => `<div class="auc-photo"><img src="${esc(photoUrl(p))}" alt="물건 사진 ${i + 1}" loading="lazy"></div>`);
         while (cells.length < 3) cells.push(ph(''));
         if (d.photos.length > 3) cells.push(`<div class="auc-photo"><span class="auc-photo-more">+${d.photos.length - 3}</span></div>`);
         return `<div class="auc-photos">${cells.join('')}</div>`;
@@ -2271,7 +2278,7 @@
         const rows = [
           ['감정', wonEok(d.appr)], ['최저', wonEok(d.low)], ['용도', d.use], ['매각기일', d.sale],
         ].filter(([, v]) => v != null && v !== '').map(([k, v]) => `${k} ${esc(v)}`).join(' · ');
-        const thumb = d.photos && d.photos.length ? `<img class="ap-thumb" src="${esc(d.photos[0].file)}" alt="" loading="lazy">` : '<span class="ap-thumb ap-thumb-ph">📷</span>';
+        const thumb = d.photos && d.photos.length ? `<img class="ap-thumb" src="${esc(photoUrl(d.photos[0]))}" alt="" loading="lazy">` : '<span class="ap-thumb ap-thumb-ph">📷</span>';
         return `<div class="ap-row" data-i="${idx}">
           ${thumb}
           <div class="ap-row-main">
@@ -2390,7 +2397,7 @@
         } else {
           const p = photos[Math.min(apdIdx, photos.length - 1)];
           phEl.innerHTML = `
-            <img src="${esc(p.file)}" alt="${esc(p.name)} ${apdIdx + 1}" id="apd-photo-img">
+            <img src="${esc(photoUrl(p))}" alt="${esc(p.name)} ${apdIdx + 1}" id="apd-photo-img">
             ${photos.length > 1 ? `<div class="apd-count">${apdIdx + 1} / ${photos.length}</div>
             <button type="button" class="apd-nav apd-prev" id="apd-nav-prev" aria-label="이전">‹</button>
             <button type="button" class="apd-nav apd-next" id="apd-nav-next" aria-label="다음">›</button>` : ''}
@@ -2516,7 +2523,7 @@
         const photos = lbD.photos || [];
         if (!photos.length) return;
         const p = photos[Math.min(lbIdx, photos.length - 1)];
-        $('apd-lb-img').src = p.file;
+        $('apd-lb-img').src = photoUrl(p);
         $('apd-lb-cap').textContent = `${esc(p.name)} ${lbIdx + 1} / ${photos.length}`;
       }
       $('apd-lb-close').onclick = lightboxClose;
