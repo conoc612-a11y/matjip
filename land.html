@@ -169,6 +169,20 @@
     .ap-addr { flex:1; min-width:0; font-weight:600; overflow-wrap:anywhere; }
     .ap-star { flex-shrink:0; border:none; background:none; cursor:pointer; color:var(--muted); font-size:15px; line-height:1; padding:2px 0 0 2px; }
     .ap-star.on { color:#f08c00; }
+    /* 지도에서 아이콘을 클릭한 물건 — 목록 맨 위에 고정하고 눈에 띄게 표시(2026-08-21 사용자 요청).
+       클릭한 게 어느 행인지 못 찾는 문제를 없애는 게 목적이라 테두리+배경으로 분명히 구분한다. */
+    .ap-row.pinned { border:1px solid var(--c-primary); background:var(--c-primary-soft); }
+    .ap-pin-tag { flex-shrink:0; font-size:10px; font-weight:700; color:#fff; background:var(--c-primary);
+      padding:1px 6px; border-radius:999px; margin-top:1px; }
+    /* 경매 팝업의 즐겨찾기 별표 — 목록 행의 .ap-star 와 같은 색·크기를 쓴다(같은 기능이니까). */
+    .auc-pop-fav { flex-shrink:0; border:none; background:none; cursor:pointer; color:var(--muted); font-size:16px; line-height:1; padding:0 2px; }
+    .auc-pop-fav.on { color:#f08c00; }
+    /* 경매 팝업의 바로가기 6종 — 상세 패널의 .apd-go 와 같은 외형을 유지한다. */
+    .auc-pop-gos { display:flex; flex-wrap:wrap; gap:4px; margin-top:7px; }
+    .auc-pop-go { flex:1 1 30%; font:inherit; font-size:11px; font-weight:600; padding:6px 4px; border:1px solid var(--line);
+      background:var(--card); color:var(--text); border-radius:8px; cursor:pointer; white-space:nowrap; }
+    .auc-pop-go:hover { border-color:var(--c-primary); color:var(--c-primary); }
+    .auc-pop-go:active { background:var(--c-primary); color:#fff; }
     .ap-cn { text-align:left; border:none; background:none; color:var(--c-primary); cursor:pointer; font-size:12px; padding:0; text-decoration:underline; }
     .ap-court { color:var(--muted); font-size:12px; }
     .ap-meta { margin-top:3px; color:var(--muted); font-size:12px; overflow-wrap:anywhere; }
@@ -2280,6 +2294,9 @@
         if (!m || !m._pop) return;
         if (!m.getPopup() && m._pop) m.bindPopup(m._pop());
         m.openPopup();
+        // 클릭한 물건을 왼쪽 목록 맨 위로 올린다(2026-08-21 요청). _idx 는 auctionBuild 에서
+        // 심어둔 auctionRows 인덱스다.
+        if (auctionRows && m._idx != null) auctionPinToTop(auctionRows[m._idx]);
       });
       let auctionRows = null, _auctionPromise = null;
       function loadAuction() {
@@ -2331,7 +2348,57 @@
           ['감정평가액', wonEok(d.appr)], ['최저매각가격', wonEok(d.low)],
           ['진행상태', d.status], ['담당계 매각기일', d.sale], ['비고', d.note],
         ].filter(([, v]) => v != null && v !== '').map(([k, v]) => `<div style="display:flex;justify-content:space-between;gap:10px;"><span style="color:var(--c-muted);flex-shrink:0;">${k}</span><b style="text-align:right;">${esc(v)}</b></div>`).join('');
-        return `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${aucColor(d.status)};flex-shrink:0;"></span><span class="rp-name">${esc(d.addr)}</span><span style="font-size:12px;background:${aucColor(d.status)};color:#fff;padding:1px 8px;border-radius:999px;">경매</span></div><div class="pc-body">${auctionPhotoHtml(d)}${rows}<div style="margin-top:3px;font-size:12px;color:var(--c-muted);">상세 내역은 courtauction.go.kr 에서 사건번호로 조회</div></div></div>`;
+        // 즐겨찾기·바로가기는 팝업에도 둔다(사용자 요청 2026-08-21). 목록 행(.ap-star)과
+        // 상세 패널(.apd-go)에만 있어서, 지도에서 아이콘을 클릭한 흐름에서는 쓸 수 없었다.
+        // 클릭 배선은 popupopen 에서 한다(aucPopWire) — 팝업은 문자열로 만들어지고 Leaflet 이
+        // disableClickPropagation 으로 이벤트 전파를 끊어 document 위임이 통하지 않는다.
+        // 식별자는 data-* 로 실어 보낸다: 팝업 DOM 만 보고 어떤 물건인지 알 수 있어야 한다.
+        const favOn = auctionFavLoad().indexOf(auctionFavKey(d)) >= 0;
+        const favBtn = `<button type="button" class="auc-pop-fav${favOn ? ' on' : ''}" title="즐겨찾기">${favOn ? '★' : '☆'}</button>`;
+        const goBtns = `<div class="auc-pop-gos">${AUC_GO_LABELS.map((l) =>
+          `<button type="button" class="auc-pop-go" data-go="${esc(l)}">${esc(l)}</button>`).join('')}</div>`;
+        return `<div class="pc" data-favkey="${esc(auctionFavKey(d))}" data-i="${d._i}"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${aucColor(d.status)};flex-shrink:0;"></span><span class="rp-name">${esc(d.addr)}</span>${favBtn}<span style="font-size:12px;background:${aucColor(d.status)};color:#fff;padding:1px 8px;border-radius:999px;">경매</span></div><div class="pc-body">${auctionPhotoHtml(d)}${rows}${goBtns}<div style="margin-top:3px;font-size:12px;color:var(--c-muted);">상세 내역은 courtauction.go.kr 에서 사건번호로 조회</div></div></div>`;
+      }
+      // 팝업의 즐겨찾기·바로가기 버튼 배선. 팝업이 열릴 때마다 호출된다.
+      function aucPopWire(popup) {
+        const el = popup && popup.getElement && popup.getElement();
+        const pc = el && el.querySelector('.pc[data-favkey]');
+        if (!pc) return;                       // 경매 팝업이 아니다
+        const d = auctionRows && auctionRows[+pc.dataset.i];
+        if (!d) return;
+        const star = pc.querySelector('.auc-pop-fav');
+        if (star && !star._wired) {
+          star._wired = true;
+          star.onclick = (ev) => {
+            ev.stopPropagation();
+            const on = auctionFavToggle(pc.dataset.favkey);
+            star.classList.toggle('on', on);
+            star.textContent = on ? '★' : '☆';
+            auctionRenderList();               // 목록의 별표·즐겨찾기 필터도 함께 갱신
+          };
+        }
+        pc.querySelectorAll('.auc-pop-go').forEach((b) => {
+          if (b._wired) return;
+          b._wired = true;
+          b.onclick = (ev) => { ev.stopPropagation(); aucPopGoClick(d, b.dataset.go, b); };
+        });
+      }
+      // 팝업 바로가기 클릭. 상세 패널로 표시 가능한 항목(사건내역·기일내역)은 패널을 열어
+      // 해당 섹션으로 보내고, 문서류(감정평가서 등)는 법원 사이트에서만 열람 가능하므로
+      // 기존 상세 패널과 동일하게 '사건번호 복사 + 사건검색 열기'로 처리한다.
+      function aucPopGoClick(d, label, btn) {
+        if (APD_LOCAL_GO[label] && d.detail) {
+          auctionOpenDetail(d);
+          requestAnimationFrame(() => apdGoClick(label));
+          return;
+        }
+        const cs = apdGsNo(d);
+        if (cs && navigator.clipboard) {
+          navigator.clipboard.writeText(cs).then(() => {
+            if (btn) { const t = btn.textContent; btn.textContent = '복사됨 ✓'; setTimeout(() => { btn.textContent = t; }, 1200); }
+          }).catch(() => { });
+        }
+        window.open(AUC_SEARCH_URL, '_blank', 'noopener');
       }
       // aucColor()는 값이 2가지(유찰 #fa5252 / 그외 #f08c00)뿐인데 예전엔 물건마다(최대
       // 2,896개) L.divIcon 인스턴스를 새로 만들었다(2026-08-13 코드리뷰로 발견). 색상별로
@@ -2391,15 +2458,19 @@
         localStorage.setItem(AUCT_FAV_KEY, JSON.stringify(list));
         return i < 0;
       }
-      function auctionRowHtml(d, fav, idx) {
+      // 지도에서 아이콘을 클릭한 물건의 즐겨찾기 키. 목록에서 맨 위로 올린다(2026-08-21 요청).
+      // 인덱스가 아니라 키로 잡는다 — 검색·즐겨찾기 필터로 목록이 걸러져도 같은 물건을 가리켜야 한다.
+      let auctionPinnedKey = null;
+      function auctionRowHtml(d, fav, idx, pinned) {
         const rows = [
           ['감정', wonEok(d.appr)], ['최저', wonEok(d.low)], ['용도', d.use], ['매각기일', d.sale],
         ].filter(([, v]) => v != null && v !== '').map(([k, v]) => `${k} ${esc(v)}`).join(' · ');
         const thumb = d.photos && d.photos.length ? `<img class="ap-thumb" src="${esc(photoUrl(d.photos[0]))}" alt="" loading="lazy">` : '<span class="ap-thumb ap-thumb-ph">📷</span>';
-        return `<div class="ap-row" data-i="${idx}">
+        return `<div class="ap-row${pinned ? ' pinned' : ''}" data-i="${idx}">
           ${thumb}
           <div class="ap-row-main">
             <div class="ap-row-top">
+              ${pinned ? '<span class="ap-pin-tag">지도 선택</span>' : ''}
               <span class="ap-badge" style="background:${aucColor(d.status)};">${esc(d.status)}</span>
               <b class="ap-addr">${esc(d.addr)}</b>
               <button type="button" class="ap-star${fav ? ' on' : ''}" title="즐겨찾기">${fav ? '★' : '☆'}</button>
@@ -2413,10 +2484,25 @@
         if (!auctionRows) { auctionList.innerHTML = ''; return; }
         const favs = new Set(auctionFavLoad());
         const q = auctionQuery.trim().toLowerCase();
-        const shown = auctionRows.map((d, i) => ({ d, i, fav: favs.has(auctionFavKey(d)) }))
+        const shown = auctionRows.map((d, i) => ({ d, i, fav: favs.has(auctionFavKey(d)), key: auctionFavKey(d) }))
           .filter((x) => (!auctionFavOnly || x.fav) && (!q || auctionMatch(x.d)));
+        // 지도에서 클릭한 물건을 맨 위로. 나머지 순서는 건드리지 않는다(안정 정렬).
+        // 필터에 걸려 목록에 없으면 핀은 그냥 무시된다 — 필터를 임의로 풀지 않는다.
+        if (auctionPinnedKey) {
+          const at = shown.findIndex((x) => x.key === auctionPinnedKey);
+          if (at > 0) shown.unshift(shown.splice(at, 1)[0]);
+        }
         $('ap-count').textContent = (q || auctionFavOnly ? shown.length + '/' + auctionRows.length + '건' : auctionRows.length + '건');
-        auctionList.innerHTML = shown.map((x) => auctionRowHtml(x.d, x.fav, x.i)).join('');
+        auctionList.innerHTML = shown.map((x) => auctionRowHtml(x.d, x.fav, x.i, x.key === auctionPinnedKey)).join('');
+      }
+      // 지도 아이콘 클릭 → 그 물건을 목록 맨 위로 올리고 목록을 보여준다(2026-08-21 요청).
+      function auctionPinToTop(d) {
+        if (!d) return;
+        auctionPinnedKey = auctionFavKey(d);
+        // 상세 패널이 열려 있으면 목록으로 돌려놔야 맨 위로 올린 게 보인다.
+        if (auctionDetail && !auctionDetail.hidden) { auctionDetail.hidden = true; auctionList.hidden = false; }
+        auctionRenderList();
+        auctionList.scrollTop = 0;             // 아래로 스크롤된 상태였다면 맨 위로
       }
       $('ap-search').oninput = (e) => { auctionQuery = e.target.value; auctionRenderList(); };
       auctionList.onclick = (e) => {
@@ -2770,6 +2856,9 @@
       // 팝업 공통 컨트롤 부착 — 모든 Leaflet 팝업(정비·실거래·빌라·CCTV)에 그립 리사이즈 + 접기 적용
       map.on('popupopen', (e) => {
         attachPopupControls(e.popup);
+        // 경매 팝업의 즐겨찾기·바로가기 버튼 배선. 팝업 내용은 문자열로 만들어지고 Leaflet 이
+        // disableClickPropagation 으로 전파를 끊으므로 document 위임이 아니라 여기서 직접 건다.
+        aucPopWire(e.popup);
         // 열린 레이어 패널(.lp-body)이 팝업과 겹치면 자동으로 접는다 — 팝업이 패널에 덮여
         // 닫기·접기·스크롤바·드래그 핸들이 가려지는 문제(실측 2026-08-16)를 방지. 패널은 팝업이
         // 닫혀도 접힌 채 유지된다(레일의 .lp-toggle 로 다시 펼 수 있음).
