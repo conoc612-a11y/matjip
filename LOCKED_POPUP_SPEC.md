@@ -65,7 +65,7 @@ CSS 를 추가하지 말 것** — 스택 문맥이 바뀌어 오히려 어긋�
 > ⚠️ **줄번호는 참고용이다.** `land.html` 은 43만 자가 넘고 편집마다 줄이 밀린다
 > (2026-08-20 실측 기준으로 갱신했다). **줄번호로 찾지 말고 아래 식별자로 grep 하라** —
 > 그게 항상 맞다: `.ctl-row {`, `leaflet-popup-pane { z-index`, `POPUP_H_CAP`,
-> `nudgePopupBelowControls`, `_pointerDownAt`.
+> `nudgePopupIntoSafeArea`, `_pointerDownAt`.
 
 ### BLOCK-A — `.ctl-row` z-index (CSS, `land.html` 427행 근처)
 
@@ -114,24 +114,56 @@ CSS 를 추가하지 말 것** — 스택 문맥이 바뀌어 오히려 어긋�
     map.on('resize zoomend', syncPopupMaxHeight);
 ```
 
-### BLOCK-D — 겹침 감지 후 지도 밀어내기 (JS, BLOCK-C 바로 뒤)
+### BLOCK-D — 지도 위 UI(상단 컨트롤·왼쪽 패널) 회피 (JS, BLOCK-C 바로 뒤)
+
+2026-08-21 확장: 상단 컨트롤 줄 외에 **왼쪽 패널(`.left-panels`)** 도 피한다. 패널은
+`z-index:2000` 으로 팝업(1200)보다 위라 팝업이 그 아래로 들어가면 내용이 안 보인다.
+그래서 함수명이 `nudgePopupBelowControls` → `nudgePopupIntoSafeArea` 로 바뀌었다.
 
 ```js
-    const CTL_GAP = 8;          // 컨트롤 줄과 팝업 사이 최소 여백(px)
+    const CTL_GAP = 8;          // 겹침 회피 시 확보할 최소 여백(px)
     let _nudging = false;
-    function nudgePopupBelowControls(pop) {
+    // 지도 위에 떠 있는 UI(상단 컨트롤 줄, 왼쪽 패널)를 팝업이 가리지 않도록 지도를 밀어낸다.
+    // 둘 다 z-index 가 팝업(1200)보다 높아(.ctl-row 1300, .left-panels 2000) 팝업이 그 아래로
+    // 들어가면 내용이 그냥 안 보인다. clampPopup 은 '지도 경계'만 보므로 이 둘은 모른다(§5-1).
+    function nudgePopupIntoSafeArea(pop) {
       if (_nudging || !pop || !pop._map) return;
       const el = pop.getElement();
       const mc = map.getContainer();
-      const row = mc && mc.querySelector('.ctl-row');
-      if (!el || !row) return;
-      const pr = el.getBoundingClientRect(), rr = row.getBoundingClientRect();
-      // 컨트롤 줄은 가로 중앙에만 있다. 팝업이 그 폭과 안 겹치면 밀어낼 이유가 없다.
-      if (Math.min(pr.right, rr.right) - Math.max(pr.left, rr.left) <= 0) return;
-      const need = Math.round(rr.bottom + CTL_GAP - pr.top);
-      if (need <= 1) return;
+      if (!el || !mc) return;
+      const pr = el.getBoundingClientRect(), mr = mc.getBoundingClientRect();
+      let dx = 0, dy = 0;
+
+      // ① 상단 컨트롤 줄(줌 + 배경지도 썸네일). 가로 중앙에만 있으므로 가로로 겹칠 때만 본다.
+      const row = mc.querySelector('.ctl-row');
+      if (row) {
+        const rr = row.getBoundingClientRect();
+        if (Math.min(pr.right, rr.right) - Math.max(pr.left, rr.left) > 0) {
+          const need = Math.round(rr.bottom + CTL_GAP - pr.top);
+          if (need > 1) dy = need;
+        }
+      }
+
+      // ② 왼쪽 패널(.left-panels). 컨테이너는 pointer-events:none 이고 폭이 자식(열린 패널)에서
+      //    나오므로, 패널이 하나도 없으면 폭 0 이 되어 자동으로 건너뛴다. 패널은 폭 조절이 가능해
+      //    고정값을 쓰지 않고 매번 실제 오른쪽 끝을 잰다.
+      const panels = document.querySelector('.left-panels');
+      if (panels) {
+        const lr = panels.getBoundingClientRect();
+        if (lr.width > 1 && pr.left < lr.right + CTL_GAP) {
+          const need = Math.round(lr.right + CTL_GAP - pr.left);
+          // 오른쪽으로 더 갈 수 있는 여유. 팝업이 패널 오른쪽 공간보다 넓으면(좁은 화면)
+          // 완전히 피할 수는 없다 — 그때도 여유만큼은 밀어 가림을 줄인다. 전부 포기하는 것보다
+          // 낫고, 지도 밖으로 밀어내 clampPopup 과 서로 당기는 일도 없다.
+          const room = Math.round(mr.right - CTL_GAP - pr.right);
+          if (need > 1 && room > 1) dx = Math.min(need, room);
+        }
+      }
+
+      if (!dx && !dy) return;
       _nudging = true;
-      map.panBy([0, -need], { animate: false });
+      // panBy 는 뷰를 그만큼 옮기므로 내용은 반대로 움직인다 → 부호를 뒤집어 준다.
+      map.panBy([-dx, -dy], { animate: false });
       // panBy 가 유발하는 move/resize 연쇄에 다시 끌려들어가지 않게 한 프레임 뒤 해제한다.
       requestAnimationFrame(() => { _nudging = false; });
     }
@@ -140,14 +172,14 @@ CSS 를 추가하지 말 것** — 스택 문맥이 바뀌어 오히려 어긋�
       const pop = ev.popup;
       const el = pop && pop.getElement();
       if (!el) return;
-      nudgePopupBelowControls(pop);
+      nudgePopupIntoSafeArea(pop);
       if (typeof ResizeObserver !== 'function') return;
       if (_popRO) _popRO.disconnect();
       let raf = 0;
       _popRO = new ResizeObserver(() => {
         // rAF 로 묶는다 — 내용이 여러 번 갱신되면 옵저버가 연달아 불린다.
         if (raf) return;
-        raf = requestAnimationFrame(() => { raf = 0; nudgePopupBelowControls(pop); });
+        raf = requestAnimationFrame(() => { raf = 0; nudgePopupIntoSafeArea(pop); });
       });
       _popRO.observe(el);
     });
@@ -423,7 +455,7 @@ CCTV 는 실시간 영상용(`maxWidth:760`)과 표준데이터 정보용(`maxWi
 
 이걸 모르고 한쪽을 "중복"이라 판단해 지우면 반대쪽 버그가 즉시 재발한다.
 
-| | `clampPopup` (기존, 2026-08-07) | `nudgePopupBelowControls` (신규, 2026-08-20) |
+| | `clampPopup` (기존, 2026-08-07) | `nudgePopupIntoSafeArea` (신규, 2026-08-20) |
 |---|---|---|
 | 목적 | 팝업이 **지도 밖으로** 넘치지 않게 | 팝업이 **상단 컨트롤 줄**을 덮지 않게 |
 | 판정 기준 | 지도 컨테이너 경계 (`POPUP_PAD = 12`) | `.ctl-row` 의 `getBoundingClientRect()` |
@@ -454,7 +486,7 @@ CCTV 는 실시간 영상용(`maxWidth:760`)과 표준데이터 정보용(`maxWi
 지도를 옮겼더니 ① 팝업이 자라날 때마다 ② 줌 후에 지도가 훌쩍 이동해
 **"클릭한 좌표가 다른 곳으로 이동 / 줌하면 다른 화면으로 이동"** 이라는 사용자 제보가 있었다.
 
-`nudgePopupBelowControls` 는 그 원칙에 **반대로** `panBy` 를 쓴다. 타협점은 범위 제한이다:
+`nudgePopupIntoSafeArea` 는 그 원칙에 **반대로** `panBy` 를 쓴다. 타협점은 범위 제한이다:
 
 - `.ctl-row` 와 **가로로 실제 겹칠 때만** 동작 (겹치지 않으면 즉시 반환)
 - 겹친 **정확한 픽셀만큼만** 이동 (`need = ctlRow.bottom + 8 - popup.top`)
@@ -495,3 +527,32 @@ CCTV 는 실시간 영상용(`maxWidth:760`)과 표준데이터 정보용(`maxWi
 - 검증: 두 분기 모두 닫기 1 / 접기 1 / 그립 1, 닫기 동작 정상, 영상 슬롯 유지.
 - ⚠️ `TROUBLESHOOTING.md` §40 의 "CCTV 는 별도 setTimeout 에서 **먼저** 추가하므로
   `attachPopupControls` 에서 건너뜀"은 **순서가 반대로 적힌 오류**다.
+
+## 6-9. 왼쪽 패널 회피 — 좁은 화면에서는 완전 회피가 불가능하다 (2026-08-21 실측)
+
+`.left-panels`(`position:absolute; left:0; z-index:2000`)는 지도 위 오버레이이고 팝업보다
+z-index 가 높다. 마커가 패널 뒤에 있으면 팝업이 패널에 가려진다.
+
+**구조적 한계**: 팝업 폭 > (지도 폭 − 패널 폭) 이면 물리적으로 들어갈 자리가 없다.
+실측(지도 546px / 패널 340px / 팝업 493px, 가용 206px):
+
+| 상황 | 결과 |
+|---|---|
+| 팝업 493px, 가용 206px | 오른쪽 여유(8px 여백까지)를 **전부 소진해 밀림**. 겹침 299→295px. 완전 회피 불가 |
+| 팝업 177px, 가용 206px | 팝업 좌측 348 / 패널 우측 340 → **겹침 0px**, 여백 정확히 8px |
+
+즉 **로직은 정확하고, 공간이 있으면 완전히 회피한다.** 좁은 창에서 겹침이 남는 것은 버그가
+아니라 자리 부족이다. 이때도 "전부 아니면 전무"로 포기하지 않고 **여유만큼은 민다**
+(`dx = Math.min(need, room)`).
+
+### ⛔ 이 문제를 이렇게 "고치지" 말 것
+
+| 시도 | 왜 안 되나 |
+|---|---|
+| `.leaflet-popup-content` 의 `max-width` 를 안전영역 폭으로 제한 | `max-width` 는 **리사이즈 상한**이라 사용자가 팝업을 넓히는 걸 막는다(코드 주석에 명시된 의도). 좁은 화면을 위해 넓은 화면의 기능을 깎는 셈 |
+| 지도 밖으로라도 밀어버리기 | `clampPopup` 이 지도 안으로 되당겨 서로 싸운다(§5-1). 그래서 `room` 으로 상한을 둔다 |
+| `.left-panels` z-index 를 팝업 아래로 내리기 | 패널이 팝업에 가려져 목록·검색을 못 쓴다. 패널이 위인 건 의도다 |
+| 패널 폭을 코드에 상수로 박기 | 패널은 사용자가 폭 조절 가능(200~640px)하고 접을 수도 있다. 매번 `getBoundingClientRect` 로 실측해야 한다 |
+
+**좁은 창에서 겹침이 실제로 불편하면** 선택지는 두 가지다: 패널 폭을 줄이거나(드래그로 200px까지),
+패널을 접는다(접기 탭). 코드로 강제하지 않는 이유는 위 표와 같다.

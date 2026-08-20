@@ -1329,21 +1329,49 @@
     // 콜백이 0회가 된다(과거 실측 기록). 래퍼는 내용이 차오르는 동안 실제로 커진다.
     //
     // update() 는 쓰지 않는다 — innerHTML 을 다시 그려서 비동기로 채운 내용을 지운다.
-    const CTL_GAP = 8;          // 컨트롤 줄과 팝업 사이 최소 여백(px)
+    const CTL_GAP = 8;          // 겹침 회피 시 확보할 최소 여백(px)
     let _nudging = false;
-    function nudgePopupBelowControls(pop) {
+    // 지도 위에 떠 있는 UI(상단 컨트롤 줄, 왼쪽 패널)를 팝업이 가리지 않도록 지도를 밀어낸다.
+    // 둘 다 z-index 가 팝업(1200)보다 높아(.ctl-row 1300, .left-panels 2000) 팝업이 그 아래로
+    // 들어가면 내용이 그냥 안 보인다. clampPopup 은 '지도 경계'만 보므로 이 둘은 모른다(§5-1).
+    function nudgePopupIntoSafeArea(pop) {
       if (_nudging || !pop || !pop._map) return;
       const el = pop.getElement();
       const mc = map.getContainer();
-      const row = mc && mc.querySelector('.ctl-row');
-      if (!el || !row) return;
-      const pr = el.getBoundingClientRect(), rr = row.getBoundingClientRect();
-      // 컨트롤 줄은 가로 중앙에만 있다. 팝업이 그 폭과 안 겹치면 밀어낼 이유가 없다.
-      if (Math.min(pr.right, rr.right) - Math.max(pr.left, rr.left) <= 0) return;
-      const need = Math.round(rr.bottom + CTL_GAP - pr.top);
-      if (need <= 1) return;
+      if (!el || !mc) return;
+      const pr = el.getBoundingClientRect(), mr = mc.getBoundingClientRect();
+      let dx = 0, dy = 0;
+
+      // ① 상단 컨트롤 줄(줌 + 배경지도 썸네일). 가로 중앙에만 있으므로 가로로 겹칠 때만 본다.
+      const row = mc.querySelector('.ctl-row');
+      if (row) {
+        const rr = row.getBoundingClientRect();
+        if (Math.min(pr.right, rr.right) - Math.max(pr.left, rr.left) > 0) {
+          const need = Math.round(rr.bottom + CTL_GAP - pr.top);
+          if (need > 1) dy = need;
+        }
+      }
+
+      // ② 왼쪽 패널(.left-panels). 컨테이너는 pointer-events:none 이고 폭이 자식(열린 패널)에서
+      //    나오므로, 패널이 하나도 없으면 폭 0 이 되어 자동으로 건너뛴다. 패널은 폭 조절이 가능해
+      //    고정값을 쓰지 않고 매번 실제 오른쪽 끝을 잰다.
+      const panels = document.querySelector('.left-panels');
+      if (panels) {
+        const lr = panels.getBoundingClientRect();
+        if (lr.width > 1 && pr.left < lr.right + CTL_GAP) {
+          const need = Math.round(lr.right + CTL_GAP - pr.left);
+          // 오른쪽으로 더 갈 수 있는 여유. 팝업이 패널 오른쪽 공간보다 넓으면(좁은 화면)
+          // 완전히 피할 수는 없다 — 그때도 여유만큼은 밀어 가림을 줄인다. 전부 포기하는 것보다
+          // 낫고, 지도 밖으로 밀어내 clampPopup 과 서로 당기는 일도 없다.
+          const room = Math.round(mr.right - CTL_GAP - pr.right);
+          if (need > 1 && room > 1) dx = Math.min(need, room);
+        }
+      }
+
+      if (!dx && !dy) return;
       _nudging = true;
-      map.panBy([0, -need], { animate: false });
+      // panBy 는 뷰를 그만큼 옮기므로 내용은 반대로 움직인다 → 부호를 뒤집어 준다.
+      map.panBy([-dx, -dy], { animate: false });
       // panBy 가 유발하는 move/resize 연쇄에 다시 끌려들어가지 않게 한 프레임 뒤 해제한다.
       requestAnimationFrame(() => { _nudging = false; });
     }
@@ -1352,14 +1380,14 @@
       const pop = ev.popup;
       const el = pop && pop.getElement();
       if (!el) return;
-      nudgePopupBelowControls(pop);
+      nudgePopupIntoSafeArea(pop);
       if (typeof ResizeObserver !== 'function') return;
       if (_popRO) _popRO.disconnect();
       let raf = 0;
       _popRO = new ResizeObserver(() => {
         // rAF 로 묶는다 — 내용이 여러 번 갱신되면 옵저버가 연달아 불린다.
         if (raf) return;
-        raf = requestAnimationFrame(() => { raf = 0; nudgePopupBelowControls(pop); });
+        raf = requestAnimationFrame(() => { raf = 0; nudgePopupIntoSafeArea(pop); });
       });
       _popRO.observe(el);
     });
@@ -4464,14 +4492,14 @@
     // 함수 자체를 고친다 — 열 때·내용 갱신·줌 전부 같은 경로로 정확히 맞춰진다.
     //
     // ⚠️ 위 "ResizeObserver 0회"는 **content(.leaflet-popup-content)를 관찰한 경우**다.
-    // 2026-08-20 에 추가한 nudgePopupBelowControls 는 **래퍼(.leaflet-popup)** 를 관찰해
+    // 2026-08-20 에 추가한 nudgePopupIntoSafeArea 는 **래퍼(.leaflet-popup)** 를 관찰해
     // 정상 동작한다(상한에 걸리기 전까지 래퍼는 실제로 커진다). 두 기록은 모순이 아니다 —
     // 관찰 대상이 다르다. "ResizeObserver 는 안 된다"고 일반화해서 그 코드를 지우지 말 것.
     //
     // ⚠️ 이 오버라이드 때문에 popup._adjustPan() 은 **Leaflet 코드가 아니다.** 호출하면
     // clampPopup 이 돌고, clampPopup 의 판정 기준은 **지도 경계뿐**이라 상단 컨트롤 줄
     // (.ctl-row) 겹침은 보지 않는다. 그래서 컨트롤 겹침은 별도 로직
-    // (nudgePopupBelowControls, syncPopupMaxHeight 근처)이 담당한다. **둘은 역할이 다르니
+    // (nudgePopupIntoSafeArea, syncPopupMaxHeight 근처)이 담당한다. **둘은 역할이 다르니
     // 하나를 지우면 다른 버그가 재발한다** — clampPopup 삭제 → 팝업이 지도 밖으로 넘침,
     // nudge 삭제 → 팝업이 배경지도 썸네일을 덮음.
     if (L.Popup && L.Popup.prototype) {
