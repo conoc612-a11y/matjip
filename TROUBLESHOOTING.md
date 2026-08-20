@@ -24,7 +24,22 @@
    이고 §37 이 음수를 금지한다. `land.html` 주석에도 같은 낡은 값이 남아 있어 2026-08-20 에 수정했다.)
 4. 값을 바꾸기 전에 **§3 / §6-6 형태의 "하지 말 것" 목록**을 먼저 확인하라.
 
-**현재 기각/대체된 절**: §30(스트립 핸들 + window click 차단), §30-2(그립 음수 bottom)
+**현재 기각/대체/철회된 절**: §30(스트립 핸들 + window click 차단), §30-2(그립 음수 bottom),
+§36 마지막 불릿(마커 자석 — 코드에 0건), §2-1 "ResizeObserver 하지 말 것"(과도한 일반화, 정정됨)
+
+### 🔴 2026-08-20 이전 커밋 해시는 전부 무효다
+
+`git filter-repo` 로 히스토리를 재작성했다(경매 사진을 git 밖으로 분리). **모든 커밋 해시가 바뀌었다.**
+이 문서와 `HANDOFF.md` 에 인용된 옛 해시는 `git show` 가 `unknown revision` 을 낸다.
+
+**해시를 못 찾는다고 "그 수정은 실제로 안 됐다" 또는 "기록을 신뢰할 수 없다"고 판단하지 마라.**
+기록 내용은 유효하고 해시만 죽었다. 그렇게 오판해서 이미 적용된 수정을 다시 하거나 되돌리는 것이
+바로 이 문서가 막으려는 무한 반복이다.
+
+- 옛→새 해시 대응표: `C:\Users\conoc\matjip_backup_before_filter_20260820\_filter_repo_maps\commit-map`
+- 정리 이전 저장소 전체 백업: `C:\Users\conoc\matjip_backup_before_filter_20260820`
+  (GitHub 브랜치 `pre-r2-migration-backup` 에도 동일 이력)
+- 검증하려면 **해시가 아니라 코드를 직접 grep** 하라. 그게 항상 최신 사실이다.
 
 ---
 
@@ -75,8 +90,21 @@ await page.route('**/js/auth-guard.js', (route) => route.abort());
   - 실측: 팝업 top 이 −52px 로 모든 줌 레벨에서 동일하게 잘림.
 - **원인 ②**: 상세 내용(토지·건물 정보, 인근 상호)은 `update()` 가 내용을 지우는 걸 피하려고 **팝업 DOM 에 직접 주입**한다. 그래서 `update()` → `_adjustPan()` 경로를 아예 안 탄다.
 - **해결**: `L.Popup.prototype._adjustPan` 을 **직접 계산하는 구현으로 교체**(플래그 없이, 실제로 잘렸는지 픽셀로 보고 최소 거리만 재배치). DOM 직접 주입 지점에서도 재배치를 명시적으로 호출.
-- **하지 말 것**: ResizeObserver 로 팝업 성장 감지 → `--popup-max-h` 에 걸리면 컨테이너 크기가 더는 안 변해 **콜백이 0회**다(실측). 시도해봤고 안 된다.
+- ~~**하지 말 것**: ResizeObserver 로 팝업 성장 감지 → 콜백이 0회다~~
+  ⚠️ **2026-08-20 정정 — 이 금지는 과도한 일반화였다. ResizeObserver 는 현재 채택된 해결책이다.**
+  당시 실측이 틀린 건 아니지만 **관찰 대상**이 문제였다:
+  - `content`(`.leaflet-popup-content`) 관찰 → `--popup-max-h` 상한에 걸려 크기가 더 안 변함 → **콜백 0회** (당시 실측)
+  - **래퍼**(`popup.getElement()` = `.leaflet-popup`) 관찰 → 내용이 차오르는 동안 실제로 커짐 → **정상 동작**
+  현재 `nudgePopupBelowControls` 가 래퍼를 관찰해 컨트롤 겹침을 해결한다
+  ([`LOCKED_POPUP_SPEC.md`](LOCKED_POPUP_SPEC.md) §2 BLOCK-D). **이 문장을 근거로 그 코드를 지우지 말 것.**
 - **2026-08-07 변경 (지도 고정)**: 재배치를 `map.panBy`(animate:false) 로 지도를 움직이던 방식에서, **`popup.options.offset` 을 조정해 팝업만 지도 안으로 밀어 넣는 방식으로 교체**(`clampPopup()`). 지도를 움직이면 ① 클릭 직후 팝업이 자라날 때마다 ② 줌 후에 지도가 훌쩍 옮겨 '클릭 좌표가 다른 곳으로 이동 / 줌하면 다른 화면으로 이동'처럼 보인다(사용자 제보). 참조 사이트(서울도시공간포털)처럼 지도는 고정하고 팝업만 정렬한다.
+  - ⚠️ **2026-08-20 보충 — 이 원칙은 여전히 유효하지만 `panBy` 가 완전히 없어진 것은 아니다.**
+    `clampPopup` 의 판정 기준은 **지도 경계뿐**이라 상단 컨트롤 줄(`.ctl-row`) 겹침은 보지 않는다.
+    그 겹침만 담당하는 별도 로직(`nudgePopupBelowControls`)이 **겹친 픽셀만큼만** `panBy` 한다.
+    **두 로직은 역할이 다르니 하나를 "중복"으로 보고 지우면 반대쪽 버그가 재발한다.**
+    관계·경계는 [`LOCKED_POPUP_SPEC.md`](LOCKED_POPUP_SPEC.md) §5-1 이 정본이다.
+    또한 이 오버라이드 때문에 **`popup._adjustPan()` 은 Leaflet 코드가 아니다** — 호출하면
+    `clampPopup` 이 돈다. 이걸 모르고 "Leaflet 내부 조기 반환"이라 오진한 기록이 있었다(정정됨).
   - `clampPopup` 은 `getBoundingClientRect()` 로 넘침을 픽셀 계산 → `offset` 을 줄여 `p._updatePosition()` 호출(내용 재렌더 없이 재배치만 — Leaflet 1.9.4 Popup 기준). 부호: 아래/오른쪽 넘침이면 offset 을 줄이고, 위/왼쪽이면 늘린다(`off - dx/dy`).
   - `_updatePosition` 는 `_zoomAnimated` 분기에 따라 transform 과 bottom/left 둘 다 재설정하므로 offset 변경이 화면에 그대로 반영된다. offset 이 배열일 수 있으니 반드시 `L.point(offset || [0,0])` 로 정규화.
 
@@ -1062,7 +1090,16 @@ gh api repos/conoc612-a11y/matjip/pages/builds/latest --jq '{status:.status, com
 - **원인(실측)**: `saveLayerState()`(land.html ~3505, 키 `mj_layer_tree_v1`)가 레이어 토글을 localStorage에 저장하고 로드 시 `restoreLayerState()`로 복원 — **이전 probe/세션이 켰던 레이어가 다음 로드에 기본 켜짐으로 복원**된다.
 - **해결/방법**: 검증 시 ① fresh 브라우저 프로필 사용, ② 검증 후 레이어 토글을 꺼둔 뒤 `localStorage.removeItem('mj_layer_tree_v1')`, ③ 아니면 `restoreLayerState()`가 없다고 가정하고 DOM 체크박스(`.lp-midcb`의 `checked`) 상태를 항상 먼저 덤프.
 - **관련**: 클러스터(실거래/연립) 마커는 성능상 mouseover 시점에 `bindTooltip`(1622-1627) — probe에서 마커에 `MouseEvent('mouseover')`를 dispatch하면 클러스터 이벤트 위임(`_eventParents`)으로 핸들러가 실행돼 툴팁이 생긴다(실측).
-- **자석(2026-08-16)**: `magnetize(m)`(~1060)은 마커를 `magMarks`에 등록, mousemove 시 45px 이내로 당김. 클러스터 내 마커는 지도에 직접 add되지 않아 자석이 안 먹히므로 **실거래/EV/경매 클러스터 제외**, CCTV(200개 제한, 직접 addTo)만 포함(3194행). 즐겨찾기 마커(5256/5271)·검색 결과(5378) 포함.
+- ⛔ **철회됨 — 마커 자석 / 커스텀 커서 (2026-08-16 도입 → 전면 철회)**
+  ~~`magnetize(m)` 이 마커를 등록하고 mousemove 시 45px 이내로 당긴다~~
+  **이 기능은 코드에 존재하지 않는다.** 실측(2026-08-20): `magnetize` / `magMarks` / `magCur` /
+  `magTick` / `mag-cursor` / "자석" 문자열이 `land.html` 에 **전부 0건**.
+  5커밋에 걸쳐 시도(좌표 이동 → 고정+확대 강조 → 커스텀 커서 자석 → 손모양 SVG)한 뒤
+  **전면 철회**됐다. 증상은 "공인중개사 아이콘이 마우스 커서로부터 도망간다"였고, 최종
+  결론은 **브라우저 기본 손모양 커서를 그대로 쓴다**는 것이다.
+  철회 경위는 `HANDOFF.md` 세션 56 에 있다. **사용자 지시: 커스텀 커서는 처음부터 제안하지 말 것.**
+  ⚠️ 이 절의 줄번호(~1060, 3194, 5256/5271, 5378)는 전부 무효다. 예전 기록을 보고
+  "있어야 할 기능이 사라졌다"고 판단해 **재구현하지 말 것.**
 
 ---
 
@@ -1151,6 +1188,14 @@ gh api repos/conoc612-a11y/matjip/pages/builds/latest --jq '{status:.status, com
   2. `attachPopupControls()`에서 X도 **JS로 래퍼에 직접 추가**(`top:3px; right:3px`)
   3. −는 기존대로 `top:3px; right:30px`
   4. CCTV 중복 방지: `[aria-label="닫기"]` existence 체크
+     ⚠️ **2026-08-20 정정** — 여기 적혀 있던 "CCTV 는 별도 setTimeout 에서 **먼저** 추가하므로
+     `attachPopupControls` 에서 건너뜀"은 **순서가 반대로 적힌 오류**였다. `openOn()` 이
+     `popupopen` 을 **동기 발생**시키므로 `attachPopupControls` 가 먼저 돌고, 그 뒤 실행되는
+     `setTimeout(…,0)` 이 존재 체크 없이 닫기를 **또** 만들어 **같은 좌표에 2개가 겹쳐 있었다**
+     (실측: `[aria-label="닫기"]` 2개, 둘 다 507,223). 육안·클릭으로는 정상처럼 보여 오래
+     발견되지 않았다. **CCTV 두 분기(영상/정보)의 닫기 생성 코드를 제거**해 해결했다
+     (`setTimeout` 은 `mountCctvVideo` 때문에 유지). 이제 팝업 컨트롤 추가는
+     `attachPopupControls` 한 곳뿐이다. 상세는 [`LOCKED_POPUP_SPEC.md`](LOCKED_POPUP_SPEC.md) §5-3.
   → **모든 팝업 타입(정비·실거래·빌라·CCTV)에서 동일한 추가 방식 통일**
 - **잘못된 접근(재발 방지)**:
   - ❌ flex 헤더 방식 — ×와 −가 다른 레이어에 위치하게 됨.

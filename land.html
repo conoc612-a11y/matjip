@@ -1286,9 +1286,23 @@
     // 앵커에서 위로 자라므로, 열릴 때는 상단 컨트롤 줄 아래에 잘 들어갔다가 내용이 도착한
     // 순간 위로 커지며 '일반지도/위성지도/…' 썸네일을 덮었다(실측 2026-08-20: 세로 87px 겹침).
     // Leaflet autoPan 은 open 시점에 한 번만 돌아 이 성장을 못 잡는다.
-    // popup._adjustPan() 을 다시 부르는 방법은 실패했다 — dy 를 -101 로 계산해 놓고도 실제
-    // 지도를 움직이지 않았다(내부 조기 반환 조건). map.panBy 자체는 정상이라(실측: 팝업
-    // 104→205px) Leaflet 내부에 의존하지 않고 겹침을 DOM 좌표로 직접 재서 그만큼 밀어낸다.
+    //
+    // ⚠️ popup._adjustPan() 을 다시 부르는 방법은 통하지 않는다. 이유는 Leaflet 내부가 아니라
+    // 이 프로젝트 코드다 — 아래쪽(clampPopup 근처)에서 L.Popup.prototype._adjustPan 을
+    // clampPopup 으로 **통째로 교체**해 뒀다. clampPopup 은 '지도를 움직이지 않고 offset 만
+    // 조정'하는 함수이고 판정 기준도 **지도 경계**뿐이라, .ctl-row 겹침은 애초에 보지 않는다.
+    // (그래서 호출해도 겹침이 그대로 남는다. 2026-08-20 에 "Leaflet 내부 조기 반환"이라고
+    //  잘못 기록했다가 정정함.)
+    //
+    // 그래서 겹침은 DOM 좌표로 직접 재서 map.panBy 로 밀어낸다(실측: 팝업 104→205px).
+    // ⚠️ 이건 clampPopup 의 '지도 고정' 원칙과 방향이 반대다 — 아래 clampPopup 주석 참고.
+    // 다만 여기서는 .ctl-row 와 실제로 겹칠 때만, 겹친 만큼만 움직인다(대개 팝업 1회당 1번).
+    // 전면 panBy 로 되돌리면 과거의 '클릭·줌마다 지도가 훌쩍 이동' 문제가 재발한다.
+    //
+    // ResizeObserver 대상은 반드시 **래퍼(pop.getElement() = .leaflet-popup)** 여야 한다.
+    // content(.leaflet-popup-content)를 관찰하면 --popup-max-h 상한에 걸려 크기가 더 안 변해
+    // 콜백이 0회가 된다(과거 실측 기록). 래퍼는 내용이 차오르는 동안 실제로 커진다.
+    //
     // update() 는 쓰지 않는다 — innerHTML 을 다시 그려서 비동기로 채운 내용을 지운다.
     const CTL_GAP = 8;          // 컨트롤 줄과 팝업 사이 최소 여백(px)
     let _nudging = false;
@@ -3507,14 +3521,12 @@
           setTimeout(() => {
             const node = popup.getElement();
             if (!node) return;
-            const closeBtn = document.createElement('button');
-            closeBtn.type = 'button';
-            closeBtn.className = 'ui-pop-btn';
-            closeBtn.setAttribute('aria-label', '닫기');
-            closeBtn.innerHTML = '&times;';
-            closeBtn.style.cssText = 'position:absolute;top:3px;right:3px;z-index:1100';
-            node.appendChild(closeBtn);
-            closeBtn.onclick = () => map.closePopup(popup);
+            // 닫기·접기·그립은 attachPopupControls(popupopen 핸들러)가 이미 붙였다.
+            // 여기서 닫기를 또 만들면 같은 좌표에 2개가 겹친다 — 실측으로 확인해 제거함
+            // (2026-08-20: CCTV 팝업의 [aria-label="닫기"] 가 2개, 둘 다 507,223).
+            // openOn() 은 popupopen 을 동기 발생시키므로 이 setTimeout(0) 보다 먼저 돈다.
+            // 문서(§40)엔 "CCTV 가 먼저 추가하므로 건너뜀"이라 적혀 있었으나 순서가 반대였다.
+            // 팝업 컨트롤 추가는 attachPopupControls 한 곳으로만 한다.
             mountCctvVideo(node.querySelector('#cctv-video-slot'), it.url);
           }, 0);
         } else {
@@ -3534,18 +3546,9 @@
             + `<div class="cctv-pc-info">${metaHtml || '<div class="cctv-info-row"><span class="cctv-info-v">상세 정보 없음</span></div>'}</div>`
             + `<div class="cctv-pc-meta">행정안전부 전국 CCTV 표준데이터 · 좌표 ${it.lat.toFixed(5)}, ${it.lng.toFixed(5)}</div></div>`;
           const popup = L.popup({ closeButton: false, maxWidth: 400 }).setLatLng([it.lat, it.lng]).setContent(html).openOn(map);
-          setTimeout(() => {
-            const node = popup.getElement();
-            if (!node) return;
-            const closeBtn = document.createElement('button');
-            closeBtn.type = 'button';
-            closeBtn.className = 'ui-pop-btn';
-            closeBtn.setAttribute('aria-label', '닫기');
-            closeBtn.innerHTML = '&times;';
-            closeBtn.style.cssText = 'position:absolute;top:3px;right:3px;z-index:1100';
-            node.appendChild(closeBtn);
-            closeBtn.onclick = () => map.closePopup(popup);
-          }, 0);
+          // 닫기·접기·그립은 attachPopupControls(popupopen 핸들러)가 붙인다. 예전엔 여기서도
+          // 닫기를 만들어 같은 좌표에 2개가 겹쳐 있었다(2026-08-20 실측). 제거함 — 위 영상
+          // 분기와 동일한 이유. 팝업 컨트롤 추가는 attachPopupControls 한 곳으로만 한다.
         }
       }
       map.on('overlayadd', (e) => { if (e.layer === cctvLayer) loadCctv(); });
@@ -4359,6 +4362,18 @@
     // ResizeObserver 로 잡으려 했지만 --popup-max-h 에 걸리면 컨테이너 크기가 더 이상
     // 변하지 않아 콜백이 아예 오지 않는다(실측 0회). 그래서 호출 지점이 아니라
     // 함수 자체를 고친다 — 열 때·내용 갱신·줌 전부 같은 경로로 정확히 맞춰진다.
+    //
+    // ⚠️ 위 "ResizeObserver 0회"는 **content(.leaflet-popup-content)를 관찰한 경우**다.
+    // 2026-08-20 에 추가한 nudgePopupBelowControls 는 **래퍼(.leaflet-popup)** 를 관찰해
+    // 정상 동작한다(상한에 걸리기 전까지 래퍼는 실제로 커진다). 두 기록은 모순이 아니다 —
+    // 관찰 대상이 다르다. "ResizeObserver 는 안 된다"고 일반화해서 그 코드를 지우지 말 것.
+    //
+    // ⚠️ 이 오버라이드 때문에 popup._adjustPan() 은 **Leaflet 코드가 아니다.** 호출하면
+    // clampPopup 이 돌고, clampPopup 의 판정 기준은 **지도 경계뿐**이라 상단 컨트롤 줄
+    // (.ctl-row) 겹침은 보지 않는다. 그래서 컨트롤 겹침은 별도 로직
+    // (nudgePopupBelowControls, syncPopupMaxHeight 근처)이 담당한다. **둘은 역할이 다르니
+    // 하나를 지우면 다른 버그가 재발한다** — clampPopup 삭제 → 팝업이 지도 밖으로 넘침,
+    // nudge 삭제 → 팝업이 배경지도 썸네일을 덮음.
     if (L.Popup && L.Popup.prototype) {
       L.Popup.prototype._adjustPan = function () {
         if (!this.options.autoPan) return;

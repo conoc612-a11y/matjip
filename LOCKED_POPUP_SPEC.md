@@ -188,7 +188,8 @@
 
 | 시도 | 결과 | 왜 실패했나 |
 |---|---|---|
-| `popup._adjustPan()` 을 다시 호출 | **실패** | 내부적으로 dy=-101 을 계산해 놓고도 지도를 움직이지 않았다(조기 반환 조건). `map.panBy` 로 직접 밀어야 한다 |
+| `popup._adjustPan()` 을 다시 호출 | **실패** | **이 프로젝트가 `L.Popup.prototype._adjustPan` 을 `clampPopup` 으로 통째로 교체해 뒀다**(§5-1 참고). 즉 Leaflet 코드가 아니고, `clampPopup` 은 지도 경계만 보고 `.ctl-row` 겹침은 보지 않는다. `map.panBy` 로 직접 밀어야 한다 |
+| `ResizeObserver` 로 **content** 관찰 | **콜백 0회** | `--popup-max-h` 상한에 걸리면 content 크기가 더 안 변한다. **래퍼(`.leaflet-popup`)를 관찰해야 한다** — 현재 코드가 그렇게 한다 |
 | `popup.update()` 호출 | **금지** | innerHTML 을 재렌더해 비동기로 채운 내용을 지운다 |
 | `autoPanPaddingTopLeft` 만 주고 끝내기 | **불충분** | autoPan 은 open 시점 1회만 돈다. 팝업은 그 뒤 내용이 채워지며 위로 자란다 |
 | `--popup-max-h` 를 `vh` 로 고정 | **실패** | 지도가 화면 일부일 때 팝업이 지도 밖으로 넘친다 |
@@ -404,3 +405,82 @@ CCTV 는 실시간 영상용(`maxWidth:760`)과 표준데이터 정보용(`maxWi
               '→', c.bottom < g.top ? '겹침 없음 OK' : '⚠️ 겹침');
 })();
 ```
+
+---
+
+## 5-1. ⚠️ 반드시 알아야 할 구조 — 팝업 위치 로직은 **두 개**가 공존한다
+
+이걸 모르고 한쪽을 "중복"이라 판단해 지우면 반대쪽 버그가 즉시 재발한다.
+
+| | `clampPopup` (기존, 2026-08-07) | `nudgePopupBelowControls` (신규, 2026-08-20) |
+|---|---|---|
+| 목적 | 팝업이 **지도 밖으로** 넘치지 않게 | 팝업이 **상단 컨트롤 줄**을 덮지 않게 |
+| 판정 기준 | 지도 컨테이너 경계 (`POPUP_PAD = 12`) | `.ctl-row` 의 `getBoundingClientRect()` |
+| 방식 | `popup.options.offset` 조정 (**지도는 안 움직임**) | `map.panBy` (**지도를 움직임**) |
+| 호출 경로 | `L.Popup.prototype._adjustPan` **오버라이드** | `popupopen` + `ResizeObserver(래퍼)` |
+| 삭제하면 | 팝업이 지도 밖으로 잘림 | 팝업이 배경지도 썸네일을 덮음 |
+
+### `_adjustPan` 은 Leaflet 코드가 아니다
+
+`land.html` 에서 이렇게 교체돼 있다:
+
+```js
+    if (L.Popup && L.Popup.prototype) {
+      L.Popup.prototype._adjustPan = function () {
+        if (!this.options.autoPan) return;
+        clampPopup(this);
+      };
+    }
+```
+
+그래서 `popup._adjustPan()` 을 호출해도 **Leaflet 의 autoPan 이 아니라 `clampPopup` 이 돈다.**
+`clampPopup` 은 지도 경계만 보므로 컨트롤 겹침은 해결되지 않는다.
+2026-08-20 에 이걸 "Leaflet 내부 조기 반환 조건"이라고 **잘못 기록했다가 정정했다.**
+
+### 설계 긴장 — 지도를 움직이는가
+
+`clampPopup` 은 "**지도를 절대 움직이지 않는다**"는 원칙으로 도입됐다. 과거에 `map.panBy` 로
+지도를 옮겼더니 ① 팝업이 자라날 때마다 ② 줌 후에 지도가 훌쩍 이동해
+**"클릭한 좌표가 다른 곳으로 이동 / 줌하면 다른 화면으로 이동"** 이라는 사용자 제보가 있었다.
+
+`nudgePopupBelowControls` 는 그 원칙에 **반대로** `panBy` 를 쓴다. 타협점은 범위 제한이다:
+
+- `.ctl-row` 와 **가로로 실제 겹칠 때만** 동작 (겹치지 않으면 즉시 반환)
+- 겹친 **정확한 픽셀만큼만** 이동 (`need = ctlRow.bottom + 8 - popup.top`)
+- `_nudging` 플래그 + rAF 로 연쇄 재진입 차단
+- 결과적으로 팝업 1회당 대개 1번
+
+**전면 `panBy` 로 되돌리지 말 것** — 과거 제보가 재발한다.
+반대로 `nudge` 를 `offset` 방식으로 바꾸려는 시도도 권하지 않는다: 컨트롤을 피하려면
+약 100px 을 내려야 하는데, `offset` 으로 그만큼 밀면 팝업 꼬리(tip)가 클릭 지점에서
+시각적으로 떨어져 "엉뚱한 곳을 가리키는 팝업"이 된다. `clampPopup` 이 작은 보정에만
+`offset` 을 쓰는 이유가 이것이다.
+
+## 5-2. ⚠️ 2026-08-20 이전 커밋 해시는 전부 무효다
+
+`git filter-repo` 로 히스토리를 재작성했다(경매 사진 제거). **모든 커밋 해시가 바뀌었다.**
+
+- `HANDOFF.md` 에 약 100개, `TROUBLESHOOTING.md` 에 6개의 옛 해시가 인용돼 있는데
+  **2026-08-20 이전 것은 `git show` 가 전부 `unknown revision` 을 낸다.**
+- **해시를 못 찾는다고 "그 수정은 실제로 안 됐다"거나 "기록을 신뢰할 수 없다"고 판단하지 말 것.**
+  기록 자체는 유효하고, 해시만 죽었다.
+- 옛 해시 → 새 해시 대응표:
+  `C:\Users\conoc\matjip_backup_before_filter_20260820\_filter_repo_maps\commit-map` (369줄)
+- 정리 이전 저장소 전체 백업: `C:\Users\conoc\matjip_backup_before_filter_20260820`
+  (GitHub 브랜치 `pre-r2-migration-backup` 에도 동일 이력)
+
+## 5-3. ⚠️ CCTV 팝업 — 닫기 버튼 중복 (2026-08-20 실측·수정)
+
+`openCctvPopup` 은 `openOn(map)` 으로 팝업을 연다. `openOn` 은 `popupopen` 을 **동기 발생**시키므로
+`attachPopupControls` 가 먼저 돌아 닫기·접기·그립을 붙인다. 그 **뒤에** 실행되는 `setTimeout(…, 0)`
+에서 닫기를 또 만들면 **같은 좌표에 2개가 겹친다**(실측: `[aria-label="닫기"]` 2개, 둘 다 507,223).
+
+- 육안·클릭으로는 정상처럼 보여 오래 발견되지 않았다.
+- **위험**: 나중에 X 위치를 옮기면 한 개만 옮겨져 X 가 2개로 보인다 → §40 을 읽고
+  "또 버튼 위치 문제"로 오진해 8커밋 재작업 사이클이 재시작된다.
+- **수정**: CCTV 두 분기(영상 `maxWidth:760` / 정보 `maxWidth:400`) 모두에서 닫기 생성 코드를
+  삭제했다. `setTimeout` 은 `mountCctvVideo` 때문에 유지. **팝업 컨트롤 추가는
+  `attachPopupControls` 한 곳으로만 한다.**
+- 검증: 두 분기 모두 닫기 1 / 접기 1 / 그립 1, 닫기 동작 정상, 영상 슬롯 유지.
+- ⚠️ `TROUBLESHOOTING.md` §40 의 "CCTV 는 별도 setTimeout 에서 **먼저** 추가하므로
+  `attachPopupControls` 에서 건너뜀"은 **순서가 반대로 적힌 오류**다.
