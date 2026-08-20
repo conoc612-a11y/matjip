@@ -2,10 +2,40 @@
 
 > **읽는 순서 (다른 AI / opencode 포함)**
 > 1. 이 파일 — 프로젝트 구조와 규칙
-> 2. **[`TROUBLESHOOTING.md`](TROUBLESHOOTING.md) — 반복해서 터진 버그와 해결법. 코드 만지기 전에 반드시 볼 것.**
+> 2. 🔒 **[`LOCKED_POPUP_SPEC.md`](LOCKED_POPUP_SPEC.md) — 팝업을 건드리기 전에 무조건 먼저.**
+> 3. **[`TROUBLESHOOTING.md`](TROUBLESHOOTING.md) — 반복해서 터진 버그와 해결법. 코드 만지기 전에 반드시 볼 것.**
 >    (Leaflet 팝업/레이어 함정, localhost 키 제약, UPIS·ITS·수출입은행 API 함정, 배포·검증 방법)
-> 3. [`HANDOFF.md`](HANDOFF.md) — 직전 세션이 어디까지 했고 무엇이 남았는지
-> 4. `git log -5`, `git status` 로 교차 확인
+> 4. [`HANDOFF.md`](HANDOFF.md) — 직전 세션이 어디까지 했고 무엇이 남았는지
+> 5. `git log -5`, `git status` 로 교차 확인
+
+## 🔒 LOCKED 영역 — 확정본이 있는 주제 (2026-08-20 신설)
+
+이 프로젝트에서 **같은 문제로 3회 이상 재작업된 주제**들이 있다. 사용자가 이걸 명시적으로
+문제 삼았다: *"기존 기록들 확인하다가 예전에 잘못된 코드를 인식해서 문제 해결이 안되고
+새로 코드짜고 수정하고 무한 반복하는 경우가 있어."*
+
+그래서 **확정된 코드를 그대로 담은 정본 파일**을 둔다. 규칙은 셋뿐이다:
+
+1. **LOCKED 파일이 다른 모든 기록보다 우선한다.** `TROUBLESHOOTING.md`·`HANDOFF.md`·코드 주석·
+   `land.backup-*.html` 과 어긋나면 **LOCKED 가 맞다.** 다른 문서에는 기각된 접근법이 섞여 있다.
+2. **"⛔ 기각됨"/"⛔ 대체됨" 표시가 붙은 절의 해결책은 복원하지 않는다.** 그 절들은 구현 코드를
+   의도적으로 삭제해 뒀다 — 베끼면 현재 코드가 깨진다.
+3. **사용자가 "원래대로 복원해줘"라고 하면** LOCKED 파일의 코드 블록을 그대로 되돌려 넣는다.
+   새로 설계하지 말 것. 새 해법을 시도하기 전에 LOCKED 의 "하지 말 것" 목록에 있는지 확인한다.
+
+| 주제 | 정본 | 상태 |
+|---|---|---|
+| 팝업 위치·크기·줌 비례 축소 | [`LOCKED_POPUP_SPEC.md`](LOCKED_POPUP_SPEC.md) §1~2 | 2026-08-20 사용자 확인 |
+| 지도 드래그 ↔ 클릭 구분 | [`LOCKED_POPUP_SPEC.md`](LOCKED_POPUP_SPEC.md) §2 BLOCK-E | 2026-08-20 사용자 확인 |
+| 팝업 닫기(×)/접기(−) 버튼 위치 | [`LOCKED_POPUP_SPEC.md`](LOCKED_POPUP_SPEC.md) §6 | 2026-08-20 사용자 확인 |
+| 팝업 스크롤바·리사이즈 그립 겹침 | [`LOCKED_POPUP_SPEC.md`](LOCKED_POPUP_SPEC.md) §6 | 2026-08-20 사용자 확인 |
+| 경매 사진 저장 위치(R2) | `TROUBLESHOOTING.md` §41 | 2026-08-20 검증 |
+
+**팝업 z-index 3단 순서는 이것 하나뿐이다** (하나만 바꿔도 과거 버그가 재발):
+
+```
+.lp-body (1000)  <  .leaflet-popup-pane (1200)  <  .ctl-row (1300)
+```
 
 ## 작업 규칙 (모든 AI 공통 — 사용자 지시)
 

@@ -514,8 +514,16 @@
        padding-right 가 대신한다. 이전엔 스크롤바가 오른쪽에서 24px 들어가 "맨 우측에 없다"는 지적이 있었다.
        .leaflet-popup-pane z-index: 기본 700 은 컨트롤 컨테이너 1000 아래라, 열린 레이어 패널(.lp-body,
        z1000)이 팝업의 닫기·접기 버튼과 스크롤바·하단 드래그 핸들을 덮었다(실측 2026-08-16: 1440px에서
-       팝업 우측 124px 를 패널이 가림 → 하단 핸들 드래그 무반응, 스크롤바/버튼 가림). 팝업을 컨트롤 위로
-       올려 모든 팝업 컨트롤이 항상 조작 가능하게 한다. */
+       팝업 우측 124px 를 패널이 가림 → 하단 핸들 드래그 무반응, 스크롤바/버튼 가림).
+
+       ⚠️ 여기서 "팝업을 컨트롤 위로 올린다"는 **레이어 패널(.lp-body, z1000)에 대해서만** 맞다.
+       상단 배경지도 선택줄(.ctl-row)은 반대로 팝업보다 위(z1300)여야 한다 — 안 그러면 팝업이
+       '일반지도/위성지도/…' 썸네일을 덮는다. 확정된 3단 순서는 아래 하나뿐이다:
+
+            .lp-body (1000)  <  .leaflet-popup-pane (1200)  <  .ctl-row (1300)
+
+       세 값 중 하나만 바꾸면 과거 버그 둘 중 하나가 반드시 재발한다.
+       근거·복원 방법은 LOCKED_POPUP_SPEC.md, TROUBLESHOOTING §42 참고. */
     .leaflet-popup-pane { z-index: 1200; }
     /* 리사이즈 그립이 둥근 모서리에 잘리지 않도록 */
     .leaflet-popup-content-wrapper { overflow:visible; }
@@ -1171,7 +1179,11 @@
       // 접은 팝업의 복원 칩이 남아 있으면 치운다 — 새 팝업이 열렸다면 옛 칩은 무의미하다.
       if (_restoreChip) { _restoreChip.remove(); _restoreChip = null; }
       // 우하단 크기조절 아이콘 — 드래그 로직은 20260815 백업의 makeResizable() 공용 코드 그대로.
-      // 스크롤바 오른쪽 세로줄 아래(.ui-grip-corner, bottom:-12px 로 세모와 비접촉)에 항상 표시.
+      // 위치는 팝업 우하단 코너 안쪽(.ui-grip-corner = right/bottom:3px)에 항상 표시.
+      // ⚠️ bottom:-12px 는 금지된 값이다(TROUBLESHOOTING §37). 예전 주석이 이 값을 현재
+      // 설정처럼 적어놨으나 실제 CSS 는 bottom:3px 이며, -12px 로 되돌리면 "팝업 창을
+      // 넘어가고 삐뚤어짐" 신고가 재발한다. 스크롤바 겹침은 위치가 아니라 wrapper 의
+      // padding-bottom:28px 로 해결돼 있다.
       const grip = document.createElement('button');
       grip.type = 'button';
       grip.className = 'ui-grip ui-grip-corner';
