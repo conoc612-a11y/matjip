@@ -12,6 +12,68 @@
 
 ---
 
+## 2026-08-20 (65) — Claude Code (경매 사진 Cloudflare R2 이전 + git 히스토리 정리 + 건물 팝업 3버그)
+
+> 사용자 시작 질문: "Supabase → Aiven 으로 서버 옮기면 문제 있을까? 무료 용량 한도 때문에".
+> **결론: 옮기지 않았다.** 병목이 Supabase 가 아니었다.
+
+### 1. 진단 — 용량 병목의 실제 원인 (사용자 인식과 달랐음)
+- 사용자는 "사진이 Supabase Storage(1GB)에 있어서 몇 장씩만 넣었다"고 알고 있었으나, **코드 전체에 `supabase.storage` 참조 0건**. 사진은 **git 저장소에 커밋돼 GitHub Pages 가 서빙**하고 있었다.
+- 실측: `auction_photos/` 16,092개 파일 298MB 가 git tracked, `.git` 팩 **2.48GB**.
+- 진짜 제약은 **GitHub Pages 게시 사이트 1GB 하드 제한**(공식 문서 확인). 사진 298MB + 데이터 JSON 약 50MB ≈ 350MB 로 이미 3분의 1을 썼고, 사진을 3배 늘리면 벽.
+- **Aiven·Neon 검토 결과 부적합**: 둘 다 순수 Postgres 라 Supabase 의 PostgREST 자동 API·RLS·Edge Function 14개를 대체하지 못하고, 무료 용량도 더 크지 않다(Neon 0.5GB). 오브젝트 스토리지도 없어 사진 문제 자체를 못 푼다.
+- 그래서 **Supabase 는 그대로 두고 바이너리만 분리**하는 방향으로 확정.
+
+### 2. 완료 — Cloudflare R2 이전
+- 버킷 `matjip-assets` (Asia-Pacific, Standard). Account ID `f866aebff0114fdd8f12bfef764ac727` (계정 이메일은 conoc@naver.com — gmail 아님).
+- 공개 URL `https://pub-a6a10fc408f54f35af0436f2731a7e80.r2.dev/`. 무료 티어: 저장 10GB / Class A 100만 / Class B 1000만 / **egress 무료**.
+- API 토큰 `matjip-photo-upload` — 권한을 **Object Read & Write + `matjip-assets` 버킷 한정**으로 좁혔다(Admin 아님). 키는 `keys.env`(gitignored) 의 `R2_*` 5개.
+- **`tools/upload_r2.mjs` 신규**: `auction_photos/` → R2 동기화. `aws4fetch` 사용(의존성 1개, 전이 의존성 없음). 매니페스트 `tools/.r2_uploaded.json`(gitignored)로 재실행 시 스킵, 실패분만 재시도. `--dir` / `--force` / `--dry-run`. 키는 `keys.env` 또는 환경변수(CI용).
+- **오브젝트 키 = `auction_photos.json` 의 `file` 값과 동일한 상대경로**로 맞췄다. 그래서 **메타 JSON 은 수정 안 함**.
+- `land.html`: `PHOTO_BASE` + `photoUrl()` 헬퍼 도입, 사진 URL 생성 4곳(팝업 그리드·목록 썸네일·상세 캐러셀·라이트박스) 전부 경유. **`PHOTO_BASE=''` 로 두면 로컬 파일 사용**(오프라인 개발용).
+- **검증**: R2 에 LIST 로 직접 세어 **16,092개 / 260.9MB** — 로컬 파일 수·용량과 일치(매니페스트를 믿지 않고 확인). 특수문자 폴더명(`_중복_`, `_병합_`) 포함 fetch 200. 라이브 사이트에서 실제 사진 렌더링 확인.
+- `Cache-Control: public, max-age=31536000, immutable` 부여 — 파일명이 사건번호+구분+번호로 사실상 불변이라 재방문 시 Class B 를 아예 안 쓴다.
+
+### 3. 완료 — git 히스토리 정리
+- `auction_photos/` 를 `.gitignore` 에 추가 + `git rm -r --cached` (로컬 파일은 **삭제하지 않음** — 수집기 스테이징 영역으로 계속 사용).
+- `git filter-repo --path auction_photos --invert-paths` 로 전체 히스토리에서 제거.
+- **`.git` 2.48GB → 15MB**. 커밋 368개 전부 보존. 히스토리 내 사진 blob 0개 확인.
+- `--force-with-lease` 로 force push. **모든 커밋 해시가 바뀌었다.**
+- **복구 수단 3중**:
+  1. `C:\Users\conoc\matjip_backup_before_filter_20260820` — 정리 이전 저장소 전체 2.9GB(`.git` 2.5GB 포함), `_RECOVERY_README.md` 동봉. **OneDrive 밖에 일부러 뒀다**(안에 두면 3GB 가 동기화됨).
+  2. GitHub 브랜치 `pre-r2-migration-backup` (= 옛 HEAD `bea1a099`).
+  3. `_filter_repo_maps/commit-map` 369줄 — 옛 해시 → 새 해시 대응표.
+- ⚠️ **`pre-r2-migration-backup` 이 있는 동안 GitHub 저장소 용량은 줄지 않는다**(이 브랜치가 사진 blob 을 참조). 1~2주 안정 확인 후 `git push origin --delete pre-r2-migration-backup`.
+
+### 4. 완료 — 건물 팝업 3버그 (커밋 `ecca2af`)
+1. **팝업이 상단 배경지도 선택줄을 덮음**: `.ctl-row` z-index 1000→**1300**(팝업 페인 1200 위) + 팝업 최대높이에서 컨트롤 높이 예약 + **ResizeObserver 로 크기 변화 감지해 `map.panBy` 로 밀어냄**. 실측 겹침 87px → 0px.
+   - **함정**: 팝업은 '정보 불러오는 중…'으로 **작게 열린 뒤 비동기로 내용이 채워지며 위로 자란다**. Leaflet autoPan 은 open 시점에 한 번만 돌아 이걸 못 잡는다.
+   - **함정2**: `popup._adjustPan()` 재호출은 **실패**한다 — 내부 계산으로 dy=-101 을 얻어놓고도 실제로 지도를 움직이지 않았다(조기 반환). `map.panBy` 는 정상이라 그걸 직접 썼다. `popup.update()` 는 절대 쓰지 말 것(innerHTML 재렌더로 비동기 내용 소실).
+2. **줌아웃 시 팝업이 상대적으로 과대**: 줌 레벨 비례 축소(z≥16 100% / z13 70% / z≤11 50%). 실측 z12 에서 지도높이의 46%, z17 은 종전 수준.
+3. **드래그로 지도 옮길 때 시작 지점 팝업이 열림**: 포인터 이동거리를 **capture 단계**에서 직접 재서 6px 초과면 이어지는 click 한 번 폐기. Leaflet 내장 `clickTolerance`(3px)보다 관대해 정상 클릭은 안 막는다. 실측: 드래그 100px → 안 뜸, 제자리 클릭 → 정상.
+
+### 5. 진행 중 — 사진 수집 재개
+- 조사 결과 수집이 멈춘 이유는 **용량이 아니었다**: ① 전체 8~10시간 판정 후 사용자 수동 중단 ② `page.goto` 타임아웃 ③ **테스트용 크롬을 `taskkill /IM chrome.exe` 로 죽일 때 수집기 브라우저까지 같이 죽음**(TROUBLESHOOTING §17). **IP 차단 징후는 없었다.**
+- 400px 축소(`shrink_auction_photos.py`)는 **장수를 줄인 게 아니라 해상도를 낮춘 것** — GitHub Pages 1GB 한도 대응. 사건당 평균 14.3장, 최대 70장, 전 구분 수집.
+- 커버리지: `auction.json` 고유 사건 2,756건 중 사진 보유 **815건(29.6%)**. 반대로 사진 메타 1,125건 중 **310건은 이미 목록에 없는 stale**(`auction_photos.json` 08-14 / `auction.json` 08-17 시점 차이).
+- 이 세션에서 `node tools/collect_auction_photos.js` 재개(인자 없음, cn 기준 스킵이라 안전). 1,125 → 1,190건까지 진행 확인.
+
+### 6. 핵심 교훈
+- **"DB 용량 부족"이라고 느껴도 실제 병목을 먼저 실측할 것.** 이번엔 DB 가 아니라 git + GitHub Pages 였고, DB 를 옮겼다면 몇 시간 낭비 후 같은 벽에 부딪혔다.
+- **이미지·PDF 는 DB 행도 git 도 아니라 오브젝트 스토리지에 둔다.** DB 엔 URL 만.
+- **R2 의 r2.dev 공개 URL 은 Cloudflare 문서상 rate-limited + 캐싱 없음("development purposes only")**. 트래픽이 늘면 정답은 커스텀 도메인(도메인 보유 필요) — `PHOTO_BASE` 한 줄만 바꾸면 된다. Worker 경유는 하루 10만 요청 하드캡(Error 1027)이 새 실패 모드라 권하지 않았다.
+- **다른 PC 에 이 저장소 클론이 있으면 못 쓴다** — 히스토리 재작성으로 해시가 전부 바뀜. 해결은 지우고 다시 클론(데이터 손실 없음).
+- 브라우저 검증 시 `land.html` 은 `js/auth-guard.js` 로 **Supabase 로그인 세션을 요구**한다. 로그인 없이 테스트하려면 그 script 태그만 제거한 `_mockup_*.html` 사본을 만들면 된다(`.gitignore` 가 이미 커버).
+
+### 7. 다음 세션 확인할 것
+- **사진 수집 완료 여부** → 완료되면 `node tools/upload_r2.mjs` 로 새 사진을 R2 에 동기화해야 한다(안 하면 사이트에서 404). 이게 **이전 구조와 달라진 가장 중요한 절차**다.
+- stale 310건(현재 `auction.json` 에 없는 사건 사진) 정리 여부 — 미결정.
+- 사진 구분 코드 **`000242`(19장) 의 이름이 문서·`DVS_NAMES` 어디에도 없다.** `000247`(690장)은 "이름 미확정"으로만 기록됨. 문서에 "구분명 추측 금지" 원칙이 있어 코드 그대로 표시 중.
+- 1~2주 후 `pre-r2-migration-backup` 브랜치 삭제(원격 용량 회수).
+- 원본 해상도 복원 검토 가능해졌음(1GB 제약 해소). 전량 원본 약 6GB 추정 — R2 무료 10GB 안이지만 PDF 감정평가서 공간을 잠식하므로 신중히.
+
+---
+
 ## 2026-08-20 (64) — opencode (건물 팝업 닫기/접기 버튼 같은 줄 정렬 — 최종 확정)
 
 > 사용자: 건물 팝업 닫기(X)/접기(−) 버튼이 다른 줄에 위치 → CCTV와 같은 원인(서로 다른 DOM 레이어).

@@ -1114,3 +1114,43 @@ gh api repos/conoc612-a11y/matjip/pages/builds/latest --jq '{status:.status, com
   - ❌ CSS `right/top`으로 Leaflet 기본 X 위치를 조정 — content-wrapper 레이어에서 벗어나지 못해 −와 절대 같은 줄이 안 됨.
 - **원칙**: Leaflet 팝업의 컨트롤(닫기/접기/그립)은 **반드시 `.leaflet-popup` 래퍼에 직접 추가**할 것. Leaflet 기본 버튼을 CSS로 재위치하는 시도는 하지 말 것 — 매번 같은 문제가 반복됨.
 
+
+## 41. 사진·PDF 같은 바이너리를 git 에 두면 GitHub Pages 1GB 한도에 걸린다 — Cloudflare R2 분리 (2026-08-20)
+
+- **증상**: "무료 용량 한도 때문에 사진을 몇 장씩만 넣었다" → DB(Supabase)를 Aiven/Neon 으로 옮길지 검토하게 됨.
+- **실제 원인**: 사진은 Supabase Storage 에 **없었다**. 코드 전체에 `supabase.storage` 참조 0건. `auction_photos/` 16,092개 298MB 가 **git 에 커밋돼 GitHub Pages 가 서빙**하고 있었고, `.git` 은 2.48GB 로 불어나 있었다.
+- **진짜 제약**: **GitHub Pages 게시 사이트 1GB 하드 제한**(공식 문서). 사진 298MB + 데이터 JSON 약 50MB.
+- **오진 방지**: Aiven·Neon 은 **순수 Postgres** 라 Supabase 의 PostgREST 자동 API·RLS·Edge Function 을 대체하지 못하고 오브젝트 스토리지도 없다. 무료 용량도 더 크지 않다(Neon 0.5GB). **DB 를 옮겨도 사진 문제는 그대로 남는다.**
+- **해결**: Supabase 는 건드리지 않고 바이너리만 Cloudflare R2 로 분리(무료 10GB, **egress 무료**). `tools/upload_r2.mjs`.
+  - **오브젝트 키를 `auction_photos.json` 의 `file` 값과 같은 상대경로로 맞추면 메타 JSON 을 수정할 필요가 없다.** 프론트는 `PHOTO_BASE` 만 앞에 붙인다(`land.html`).
+  - `git filter-repo --path auction_photos --invert-paths` → `.git` 2.48GB → **15MB**.
+- **주의 1 — r2.dev 는 개발용이다**: Cloudflare 문서·대시보드 경고 모두 "rate-limited and not recommended for production. Access and Caching are unavailable". 트래픽이 늘면 커스텀 도메인을 붙일 것(도메인 보유 필요). `PHOTO_BASE` 한 줄 교체로 끝난다.
+- **주의 2 — 수집 후 업로드가 필수 절차로 추가됐다**: `collect_auction_photos.js` 는 여전히 로컬 `auction_photos/` 에만 쓴다. **`node tools/upload_r2.mjs` 를 돌리지 않으면 새 사진은 사이트에서 404.**
+- **주의 3 — 히스토리 재작성은 해시를 전부 바꾼다**: 다른 PC 의 클론은 지우고 다시 클론해야 한다. `filter-repo` 는 안전장치로 `origin` 리모트를 자동 제거하므로 다시 붙여야 한다.
+- **검증 방법**: 매니페스트를 믿지 말고 R2 에 `list-type=2` 로 직접 세어 로컬 파일 수·용량과 비교할 것(실측 16,092개 / 260.9MB 일치). 한글·특수문자 폴더명(`_중복_`, `_병합_`)은 별도로 fetch 200 확인.
+
+## 42. 건물 팝업이 상단 배경지도 선택줄을 덮는다 — autoPan 은 '나중에 자라는 팝업'을 못 잡는다 (2026-08-20)
+
+- **증상**: 지도를 클릭해 건물 팝업이 뜨면 상단 중앙의 `일반지도/위성지도/위성+라벨/OSM` 썸네일 줄(`.ctl-row`)을 덮었다. 실측 세로 겹침 87px.
+- **원인 1 (z-index)**: `.leaflet-popup-pane` 은 §(이전 수정에서) 1200 으로 올려놨고 `.ctl-row` 는 1000 이었다 → 팝업이 컨트롤 위.
+- **원인 2 (진짜 원인)**: **팝업은 '정보 불러오는 중…'으로 작게 열린 뒤 비동기로 내용이 채워지며 앵커에서 위로 자란다.** Leaflet `autoPan` 은 **open 시점에 한 번만** 계산하므로 이 성장을 못 잡는다. 열릴 때는 잘 들어갔다가 내용이 도착한 순간 컨트롤을 덮는다.
+- **막다른 길 — `popup._adjustPan()` 재호출은 안 된다**: 내부 로직을 그대로 재현해보면 `dy = -101` 을 얻는데도 실제로 지도를 움직이지 않는다(조기 반환 조건). `map.panBy([0,-101])` 은 정상 작동한다(실측: 팝업 top 104 → 205).
+- **해결**: `popupopen` 에서 팝업 엘리먼트에 `ResizeObserver` 를 걸고, 크기가 바뀔 때마다 **겹침을 `getBoundingClientRect` 로 직접 재서 그만큼 `map.panBy` 로 밀어낸다.** `.ctl-row` z-index 는 1300 으로 올려 컨트롤이 항상 조작 가능하게 한다. `panBy` 재진입은 플래그 + rAF 로 막는다.
+- **`popup.update()` 는 절대 쓰지 말 것** — innerHTML 을 다시 그려서 비동기로 채운 내용을 지운다.
+- 가로 겹침이 없으면 밀어내지 않는다(`.ctl-row` 는 가로 중앙에만 있음).
+
+## 43. 지도를 드래그하면 시작 지점의 건물 팝업이 열린다 (2026-08-20)
+
+- **증상**: 지도를 잡아 끌어 위치를 옮기면, 끌기 시작 지점의 건물 팝업이 열린다.
+- **원인**: Leaflet 자체 판정(`map.dragging.moved()`)은 `dragend` 에서 `_moved` 가 리셋된 뒤 `click` 이 도착하는 순서가 있어 걸러지지 않는 경우가 있다.
+- **해결**: 지도 컨테이너에서 **capture 단계**로 `pointerdown/pointermove/pointerup` 을 듣고 이동거리를 직접 측정. 6px(`DRAG_SLOP`) 초과면 이어지는 `click` 한 번을 버린다. Leaflet 이 이벤트를 소비하기 전에 좌표를 확보해야 하므로 capture 가 필수.
+- **임계값 근거**: Leaflet 내장 `Draggable.clickTolerance` 가 3px 라 그보다 관대한 6px 를 쓰면 **정상 클릭을 새로 막는 일이 없다**. 실측으로 확인: 3px 미세 이동 시 팝업이 안 뜨는 것은 Leaflet 자체 동작이며 이 가드와 무관(가드 앞단에서 `map` 의 `click` 이 아예 발생하지 않음).
+
+## 44. `land.html` 은 로그인 세션이 필요해 브라우저 자동 검증이 막힌다 (2026-08-20)
+
+- `js/auth-guard.js` 가 Supabase 세션을 확인하고 없으면 `onboarding.html?next=...` 로 `location.replace` 한다. 자동화로 지도를 검증하려 하면 온보딩 페이지만 보인다.
+- **우회**: 그 script 태그만 제거한 사본을 만들어 검증한다. `.gitignore` 에 `_mockup_*.html` 이 이미 있으므로 그 이름을 쓰면 커밋되지 않는다.
+  ```
+  sed 's#<script[^>]*js/auth-guard\.js[^>]*></script>##' land.html > _mockup_land_test.html
+  ```
+- 상대 경로 자원(js/, css/, *.json)을 쓰므로 **반드시 저장소 루트에 두고** 로컬 서버(`node tools/static-server.js`, 포트 **8181**)로 열어야 한다. `file://` 로는 V-World·카카오가 전부 실패한다(§ 로컬호스트 항목 참고).
