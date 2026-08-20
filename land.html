@@ -518,9 +518,12 @@
     .leaflet-popup-tip { background:var(--card); }
     .leaflet-container a.leaflet-popup-close-button {
       color:var(--muted);
-      /* right:1px 로 스크롤바 우측(content 우측)과 일치 — 실측 08-16: 기본 right:0 이면
-         닫기 X(x1285-1309)보다 스크롤바(x1293-1308)가 8px 오른쪽으로 나가 보임. */
-      right:1px;
+      /* X 중심을 스크롤바 트랙과 정렬 (2026-08-20)
+         가로: content margin-right(4.5) + padding-right(24) + scrollbar/2(7.5) ≈ 36
+               X 폭(~24) 절반 빼면 right ≈ 49px → X 중심 = 스크롤바 중심
+         세로: wrapper padding-top(28) = content 시작점 → top:28px = 스크롤바 시작점 */
+      right:49px;
+      top:28px;
       display:flex; align-items:center; justify-content:center;
       font-size:16px; line-height:1; text-decoration:none;
     }
