@@ -267,6 +267,12 @@
     .apd-go { flex:1 1 30%; font:inherit; font-size:12px; font-weight:600; padding:7px 6px; border:1px solid var(--line); background:var(--card); color:var(--text); border-radius:9px; cursor:pointer; }
     .apd-go:hover { border-color:var(--c-primary); color:var(--c-primary); }
     .apd-go:active { background:var(--c-primary); color:#fff; }
+    /* 앱 안에서 바로 열리는 바로가기(감정평가서·매각물건명세서 등)는 구분해 보여준다
+       — 어느 버튼이 법원 사이트로 나가는지(거기선 사건번호를 수기 입력해야 한다) 미리
+       알 수 있어야 헛클릭이 줄어든다. 2026-08-21. */
+    .apd-go.has-local, .auc-pop-go.has-local { border-color:var(--c-primary); color:var(--c-primary); }
+    .apd-go-dot { font-size:7px; vertical-align:super; margin-left:3px; color:var(--c-primary); }
+    .apd-go.has-local:active .apd-go-dot, .auc-pop-go.has-local:active .apd-go-dot { color:#fff; }
     /* ── 경매 상세 자체 데이터 섹션 (기일내역·사건내역·물건명세·제시외·감정요약, 2026-08-17) ── */
     .apd-sec { margin-top:12px; }
     .apd-sec-t { font-size:12px; font-weight:700; color:var(--c-primary); margin-bottom:5px; }
@@ -2383,8 +2389,15 @@
         // 식별자는 data-* 로 실어 보낸다: 팝업 DOM 만 보고 어떤 물건인지 알 수 있어야 한다.
         const favOn = auctionFavLoad().indexOf(auctionFavKey(d)) >= 0;
         const favBtn = `<button type="button" class="auc-pop-fav${favOn ? ' on' : ''}" title="즐겨찾기">${favOn ? '★' : '☆'}</button>`;
-        const goBtns = `<div class="auc-pop-gos">${AUC_GO_LABELS.map((l) =>
-          `<button type="button" class="auc-pop-go" data-go="${esc(l)}">${esc(l)}</button>`).join('')}</div>`;
+        // 앱에서 바로 열리는 버튼(감정평가서·매각물건명세서 등)은 구분해 표시한다.
+        // aucLocalData 는 실제 데이터 유무를 보므로, 데이터가 없는 사건에서는 자동으로
+        // 법원 링크 버튼이 된다.
+        const goBtns = `<div class="auc-pop-gos">${AUC_GO_LABELS.map((l) => {
+          const local = aucLocalData(d, l);
+          return `<button type="button" class="auc-pop-go${local ? ' has-local' : ''}" data-go="${esc(l)}"`
+            + ` title="${local ? '앱에서 바로 보기' : '사건번호 복사 + 법원 사건검색 열기'}">`
+            + `${esc(l)}${local ? '<span class="apd-go-dot" aria-hidden="true">●</span>' : ''}</button>`;
+        }).join('')}</div>`;
         return `<div class="pc" data-favkey="${esc(auctionFavKey(d))}" data-i="${d._i}"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${aucColor(d.status)};flex-shrink:0;"></span><span class="rp-name">${esc(d.addr)}</span>${favBtn}<span style="font-size:12px;background:${aucColor(d.status)};color:#fff;padding:1px 8px;border-radius:999px;">경매</span></div><div class="pc-body">${auctionPhotoHtml(d)}${rows}${goBtns}<div style="margin-top:3px;font-size:12px;color:var(--c-muted);">상세 내역은 courtauction.go.kr 에서 사건번호로 조회</div></div></div>`;
       }
       // 팝업의 즐겨찾기·바로가기 버튼 배선. 팝업이 열릴 때마다 호출된다.
@@ -2415,7 +2428,7 @@
       // 해당 섹션으로 보내고, 문서류(감정평가서 등)는 법원 사이트에서만 열람 가능하므로
       // 기존 상세 패널과 동일하게 '사건번호 복사 + 사건검색 열기'로 처리한다.
       function aucPopGoClick(d, label, btn) {
-        if (APD_LOCAL_GO[label] && d.detail) {
+        if (aucLocalData(d, label)) {
           auctionOpenDetail(d);
           requestAnimationFrame(() => apdGoClick(label));
           return;
@@ -2588,21 +2601,64 @@
       const AUC_GO_LABELS = ['사건내역', '기일내역', '문건/송달', '감정평가서', '현황조사서', '매각물건명세서'];
       // 자체 데이터(auction_detail.json)로 패널 내 렌더가 가능한 버튼 — 클릭 시 해당 섹션으로 이동.
       // 나머지(문건·감정평가서 등)는 문서라 법원 사이트에서만 열람 가능해 복사+새 탭 유지.
-      const APD_LOCAL_GO = { '사건내역': 'apd-sec-sajeon', '기일내역': 'apd-sec-gihui' };
+      // 바로가기 라벨 → 앱 안에서 보여줄 상세 패널 섹션. 후보를 배열로 두고 실제로 렌더된
+      // 첫 섹션으로 보낸다(사건마다 있는 섹션이 다르다).
+      //
+      // 2026-08-21: '감정평가서'·'매각물건명세서'를 추가했다. 이 둘은 법원 응답
+      // (selectAuctnCsSrchRslt.on)에 이미 함께 와서 auction_detail.json 에 저장되고 상세
+      // 패널에도 렌더되고 있었는데, 여기 등록이 안 돼 있어서 데이터가 있는데도 법원
+      // 사이트로 내보냈다. 법원 사이트는 딥링크가 불가해(§6-12) 사건번호를 수기로 입력해야
+      // 한다 — 이미 가진 데이터를 두고 사용자에게 그 수고를 시키고 있었다.
+      //   감정평가서   → evlt(aeeWevlMnpntLst) = 감정평가 요항표. 2,590/2,601 사건 보유
+      //   매각물건명세서 → objct(물건 목록·감정액) + ndstrc(등기 인수사항 등 고지사항)
+      // '문건/송달'·'현황조사서'는 아직 수집하지 않아 등록하지 않는다(법원 링크 유지).
+      const APD_LOCAL_GO = {
+        '사건내역': ['apd-sec-sajeon'],
+        '기일내역': ['apd-sec-gihui'],
+        '감정평가서': ['apd-sec-evlt'],
+        '매각물건명세서': ['apd-sec-objct', 'apd-sec-ndstrc'],
+      };
+      // 이 사건에서 그 버튼을 앱 안에서 처리할 수 있나 — detail 존재만 보면 안 된다.
+      // 예: evlt 가 빈 사건이 11건 있는데, 그때 '감정평가서'는 법원으로 보내야 한다.
+      function aucLocalData(d, label) {
+        const det = d && d.detail;
+        if (!det) return false;
+        switch (label) {
+          case '사건내역': return !!det.base;
+          case '기일내역': return !!(det.gihui && det.gihui.length);
+          case '감정평가서': return !!(det.evlt && det.evlt.length);
+          case '매각물건명세서': return !!((det.objct && det.objct.length) || (det.dspsl && det.dspsl.ndstrc));
+          default: return false;
+        }
+      }
       function apdGsNo(d) {
         return String(d.cn || '').replace(String(d.court || ''), '').trim();
       }
       function apdGosHtml(d) {
         const cs = apdGsNo(d);
-        return AUC_GO_LABELS.map((l) =>
-          `<button type="button" class="apd-go" data-go="${esc(l)}" title="${APD_LOCAL_GO[l] && d.detail ? '상세 패널에서 표시' : '사건번호 ' + esc(cs) + ' 복사 + 법원 사이트 사건검색 열기 (복사 후 사건번호 붙여넣기)'}">${esc(l)}</button>`
-        ).join('');
+        return AUC_GO_LABELS.map((l) => {
+          const local = aucLocalData(d, l);
+          // 앱에서 바로 열리는 버튼은 눈에 띄게 구분한다 — 어느 게 법원으로 나가는지
+          // 미리 알 수 있어야 헛클릭이 줄어든다.
+          return `<button type="button" class="apd-go${local ? ' has-local' : ''}" data-go="${esc(l)}"`
+            + ` title="${local ? '앱에서 바로 보기 (법원 사이트 이동 없음)' : '사건번호 ' + esc(cs) + ' 복사 + 법원 사이트 사건검색 열기 (복사 후 사건번호 붙여넣기)'}">`
+            + `${esc(l)}${local ? '<span class="apd-go-dot" aria-hidden="true">●</span>' : ''}</button>`;
+        }).join('');
+      }
+      // 라벨의 섹션 후보 중 실제로 렌더된 첫 섹션을 찾는다.
+      function apdLocalSection(l) {
+        const ids = APD_LOCAL_GO[l];
+        if (!ids) return null;
+        for (const id of ids) {
+          const el = auctionDetail.querySelector('#' + id);
+          if (el) return el;
+        }
+        return null;
       }
       function apdGoClick(l) {
         const d = apdD;
         if (!d) return;
-        const sid = APD_LOCAL_GO[l];
-        const secEl = sid && d.detail && auctionDetail.querySelector('#' + sid);
+        const secEl = d.detail ? apdLocalSection(l) : null;
         if (secEl) { secEl.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
         const cs = apdGsNo(d);
         if (cs) {
@@ -2681,18 +2737,21 @@
             }).join('');
             sections += sec('apd-sec-gihui', '기일내역', gRows);
           }
+          // 아래 네 섹션에 id 를 준 이유(2026-08-21): 바로가기 버튼이 여기로 스크롤해야 한다.
+          // 예전엔 id 가 없어서(sec('', …)) '감정평가서'·'매각물건명세서' 버튼이 데이터가
+          // 이미 있는데도 법원 사이트로 내보냈다 — 거기선 사건번호를 수기로 입력해야 한다.
           if (det.objct && det.objct.length) {
-            sections += sec('', '물건명세', det.objct.map((o) =>
+            sections += sec('apd-sec-objct', '물건명세', det.objct.map((o) =>
               `<div class="apd-muted">${esc(o.ar || o.addr || '')}${o.use ? '<br>용도코드 ' + esc(o.use) : ''}${o.evl ? ' · 감정 ' + eok(o.evl) : ''}</div>`).join(''));
           }
           if (det.notsugt && det.notsugt.length) {
-            sections += sec('', '제시외목록', det.notsugt.map((o) =>
+            sections += sec('apd-sec-notsugt', '제시외목록', det.notsugt.map((o) =>
               `<div class="apd-muted">· ${esc(o.nm)}${o.ar ? ' ' + esc(o.ar) : ''}${o.struc ? ' (' + esc(o.struc) + ')' : ''}${o.amt ? ' · 감정 ' + eok(o.amt) : ''}</div>`).join(''));
           }
           if (det.evlt && det.evlt.length) {
-            sections += sec('', '감정요약', `<div class="apd-note">${esc(det.evlt.join('\n'))}</div>`);
+            sections += sec('apd-sec-evlt', '감정요약', `<div class="apd-note">${esc(det.evlt.join('\n'))}</div>`);
           }
-          if (det.dspsl.ndstrc) sections += sec('', '고지사항', `<div class="apd-note">${esc(det.dspsl.ndstrc)}</div>`);
+          if (det.dspsl.ndstrc) sections += sec('apd-sec-ndstrc', '고지사항', `<div class="apd-note">${esc(det.dspsl.ndstrc)}</div>`);
         }
         bodyEl.innerHTML = `
           <div class="apd-addr">${esc(d.addr)}</div>
