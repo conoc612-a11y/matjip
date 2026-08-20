@@ -12,6 +12,26 @@
 
 ---
 
+## 2026-08-20 (64) — opencode (건물 팝업 닫기/접기 버튼 같은 줄 정렬)
+
+> 사용자: 건물 팝업 닫기(X)/접기(−) 버튼이 다른 줄에 위치 → CCTV와 같은 원인(서로 다른 DOM 레이어).
+
+### 1. 완료
+- **근본 원인**: X는 Leaflet이 `.leaflet-popup-content-wrapper`에 추가, −는 JS에서 `.leaflet-popup`(래퍼)에 추가 — **다른 레이어**(§40와 동일 구조).
+- **해결**: Leaflet 기본 X 숨김(`display:none`), `attachPopupControls()`에서 X도 JS로 래퍼에 직접 추가(`top:3px; right:3px`). −는 기존대로 `top:3px; right:30px`. 같은 줄, 같은 높이.
+- **CCTV 중복 방지**: `[aria-label="닫기"]` existance 체크 — CCTV는 별도 setTimeout에서 먼저 추가하므로 `attachPopupControls`에서 건너뜀.
+- **커밋**: `392cb3d4`, build tag b42.
+
+### 2. 핵심 교훈
+- **Leaflet 팝업의 모든 컨트롤(닫기/접기/그립)은 반드시 래퍼(`.leaflet-popup`)에 직접 추가할 것** — Leaflet 기본 버튼은 `.leaflet-popup-content-wrapper` 안에 있어 content 패딩으로 위치가 어긋남. 이 원칙을 어기면 매번 같은 문제가 반복됨(§40, 이번 건물 팝업).
+- CCTV·건물·정비·실거래 등 **모든 팝업 타입에서 동일한 추가 방식**을 쓰도록 통일해야 함.
+
+### 3. 다음 세션 확인할 것
+- 배포 후 건물 클릭 → X/− 같은 줄, CCTV 클릭 → X/− 같은 줄 확인
+- 스크롤바 ↔ X 수평 정렬은 별도 검증 (가로 정렬은 아직完美的 아닐 수 있음)
+
+---
+
 ## 2026-08-18 (63) — opencode (CCTV 닫기/접기 버튼 위치 해결 + 일반팝업 X 정렬)
 
 > 사용자: CCTV 팝업 닫기(×)/접기(−) 버튼 위치 + 건물 팝업 X 중심 정렬 문제 반복 제보 → 최종 해결.
