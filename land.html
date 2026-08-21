@@ -2467,8 +2467,16 @@
       // 팝업의 두 줄이 비어 있던 것(2026-08-21 사용자 신고)이 채워진다.
       // 단위 주의: auction.json 은 '억' 단위, detail.dspsl 은 '원' 단위(예 260,380,740)라 1e8 로 나눈다.
       // wonEok 은 나누지 않고 '억원'만 붙이므로 여기서 맞춰 넘겨야 한다.
-      const aucApprEok = (d) => d.appr || (d.detail && d.detail.dspsl && d.detail.dspsl.appr ? d.detail.dspsl.appr / 1e8 : 0);
-      const aucLowEok = (d) => d.low || (d.detail && d.detail.dspsl && d.detail.dspsl.low ? d.detail.dspsl.low / 1e8 : 0);
+      // ⚠️ 단위 함정: auction.json / auction_sched.json 의 appr·low 는 **만원 단위**다.
+      // collect_auction.js 의 `eok()` 가 원 문자열을 `/10000` 해서 저장하는데, 함수 이름이
+      // eok 라 억으로 착각하기 쉽다(실제 산출은 만원). wonEok() 은 '억원'을 붙이기만 하므로
+      // 만원 → 억 변환(/10000)을 반드시 여기서 해야 한다.
+      // 실측 사고(2026-08-21): 이 변환을 빼고 매각예정 팝업에 넣었더니 2.81억 물건이
+      // **"28,100억원"** 으로 표시됐다. 진행 물건은 appr 이 거의 비어 있어(3,442행 중 2행)
+      // 이 버그가 안 보였을 뿐이다.
+      const manwonToEok = (v) => (v ? v / 10000 : 0);
+      const aucApprEok = (d) => manwonToEok(d.appr) || (d.detail && d.detail.dspsl && d.detail.dspsl.appr ? d.detail.dspsl.appr / 1e8 : 0);
+      const aucLowEok = (d) => manwonToEok(d.low) || (d.detail && d.detail.dspsl && d.detail.dspsl.low ? d.detail.dspsl.low / 1e8 : 0);
       // 경매 사진 호스팅 — 사진 바이너리는 git 밖(Cloudflare R2)에 둔다. 16,000장이 넘어
       // 300MB 를 넘겼고, git 에 두면 GitHub Pages 게시 1GB 제한과 .git 비대화에 걸린다.
       // auction_photos.json 의 file 값이 R2 오브젝트 키와 동일한 상대경로라, 여기서
@@ -2593,6 +2601,69 @@
       });
       map.on('overlayremove', (e) => {
         if (e.layer === auctionCluster) auctionPanel.hidden = true;
+      });
+
+      // ── 매각예정 물건 (2026-08-21 신설) ──────────────────────────────
+      // 법원 사이트가 화면을 둘로 나눠 놨다. 위 '진행 물건'(PGJ151F00)은 **매각기일
+      // 오늘~+2주**만 나오고, 그보다 뒤에 매각될 물건은 매각예정물건 화면(PGJ157M00,
+      // 오늘~+2개월)에만 있다. 수집기에 --sched 모드가 이미 있었는데 워크플로에서 한 번도
+      // 쓰이지 않아 auction_sched.json 이 아예 없었다 → 2주 밖 물건을 앱에서 볼 수 없었다.
+      //
+      // ⚠️ 팝업을 auctionPopupHtml 로 재사용하면 안 된다. 그 팝업은 data-i 에 담은 인덱스를
+      // aucPopWire 에서 **auctionRows**(진행 물건)로 되찾으므로, 예정 물건에 쓰면 즐겨찾기·
+      // 바로가기가 **엉뚱한 사건**에 걸린다. 그래서 예정은 전용 경량 팝업을 쓴다.
+      // 사진·상세도 예정 물건은 수집 대상이 아니라 어차피 붙일 게 없다.
+      const auctionSchedCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 60 });
+      let auctionSchedRows = null, _auctionSchedPromise = null;
+      // 진행(주황/빨강)과 눈으로 구분되도록 예정은 남보라 계열 고정.
+      const AUC_SCHED_COLOR = '#7048e8';
+      function loadAuctionSched() {
+        if (!_auctionSchedPromise) {
+          _auctionSchedPromise = fetch('auction_sched.json')
+            .then((r) => (r.ok ? r.json() : Promise.reject(new Error('sched HTTP ' + r.status))))
+            .then((j) => {
+              const F = {};
+              (j.fields || []).forEach((f, i) => { F[f] = i; });
+              auctionSchedRows = (j.rows || []).filter((r) => r[F.lat] && r[F.lng]).map((r) => ({
+                court: j.courts[r[F.court]], cn: r[F.cn], no: r[F.no], addr: r[F.addr], note: r[F.note],
+                appr: r[F.appr], dept: r[F.dept], sale: r[F.sale], use: r[F.use], low: r[F.low],
+                status: r[F.status], lat: r[F.lat], lng: r[F.lng],
+              }));
+              return auctionSchedRows;
+            })
+            .catch((err) => { _auctionSchedPromise = null; console.warn('매각예정 불러오기 실패:', err); return null; });
+        }
+        return _auctionSchedPromise;
+      }
+      function auctionSchedPopupHtml(d) {
+        const rows = [
+          ['법원', d.court], ['사건번호', d.cn], ['물건번호', d.no], ['용도', d.use],
+          // 만원 단위 저장이므로 manwonToEok 필수 (안 하면 2.81억이 "28,100억원" 으로 나온다)
+          ['감정평가액', wonEok(manwonToEok(d.appr))], ['최저매각가격', wonEok(manwonToEok(d.low))],
+          ['예정 매각기일', d.sale], ['담당계', d.dept], ['비고', d.note],
+        ].filter(([, v]) => v != null && v !== '')
+          .map(([k, v]) => `<div style="display:flex;justify-content:space-between;gap:10px;"><span style="color:var(--c-muted);flex-shrink:0;">${k}</span><b style="text-align:right;">${esc(v)}</b></div>`).join('');
+        return `<div class="pc"><div class="pc-head">`
+          + `<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${AUC_SCHED_COLOR};flex-shrink:0;"></span>`
+          + `<span class="rp-name">${esc(d.addr)}</span>`
+          + `<span style="font-size:12px;background:${AUC_SCHED_COLOR};color:#fff;padding:1px 8px;border-radius:999px;">매각예정</span></div>`
+          + `<div class="pc-body">${rows}`
+          + `<div style="margin-top:3px;font-size:12px;color:var(--c-muted);">아직 매각기일 2주 창에 들어오지 않은 예정 물건이다. 사진·상세는 진행 물건이 된 뒤 수집된다.</div>`
+          + `</div></div>`;
+      }
+      function auctionSchedBuild() {
+        if (!auctionSchedRows) return;
+        auctionSchedCluster.clearLayers();
+        auctionSchedCluster.addLayers(auctionSchedRows.map((d) => {
+          const m = L.marker([d.lat, d.lng], { icon: aucIcon(AUC_SCHED_COLOR) });
+          m._pop = (() => auctionSchedPopupHtml(d));
+          m.bindTooltip(esc(d.addr) + ' (예정)', { direction: 'top' });
+          return m;
+        }));
+      }
+      map.on('overlayadd', (e) => {
+        if (e.layer !== auctionSchedCluster) return;
+        loadAuctionSched().then((rows) => { if (rows) auctionSchedBuild(); });
       });
 
       // ── 법원경매 왼쪽 사이드 패널 ─────────────────────────────────
@@ -4100,6 +4171,8 @@
       const LAYER_TREE = [
         ['법원경매', [
           { name: '진행 물건(서울/경기)', layer: auctionCluster },
+          // 매각기일 2주 창 밖(오늘~+2개월)의 예정 물건. 미리 물건을 봐두려면 이쪽이 필요하다.
+          { name: '매각예정 물건(~2개월)', layer: auctionSchedCluster },
         ]],
         ['청약', [
           { name: '분양예정 (청약홈)', layer: subLayer },
