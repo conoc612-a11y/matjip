@@ -2949,6 +2949,19 @@
             ).join('');
             sections += sec('apd-sec-intrps', '당사자내역', `<div class="apd-grid">${ipRows}</div>`);
           }
+          // 감정평가 정보 (2026-08-21) — 감정평가서 PDF 본문은 협회 뷰어가 IE 플러그인 전용이라
+          // 가져올 수 없다(TROUBLESHOOTING §47). 대신 그 API 가 주는 메타데이터를 보여준다.
+          // **가격시점**이 핵심이다 — 유찰이 여러 번인 물건은 감정가가 몇 년 전 기준일 수 있어
+          // "감정가 대비 몇 %" 판단이 달라진다.
+          if (det.aee) {
+            const A = det.aee;
+            const aeeRows = [
+              ['가격시점', ymd(A.crtrYmd)], ['조사일', ymd(A.exmnYmd)], ['작성일', ymd(A.wrtYmd)],
+              ['감정평가 담당', A.examr], ['심사', A.jdgr], ['평가서번호', A.no],
+            ].filter(([, v]) => v != null && v !== '')
+              .map(([k, v]) => `<div class="apd-grid-row"><span>${k}</span><b style="text-align:right;">${esc(v)}</b></div>`).join('');
+            if (aeeRows) sections += sec('apd-sec-aee', '감정평가 정보', `<div class="apd-grid">${aeeRows}</div>`);
+          }
           // 아래 네 섹션에 id 를 준 이유(2026-08-21): 바로가기 버튼이 여기로 스크롤해야 한다.
           // 예전엔 id 가 없어서(sec('', …)) '감정평가서'·'매각물건명세서' 버튼이 데이터가
           // 이미 있는데도 법원 사이트로 내보냈다 — 거기선 사건번호를 수기로 입력해야 한다.

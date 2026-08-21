@@ -129,6 +129,31 @@ function normalizeDetail(dm) {
   };
 }
 
+// 감정평가 정보 — 화면에 없던 값들(가격시점·조사일·작성일·감정인·평가서번호).
+// 출처: POST /pgj/pgj15B/selectAeeWevlInfo.on (감정평가서 버튼을 누를 때 발생)
+// ⚠️ PDF 본문은 여기 없다. 협회 뷰어가 IE 플러그인 전용이라 문서 자체는 못 가져온다(§47).
+// 그래도 이 필드들을 저장해 두는 이유:
+//   ① 가격시점(dspslPrcCrtrYmd)은 "이 감정가가 언제 기준인지"라 유찰 반복 물건 판단에 직접 쓰인다.
+//   ② 협회가 뷰어를 현대화하면 이 필드만으로 문서 URL 을 조립할 수 있다(§47-2 매핑표) —
+//      그때 16시간 재수집을 다시 하지 않아도 된다. **그게 지금 같이 받는 진짜 이유다.**
+function normalizeAee(sr) {
+  const d = sr && (sr.dma_ordTsIndvdAeeWevlInf || sr.data && sr.data.dma_ordTsIndvdAeeWevlInf);
+  if (!d) return null;
+  const out = {
+    cortCd: d.cortOfcCd || '',        // "B000210" — URL 조립 시 맨 앞 B 를 뗀다
+    csNo: d.csNo || '',               // 내부 사건번호
+    ordTs: d.ordTsCnt || 0,           // 명령회차
+    no: d.aeeWevlNo || '',            // 평가서번호 (URL 조각 / 옛 사건은 한글 포함)
+    crtrYmd: d.dspslPrcCrtrYmd || '', // 가격시점 ★
+    exmnYmd: d.exmnYmd || '',         // 조사일
+    wrtYmd: d.wrtYmd || '',           // 작성일 (URL 조각)
+    examr: d.aeeEvlExamrNm || '',     // 감정평가 담당자
+    jdgr: d.aeeEvlJdgrNm || '',       // 심사자
+  };
+  // 의미 있는 값이 하나도 없으면 저장하지 않는다(빈 객체로 레코드를 더럽히지 않게)
+  return (out.no || out.crtrYmd || out.wrtYmd || out.examr) ? out : null;
+}
+
 // 당사자(이해관계인) — 검색 결과(pgj15A) 응답에서 온다. 이름은 법원이 "김OO" 로 마스킹해 준다.
 function normalizeParties(sr) {
   const lst = (sr && sr.dlt_rletCsIntrpsLst) || [];
@@ -246,7 +271,23 @@ async function openSearch(page) {
     setTimeout(() => { if (done) return; done = true; page.off('response', onRes); resolve(null); }, ms);
   });
 
-  const stat = { ok: 0, photo: 0, detail: 0, parties: 0, disabled: 0, noBtn: 0, noResp: 0, err: 0 };
+  // 감정평가 정보(selectAeeWevlInfo) — 감정평가서 버튼을 누를 때 온다.
+  // 물건상세 화면의 버튼도 같은 API 를 호출하므로(실측), 상세를 받은 **뒤에** 누른다.
+  // 사건내역 화면에서 먼저 누르면 모달이 떠서 물건상세조회 클릭을 방해할 수 있다.
+  const captureAee = (ms = 12000) => new Promise((resolve) => {
+    let done = false;
+    const onRes = async (res) => {
+      if (!res.url().includes('selectAeeWevlInfo') || done) return;
+      try {
+        const j = JSON.parse(await res.text());
+        if (j && j.data) { done = true; page.off('response', onRes); resolve(j.data); }
+      } catch (e) { /* 무시 */ }
+    };
+    page.on('response', onRes);
+    setTimeout(() => { if (done) return; done = true; page.off('response', onRes); resolve(null); }, ms);
+  });
+
+  const stat = { ok: 0, photo: 0, detail: 0, parties: 0, aee: 0, disabled: 0, noBtn: 0, noResp: 0, err: 0 };
   let done = 0;
   let savedAnyPhoto = false;
 
@@ -318,13 +359,39 @@ async function openSearch(page) {
 
       const bits = [];
 
-      // ── 상세 + 당사자 저장 ──
+      // ── 감정평가 정보 (같은 방문에서 추가로 확보 — 사건당 2~3초) ──
+      // 상세를 받은 뒤 물건상세 화면의 '감정평가서' 버튼을 눌러 selectAeeWevlInfo 를 받는다.
+      // 버튼이 없거나 비활성이면 그냥 넘어간다(감정평가 정보 없는 사건도 있다).
+      let aee = null;
+      if (!NO_DETAIL) {
+        const waitAee = captureAee(12000);
+        const aeeClicked = await page.evaluate(() => {
+          const b = [...document.querySelectorAll('input[value="감정평가서"], input[type=button], button')]
+            .find((x) => (x.value || x.textContent || '').trim() === '감정평가서'
+              && !x.disabled && (x.offsetWidth > 0 || x.offsetHeight > 0));
+          if (b) { b.click(); return true; }
+          return false;
+        }).catch(() => false);
+        if (aeeClicked) {
+          aee = normalizeAee(await waitAee);
+          await page.waitForTimeout(600);
+        } else {
+          // 리스너를 걸어놨으니 타임아웃까지 기다리지 않도록 흘려보낸다
+          waitAee.then(() => {});
+        }
+      }
+
+      // ── 상세 + 당사자 + 감정평가 정보 저장 ──
       if (!NO_DETAIL && (FORCE || needDetail(cn) || needParties(cn))) {
-        detailDb[cn] = Object.assign({ t: Date.now() }, normalizeDetail(dm), { intrps: parties });
+        const rec = Object.assign({ t: Date.now() }, normalizeDetail(dm), { intrps: parties });
+        if (aee) rec.aee = aee;
+        detailDb[cn] = rec;
         fs.writeFileSync(OUT_DETAIL, JSON.stringify(detailDb));
         stat.detail++;
         if (parties.length) stat.parties++;
-        bits.push(`기일 ${detailDb[cn].gihui.length}`, `당사자 ${parties.length}`, `감정요약 ${detailDb[cn].evlt.length}`);
+        if (aee) stat.aee++;
+        bits.push(`기일 ${rec.gihui.length}`, `당사자 ${parties.length}`, `감정요약 ${rec.evlt.length}`);
+        if (aee) bits.push(`가격시점 ${aee.crtrYmd || '-'}`);
       }
 
       // ── 사진 저장 (같은 응답의 csPicLst — 추가 요청 없음) ──
@@ -363,7 +430,7 @@ async function openSearch(page) {
   }
 
   await browser.close();
-  console.log(`\n완료 — 성공 ${stat.ok} (사진 ${stat.photo} · 상세 ${stat.detail} · 당사자 ${stat.parties})`);
+  console.log(`\n완료 — 성공 ${stat.ok} (사진 ${stat.photo} · 상세 ${stat.detail} · 당사자 ${stat.parties} · 감정정보 ${stat.aee})`);
   console.log(`      스킵: 상세비활성 ${stat.disabled} · 버튼없음 ${stat.noBtn} · 응답없음 ${stat.noResp} · 오류 ${stat.err}`);
   console.log(`      보유 총계: 사진 ${Object.keys(photosDb).length}건 · 상세 ${Object.keys(detailDb).length}건`);
 
