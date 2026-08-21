@@ -151,9 +151,18 @@ function splitCsNo(cn) {
     .filter(({ cn, court }) =>
       (ONLY_CN ? cn.includes(ONLY_CN) : true) &&
       (!ONLY_COURT || court.includes(ONLY_COURT)) &&
-      (FORCE || !db[cn]));
+      // 대상 = ① 상세가 아예 없는 사건 ② **상세는 있지만 당사자내역(intrps)이 없는 사건**
+      // ②를 넣은 이유(2026-08-21): 당사자내역은 나중에 추가된 항목이라 기존 레코드엔 없다.
+      // 조건이 `!db[cn]` 뿐이면 기존 2,600건이 영원히 스킵돼 --force 로 전량(약 6시간)을
+      // 다시 돌리는 수밖에 없었다. 이 조건이면 **평소 수집이 돌 때 알아서 메꿔진다** —
+      // `--max 500` 처럼 나눠 돌려도 되고, 다 채워지면 자동으로 '할 일 없음'이 된다.
+      // 새 필드를 또 추가하면 여기에 같은 형태로 한 줄 늘릴 것.
+      (FORCE || !db[cn] || !db[cn].intrps));
   if (MAX) targets = targets.slice(0, MAX);
-  console.log(`상세 미보유 ${targets.length}건 / 전체 ${data.rows.length}건 (대상 ${ONLY_CN || ONLY_COURT || '전체'}${FORCE ? ' · 강제 재수집' : ''})`);
+  const missingDetail = targets.filter((t) => !db[t.cn]).length;
+  console.log(`대상 ${targets.length}건 / 전체 ${data.rows.length}건 `
+    + `(상세 미보유 ${missingDetail} · 당사자 보강 ${targets.length - missingDetail})`
+    + ` (${ONLY_CN || ONLY_COURT || '전체'}${FORCE ? ' · 강제 재수집' : ''})`);
   if (!targets.length) { console.log('할 일 없음 — 종료'); return; }
 
   const browser = await chromium.launch({ executablePath: CHROME, headless: !HEADFUL });
