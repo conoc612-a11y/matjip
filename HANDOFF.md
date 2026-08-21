@@ -26,6 +26,26 @@
 
 ---
 
+## 2026-08-21 (67) — Claude Code (경매 팝업 사진 클릭 시 확대·다음/이전 이동 추가)
+
+> 사용자: "경매 팝업에서 사진은 표시가 되는데 사진을 클릭하면 확대거나 다음 이미지로
+> 넘기는 버튼 등 구성자체가 안되있어"
+
+**원인**: 팝업용 사진 그리드(`auctionPhotoHtml`)는 `<img>` 만 그리고 클릭 핸들러가 없었다.
+확대·이전/다음은 상세 패널 캐러셀용으로 이미 있었다(`#apd-lightbox`, `lightboxOpen(d, idx)`) —
+그런데 팝업 쪽에서는 아무도 그걸 호출하지 않았다.
+
+**조치(커밋 `da61d50`)**: 새 UI를 만들지 않고 기존 라이트박스를 재사용했다.
+- `auctionPhotoHtml` 의 각 사진 칸(`.auc-photo`)에 `auc-photo-click` 클래스 + `data-idx` 부여.
+  "+N" 칸도 클릭 가능(`data-idx="3"` — 아직 안 보인 4번째 사진부터 열림).
+- `aucPopWire`(팝업 열릴 때마다 배선, 기존 `.auc-pop-fav`/`.auc-pop-go` 와 같은 패턴)에
+  `.auc-photo-click` 클릭 시 `lightboxOpen(d, idx)` 호출을 추가.
+- **검증**: `node --check` 로 전체 스크립트 구문 확인 + `auctionPhotoHtml` 만 따로 추출해
+  0/2/3/5장 케이스로 단위 테스트(생성된 HTML의 클래스·`data-idx` 값 확인). 브라우저 라이브
+  검증은 안 함(§lean-commit-workflow 관례 — 사용자가 github.io 에서 직접 확인).
+
+---
+
 ## 2026-08-21 (66) — Claude Code (경매 사진이 안 보이던 원인 — 무인 자동화가 R2 검증 단계에서 조용히 멈춰 있었음)
 
 > 사용자: "matjip에 경매 사진이 안올라오고있어"
