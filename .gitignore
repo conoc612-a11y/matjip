@@ -9,3 +9,4 @@ tools/.r2_uploaded.json
 auction_photos/
 *_collect.log
 tools/finish_auction_collect.log
+tools/_r2_verify_tmp.mjs

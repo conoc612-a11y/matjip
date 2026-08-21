@@ -134,8 +134,8 @@ Log 'R2 업로드 완료(exit 0).'
 # ── 4) R2 실측 대조 — 매니페스트를 믿지 않고 버킷에 직접 물어본다 ──────
 Log 'R2 오브젝트 수 대조 중…'
 $verifyJs = @'
-import('aws4fetch').then(async ({AwsClient})=>{
-const fs=require('fs');
+import fs from 'node:fs';
+import { AwsClient } from 'aws4fetch';
 const env={};for(const l of fs.readFileSync('keys.env','utf8').split(/\r?\n/)){const m=l.match(/^\s*([A-Za-z0-9_]+)\s*=\s*(.*)$/);if(m)env[m[1]]=m[2].trim();}
 const aws=new AwsClient({accessKeyId:env.R2_ACCESS_KEY_ID,secretAccessKey:env.R2_SECRET_ACCESS_KEY,service:'s3',region:'auto'});
 const base='https://'+env.R2_ACCOUNT_ID+'.r2.cloudflarestorage.com/'+env.R2_BUCKET;
@@ -152,11 +152,14 @@ do{
   const nt=t.match(/<NextContinuationToken>([^<]+)</); cursor=nt?nt[1]:null;
 }while(cursor);
 console.log(count+' '+bytes);
-}).catch(e=>{console.log('ERR '+e.message);process.exit(2);});
 '@
-$verifyPath = Join-Path $env:TEMP 'r2_verify.mjs'
+# $env:TEMP 에 쓰면 위쪽에 node_modules 가 없어 aws4fetch 를 못 찾는다(2026-08-21 실제 장애).
+# 프로젝트 tools/ 안에 써서 node_modules 해석이 되게 한다.
+$verifyPath = Join-Path $PSScriptRoot '_r2_verify_tmp.mjs'
 Set-Content -Path $verifyPath -Value $verifyJs -Encoding utf8
+Push-Location (Join-Path $PSScriptRoot '..')
 $out = (& node $verifyPath) 2>&1 | Select-Object -Last 1
+Pop-Location
 Remove-Item $verifyPath -ErrorAction SilentlyContinue
 if ($out -like 'ERR*' -or $LASTEXITCODE -ne 0) { Fail "R2 대조 실패: $out" }
 $parts = "$out".Trim() -split '\s+'
