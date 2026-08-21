@@ -255,7 +255,28 @@ function splitCsNo(cn) {
       const waitSrch = captureSearchRslt(20000);   // 당사자내역은 이 클릭의 응답에 온다
       await page.locator(SRCH_BTN).click({ timeout: 10000 });
       await page.waitForFunction((t) => document.body.innerText.length !== t, token, { timeout: 20000 }).catch(() => {});
-      await page.waitForTimeout(2000);
+      // '물건상세조회' 버튼 상태를 정확히 구분해서 기다린다 (2026-08-21 실측으로 정리).
+      //   ready    → 누를 수 있다
+      //   disabled → 버튼은 있는데 법원이 막아둔 상태. **기다려도 안 열린다** → 즉시 스킵
+      //   null     → 아직/끝까지 없음 → 짧게 기다린 뒤 스킵
+      // ⚠️ 여기서 두 번 헤맸으니 다음 사람은 읽고 넘어갈 것:
+      //  ① 예전 로그는 disabled 든 없든 전부 "물건상세조회 버튼 없음(종결/취하?)" 로 찍혀서
+      //     원인을 오판하게 만들었다. 실제로 미보유 154건 중 118건은 **미종국 사건인데도**
+      //     버튼이 `disabled`(w2trigger_disabled) 였다 — 우리 버그가 아니라 사이트 정책이다.
+      //     (실측: 2025타경102901, 2021타경100523 — 사용자 Chrome 으로도 동일 확인)
+      //  ② '고정 2초 대기가 짧아서 놓친다'는 가설로 15초 폴링을 넣었더니, disabled 인 사건마다
+      //     15초를 헛되게 버렸다. 상태를 구분하지 않으면 느려지기만 한다.
+      const btnState = await page.waitForFunction(() => {
+        const b = [...document.querySelectorAll('input[type=button],button')]
+          .find((x) => (x.value || x.textContent || '').includes('물건상세조회'));
+        if (!b) return null;                       // 아직 안 그려졌으면 계속 기다린다
+        return b.disabled ? 'disabled' : 'ready';  // 둘 다 '확정'이므로 폴링을 끝낸다
+      }, null, { timeout: 8000, polling: 250 }).then((h) => h.jsonValue()).catch(() => null);
+      if (btnState === 'disabled') {
+        console.log('  물건상세조회가 비활성(법원이 상세 제공 안 함) — 스킵');
+        if (GAP_MS) await sleep(GAP_MS);
+        continue;
+      }
       const srch = await waitSrch;   // null 이면 당사자 없이 진행(기존 동작 유지)
 
       const waitDetail = captureDetail(25000);
@@ -265,7 +286,7 @@ function splitCsNo(cn) {
         if (b) { b.click(); return true; }
         return false;
       });
-      if (!detailBtn) { console.log('  물건상세조회 버튼 없음(종결/취하?) — 스킵'); continue; }
+      if (!detailBtn) { console.log('  물건상세조회 버튼이 화면에 없음 — 스킵'); continue; }
 
       const dm = await waitDetail;
       await page.waitForTimeout(1200);

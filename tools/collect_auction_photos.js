@@ -176,7 +176,20 @@ function splitCsNo(cn) {
       const token = await page.evaluate('document.body.innerText.length');
       await page.locator(SRCH_BTN).click({ timeout: 10000 });
       await page.waitForFunction((t) => document.body.innerText.length !== t, token, { timeout: 20000 }).catch(() => {});
-      await page.waitForTimeout(2000);
+      // 물건상세조회 버튼 상태 구분(ready / disabled / 없음). 상세 수집기와 **동일 구현**.
+      // disabled 는 법원이 상세 제공을 막아둔 상태로 기다려도 안 열리니 즉시 스킵한다.
+      // 근거·시행착오는 collect_auction_detail.js 의 같은 위치 주석 참고.
+      const btnState = await page.waitForFunction(() => {
+        const b = [...document.querySelectorAll('input[type=button],button')]
+          .find((x) => (x.value || x.textContent || '').includes('물건상세조회'));
+        if (!b) return null;
+        return b.disabled ? 'disabled' : 'ready';
+      }, null, { timeout: 8000, polling: 250 }).then((h) => h.jsonValue()).catch(() => null);
+      if (btnState === 'disabled') {
+        console.log('  물건상세조회가 비활성(법원이 상세 제공 안 함) — 스킵');
+        if (GAP_MS) await sleep(GAP_MS);
+        continue;
+      }
 
       // 물건상세조회 클릭 → 상세 응답 캡처 (리스너는 클릭 전에 등록해야 응답을 놓치지 않는다)
       const waitDetail = captureDetail(20000);
@@ -186,7 +199,7 @@ function splitCsNo(cn) {
         if (b) { b.click(); return true; }
         return false;
       });
-      if (!detailBtn) { console.log('  물건상세조회 버튼 없음(종결/취하?) — 스킵'); continue; }
+      if (!detailBtn) { console.log('  물건상세조회 버튼이 화면에 없음 — 스킵'); continue; }
 
       const lst = await waitDetail;
       await page.waitForTimeout(1500);
