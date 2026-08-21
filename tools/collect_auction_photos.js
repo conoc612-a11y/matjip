@@ -81,7 +81,15 @@ async function openSearch(page, courtSel) {
 
 // 사건번호 '2023타경2726' → { year:'2023', num:'2726' }
 function splitCsNo(cn) {
-  const m = cn.match(/(\d{4})[가-힣]+(\d+)/);
+  if (!cn) return null;
+  // 병합·중복 사건은 사건번호가 **구분자 없이 이어붙어** 온다(2026-08-21 실측):
+  //   "서울동부지방법원2025타경511212025타경51738(중복)"
+  // 그대로 /(\d{4})[가-힣]+(\d+)/ 를 돌리면 \d+ 가 뒤 사건번호까지 먹어 num="511212025"
+  // (정답 51121) → 검색 실패 → "물건상세조회 버튼 없음" 으로 스킵됐다.
+  // 상세 수집기(collect_auction_detail.js)와 **동일한 구현**을 유지할 것 — 한쪽만 고치면
+  // 사진과 상세의 커버리지가 어긋난다.
+  const norm = String(cn).replace(/(\d)(?=\d{4}[가-힣]+\d)/g, '$1' + String.fromCharCode(1));
+  const m = norm.match(/(\d{4})[가-힣]+(\d+)/);
   return m ? { year: m[1], num: m[2] } : null;
 }
 
