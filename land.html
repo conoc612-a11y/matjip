@@ -277,11 +277,18 @@
     /* ── 경매 상세 자체 데이터 섹션 (기일내역·사건내역·물건명세·제시외·감정요약, 2026-08-17) ── */
     .apd-sec { margin-top:12px; }
     .apd-sec-t { font-size:12px; font-weight:700; color:var(--c-primary); margin-bottom:5px; }
-    .apd-g-row { display:flex; align-items:center; gap:8px; font-size:12px; padding:5px 0; border-bottom:1px dashed var(--line); }
+    /* flex-wrap:wrap — 패널을 아주 좁게(200px 부근) 줄이면 날짜72+시각38+간격+금액+D-day 가
+       한 줄에 물리적으로 안 들어간다. 그때 금액이 잘려 사라지는 대신 다음 줄로 내려가게 한다
+       (실측: wrap 없이는 200px 에서 금액 10px 잘림). */
+    .apd-g-row { display:flex; flex-wrap:wrap; align-items:center; gap:4px 8px; font-size:12px; padding:5px 0; border-bottom:1px dashed var(--line); }
     .apd-g-row:last-child { border-bottom:none; }
     .apd-g-date { font-weight:700; width:72px; flex-shrink:0; }
     .apd-g-time { color:var(--muted); width:38px; flex-shrink:0; }
-    .apd-g-knd { color:var(--muted); flex:1; }
+    /* min-width:0 + ellipsis 가 없으면 flex 항목이 내용 너비 밑으로 줄지 않아(기본 min-width:auto)
+       행이 넘치고, 그 뒤의 최저매각가격·D-day·결과 배지가 패널 밖으로 밀려 안 보인다.
+       실측(2026-08-21): 패널 200px 에서 금액이 27px 잘림, 240px 에서 행이 17px 넘침.
+       왼쪽 패널은 사용자가 200~640px 로 조절하므로 좁은 폭에서 반드시 필요하다. */
+    .apd-g-knd { color:var(--muted); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .apd-g-low { margin-left:auto; text-align:right; flex-shrink:0; }
     .apd-rslt { font-size:11px; color:#fff; padding:1px 8px; border-radius:999px; flex-shrink:0; }
     .apd-sec .dday { color:var(--c-primary); font-weight:800; flex-shrink:0; }
@@ -2454,6 +2461,14 @@
       }
       const wonEok = (v) => v ? v.toLocaleString('ko-KR', { maximumFractionDigits: 2 }) + '억원' : '';
       const aucColor = (s) => (s || '').includes('유찰') ? '#fa5252' : '#f08c00';
+      // 감정평가액·최저매각가격은 auction.json 에 사실상 없다 — 실측 3,442행 중 appr 2행 / low 1행뿐
+      // (목록 API 가 이 두 값을 잘 안 채워준다). 같은 값이 auction_detail.json 의 dspsl 에는
+      // **2,602/2,602 전건** 들어 있으므로 그걸 폴백으로 쓴다. 그래서 상세 패널의 가격 카드와
+      // 팝업의 두 줄이 비어 있던 것(2026-08-21 사용자 신고)이 채워진다.
+      // 단위 주의: auction.json 은 '억' 단위, detail.dspsl 은 '원' 단위(예 260,380,740)라 1e8 로 나눈다.
+      // wonEok 은 나누지 않고 '억원'만 붙이므로 여기서 맞춰 넘겨야 한다.
+      const aucApprEok = (d) => d.appr || (d.detail && d.detail.dspsl && d.detail.dspsl.appr ? d.detail.dspsl.appr / 1e8 : 0);
+      const aucLowEok = (d) => d.low || (d.detail && d.detail.dspsl && d.detail.dspsl.low ? d.detail.dspsl.low / 1e8 : 0);
       // 경매 사진 호스팅 — 사진 바이너리는 git 밖(Cloudflare R2)에 둔다. 16,000장이 넘어
       // 300MB 를 넘겼고, git 에 두면 GitHub Pages 게시 1GB 제한과 .git 비대화에 걸린다.
       // auction_photos.json 의 file 값이 R2 오브젝트 키와 동일한 상대경로라, 여기서
@@ -2476,7 +2491,7 @@
       function auctionPopupHtml(d) {
         const rows = [
           ['법원', d.court], ['사건번호', d.cn], ['물건번호', d.no], ['용도', d.use],
-          ['감정평가액', wonEok(d.appr)], ['최저매각가격', wonEok(d.low)],
+          ['감정평가액', wonEok(aucApprEok(d))], ['최저매각가격', wonEok(aucLowEok(d))],
           ['진행상태', d.status], ['담당계 매각기일', d.sale], ['비고', d.note],
         ].filter(([, v]) => v != null && v !== '').map(([k, v]) => `<div style="display:flex;justify-content:space-between;gap:10px;"><span style="color:var(--c-muted);flex-shrink:0;">${k}</span><b style="text-align:right;">${esc(v)}</b></div>`).join('');
         // 즐겨찾기·바로가기는 팝업에도 둔다(사용자 요청 2026-08-21). 목록 행(.ap-star)과
@@ -2610,7 +2625,7 @@
       let auctionPinnedKey = null;
       function auctionRowHtml(d, fav, idx, pinned) {
         const rows = [
-          ['감정', wonEok(d.appr)], ['최저', wonEok(d.low)], ['용도', d.use], ['매각기일', d.sale],
+          ['감정', wonEok(aucApprEok(d))], ['최저', wonEok(aucLowEok(d))], ['용도', d.use], ['매각기일', d.sale],
         ].filter(([, v]) => v != null && v !== '').map(([k, v]) => `${k} ${esc(v)}`).join(' · ');
         const thumb = d.photos && d.photos.length ? `<img class="ap-thumb" src="${esc(photoUrl(d.photos[0]))}" alt="" loading="lazy">` : '<span class="ap-thumb ap-thumb-ph">📷</span>';
         return `<div class="ap-row${pinned ? ' pinned' : ''}" data-i="${idx}">
@@ -2870,8 +2885,8 @@
             ${d.sale ? `<span class="apd-badge" style="background:var(--c-primary);">${esc(aucDDay(d.sale))}</span>` : ''}
           </div>
           <div class="apd-cards">
-            <div class="apd-card"><span>감정평가액</span><b>${wonEok(d.appr)}</b></div>
-            <div class="apd-card"><span>최저매각가격</span><b>${wonEok(d.low)}</b></div>
+            <div class="apd-card"><span>감정평가액</span><b>${wonEok(aucApprEok(d)) || '-'}</b></div>
+            <div class="apd-card"><span>최저매각가격</span><b>${wonEok(aucLowEok(d)) || '-'}</b></div>
             <div class="apd-card"><span>매각기일</span><b>${esc(d.sale || '-')}</b>${d.sale ? `<span class="dday">${esc(aucDDay(d.sale))}</span>` : ''}</div>
           </div>
           <div class="apd-grid">${rows}</div>
