@@ -3505,9 +3505,26 @@
         document.querySelectorAll('.jb-stage').forEach((b) => b.classList.toggle('active', b.dataset.s === chip.dataset.s));
         jbBuild();
       });
+      // '정비사업 상세'(벡터 폴리곤)와 같은 구역을 UPIS raster(도시계획사업 대분류의 소분류들)가
+      // 한 번 더 그리면, 두 경계 데이터가 조금씩 달라 겹친 곳이 어둡고 외곽선이 이중으로 보인다
+      // — 사용자가 "폴리곤 안에 그림자 효과"로 신고한 현상(2026-08-21).
+      // 원인 확인: raster 타일(UPIS layer 96) 픽셀을 직접 디코딩해 보니 색이 정확히 3종
+      // (투명 / 외곽선 0,112,255 / 채움 192,225,252)뿐이라 raster 자체엔 그림자가 없다.
+      // ArcGIS 심볼 정의에도 그림자·halo 가 없다. 즉 겹쳐 그린 것이 원인.
+      // 사용자 선택(2026-08-21): 벡터만 남긴다 — 클릭 팝업·구역 합산 선택이 벡터에 붙어 있다.
+      // 대분류를 한 번에 켜면(bigCb) mid 순회 중에 이 핸들러가 불릴 수 있어 setTimeout 0 으로
+      // 그 배치가 끝난 뒤에 정리한다(순서에 의존하지 않게).
+      function jbDropDupRaster() {
+        setTimeout(() => {
+          document.querySelectorAll('input.lp-cb[data-sec="도시계획사업"][data-id]').forEach((cb) => {
+            if (cb.checked) { cb.checked = false; if (cb.onchange) cb.onchange(); }
+          });
+        }, 0);
+      }
       map.on('overlayadd', (e) => {
         if (e.layer !== jbCluster) return;
         buildJbPanel(); document.getElementById('jb-panel').hidden = false; jbPolyLayer.addTo(map); jbStageBar.style.display = '';
+        jbDropDupRaster();
         renderNotices();
         setTimeout(() => {
           document.querySelectorAll('.jb-f').forEach((cb) => { if (cb._w) return; cb._w = 1; cb.addEventListener('change', () => { jbFilter[cb.dataset.g] = cb.checked; jbBuild(); }); });
@@ -4030,8 +4047,16 @@
               s.innerHTML = `<input type="checkbox" class="lp-cb">${sw}<span>${label}</span>`;
               const cb = s.querySelector('input');
               cb.dataset.id = id;   // 레이어 상태 저장/복원용
+              cb.dataset.sec = big; // 벡터 레이어와 중복되는 raster 를 찾아 끄는 데 쓴다(jbDropDupRaster)
               subCbs.push(cb);
               cb.onchange = () => {
+                // 벡터 '정비사업 상세'가 켜져 있으면 같은 구역을 겹쳐 그리지 않는다(그림자처럼 보임).
+                // 조용히 무시하면 "왜 안 켜지지?"가 되므로 이유를 토스트로 알린다.
+                if (cb.checked && big === '도시계획사업' && typeof jbCluster !== 'undefined' && map.hasLayer(jbCluster)) {
+                  cb.checked = false;
+                  toast('‘정비사업 상세’(벡터)를 끄면 이 레이어를 켤 수 있어요 — 겹쳐 그리면 경계가 이중으로 보입니다.');
+                  return;
+                }
                 cb.checked ? mid._on.add(id) : mid._on.delete(id);
                 refreshUpisGroup(mid);
                 midCb.checked = subCbs.some((c) => c.checked);
