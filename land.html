@@ -2360,15 +2360,42 @@
         if (auctionRows && m._idx != null) auctionPinToTop(auctionRows[m._idx]);
       });
       let auctionRows = null, _auctionPromise = null;
+      // ── 상세(auction_detail.json)는 마커 렌더를 막지 않는다 (2026-08-21 성능) ────────
+      // 이 파일은 gzip 1.59MB / raw 9.01MB 로 경매 3종 중 압도적으로 크지만, 내용은
+      // 기일내역·감정평가 요항표처럼 **팝업/상세 패널을 열었을 때만** 필요한 것이다.
+      // 예전엔 Promise.all 에 같이 묶여 있어서, 지도에 마커를 찍기 위해 상세까지 다 받기를
+      // 기다렸다(합계 raw 14.4MB). 이제 fetch 는 **같은 시점에 병렬로 시작**하되(총 바이트·
+      // 도착시간은 그대로) 마커 렌더는 여기에 묶지 않는다 → 목록·마커가 0.33MB 만 받고 뜬다.
+      let _auctionDetailPromise = null, _auctionDetailData = null;
+      function loadAuctionDetail() {
+        if (!_auctionDetailPromise) {
+          _auctionDetailPromise = fetch('auction_detail.json').then((r) => r.json()).catch(() => ({}))
+            .then((det) => { _auctionDetailData = det; aucApplyDetail(); return det; });
+        }
+        return _auctionDetailPromise;
+      }
+      // 상세가 도착하면 이미 만들어진 행에 붙인다. 행이 아직 없으면(상세가 먼저 도착)
+      // 행을 만드는 쪽에서 다시 호출해 준다 — 둘 중 어느 쪽이 먼저 끝나도 붙는다.
+      function aucApplyDetail() {
+        if (!_auctionDetailData || !auctionRows) return;
+        auctionRows.forEach((d) => { d.detail = _auctionDetailData[d.cn] || null; });
+        // '앱에서 바로 열림(●)' 표시가 상세 유무로 갈리므로, 열려 있는 화면을 갱신한다.
+        try {
+          if (apdD) auctionOpenDetail(apdD);        // 상세 패널이 열려 있으면 다시 그린다
+          else if (typeof auctionRenderList === 'function') auctionRenderList();
+        } catch (e) { /* 렌더 실패가 데이터 적용을 되돌리진 않게 */ }
+      }
       function loadAuction() {
         if (!_auctionPromise) {
-          // auction.json(목록·좌표) + auction_photos.json(사진 메타) + auction_detail.json(기일내역
-          // 등 상세) 병렬 fetch — 사진 본체(jpg)와 상세는 분리 파일(2026-08-13, 2026-08-17).
+          // 상세도 지금 같이 시작한다(병렬) — 단 아래 Promise.all 에는 넣지 않는다.
+          loadAuctionDetail();
+          // auction.json(목록·좌표) + auction_photos.json(사진 메타) 병렬 fetch.
+          // 사진 본체(jpg)는 R2, 상세는 위에서 별도 로드(2026-08-13, 2026-08-17, 2026-08-21).
           _auctionPromise = Promise.all([
             fetch('auction.json').then((r) => r.json()),
             fetch('auction_photos.json').then((r) => r.json()).catch(() => ({})),
-            fetch('auction_detail.json').then((r) => r.json()).catch(() => ({})),
-          ]).then(([j, ph, det]) => {
+          ]).then(([j, ph]) => {
+            const det = _auctionDetailData || {};   // 이미 도착했으면 바로 쓴다
             const F = {};
             j.fields.forEach((f, i) => { F[f] = i; });
             const getPhotos = (cn) => (ph[cn] && ph[cn].length ? ph[cn].filter((p) => p && p.file) : []);
@@ -2378,6 +2405,7 @@
               status: r[F.status], lat: r[F.lat], lng: r[F.lng],
               photos: getPhotos(r[F.cn]), detail: det[r[F.cn]] || null, _i: i,
             }));
+            aucApplyDetail();   // 상세가 나중에 도착하는 경우를 대비(도착해 있으면 재적용)
             return auctionRows;
           }).catch(() => null);
         }
@@ -2463,6 +2491,8 @@
       // 해당 섹션으로 보내고, 문서류(감정평가서 등)는 법원 사이트에서만 열람 가능하므로
       // 기존 상세 패널과 동일하게 '사건번호 복사 + 사건검색 열기'로 처리한다.
       function aucPopGoClick(d, label, btn) {
+        // 상세 로딩 중 클릭이면 기다린다(apdGoClick 과 같은 이유 — 잘못된 법원 폴백 방지).
+        if (!_auctionDetailData) { loadAuctionDetail().then(() => aucPopGoClick(d, label, btn)); return; }
         if (aucLocalData(d, label)) {
           auctionOpenDetail(d);
           requestAnimationFrame(() => apdGoClick(label));
@@ -2693,6 +2723,10 @@
       function apdGoClick(l) {
         const d = apdD;
         if (!d) return;
+        // 상세가 아직 도착 안 했으면 기다린다. 안 기다리면 앱에서 열 수 있는 항목(감정평가서 등)
+        // 인데도 "데이터 없음"으로 판정해 법원 사이트로 잘못 내보낸다(로딩 중 클릭).
+        // loadAuctionDetail 은 실패해도 {} 로 resolve 하므로 무한 재귀는 없다.
+        if (!_auctionDetailData) { loadAuctionDetail().then(() => apdGoClick(l)); return; }
         const secEl = d.detail ? apdLocalSection(l) : null;
         if (secEl) { secEl.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
         const cs = apdGsNo(d);
