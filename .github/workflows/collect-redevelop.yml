@@ -29,6 +29,12 @@ jobs:
 
       - run: node tools/collect_redevelop.js
 
+      # 수집기는 좌표를 소수점 14~15자리로 뱉는다(나노미터급, 무의미). 폴리곤은 좌표점이
+      # 25만개가 넘어 이것만으로 gzip 3.44MB → 1.36MB(-60%) 차이가 난다. 이 단계를 빼면
+      # 다음 자동 갱신에서 최적화가 그대로 되돌려진다. 6자리 = 약 0.11m 로,
+      # 렌더러가 이미 허용하는 오차(smoothFactor 1 ≈ 1.2m)보다 10배 정밀하다.
+      - run: node tools/trim_coord_precision.mjs redevelop_polygons.json redevelop_seoul.json
+
       # WMS 장애(0건)·부분 수집(절반 미만)이 커밋되는 것을 막는 방어선.
       - name: redevelop*.json sanity check
         run: |

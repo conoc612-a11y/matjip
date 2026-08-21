@@ -48,6 +48,11 @@ jobs:
           RENT_ONLY: '1'
           VWORLD_PROXY: https://bhgijvaxxjnocgfnaaeu.supabase.co/functions/v1/vworld-geocode
 
+      # 지오코딩 결과 좌표가 소수점 14~15자리로 저장되는 걸 6자리(약 0.11m)로 정리한다.
+      # realprice_seoul_gg.json 기준 gzip 0.32MB → 0.24MB. 이 단계를 빼면 다음 월간
+      # 갱신에서 최적화가 되돌려진다. (다른 realprice 파일은 이득이 없어 대상 아님)
+      - run: node tools/trim_coord_precision.mjs realprice_seoul_gg.json
+
       # 스크립트 안 writeSafe 가 저장 시점에 0건/절반 미만을 거부한다. 여기서는
       # 실행 자체가 실패했는지만 확인(위 단계가 이미 그 역할). 변경 없으면 커밋 생략.
       - name: realprice*.json·지오코딩 캐시 변경 시 커밋·푸시
