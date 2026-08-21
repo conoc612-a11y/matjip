@@ -296,14 +296,20 @@
     #apd-lb-view { position:relative; flex:1; overflow:hidden; touch-action:none; }
     #apd-lb-view.zoomed { cursor:grab; }
     #apd-lb-view.zoomed.panning { cursor:grabbing; }
-    #apd-lb-img { position:absolute; top:50%; left:50%; max-width:100%; max-height:100%; transform:translate(-50%,-50%); user-select:none; -webkit-user-drag:none; }
+    /* 이미지는 프레임을 '채우도록 맞춘다'(object-fit:contain) — max-width:100% 만 쓰면
+       원본보다 크게는 절대 안 커져서, 400px 로 축소된 경매 사진(§65)은 창을 키워도 그대로
+       작게 남는다(2026-08-21 사용자 신고). width/height 100% + contain 이면 비율을 지키며
+       창 크기에 맞춰 확대·축소된다. */
+    #apd-lb-img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; transform-origin:center center; user-select:none; -webkit-user-drag:none; }
     .apd-lb-cap { flex-shrink:0; padding:7px 12px; text-align:center; color:#fff; font-size:13px; background:rgba(0,0,0,.35); }
     .apd-lb-close { position:absolute; top:8px; right:8px; z-index:2; width:32px; height:32px; border:none; border-radius:50%; background:rgba(255,255,255,.15); color:#fff; font-size:16px; cursor:pointer; }
     .apd-lb-close:hover { background:rgba(255,255,255,.3); }
     .apd-lb-nav { position:absolute; top:50%; transform:translateY(-50%); z-index:2; width:36px; height:52px; border:none; border-radius:9px; background:rgba(255,255,255,.12); color:#fff; font-size:24px; cursor:pointer; }
     .apd-lb-nav:hover { background:rgba(255,255,255,.25); }
     .apd-lb-prev { left:8px; } .apd-lb-next { right:8px; }
-    .apd-lb-zoom { position:absolute; top:8px; left:8px; z-index:2; display:flex; gap:4px; }
+    /* 사진 확대 버튼은 창 크기조절 그립(.ui-grip-corner = right/bottom:3px, 24px) 바로 위
+       한 줄에 둔다 — 좌측 상단이 아니라 우측 하단(2026-08-21 사용자 지시). */
+    .apd-lb-zoom { position:absolute; right:6px; bottom:36px; z-index:2; display:flex; gap:4px; }
     .apd-lb-zoom button { width:28px; height:28px; border:none; border-radius:7px; background:rgba(255,255,255,.15); color:#fff; font-size:15px; line-height:1; cursor:pointer; }
     .apd-lb-zoom button:hover { background:rgba(255,255,255,.3); }
     /* ── Panel widgets ── */
@@ -2852,12 +2858,12 @@
       }
       // 이미지 확대(줌) — 프레임 크기조절과는 독립적. 1 = 프레임에 맞춤, 최대 6배.
       function lbApplyTransform() {
-        lbImg.style.transform = `translate(-50%,-50%) translate(${lbPanX}px,${lbPanY}px) scale(${lbZoom})`;
+        lbImg.style.transform = `translate(${lbPanX}px,${lbPanY}px) scale(${lbZoom})`;
       }
+      // 이미지가 프레임을 꽉 채우므로(object-fit:contain) 확대 배율만큼 넘친 절반까지만 이동 허용.
       function lbClampPan() {
         const vw = lbView.clientWidth, vh = lbView.clientHeight;
-        const iw = lbImg.offsetWidth * lbZoom, ih = lbImg.offsetHeight * lbZoom;
-        const maxX = Math.max(0, (iw - vw) / 2), maxY = Math.max(0, (ih - vh) / 2);
+        const maxX = Math.max(0, (vw * lbZoom - vw) / 2), maxY = Math.max(0, (vh * lbZoom - vh) / 2);
         lbPanX = Math.max(-maxX, Math.min(maxX, lbPanX));
         lbPanY = Math.max(-maxY, Math.min(maxY, lbPanY));
       }
