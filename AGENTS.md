@@ -6,7 +6,10 @@
 > 3. **[`TROUBLESHOOTING.md`](TROUBLESHOOTING.md) — 반복해서 터진 버그와 해결법. 코드 만지기 전에 반드시 볼 것.**
 >    (Leaflet 팝업/레이어 함정, localhost 키 제약, UPIS·ITS·수출입은행 API 함정, 배포·검증 방법)
 > 4. [`HANDOFF.md`](HANDOFF.md) — 직전 세션이 어디까지 했고 무엇이 남았는지
-> 5. `git log -5`, `git status` 로 교차 확인
+> 5. 📋 **[`TODO.md`](TODO.md) — 보류된 과제와 외부 문의 대기 항목.**
+>    "이거 왜 안 돼 있지?" 싶으면 여기를 먼저 볼 것. **이미 조사가 끝나 불가로 판정된 것**이
+>    있으니(예: 감정평가서 PDF → `TROUBLESHOOTING.md` §47) 같은 조사를 되풀이하지 말 것.
+> 6. `git log -5`, `git status` 로 교차 확인
 >
 > ✅ **검증 완료 기준점 = 태그 `stable-20260821`** (2026-08-21 사용자가 전 기능 정상 확인).
 > **무언가 깨졌으면 추측하기 전에 먼저 `git diff stable-20260821 --stat` 으로 그때와 무엇이
