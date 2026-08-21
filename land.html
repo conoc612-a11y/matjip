@@ -232,6 +232,7 @@
     /* ── 법원경매 물건 사진 ── (단계1: 플레이스홀더. 단계2에서 PGJ155로 실사진 연동) */
     .auc-photos { display:grid; grid-template-columns:repeat(3, 1fr); gap:4px; margin-bottom:8px; }
     .auc-photo { position:relative; aspect-ratio:4/3; border-radius:8px; overflow:hidden; background:var(--c-hover); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:20px; }
+    .auc-photo-click { cursor:pointer; }
     .auc-photo img { width:100%; height:100%; object-fit:cover; display:block; }
     .auc-photo-ph { font-size:11px; color:var(--muted); text-align:center; line-height:1.4; padding:4px; }
     .auc-photo-more { position:absolute; right:0; bottom:0; background:rgba(0,0,0,.55); color:#fff; font-size:11px; padding:1px 6px; border-radius:6px 0 0 0; }
@@ -2371,9 +2372,10 @@
         if (!d.photos || !d.photos.length) {
           return `<div class="auc-photos">${ph('📷 사진<br>준비 중')}${ph('')}${ph('')}</div>`;
         }
-        const cells = d.photos.slice(0, 3).map((p, i) => `<div class="auc-photo"><img src="${esc(photoUrl(p))}" alt="물건 사진 ${i + 1}" loading="lazy"></div>`);
+        const cells = d.photos.slice(0, 3).map((p, i) => `<div class="auc-photo auc-photo-click" data-idx="${i}"><img src="${esc(photoUrl(p))}" alt="물건 사진 ${i + 1}" loading="lazy"></div>`);
         while (cells.length < 3) cells.push(ph(''));
-        if (d.photos.length > 3) cells.push(`<div class="auc-photo"><span class="auc-photo-more">+${d.photos.length - 3}</span></div>`);
+        // "+N" 칸도 클릭 가능하게: 라이트박스를 4번째 사진(idx 3, 아직 안 보인 것)부터 연다.
+        if (d.photos.length > 3) cells.push(`<div class="auc-photo auc-photo-click" data-idx="3"><span class="auc-photo-more">+${d.photos.length - 3}</span></div>`);
         return `<div class="auc-photos">${cells.join('')}</div>`;
       }
       function auctionPopupHtml(d) {
@@ -2422,6 +2424,13 @@
           if (b._wired) return;
           b._wired = true;
           b.onclick = (ev) => { ev.stopPropagation(); aucPopGoClick(d, b.dataset.go, b); };
+        });
+        // 팝업 사진 클릭 → 확대(라이트박스). 상세 패널의 캐러셀·라이트박스를 그대로 재사용한다
+        // (같은 lightboxOpen, d.photos 배열을 그대로 넘기면 되므로 별도 구현이 필요 없다).
+        pc.querySelectorAll('.auc-photo-click').forEach((cell) => {
+          if (cell._wired) return;
+          cell._wired = true;
+          cell.onclick = (ev) => { ev.stopPropagation(); lightboxOpen(d, +cell.dataset.idx || 0); };
         });
       }
       // 팝업 바로가기 클릭. 상세 패널로 표시 가능한 항목(사건내역·기일내역)은 패널을 열어
