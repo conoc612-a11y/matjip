@@ -92,6 +92,29 @@ function normalize(dm) {
   };
 }
 
+// 당사자(이해관계인) 내역 — 채권자·채무자·소유자 등 (2026-08-21 추가)
+// ⚠️ 이 데이터는 '물건상세조회'(pgj15B) 응답에 없다. **검색 결과(pgj15A) 응답**의
+// dlt_rletCsIntrpsLst 로 온다(실측 2026-08-21: 2025타경1604 에서 23건).
+// 그래서 예전 수집기는 이걸 아예 못 봤다 — 응답을 안 듣고 있었기 때문이고, 법원이 안 주는
+// 게 아니었다. 이름은 법원이 "김OO" 로 마스킹해 내려준다(그대로 저장·표시한다).
+function normalizeParties(sr) {
+  const lst = (sr && sr.dlt_rletCsIntrpsLst) || [];
+  const seen = new Set();
+  const out = [];
+  for (const o of lst) {
+    const dvs = o.auctnIntrpsDvsNm || '';
+    const nm = o.intrpsNm || '';
+    if (!dvs && !nm) continue;
+    // 같은 구분+이름이 여러 번 오는 경우가 있다(순번만 다름). 화면에 같은 줄을 반복해
+    // 보여줄 이유가 없으니 중복은 접는다. 마스킹 때문에 동명이인 구분은 애초에 불가능하다.
+    const key = dvs + '|' + nm;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ dvs, nm });
+  }
+  return out;
+}
+
 async function openSearch(page, courtSel) {
   for (let attempt = 0; attempt < 3; attempt++) {
     try { await page.goto(SRCH_URL, { waitUntil: 'domcontentloaded', timeout: 30000 }); }
@@ -160,6 +183,30 @@ function splitCsNo(cn) {
     }, ms);
   });
 
+  // 검색 결과(pgj15A) 응답 캡처 — 당사자내역이 여기 온다. 검색 버튼을 누르기 **전에**
+  // 리스너를 걸어야 한다(응답이 클릭 직후 오므로).
+  const captureSearchRslt = (ms = 20000) => new Promise((resolve) => {
+    let done = false;
+    const onRes = async (res) => {
+      if (!res.url().includes('/pgj/pgj15A/selectAuctnCsSrchRslt.on') || done) return;
+      try {
+        const j = JSON.parse(await res.text());
+        if (j && j.data && Array.isArray(j.data.dlt_rletCsIntrpsLst)) {
+          done = true;
+          page.off('response', onRes);
+          resolve(j.data);
+        }
+      } catch (e) { /* 무시 */ }
+    };
+    page.on('response', onRes);
+    setTimeout(() => {
+      if (done) return;
+      done = true;
+      page.off('response', onRes);
+      resolve(null);
+    }, ms);
+  });
+
   let done = 0;
   for (const { cn, court } of targets) {
     const sp = splitCsNo(cn);
@@ -184,9 +231,11 @@ function splitCsNo(cn) {
       await page.waitForTimeout(300);
 
       const token = await page.evaluate('document.body.innerText.length');
+      const waitSrch = captureSearchRslt(20000);   // 당사자내역은 이 클릭의 응답에 온다
       await page.locator(SRCH_BTN).click({ timeout: 10000 });
       await page.waitForFunction((t) => document.body.innerText.length !== t, token, { timeout: 20000 }).catch(() => {});
       await page.waitForTimeout(2000);
+      const srch = await waitSrch;   // null 이면 당사자 없이 진행(기존 동작 유지)
 
       const waitDetail = captureDetail(25000);
       const detailBtn = await page.evaluate(() => {
@@ -201,9 +250,10 @@ function splitCsNo(cn) {
       await page.waitForTimeout(1200);
       if (!dm) { console.log('  상세 응답 없음 — 스킵'); continue; }
 
-      db[cn] = Object.assign({ t: Date.now() }, normalize(dm));
+      db[cn] = Object.assign({ t: Date.now() }, normalize(dm), { intrps: normalizeParties(srch) });
       const gh = db[cn].gihui;
-      console.log(`  saNo=${db[cn].base.saNo} · 기일내역 ${gh.length}건 · ${gh.map((g) => `${g.y}${g.rsltNm ? '(' + g.rsltNm + ')' : ''}`).join(' → ')}`);
+      const ip = db[cn].intrps;
+      console.log(`  saNo=${db[cn].base.saNo} · 기일내역 ${gh.length}건 · 당사자 ${ip.length}건 · ${gh.map((g) => `${g.y}${g.rsltNm ? '(' + g.rsltNm + ')' : ''}`).join(' → ')}`);
       fs.writeFileSync(OUT_DETAIL, JSON.stringify(db));
     } catch (e) {
       console.log(`  처리 중 오류 — 스킵: ${String(e && e.message || e).split('\n')[0]}`);
