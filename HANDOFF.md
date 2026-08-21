@@ -26,6 +26,36 @@
 
 ---
 
+## 2026-08-21 (66) — Claude Code (경매 사진이 안 보이던 원인 — 무인 자동화가 R2 검증 단계에서 조용히 멈춰 있었음)
+
+> 사용자: "matjip에 경매 사진이 안올라오고있어"
+
+### 원인
+§65 의 `tools/finish_auction_collect.ps1`(수집→축소→R2업로드→커밋→push→컴퓨터 종료, 새벽 자동 가동)이
+**R2 업로드까진 성공(37,836건, 실패 0)했지만 그 다음 검증 단계에서 멈췄다.** 검증용 임시 스크립트를
+`$env:TEMP`(프로젝트 밖)에 써서 실행했는데, 그 위치엔 `node_modules` 조상 디렉터리가 없어
+`aws4fetch` import 가 `Cannot find package` 로 실패 → 스크립트는 설계대로 "실패 시 컴퓨터를 끄지
+않고 그 자리에서 멈춘다"를 따랐고, **커밋·push 이전 단계라 `auction_photos.json`(사진 2,844건
+갱신분)이 로컬에만 남고 배포되지 않았다.** 사이트에는 옛 JSON 이 그대로 있어 새로 수집된
+사건들의 사진이 안 보였다(기존에 이미 배포된 사진은 R2 에 그대로 있어 정상 노출).
+
+### 조치
+1. **R2 실측 재확인**(매니페스트 신뢰 안 함): 프로젝트 `node_modules` 안에서 직접 ListObjectsV2 를
+   페이지네이션해 물었다 — **R2 40,198개 = 로컬 파일 40,198개, 완전 일치.** 업로드 자체는 문제 없었음.
+2. `auction_photos.json` · `auction_detail.json` 커밋 + push (`532e343`). 이제 GitHub Pages 에
+   반영되면 새로 수집된 사건들의 사진도 보인다.
+3. **근본 원인 수정**(`4cceadf`): `finish_auction_collect.ps1` 의 검증 임시 스크립트 저장 위치를
+   `$env:TEMP` → `tools/`(프로젝트 안, `Push-Location` 으로 루트에서 실행)로 변경 + 그 안에 남아있던
+   ESM 코드의 `require('fs')` 잔재를 `import fs from 'node:fs'` 로 정리(고쳐진 위치 문제가 없었어도
+   이 줄이 또 터졌을 것 — ESM 컨텍스트에서 `require` 는 미정의). 크래시로 임시 파일이 남는 경우를
+   대비해 `.gitignore` 에 `tools/_r2_verify_tmp.mjs` 추가.
+
+### 다음 세션 확인할 것
+- 다음 자동화 실행 때 이 검증 단계가 실제로 통과하는지 로그(`tools/finish_auction_collect.log`)로 확인.
+- §65 §7 의 나머지 항목(stale 310건 정리, `pre-r2-migration-backup` 브랜치 삭제)은 여전히 미결정.
+
+---
+
 ## 2026-08-20 (65) — Claude Code (경매 사진 Cloudflare R2 이전 + git 히스토리 정리 + 건물 팝업 3버그)
 
 > 사용자 시작 질문: "Supabase → Aiven 으로 서버 옮기면 문제 있을까? 무료 용량 한도 때문에".
