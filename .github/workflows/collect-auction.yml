@@ -53,6 +53,15 @@ jobs:
         env:
           VWORLD_PROXY: https://bhgijvaxxjnocgfnaaeu.supabase.co/functions/v1/vworld-geocode
 
+      # 매각예정물건(PGJ157M00) → auction_sched.json (2026-08-21 추가)
+      # 왜 별도 실행인가: 법원 사이트가 화면을 둘로 나눠 놨다. 위 실행(PGJ151F00)은
+      # **매각기일 오늘~+2주**만 나오고, 그보다 뒤에 매각될 물건은 이 화면(오늘~+2개월)에만 있다.
+      # 즉 --sched 없이는 2주 밖 물건이 앱에 아예 없었다(기능은 만들어 뒀는데 한 번도 안 쓰였음).
+      # ⚠️ 위 실행과 **순차로** 둔다 — 같은 사이트를 동시에 긁으면 IP 차단 위험이 커진다.
+      - run: node tools/collect_auction.js --sched
+        env:
+          VWORLD_PROXY: https://bhgijvaxxjnocgfnaaeu.supabase.co/functions/v1/vworld-geocode
+
       # SH공사 공고 RSS(EUC-KR) → notices.json. 키 불필요·초 단위라 같은 잡에서 처리한다.
       - run: node tools/collect_notices.js
 
