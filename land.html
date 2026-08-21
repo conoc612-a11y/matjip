@@ -287,15 +287,25 @@
     .apd-sec .dday { color:var(--c-primary); font-weight:800; flex-shrink:0; }
     .apd-note { font-size:12px; line-height:1.6; color:var(--text); white-space:pre-wrap; word-break:break-all; }
     .apd-muted { font-size:12px; color:var(--muted); line-height:1.6; white-space:pre-wrap; word-break:break-all; }
-    #apd-lightbox { position:fixed; inset:0; z-index:4000; background:rgba(0,0,0,.92); display:flex; align-items:center; justify-content:center; }
+    #apd-lightbox { position:fixed; inset:0; z-index:4000; background:rgba(0,0,0,.72); }
     #apd-lightbox[hidden] { display:none; }
-    #apd-lightbox img { max-width:94vw; max-height:88vh; border-radius:6px; box-shadow:0 8px 40px rgba(0,0,0,.5); }
-    .apd-lb-cap { position:absolute; left:0; right:0; bottom:16px; text-align:center; color:#fff; font-size:13px; }
-    .apd-lb-close { position:absolute; top:12px; right:16px; width:36px; height:36px; border:none; border-radius:50%; background:rgba(255,255,255,.15); color:#fff; font-size:18px; cursor:pointer; }
+    /* 사진 프레임 — 백드롭 중앙에 뜨는 창(2026-08-21, 사용자 요청). 코너 그립(.ui-grip,
+       css/buttons.css 공용) + makeResizable() 로 창 크기 조절, 그 안 이미지는 wheel/버튼으로
+       별도 확대·이동(pan) 가능. 기존엔 백드롭에 사진만 떠 있어 "창"이라 부를 게 없었다. */
+    #apd-lb-frame { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:min(92vw,920px); height:min(86vh,680px); min-width:280px; min-height:220px; max-width:96vw; max-height:94vh; background:#111; border-radius:10px; box-shadow:0 8px 40px rgba(0,0,0,.6); overflow:hidden; display:flex; flex-direction:column; }
+    #apd-lb-view { position:relative; flex:1; overflow:hidden; touch-action:none; }
+    #apd-lb-view.zoomed { cursor:grab; }
+    #apd-lb-view.zoomed.panning { cursor:grabbing; }
+    #apd-lb-img { position:absolute; top:50%; left:50%; max-width:100%; max-height:100%; transform:translate(-50%,-50%); user-select:none; -webkit-user-drag:none; }
+    .apd-lb-cap { flex-shrink:0; padding:7px 12px; text-align:center; color:#fff; font-size:13px; background:rgba(0,0,0,.35); }
+    .apd-lb-close { position:absolute; top:8px; right:8px; z-index:2; width:32px; height:32px; border:none; border-radius:50%; background:rgba(255,255,255,.15); color:#fff; font-size:16px; cursor:pointer; }
     .apd-lb-close:hover { background:rgba(255,255,255,.3); }
-    .apd-lb-nav { position:absolute; top:50%; transform:translateY(-50%); width:40px; height:60px; border:none; border-radius:10px; background:rgba(255,255,255,.12); color:#fff; font-size:26px; cursor:pointer; }
+    .apd-lb-nav { position:absolute; top:50%; transform:translateY(-50%); z-index:2; width:36px; height:52px; border:none; border-radius:9px; background:rgba(255,255,255,.12); color:#fff; font-size:24px; cursor:pointer; }
     .apd-lb-nav:hover { background:rgba(255,255,255,.25); }
-    .apd-lb-prev { left:10px; } .apd-lb-next { right:10px; }
+    .apd-lb-prev { left:8px; } .apd-lb-next { right:8px; }
+    .apd-lb-zoom { position:absolute; top:8px; left:8px; z-index:2; display:flex; gap:4px; }
+    .apd-lb-zoom button { width:28px; height:28px; border:none; border-radius:7px; background:rgba(255,255,255,.15); color:#fff; font-size:15px; line-height:1; cursor:pointer; }
+    .apd-lb-zoom button:hover { background:rgba(255,255,255,.3); }
     /* ── Panel widgets ── */
     .engine-bar { display:flex; gap:4px; margin-bottom:10px; background:var(--c-hover); padding:4px; border-radius:10px; }
     .tool-btn { flex:1; font:inherit; font-size:13px; font-weight:600; padding:7px 10px; border:none; background:transparent; color:var(--muted); border-radius:7px; cursor:pointer; transition:all .15s; }
@@ -733,11 +743,21 @@
     </div>
     <!-- 법원경매 사진 확대 (라이트박스) — 스크립트 실행 시점에 DOM 에 있어야 하므로 body 상단에 배치 -->
     <div id="apd-lightbox" hidden>
-      <button type="button" class="apd-lb-close" id="apd-lb-close" aria-label="닫기">✕</button>
-      <button type="button" class="apd-lb-nav apd-lb-prev" id="apd-lb-prev" aria-label="이전">‹</button>
-      <img id="apd-lb-img" alt="사진 확대">
-      <button type="button" class="apd-lb-nav apd-lb-next" id="apd-lb-next" aria-label="다음">›</button>
-      <div class="apd-lb-cap" id="apd-lb-cap"></div>
+      <div id="apd-lb-frame">
+        <button type="button" class="apd-lb-close" id="apd-lb-close" aria-label="닫기">✕</button>
+        <div class="apd-lb-zoom">
+          <button type="button" id="apd-lb-zoom-out" aria-label="축소" title="축소">−</button>
+          <button type="button" id="apd-lb-zoom-reset" aria-label="원래 크기(맞춤)" title="원래 크기(맞춤)">⤢</button>
+          <button type="button" id="apd-lb-zoom-in" aria-label="확대" title="확대">+</button>
+        </div>
+        <button type="button" class="apd-lb-nav apd-lb-prev" id="apd-lb-prev" aria-label="이전">‹</button>
+        <div id="apd-lb-view">
+          <img id="apd-lb-img" alt="사진 확대">
+        </div>
+        <button type="button" class="apd-lb-nav apd-lb-next" id="apd-lb-next" aria-label="다음">›</button>
+        <div class="apd-lb-cap" id="apd-lb-cap"></div>
+        <div class="ui-grip ui-grip-corner" id="apd-lb-grip" title="드래그하여 창 크기 조절"></div>
+      </div>
     </div>
     <div id="map"></div>    <div class="panel-resizer" id="panel-resizer" title="드래그해서 목록 너비 조절"></div>
     <div class="panel" id="panel">
@@ -2808,9 +2828,13 @@
         };
         $('apd-link').onclick = () => window.open(AUC_SEARCH_URL, '_blank', 'noopener');
       }
-      // 라이트박스 (사진 확대)
+      // 라이트박스 (사진 확대) — 창(프레임) 크기조절 + 이미지 별도 확대·이동(2026-08-21, 사용자 요청).
+      // 창 크기조절은 거리뷰 오버레이(showStreetView)와 같은 공용 makeResizable()+.ui-grip 패턴.
       const lightbox = $('apd-lightbox');
-      let lbD = null, lbIdx = 0;
+      const lbFrame = $('apd-lb-frame');
+      const lbView = $('apd-lb-view');
+      const lbImg = $('apd-lb-img');
+      let lbD = null, lbIdx = 0, lbZoom = 1, lbPanX = 0, lbPanY = 0, lbDrag = null;
       function lightboxOpen(d, idx) {
         lbD = d; lbIdx = idx;
         lightbox.hidden = false;
@@ -2822,9 +2846,60 @@
         const photos = lbD.photos || [];
         if (!photos.length) return;
         const p = photos[Math.min(lbIdx, photos.length - 1)];
-        $('apd-lb-img').src = photoUrl(p);
+        lbImg.src = photoUrl(p);
         $('apd-lb-cap').textContent = `${esc(p.name)} ${lbIdx + 1} / ${photos.length}`;
+        lbSetZoom(1);   // 사진을 넘기면 이전 사진의 확대·이동 상태를 물려받지 않는다
       }
+      // 이미지 확대(줌) — 프레임 크기조절과는 독립적. 1 = 프레임에 맞춤, 최대 6배.
+      function lbApplyTransform() {
+        lbImg.style.transform = `translate(-50%,-50%) translate(${lbPanX}px,${lbPanY}px) scale(${lbZoom})`;
+      }
+      function lbClampPan() {
+        const vw = lbView.clientWidth, vh = lbView.clientHeight;
+        const iw = lbImg.offsetWidth * lbZoom, ih = lbImg.offsetHeight * lbZoom;
+        const maxX = Math.max(0, (iw - vw) / 2), maxY = Math.max(0, (ih - vh) / 2);
+        lbPanX = Math.max(-maxX, Math.min(maxX, lbPanX));
+        lbPanY = Math.max(-maxY, Math.min(maxY, lbPanY));
+      }
+      function lbSetZoom(z) {
+        lbZoom = Math.max(1, Math.min(6, z));
+        if (lbZoom === 1) { lbPanX = 0; lbPanY = 0; } else { lbClampPan(); }
+        lbApplyTransform();
+        lbView.classList.toggle('zoomed', lbZoom > 1);
+      }
+      lbView.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        lbSetZoom(lbZoom * (e.deltaY < 0 ? 1.2 : 1 / 1.2));
+      }, { passive: false });
+      lbView.addEventListener('pointerdown', (e) => {
+        if (lbZoom <= 1) return;
+        lbDrag = { sx: e.clientX, sy: e.clientY, px: lbPanX, py: lbPanY };
+        lbView.classList.add('panning');
+        try { lbView.setPointerCapture(e.pointerId); } catch (err) {}
+      });
+      lbView.addEventListener('pointermove', (e) => {
+        if (!lbDrag) return;
+        lbPanX = lbDrag.px + (e.clientX - lbDrag.sx);
+        lbPanY = lbDrag.py + (e.clientY - lbDrag.sy);
+        lbClampPan();
+        lbApplyTransform();
+      });
+      const lbEndDrag = () => { if (lbDrag) { lbDrag = null; lbView.classList.remove('panning'); } };
+      lbView.addEventListener('pointerup', lbEndDrag);
+      lbView.addEventListener('pointercancel', lbEndDrag);
+      lbImg.ondblclick = () => lbSetZoom(lbZoom > 1 ? 1 : 2.2);
+      $('apd-lb-zoom-in').onclick = (e) => { e.stopPropagation(); lbSetZoom(lbZoom * 1.4); };
+      $('apd-lb-zoom-out').onclick = (e) => { e.stopPropagation(); lbSetZoom(lbZoom / 1.4); };
+      $('apd-lb-zoom-reset').onclick = (e) => { e.stopPropagation(); lbSetZoom(1); };
+      // 창(프레임) 크기조절 — 공용 makeResizable(). 창을 키우면 맞춤 상태(zoom 1)의 이미지도
+      // 함께 커진다(object-fit 대신 max-width/height:100% 이므로). 확대 중이었으면 pan 범위만 재계산.
+      makeResizable($('apd-lb-grip'), lbFrame, {
+        minW: 280, minH: 220,
+        maxW: () => window.innerWidth - 24,
+        maxH: () => window.innerHeight - 24,
+        onResize: lbClampPan,
+        onEnd: lbClampPan,
+      });
       $('apd-lb-close').onclick = lightboxClose;
       $('apd-lb-prev').onclick = () => { lbIdx = (lbIdx + (lbD.photos.length - 1)) % lbD.photos.length; lightboxRender(); };
       $('apd-lb-next').onclick = () => { lbIdx = (lbIdx + 1) % lbD.photos.length; lightboxRender(); };
