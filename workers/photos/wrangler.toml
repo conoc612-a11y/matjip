@@ -1,16 +1,20 @@
-# matjip 사진 서빙 Worker 설정 (2026-08-22 신설)
+# matjip 사진 서빙 Worker 설정 (2026-08-22 신설, 같은 날 "채택 안 함"으로 결론)
 #
-# 배포:
-#   1) 한 번만:  npx wrangler login          ← 브라우저가 열려 계정 승인
-#   2) 배포:     cd workers/photos && npx wrangler deploy
-#   3) 출력된 주소(https://matjip-photos.<계정>.workers.dev)를 land.html 의
-#      PHOTO_BASE 와 <link rel="preconnect"> 에 반영
+# ⚠️ 배포되어 있지만 **프론트에서 쓰지 않는다.** land.html 의 PHOTO_BASE 는 r2.dev 그대로다.
+#    실측에서 사진 첫 로드가 오히려 느렸다(Worker 0.96~1.37초 vs r2.dev 0.89~1.28초).
+#    전체 근거·재측정 방법: TROUBLESHOOTING.md §49, index.js 상단 주석.
+#
+# 배포 주소: https://matjip-photos.matjip-kr.workers.dev
+# 계정 workers.dev 서브도메인은 이때 **matjip-kr** 로 등록했다(matjip, photos 는 선점됨).
+#
+# 재배포:
+#   cd workers/photos && npx wrangler deploy      # wrangler login 은 이미 되어 있다
 #
 # ⚠️ keys.env 의 R2 토큰으로는 배포할 수 없다 — 그 토큰은 "Object Read & Write +
 #    matjip-assets 버킷 한정"으로 좁혀 둔 것이라(HANDOFF §65) Workers 배포 권한이 없다.
 #    일부러 좁혀 놓은 것이니 권한을 넓히지 말고, wrangler login 으로 배포할 것.
 #
-# 무료 한도: 10만 요청/일. 사진은 팝업당 3~4장이라 개인 사용에는 충분하다.
+# 무료 한도: 10만 요청/일.
 
 name = "matjip-photos"
 main = "index.js"

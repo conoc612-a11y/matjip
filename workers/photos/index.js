@@ -1,22 +1,42 @@
 /**
  * matjip 사진 서빙 Worker — R2 를 CDN 캐시와 함께 내보낸다.
  *
- * ── 왜 필요한가 (2026-08-22 실측) ───────────────────────────────────────
- * 지금 프론트는 R2 의 **개발용 주소**(`pub-….r2.dev`)를 직접 쓴다. Cloudflare 문서가
- * "development purposes only"라고 명시한 엔드포인트로, **CDN 캐시를 타지 않는다.**
- * 한국에서 실측한 결과:
+ * ⚠️⚠️ 지금 이 Worker 는 **프론트에서 쓰지 않는다.** land.html 의 PHOTO_BASE 는 여전히
+ *      r2.dev 를 가리킨다. 실측 결과 개선이 없어서 되돌렸다. 전체 근거는
+ *      TROUBLESHOOTING.md §49. **PHOTO_BASE 를 이 주소로 바꾸지 말 것.**
  *
- *   우리 r2.dev 사진        CF-RAY …-LAX   TTFB 0.74~0.80초   cf-cache-status 없음
- *   cloudflare.com          CF-RAY …-ICN   TTFB 0.23초
- *   developers.cloudflare   CF-RAY …-ICN   TTFB 0.17초
- *   discord.com             CF-RAY …-ICN   TTFB 0.27초
- *   (같은 사이트 정적파일, GitHub Pages/Fastly ICN)  TTFB 0.19~0.35초
+ * ── 왜 만들었고, 왜 안 쓰는가 (2026-08-22 실측) ─────────────────────────
+ * 만든 이유(가설): r2.dev 는 "development purposes only" 엔드포인트라 CDN 캐시를 타지 않고
+ * 한국에서 LAX 로 우회한다. Worker 는 최근접 PoP(ICN)에서 실행되니 이게 사라질 것이다.
  *
- * 즉 **Cloudflare 망은 한국에서 이미 빠르고, r2.dev 만 LA 로 간다.** 버킷은 Asia-Pacific 인데도.
- * Worker 는 **사용자 최근접 PoP(한국이면 ICN)에서 실행**되고 R2 를 바인딩으로 직접 읽으므로
- * 이 우회로가 사라진다. 게다가 Cache API 로 PoP 에 캐시해 재요청은 오리진까지 가지 않는다.
+ * **가설의 뒷부분이 틀렸다.** 같은 시점·같은 회선 실측:
  *
- * 커스텀 도메인이 필요 없다 — `*.workers.dev` 무료 주소로 동작한다(도메인 미보유 상태 대응).
+ *   cloudflare.com              TTFB 0.16초   CF-RAY …-ICN
+ *   developers.cloudflare.com   TTFB 0.31초   CF-RAY …-ICN
+ *   discord.com                 TTFB 0.23초   CF-RAY …-ICN
+ *   우리 r2.dev                 TTFB 0.73~0.87초   CF-RAY …-LAX
+ *   우리 Worker (이 파일)       TTFB 0.55~0.72초   CF-RAY …-**LAX**
+ *
+ * Worker 도 LAX 다. LA 우회는 r2.dev 의 성질이 아니라 **이 계정/플랜에 묶인 라우팅**이고,
+ * Worker 를 얹어도 지리적 거리는 그대로다.
+ *
+ * 게다가 r2.dev 는 이미 `Cache-Control: public, max-age=31536000, immutable` 을 보내고 있어서
+ * 재열람은 원래부터 브라우저 캐시가 처리한다. 아래 Cache API 가 이길 구간이 거의 없다.
+ *
+ *   첫 요청(MISS)   Worker 0.96~1.37초  vs  r2.dev 0.89~1.28초  ← Worker 가 더 느리다
+ *   재요청(HIT)     Worker 0.55~0.61초  vs  r2.dev — (브라우저 캐시)
+ *
+ * 사용자가 체감하는 경로(사진 첫 로드)에서 더 느리므로 채택하지 않았다.
+ *
+ * ── 그래도 왜 배포된 상태로 남겨두나 ────────────────────────────────────
+ * 무료(10만 요청/일)이고 위험이 없다. 아래 조건이 생기면 PHOTO_BASE 한 줄 + preconnect 한 줄만
+ * 바꿔 바로 쓸 수 있다:
+ *   ① 유료 플랜으로 ICN 라우팅을 받게 됨   ② 사용자가 여러 명(같은 사진을 여럿이 봄)
+ *   ③ 커스텀 도메인 확보
+ * 바꾸기 전에 **반드시 위 표와 같은 방식으로 재측정**할 것. 문서가 맞아도 우리 계정에서
+ * 그렇게 동작하는지는 별개다(§49-7).
+ *
+ * 주소: https://matjip-photos.matjip-kr.workers.dev
  *
  * ── 캐시 정책 ───────────────────────────────────────────────────────────
  * 사진 파일명은 사건번호+구분+번호로 사실상 불변이라 1년 immutable 로 준다.

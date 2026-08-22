@@ -58,6 +58,50 @@
 
 ---
 
+## 2026-08-22 (75) — Claude Code (Cloudflare Worker 사진 서빙 → 실측 후 **기각·되돌림**)
+
+### Objective
+도메인 없이 Cloudflare 를 최대한 활용해 사진 로딩(TTFB 0.75초)을 줄인다.
+직전 세션에서 만들어 둔 `workers/photos/` 를 실제 배포하고 **측정해서 채택 여부를 정한다.**
+
+### Work State
+
+**배포는 성공, 채택은 안 함. `land.html` 은 변경 없다.**
+
+1. `wrangler login` 완료(사용자 Chrome 으로 OAuth 승인). 첫 시도는 승인 화면에서 지체해
+   로컬 콜백(포트 8976)이 타임아웃 → 재시도해서 성공. 계정 `conoc@naver.com`.
+2. 배포하려면 계정에 **workers.dev 서브도메인**이 있어야 한다. 없었다.
+   wrangler 가 폴더명에서 딴 `photos` 자동 등록 시도 → 선점됨. `matjip` 도 선점됨.
+   → **`matjip-kr`** 로 등록(등록 시점 Worker/Pages 0개라 "라우팅 끊김" 경고 영향 없음).
+3. 배포 성공: `https://matjip-photos.matjip-kr.workers.dev` (R2 바인딩 `env.PHOTOS` 확인).
+   ⚠️ 새 서브도메인은 인증서 발급까지 **약 1분 30초** 응답 없음(TLS 핸드셰이크 실패). 정상이다.
+4. **실측 결과 가설 기각** → `PHOTO_BASE` 유지. 상세는 `TROUBLESHOOTING.md` §49.
+   - Worker 도 `CF-RAY` 가 **LAX**. "Worker 는 최근접 PoP(ICN)에서 실행"이 이 계정에선 성립 안 함.
+     (대조군 cloudflare.com·developers.cloudflare.com·discord.com 은 전부 ICN, 0.16~0.31초)
+   - r2.dev 는 **이미** `Cache-Control: immutable, max-age=1년` 을 보낸다 → 재열람은 원래부터
+     브라우저 캐시가 처리. Worker 의 PoP 캐시가 이길 구간이 거의 없다.
+   - 사진 **첫 로드가 오히려 느리다**: Worker 0.96~1.37초 vs r2.dev 0.89~1.28초.
+5. 부수 수집: `auction_detail.json` 당사자 **5 → 33건**(직전 통합 수집기 실행분, 순수 추가·손실 0).
+
+### Next Move
+- **`collect-auction.yml` run `32559244779` 결과 확인** (2026-08-22 07:18 UTC 시작, 셋업 전부 통과 후
+  수집 스텝 75분+ 진행 중). 성공이면 몇 번 더 수동 실행 후 cron 주석 해제. → `TODO.md` 0-B
+- `auction.json` 이 8/17 에서 멈춰 있다. 사이트 스로틀링 의심으로 대기 중 → `TODO.md` 0-A
+- 당사자 33/2,756 · 감정정보 1/2,756 채우기(`--max 500` × 약 6회) → `TODO.md` 2
+
+### Relevant Files
+- `workers/photos/index.js`, `workers/photos/wrangler.toml` — **상단 주석에 기각 근거를 적었다.**
+  배포 상태로 남겨 두지만 **`PHOTO_BASE` 를 이 주소로 바꾸지 말 것.**
+- `TROUBLESHOOTING.md` §49 — 실측 표, ⛔ 다시 하지 말 것, 재검토 조건(유료 플랜/다중 사용자/커스텀 도메인)
+- `land.html` — **변경 없음.** `PHOTO_BASE` 는 `pub-a6a10fc408f54f35af0436f2731a7e80.r2.dev` 그대로.
+
+### 교훈
+§48 에서 "측정 없이 원인을 단정했다"고 반성했는데, 이번엔 **Cloudflare 공식 문서를 근거로 결과를
+단정**하고 코드 주석에 사실처럼 적었다. 문서가 맞아도 **우리 계정에서 그렇게 동작하는지는 별개**다.
+성능 개선은 **배포 전에 되돌릴 조건을 정하고 배포 후 반드시 실측** — 이번엔 그렇게 해서 되돌렸다.
+
+---
+
 ## 2026-08-21 (74) — Claude Code (경매 데이터 갱신 범위 조사 + 매각예정 물건 살리기 + 당사자내역)
 
 > 사용자 질문: "사진 수집 매일 이뤄지는거야? … 기존 사진 있는데도 또 반복 업데이트?

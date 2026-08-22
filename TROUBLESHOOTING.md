@@ -1567,3 +1567,88 @@ URL 에 넣으려면 percent-encoding 이 필요하고, 그 사건에 협회 문
    타임아웃은 무응답이라 원인을 특정하지 못한다.
 2. 그 추론을 커밋 메시지·문서·코드 주석에 **사실처럼** 적었다. 진단은 10분이면 됐다.
 3. 교훈: **"막혔다"는 결론을 내리기 전에 계층별로 재라**(DNS/TCP/TLS/HTTP) + **대조군**을 둔다.
+
+---
+
+## 49. 🔴 정정 — Cloudflare Worker 로는 사진 로딩이 빨라지지 않는다 (2026-08-22 실측 확정)
+
+**결론: 배포는 했지만 `PHOTO_BASE` 는 바꾸지 않았다. r2.dev 를 계속 쓴다.**
+다시 시도하지 말 것. 근거를 전부 남긴다.
+
+### 49-1. 내가 세웠던 가설 (틀렸다)
+
+> r2.dev 는 "development purposes only" 엔드포인트라 CDN 캐시를 타지 않고 LA(LAX)로 우회한다.
+> Worker 는 **사용자 최근접 PoP(한국이면 ICN)에서 실행**되고 R2 를 바인딩으로 직접 읽으니
+> 이 우회로가 사라진다. → TTFB 0.75초가 0.2초대로 떨어질 것이다.
+
+앞부분(r2.dev 가 CDN 캐시를 안 탄다)은 맞다. **뒷부분이 틀렸다.**
+
+### 49-2. 실측 (같은 시점·같은 회선, 2026-08-22)
+
+| 대상 | TTFB | CF-RAY PoP |
+|---|---|---|
+| cloudflare.com | 0.16초 | **ICN** |
+| developers.cloudflare.com | 0.31초 | **ICN** |
+| discord.com | 0.23초 | **ICN** |
+| 우리 r2.dev | 0.73~0.87초 | **LAX** |
+| **우리 Worker (matjip-photos)** | 0.55~0.72초 | **LAX** |
+
+**Worker 도 LAX 다.** 즉 LA 우회는 r2.dev 의 성질이 아니라 **이 계정/플랜에 묶인 라우팅**이다.
+Worker 를 얹어도 지리적 거리는 그대로다.
+
+추정 원인(측정으로 확정한 것 아님): Cloudflare 무료 플랜의 한국 트래픽은 현지 트랜짓 비용 때문에
+해외 PoP 로 넘긴다. 대조군 3곳은 Cloudflare 자체/엔터프라이즈라 ICN 을 받는다.
+→ **이 가설을 검증하려면 유료 플랜이 필요하다. 무료 상태에서 더 파도 답이 안 나온다.**
+
+### 49-3. 결정타 — r2.dev 는 이미 immutable 캐시를 보내고 있었다
+
+```
+$ curl -sI https://pub-….r2.dev/auction_photos/…/legacy_1.jpg
+Cache-Control: public, max-age=31536000, immutable
+ETag: "55af55b5e609343dde3d55b41644fb94"
+CF-RAY: …-LAX
+```
+
+즉 **재열람은 원래부터 브라우저 캐시가 처리**하고 있었다. Worker 의 PoP 캐시가 이길 구간은
+"브라우저 캐시는 비었는데 PoP 는 따뜻한" 경우뿐인데, 개인 사용 단일 사용자에서는 거의 없다.
+
+| 경로 | Worker | r2.dev |
+|---|---|---|
+| 첫 요청 (X-Matjip-Cache: MISS) | 0.96~1.37초 | 0.89~1.28초 |
+| 재요청 (HIT) | 0.55~0.61초 | — (브라우저 캐시가 처리) |
+
+**사용자가 체감하는 경로(사진 첫 로드)에서 Worker 가 오히려 조금 느리다** — R2 읽기 + Cache API
+쓰기가 얹히기 때문. 그래서 되돌렸다.
+
+### 49-4. ⛔ 다시 하지 말 것
+
+| 시도 | 결과 |
+|---|---|
+| Worker + R2 바인딩 + Cache API | 배포 성공, **첫 로드 더 느림**. 채택 안 함 |
+| Worker 로 ICN PoP 유도 | **불가** — Worker 도 LAX. 플랜 문제 |
+| r2.dev → Worker 로 `PHOTO_BASE` 교체 | **하지 말 것.** 근거 위 표 |
+| immutable 캐시 헤더 추가 | **이미 되어 있다**(업로드 시 설정, tools/upload_r2.mjs) |
+
+### 49-5. 현재 상태 (남겨둔 것)
+
+- Worker `matjip-photos` 는 **배포된 상태로 남겨둔다** — 무료(10만 요청/일), 위험 없음.
+  주소: `https://matjip-photos.matjip-kr.workers.dev`
+  코드: `workers/photos/`
+- **`land.html` 은 변경 없음.** `PHOTO_BASE` 는 여전히 `pub-a6a10fc408f54f35af0436f2731a7e80.r2.dev`.
+- 이 Worker 가 의미를 갖는 조건: ① 유료 플랜으로 ICN 라우팅을 받게 되거나
+  ② 사용자가 여러 명이 되어 같은 사진을 여럿이 보게 되거나 ③ 커스텀 도메인 확보.
+  그때 `PHOTO_BASE` 한 줄과 preconnect 한 줄만 바꾸면 된다.
+
+### 49-6. 부수 효과 — 계정 workers.dev 서브도메인이 생겼다
+
+배포하려면 계정에 workers.dev 서브도메인이 있어야 한다. 없었고, wrangler 가 폴더명에서 딴
+`photos` 로 자동 등록하려다 이미 사용 중이라 실패했다. `matjip` 도 사용 중 → **`matjip-kr`** 로 등록.
+등록 당시 계정 Worker/Pages 프로젝트가 0개라 "기존 라우팅 끊김" 경고는 실제 영향 없었다.
+이후 이 계정의 모든 Worker 는 `*.matjip-kr.workers.dev` 를 쓴다.
+
+### 49-7. 교훈 (§48 과 같은 실수를 또 했다)
+
+§48 에서 "측정 없이 원인을 단정했다"고 반성했는데, 이번엔 **문서(Cloudflare 의 "Worker 는
+최근접 PoP 에서 실행")를 근거로 결과를 단정**하고 `workers/photos/` 주석에 사실처럼 적었다.
+문서가 맞아도 **우리 계정에서 그렇게 동작하는지는 별개**다.
+→ 성능 개선은 **배포 전에 되돌릴 조건을 정하고, 배포 후 반드시 실측**한다. 이번엔 그렇게 해서 되돌렸다.
