@@ -20,6 +20,10 @@ const fs = require('fs');
 const path = require('path');
 
 const KEY = process.env.DGK;
+// data.go.kr 은 계정당 인증키가 공용이다 — 같은 키를 쓰는 수집기가 동시에 돌면
+// 합계가 일 한도를 넘겨 데이터가 조용히 비워진다(2026-08-22 서울 12개 구 유실, §54).
+require('./dgk_lock')('collect_evcharger');
+
 if (!KEY) {
   console.error('DGK 환경변수에 data.go.kr 인증키를 넣어 실행하세요.');
   process.exit(1);

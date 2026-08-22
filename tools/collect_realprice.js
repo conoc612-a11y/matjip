@@ -32,6 +32,10 @@ if (!RAW_KEY) {
 // (2026-08-14 실측: 전 구·전 월에서 0건 → writeSafe 가드가 덮어쓰기를 막아 발각).
 // 이미 인코딩된 키(%2B 등 포함)를 넣은 경우 이중 인코딩되지 않도록 원형을 먼저 복원한다.
 const KEY = encodeURIComponent(/%[0-9A-Fa-f]{2}/.test(RAW_KEY) ? decodeURIComponent(RAW_KEY) : RAW_KEY);
+// data.go.kr 은 계정당 인증키가 공용이다 — 같은 키를 쓰는 수집기가 동시에 돌면
+// 합계가 일 한도를 넘겨 데이터가 조용히 비워진다(2026-08-22 서울 12개 구 유실, §54).
+require('./dgk_lock')('collect_realprice');
+
 const VWORLD_KEY = process.env.VWORLD_KEY || 'B2CDEEDD-D622-311B-883B-CC7890E50822';
 const OUT_DIR = path.resolve(__dirname, '..');
 const MONTHS_BACK = Number(process.env.MONTHS || 12);
