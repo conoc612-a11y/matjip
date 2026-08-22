@@ -4926,6 +4926,62 @@
         + `<b>이 동 단독·다가구 시세</b> <span style="font-size:12px;color:var(--c-muted);">최근 12개월</span><br>${rows.join('<br>')}</div>`;
     }
 
+    // ── 비주거(상업업무용·오피스텔·공장창고) 실거래 ─────────────────
+    // 왜 필요한가: 실거래가 그동안 **주거용만** 있었다. 상가 건물을 클릭해도 "이 건물이
+    // 얼마에 거래됐나"를 볼 수 없었고, 경매 물건에 근린생활시설이 많은데 비교 기준이 없었다
+    // (TROUBLESHOOTING §52-0 약점 A).
+    //
+    // 단독·다가구(houseStats)와 달리 **동 집계가 아니라 건물(지번) 단위**다.
+    // 국토부가 이 3종은 지번을 대부분 그대로 준다 — 실측 마스킹률 상업업무용 16~21%,
+    // 오피스텔·공장창고 0%(§52 / collect_realprice.js 주석). 마스킹된 건만 수집에서 빠졌다.
+    //
+    // 키는 `구 동 지번`. 팝업이 V-World 지적에서 이미 그 값을 갖고 있으므로 **좌표가 필요 없다**
+    // → 수집기도 지오코딩을 하지 않는다(V-World 속도 제한을 건드리지 않는다).
+    let nonresRows = null, _nonresPromise = null;
+    function loadNonres() {
+      if (!_nonresPromise) {
+        _nonresPromise = fetch('realprice_nonres.json')
+          .then((r) => (r.ok ? r.json() : null))
+          .then((j) => { nonresRows = j || {}; return nonresRows; })
+          // 파일이 아직 배포되지 않았어도 팝업이 깨지지 않게 빈 객체로 떨어뜨린다.
+          .catch(() => { nonresRows = {}; return nonresRows; });
+      }
+      return _nonresPromise;
+    }
+    // '서울특별시 관악구 봉천동 459-8' → '관악구 봉천동 459-8'
+    function nonresKey(addr, jibun) {
+      const g = addrGuDong(addr);
+      if (!g.gu || !g.dong) return null;
+      const jb = String(jibun || '').trim().replace(/\s*[대전답임산]$/, '');   // '34-4 대' 의 지목 꼬리를 뗀다
+      if (!/^\d+(-\d+)?$/.test(jb)) return null;
+      return g.gu + ' ' + g.dong + ' ' + jb;
+    }
+    const NONRES_LABEL = { nrg: '상업·업무용', offi: '오피스텔', indu: '공장·창고' };
+    function nonresHtml(deals) {
+      if (!deals || !deals.length) return '';
+      // 최신순으로 이미 정렬돼 있다(수집기에서 처리). 너무 길어지지 않게 5건만 보여준다.
+      const top = deals.slice(0, 5);
+      const rows = top.map((d) => {
+        const bits = [];
+        if (d.a) bits.push(d.a + '㎡');
+        // ⚠️ 층은 원본에 이상값이 섞여 있다(7㎡ 판매시설이 80층으로 오는 사례 실측).
+        //    그래서 강조하지 않고 뒤쪽에 옅게만 둔다. collect_realprice.js 주석 참고.
+        if (d.f) bits.push(d.f + '층');
+        if (d.y) bits.push(d.y + '년');
+        const tag = NONRES_LABEL[d.k] || d.k;
+        const nm = d.n ? ' ' + esc(d.n) : '';
+        const use = d.u ? ' <span style="color:var(--c-muted);">' + esc(d.u) + '</span>' : '';
+        return '<span class="pc-price">' + d.p + '억</span>'
+          + ' <span style="font-size:12px;color:var(--c-muted);">' + esc(tag) + nm + ' · ' + esc(d.ym) + '</span>' + use
+          + (bits.length ? '<br><span style="font-size:12px;color:var(--c-muted);">' + esc(bits.join(' · ')) + '</span>' : '');
+      });
+      const more = deals.length > top.length
+        ? ' <span style="font-size:12px;color:var(--c-muted);">외 ' + (deals.length - top.length) + '건</span>' : '';
+      return '<div style="margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">'
+        + '<b>이 건물 비주거 실거래</b> <span style="font-size:12px;color:var(--c-muted);">최근 12개월 ' + deals.length + '건</span>' + more
+        + '<br>' + rows.join('<br>') + '</div>';
+    }
+
     // Leaflet 의 popup.update() 는 저장된 _content 문자열로 innerHTML 을 다시 그린다.
     // 우리가 DOM 에 직접 꽂아 넣은 내용(토지·건물 정보, 상호 목록)이 그 순간 통째로 지워지고,
     // 붙잡아 둔 노드도 분리돼 이후 렌더가 화면에 영영 반영되지 않는다.
@@ -5095,6 +5151,8 @@
           + '</div>';
       }
 
+      const nrHtml = nonresHtml(st.nonres);
+
       const houseHtml = houseStatHtml(st.house);
       let detailHtml = '';
       if (st.br && !noDetail) {
@@ -5103,10 +5161,10 @@
           ? ledgerDetailHtml(st)
           : `<button type="button" class="ld-more btn-mini" style="margin-top:5px;">건축물대장 상세 보기</button>`;
       }
-      if (!rows.length && !houseHtml && !detailHtml && !storeHtml) return '';
+      if (!rows.length && !houseHtml && !detailHtml && !storeHtml && !nrHtml) return '';
       return `<div style="font-size:13px;margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">`
         + (rows.length ? `<b>토지·건물 정보</b>${badge}<br>${rows.join('<br>')}` : '')
-        + storeHtml + houseHtml + detailHtml + '</div>';
+        + storeHtml + nrHtml + houseHtml + detailHtml + '</div>';
     }
 
     // ── 건축물대장 상세 (투자자용 추가 조회) ─────────────────────
@@ -5376,6 +5434,14 @@
         loadStores(pnu, (arr) => {
           if (arr && arr.length) { st.stores = arr; render(); }
         });
+        // 비주거 실거래 — 정적 JSON 조회라 네트워크 호출이 파일당 1회(첫 클릭)뿐이다.
+        const nk = nonresKey(st.parcel && st.parcel.addr, st.parcel && st.parcel.jibun);
+        if (nk) {
+          loadNonres().then((rows2) => {
+            const d = rows2 && rows2[nk];
+            if (d && d.length) { st.nonres = d; render(); }
+          });
+        }
       };
       // 지번 주소가 있으면 V-World 주소 검색으로 PNU를 먼저 확보
       if (jibun) {

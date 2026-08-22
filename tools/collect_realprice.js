@@ -472,10 +472,91 @@ async function collectRentOnly() {
   console.log('\n완료.');
 }
 
+// ── NONRES_ONLY 모드 — 비주거(상업업무용·오피스텔매매·공장창고) 매매 ──────
+// 왜 필요한가: 지금까지 실거래는 **주거용만** 있었다(아파트·연립·단독·오피스텔전월세).
+// 그래서 상가 건물을 클릭해도 "이 건물이 얼마에 거래됐나"를 못 봤고, 경매 물건에 근린생활
+// 시설이 많은데 비교 기준이 없었다(TROUBLESHOOTING §52-0 약점 A).
+//
+// ── 지오코딩을 하지 않는다 (의도) ────────────────────────────────
+// 팝업은 이미 V-World 지적에서 **지번**을 갖고 있다. 그래서 `구 동 지번` 을 키로 만들어 두면
+// 팝업이 좌표 없이 바로 조회할 수 있다. 마커를 새로 뿌리는 게 목적이 아니라 **클릭한 건물의
+// 거래 이력을 보여주는 것**이 목적이므로, V-World 지오코더(속도 제한이 엄격하다)를 전혀 부르지
+// 않는다. 실행이 훨씬 빠르고 차단 위험도 없다.
+// 나중에 마커가 필요해지면 그때 좌표를 붙이면 된다(키에 지번이 있으니 언제든 가능).
+//
+// ── 지번 마스킹 실측 (2026-08-22) ───────────────────────────────
+// 첫 행만 보고 "상업업무용은 지번이 마스킹된다"고 단정했다가 틀렸다. 여러 구로 재측정한 값:
+//   상업업무용   관악 19건 중 4건(21%) · 강남 68건 중 11건(16%) 마스킹 → 79~84% 는 지번이 온다
+//   오피스텔매매 관악·강남 0% 마스킹
+//   공장창고     금천·강서 0% 마스킹
+// → 셋 다 건물 단위로 쓸 수 있다. 마스킹된 행만 건너뛴다(연립다세대와 같은 처리).
+async function collectNonRes() {
+  console.log('[비주거 매매] 최근 ' + MONTHS_BACK + '개월 · ' + Object.keys(GU).length + '개 지역\n');
+  const SRC = [
+    ['RTMSDataSvcNrgTrade/getRTMSDataSvcNrgTrade', '상업업무용', 'nrg'],
+    ['RTMSDataSvcOffiTrade/getRTMSDataSvcOffiTrade', '오피스텔', 'offi'],
+    ['RTMSDataSvcInduTrade/getRTMSDataSvcInduTrade', '공장창고', 'indu'],
+  ];
+  const bld = new Map();
+  let masked = 0, total = 0;
+
+  for (const [seg, label, kind] of SRC) {
+    const rows = await fetchAll(seg, label);
+    for (const r of rows) {
+      total++;
+      if (!r.jibun || /\*/.test(String(r.jibun))) { masked++; continue; }
+      // 키는 `구 동 지번` — 팝업이 갖고 있는 값과 같은 형태다. 시도는 붙이지 않는다:
+      // 구 이름이 서울+경기 전체에서 유일해 필요 없고, 키가 짧아 파일이 작아진다.
+      const key = r._gu + ' ' + r.umdNm + ' ' + r.jibun;
+      let b = bld.get(key);
+      if (!b) { b = []; bld.set(key, b); }
+      const deal = {
+        k: kind,
+        p: eok(r.dealAmount),
+        ym: r.dealYear + '.' + String(r.dealMonth).padStart(2, '0'),
+        y: Number(r.buildYear) || 0,
+      };
+      // 면적 필드가 유형마다 다르다 — 상업업무용·공장창고는 buildingAr(건물면적),
+      // 오피스텔은 excluUseAr(전용면적). 의미가 달라 한 칸에 넣고 구분자(k)로 해석한다.
+      const a = Number(r.buildingAr) || Number(r.excluUseAr) || 0;
+      if (a) deal.a = Number(a.toFixed(2));
+      // ⚠️ floor 를 그대로 믿지 말 것 — 원본에 이상값이 섞여 있다(우리 파싱 버그가 아니다).
+      // 실측 2026-08-22: 관악구 봉천동 862-1, buildingAr 7.33㎡ · 판매 · 2,250만원인데 floor=80.
+      // 7㎡ 판매시설이 80층에 있을 수는 없고, 상가 내 **부스/호 번호가 층 칸에 들어간** 것으로 보인다.
+      // 정부 원본 값이므로 임의로 버리거나 고치지 않고 그대로 싣는다. 프론트에서 층을 강조하지 말 것.
+      const f = parseInt(r.floor, 10);
+      if (Number.isFinite(f) && f !== 0) deal.f = f;
+      if (r.buildingUse) deal.u = String(r.buildingUse).trim();
+      // '(863-9)' 처럼 지번을 괄호로 감싼 자동생성 이름은 정보가 없으므로 버린다.
+      if (r.offiNm && !/^\(/.test(String(r.offiNm))) deal.n = String(r.offiNm).trim();
+      b.push(deal);
+    }
+  }
+
+  // 최신 거래가 먼저 오도록 정렬해 둔다 — 프론트가 다시 정렬하지 않게.
+  const out = {};
+  for (const [k, arr] of bld) {
+    arr.sort((x, y2) => (x.ym < y2.ym ? 1 : x.ym > y2.ym ? -1 : 0));
+    out[k] = arr;
+  }
+  const kept = total - masked;
+  const pct = total ? Math.round(masked / total * 100) : 0;
+  console.log('\n  건물 ' + bld.size.toLocaleString() + '곳 / 거래 ' + kept.toLocaleString()
+    + '건 (지번 마스킹 ' + masked.toLocaleString() + '건 제외, ' + pct + '%)');
+  writeSafe(path.join(OUT_DIR, 'realprice_nonres' + SUFFIX + '.json'), out, Object.keys(out).length, 'realprice_nonres.json');
+  const kb = fs.statSync(path.join(OUT_DIR, 'realprice_nonres' + SUFFIX + '.json')).size / 1024;
+  console.log('  realprice_nonres.json 저장 — ' + Object.keys(out).length.toLocaleString() + '곳 / ' + kb.toFixed(0) + 'KB');
+  console.log('\n완료.');
+}
+
 // ── 3) 메인 ─────────────────────────────────────────────────
 (async () => {
   if (process.env.RENT_ONLY === '1') {
     await collectRentOnly();
+    return;
+  }
+  if (process.env.NONRES_ONLY === '1') {
+    await collectNonRes();
     return;
   }
   console.log(`수집 기간: 최근 ${MONTHS_BACK}개월 · 서울+경기 ${Object.keys(GU).length}개 지역\n`);

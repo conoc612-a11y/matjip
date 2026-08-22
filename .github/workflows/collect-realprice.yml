@@ -40,6 +40,16 @@ jobs:
           WITH_APT: '1'
           VWORLD_PROXY: https://bhgijvaxxjnocgfnaaeu.supabase.co/functions/v1/vworld-geocode
 
+      # 비주거 매매(realprice_nonres.json) — 상업업무용·오피스텔매매·공장창고.
+      # 실거래가 그동안 주거용만 있어서 상가 건물의 거래 이력을 볼 수 없었다(§52-0 약점 A).
+      # ⚠️ 이 모드는 지오코딩을 하지 않는다 — 키가 `구 동 지번`이라 팝업이 좌표 없이 조회한다.
+      #    그래서 VWORLD_PROXY 가 필요 없고 실행이 빠르다.
+      - run: node tools/collect_realprice.js
+        env:
+          DGK: ${{ secrets.DGK }}
+          MONTHS: '12'
+          NONRES_ONLY: '1'
+
       # 전월세(realprice_house_rent.json·realprice_officel.json)는 RENT_ONLY 모드로 수집.
       - run: node tools/collect_realprice.js
         env:
