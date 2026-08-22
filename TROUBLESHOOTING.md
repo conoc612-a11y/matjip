@@ -1684,38 +1684,78 @@ CF-RAY: …-LAX
 **결론: 세입자 리스트를 만들려면 소상공인 상가(상권)정보가 유일하게 현실적이다.**
 건물 단위 조회 오퍼레이션이 있기 때문이다.
 
-### 50-3. 실측 — 우리 키로는 아직 못 부른다
+### 50-3. 실측 — API 는 살아 있고, 우리 키만 미신청이다
+
+파일데이터(`15083033`, CSV)와 **별도로 오픈 API 데이터셋이 존재한다**: `15012005`
+소상공인시장진흥공단_상가(상권)정보_API. 제공기관 소상공인시장진흥공단, 최종수정 2026-08-14,
+활용신청 13,137건, **자동승인**, 개발계정 일 10,000건. 중단·폐지 표시 없음.
 
 ```
-GET http://apis.data.go.kr/B553077/api/open/sdsc2/storeListInRadius?serviceKey=<DGK>&...
-→ 403  {"errMsg":"SERVICE_KEY_IS_NOT_REGISTERED_ERROR","returnAuthMsg":"등록되지 않은 서비스키"}
+GET https://apis.data.go.kr/B553077/api/open/sdsc2/storeListInRadius?serviceKey=<DGK>&...
+→ 403  SERVICE_KEY_IS_NOT_REGISTERED_ERROR  "등록되지 않은 서비스키"
 ```
 
-키(`DGK`)는 유효하고 엔드포인트도 라우팅된다. **이 API 를 신청하지 않았을 뿐이다.**
-→ data.go.kr `15012005` (소상공인시장진흥공단_상가(상권)정보_API) 에서 **활용신청** 필요.
-일반 인증 API 는 보통 자동승인이고 1~2시간 내 호출 가능.
+**이 403 이 "미신청"이라는 근거(대조군을 둬서 확정했다)**:
 
-### 50-4. 구현안 (신청 후 바로 붙일 수 있게)
+| 요청 | 에러 |
+|---|---|
+| `sdsc2/storeListInRadius` (실재 경로) | `SERVICE_KEY_IS_NOT_REGISTERED_ERROR` |
+| `sdsc9/nonsenseOperation` (없는 경로) | `NO_OPENAPI_SERVICE_ERROR` ← **다르다** |
+| `sdsc3/storeListInRadius` | `NO_OPENAPI_SERVICE_ERROR` → **sdsc2 가 현행 버전** |
+| 청약홈(이미 승인된 API, 같은 키) | **HTTP 200 정상** → 키 자체는 유효 |
+
+→ 경로는 맞고 키도 살아 있다. **`15012005` 활용신청만 하면 된다.**
+
+#### ⚠️ 함정 — `DGK` 는 **인코딩된 키**다 (여기서 한 번 헛짚었다)
+
+`keys.env` 의 `DGK` 는 `%` 를 포함한 **Encoding 키**다(96자). 그래서 curl 의
+`--data-urlencode serviceKey=$DGK` 로 넘기면 `%` 가 `%25` 로 **이중 인코딩**되어
+멀쩡한 API 도 "등록되지 않은 인증키" 를 뱉는다. 실제로 이 때문에 이미 승인된 청약홈 API 가
+401 로 나와 진단을 오염시켰다.
+
+```bash
+# ❌ 이중 인코딩 — 승인된 API 도 실패한다
+curl -G "$URL" --data-urlencode "serviceKey=$DGK"
+# ✅ URL 에 그대로 붙인다
+curl "$URL?serviceKey=$DGK&..."
+```
+odcloud(`api.odcloud.kr`)는 `Authorization: Infuser <키>` 헤더 방식도 문서에 있으나
+**이 인코딩 키로는 401 이다.** 쿼리스트링 방식을 쓸 것.
+
+#### 신청 없이 오퍼레이션 목록을 확인하는 방법 (위 에러 차이 활용)
+
+미신청 상태에서도 `SERVICE_KEY_IS_NOT_REGISTERED`(존재) 와 `NO_OPENAPI_SERVICE`(없음) 가
+갈리므로, 오퍼레이션 이름만 바꿔 쏘면 실재 여부를 열거할 수 있다. 그렇게 확인한 **12개 전부 존재**:
+
+```
+storeListInBuilding  storeListInRadius   storeListInArea     storeListInUpjong
+storeListInPnu       storeOne            storeZoneOne        storeZoneInRadius
+largeUpjongList      middleUpjongList    smallUpjongList     reqStoreModify
+```
+
+### 50-4. 구현안 (신청되면 바로 붙일 수 있게)
 
 기본 URL `https://apis.data.go.kr/B553077/api/open/sdsc2/`
 
 | 오퍼레이션 | 입력 | 용도 |
 |---|---|---|
-| `storeListInBuilding` | `key` = **건물관리번호** | **이 건물의 세입자 리스트** ← 우리가 원하는 것 |
-| `storeListInRadius` | `cx`,`cy`,`radius` | 좌표 기준 반경 조회 |
+| **`storeListInPnu`** | **PNU** | ⭐ **이걸 쓴다.** matjip 이 이미 PNU 를 갖고 있다 |
+| `storeListInBuilding` | 건물관리번호 | 우리는 이 값을 안 갖고 있다 |
+| `storeListInRadius` | `cx`,`cy`,`radius` | 보조 — 필지 경계 밖 인접 업소까지 볼 때 |
 
-⚠️ **건물관리번호를 우리가 아직 안 갖고 있다.** 지금 팝업이 쓰는 것은 V-World 지적의 **PNU(19자리)**
-이고, 건축HUB 표제부 응답에도 건물관리번호(`bdMgtSn`)는 없다. 확보 경로는 둘:
-- ① 도로명주소 API(juso.go.kr)로 주소 → 건물관리번호 변환 (키 추가 신청 필요)
-- ② **`storeListInRadius`(50m)로 받아서 응답의 건물관리번호로 그룹핑** → 가장 가까운 업소가 속한
-  그룹을 '이 건물'로 본다. **추가 키가 필요 없어 이쪽을 먼저 시도할 것.**
+**`storeListInPnu` 이 있어서 건물관리번호 문제가 사라졌다.** 팝업은 이미 V-World 지적 레이어에서
+PNU(19자리)를 받아 건축HUB 조회에 쓰고 있다(`pnuParts`, land.html). 같은 값을 그대로 넘기면 된다.
+→ **도로명주소 API 추가 신청도, 반경 조회 그룹핑 우회도 필요 없다.**
 
-⚠️ **serviceKey 를 프론트에 두지 말 것.** 기존 MOLIT 사고(메모리 규칙)와 같은 실수다.
+붙일 위치: `fillLandInfo` 가 건축물대장을 채우는 자리 옆. 이미 PNU 가 그 스코프에 있다.
+
+⚠️ **serviceKey 를 프론트에 두지 말 것.** MOLIT_KEY 노출 사고와 같은 실수다.
 `supabase/functions/molit-proxy` 와 같은 방식으로 Edge Function 프록시를 하나 더 만들어 중계한다.
 
-⚠️ 층정보 필드 유무는 **신청 후 실제 응답으로 확인할 것.** data.go.kr 상세 페이지 설명이
-"상호명, 업종코드, 업종명, 지번주소, 도로명주소, 경도, 위도 **등**" 으로 끝나 확정할 수 없었다.
-층이 없으면 "세입자 리스트"가 아니라 "이 건물 업소 목록"까지만 가능하다.
+⚠️ 첫 응답에서 **반드시 확인하고 여기 적을 것**: ① 파라미터 이름이 `key` 인지 `pnu` 인지
+② **층정보 필드가 오는지**. data.go.kr 설명이 "상호명, 업종코드, 업종명, 지번주소, 도로명주소,
+경도, 위도 **등**" 으로 끝나 확정할 수 없었다. 층이 없으면 "세입자 리스트(3층 ○○치과)" 가 아니라
+"이 건물 업소 목록" 까지만 가능하다.
 
 ### 50-5. ⛔ 다시 하지 말 것
 
@@ -1725,6 +1765,8 @@ GET http://apis.data.go.kr/B553077/api/open/sdsc2/storeListInRadius?serviceKey=<
 | 건축물대장(표제부·전유부)에서 상호 찾기 | **없다.** 소유자·면적만 |
 | 등기부 임대차 정보 API | **공개 API 없음** |
 | data.go.kr 상세 페이지에서 전체 컬럼 확인 | 설명이 "등" 으로 끝나 불가. **실제 응답/CSV 헤더로 확인할 것** |
+| `curl --data-urlencode "serviceKey=$DGK"` | **이중 인코딩으로 실패.** DGK 는 Encoding 키다(§50-3) |
+| `storeListInBuilding` 을 쓰려고 건물관리번호 확보 경로 찾기 | **불필요.** `storeListInPnu` 가 있고 PNU 는 이미 있다 |
 
 ### 50-6. 벡터지도 전환 검토 (호버 인식) — 현재로선 경로가 없다
 

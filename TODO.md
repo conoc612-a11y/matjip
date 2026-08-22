@@ -162,15 +162,22 @@ GET apis.data.go.kr/B553077/api/open/sdsc2/storeListInRadius  → 403
 활용신청. 일반 인증 API 라 보통 자동승인, 1~2시간 내 호출 가능.
 
 **신청되면 할 일 (구현, 조사 불필요)**:
-1. `storeListInRadius`(cx·cy·radius=50) 로 호출 → 응답의 **건물관리번호로 그룹핑** →
-   가장 가까운 업소가 속한 그룹을 '이 건물'로 본다.
-   (`storeListInBuilding` 은 건물관리번호가 입력인데 우리는 그 값을 아직 안 갖고 있다.
-   PNU 는 있지만 건축HUB 표제부에도 `bdMgtSn` 이 없다. 도로명주소 API 를 추가로 신청하는 대신
-   반경 조회로 우회하는 것이 싸다.)
+1. **`storeListInPnu` 를 쓴다** — 입력이 PNU 다. matjip 은 이미 V-World 지적 레이어에서
+   PNU(19자리)를 받아 건축HUB 조회에 쓰고 있다(`pnuParts`). 같은 값을 그대로 넘기면 끝이다.
+   → 건물관리번호 확보도, 도로명주소 API 추가 신청도, 반경 그룹핑 우회도 **전부 불필요**.
+   붙일 위치: `fillLandInfo` 가 건축물대장을 채우는 자리 옆(PNU 가 이미 그 스코프에 있다).
 2. **serviceKey 를 프론트에 두지 말 것** — `molit-proxy` 처럼 Supabase Edge Function 으로 중계한다.
    (MOLIT_KEY 노출 사고와 같은 실수를 반복하지 않기 위함)
-3. 층정보 필드가 실제로 오는지 **첫 응답에서 확인**하고 적어 둘 것. 없으면 "세입자 리스트"가 아니라
-   "이 건물 업소 목록"까지만 가능하다.
+3. 첫 응답에서 확인하고 문서에 적을 것: ① 파라미터명이 `key` 인지 `pnu` 인지
+   ② **층정보 필드가 오는지**. 없으면 "세입자 리스트"가 아니라 "이 건물 업소 목록"까지만 가능하다.
+
+**확인된 오퍼레이션 12개**(미신청 상태에서 에러 코드 차이로 열거 — §50-3):
+`storeListInPnu` · `storeListInBuilding` · `storeListInRadius` · `storeListInArea` ·
+`storeListInUpjong` · `storeOne` · `storeZoneOne` · `storeZoneInRadius` ·
+`largeUpjongList` · `middleUpjongList` · `smallUpjongList` · `reqStoreModify`
+
+⚠️ **`DGK` 는 인코딩된 키다**(`%` 포함). `curl --data-urlencode` 로 넘기면 이중 인코딩되어
+승인된 API 도 실패한다. URL 에 그대로 붙일 것(§50-3).
 
 📖 근거: `TROUBLESHOOTING.md` §50 (DB 6종 비교, 안 되는 것 목록, 오퍼레이션 명세)
 
