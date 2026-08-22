@@ -13,3 +13,6 @@ tools/_r2_verify_tmp.mjs
 tools/.update_auction.lock
 tools/update_server.log
 tools/.dgk.lock
+_local_check.html
+# 엑셀 열려 있을 때 생기는 잠금 파일
+docs/~$*

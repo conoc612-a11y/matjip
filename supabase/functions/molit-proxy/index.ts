@@ -22,13 +22,30 @@ const CORS = {
 
 // 건축HUB에서 이 프록시가 중계하도록 허용한 오퍼레이션만 화이트리스트로 제한한다.
 // (임의의 op를 그대로 넘기면 이 함수가 만능 오픈 프록시가 되어 남용될 수 있다.)
-// getBrTitleInfo/getBrExposInfo는 목록·보충 조회용이고, 나머지는 land.html의
-// '건축물대장 상세 보기'(loadLedgerDetail)가 쓰는 상세 조회 op다.
-const ALLOWED_OPS = new Set([
-  "getBrTitleInfo", "getBrExposInfo",
-  "getBrRecapTitleInfo", "getBrBasisOulnInfo", "getBrFlrOulnInfo",
-  "getBrAtchJibunInfo", "getBrExposPubuseAreaInfo", "getBrHsprcInfo", "getBrJijiguInfo",
-]);
+//
+// ⚠️ 건축HUB는 **서비스가 여러 개**다. 같은 1613000 아래에 서비스별로 갈라져 있고 op 이름도 다르다
+//    (2026-08-22 확인 — "ledgerOp에 op만 추가하면 된다"는 가정은 틀렸다):
+//      BldRgstHubService  건축물대장   getBr*
+//      ArchPmsHubService  건축인허가   getAp*
+//    그래서 svc 파라미터를 받되 **서비스도 화이트리스트**로 묶는다. op 접두사까지 확인해
+//    다른 서비스의 op를 섞어 부르는 실수를 막는다.
+const SERVICES: Record<string, { prefix: string; ops: Set<string> }> = {
+  // 건축물대장 — 팝업 토지·건물 정보 + '상세 보기'
+  BldRgstHubService: {
+    prefix: "getBr",
+    ops: new Set([
+      "getBrTitleInfo", "getBrExposInfo",
+      "getBrRecapTitleInfo", "getBrBasisOulnInfo", "getBrFlrOulnInfo",
+      "getBrAtchJibunInfo", "getBrExposPubuseAreaInfo", "getBrHsprcInfo", "getBrJijiguInfo",
+    ]),
+  },
+  // 건축인허가 — "이 옆에 뭐가 올라오나"(착공 전 단계까지 보인다)
+  ArchPmsHubService: {
+    prefix: "getAp",
+    ops: new Set(["getApBasisOulnInfo", "getApDongOulnInfo", "getApFlrOulnInfo"]),
+  },
+};
+const DEFAULT_SVC = "BldRgstHubService";
 
 function json(body: unknown, status = 200, extraHeaders?: Record<string, string>) {
   return new Response(JSON.stringify(body), {
@@ -87,9 +104,16 @@ Deno.serve(async (req) => {
 
   const url = new URL(req.url);
   const p = url.searchParams;
+  // svc 를 안 보내면 건축물대장으로 본다 — 기존 호출부(land.html)가 svc 없이 부르고 있어
+  // 하위 호환을 지켜야 한다.
+  const svc = p.get("svc") || DEFAULT_SVC;
+  const def = SERVICES[svc];
+  if (!def) {
+    return json({ error: `svc는 ${Object.keys(SERVICES).join(", ")} 중 하나여야 합니다.` }, 400);
+  }
   const op = p.get("op") || "";
-  if (!ALLOWED_OPS.has(op)) {
-    return json({ error: `op은 ${[...ALLOWED_OPS].join(", ")} 중 하나여야 합니다.` }, 400);
+  if (!def.ops.has(op) || !op.startsWith(def.prefix)) {
+    return json({ error: `${svc} 의 op은 ${[...def.ops].join(", ")} 중 하나여야 합니다.` }, 400);
   }
 
   const sigunguCd = p.get("sigunguCd");
@@ -110,7 +134,7 @@ Deno.serve(async (req) => {
 
   const q = `serviceKey=${key}&sigunguCd=${sigunguCd}&bjdongCd=${bjdongCd}`
     + `&platGbCd=${platGbCd}&bun=${bun}&ji=${ji}&numOfRows=${numOfRows}&pageNo=${pageNo}&_type=json`;
-  const api = `https://apis.data.go.kr/1613000/BldRgstHubService/${op}?${q}`;
+  const api = `https://apis.data.go.kr/1613000/${svc}/${op}?${q}`;
 
   try {
     const r = await fetch(api);

@@ -168,6 +168,12 @@ function parseItems(xml) {
     return { items: [], total: 0, err: 'resultCode=' + rc[1].trim() + (rm ? ' ' + rm[1].trim() : '') };
   }
   // 응답 껍데기조차 아니면(빈 본문·HTML 오류페이지) 그것도 오류다 — 0건과 구분해야 한다.
+  if (!s.trim()) {
+    // httpGet 은 자체 재시도(3회)를 소진하면 '' 를 돌려준다 → 타임아웃·연결 끊김이다.
+    // 쿼터 오류(XML)와 구분해서 적어야 진단이 된다(2026-08-22: '응답 형식 불명()' 로 뭉뚱그려
+    // 쿼터 초과로 오진할 뻔했다. 실제로는 집중 호출 중 일시적 타임아웃이었다).
+    return { items: [], total: 0, err: '빈 응답 — httpGet 내부 재시도 3회 소진(타임아웃/연결끊김)', transient: true };
+  }
   if (!/<response|<items|<totalCount/.test(s)) {
     return { items: [], total: 0, err: '응답 형식 불명(' + s.slice(0, 60).replace(/\s+/g, ' ') + ')' };
   }
@@ -287,7 +293,7 @@ async function fetchAll(pathSeg, label) {
           res = parseItems(await httpGet(url));
           if (!res.err) break;
         }
-        if (res.err) { failed.push(`${GU[cd]}(${cd}) ${ym} p${page}: ${res.err}`); break; }
+        if (res.err) { failed.push({ cd, ym, page, err: res.err }); break; }
         const { items, total } = res;
         for (const r of items) rows.push(Object.assign(r, { _gu: GU[cd], _sgg: cd }));
         if (page * 1000 >= total || !items.length) break;
@@ -297,15 +303,63 @@ async function fetchAll(pathSeg, label) {
       if (done % 50 === 0) console.log(`  [${label}] ${done}/${jobs.length} (누적 ${rows.length.toLocaleString()}건)`);
     }
   }));
+  // ── 2차 패스: 실패분만 천천히 다시 ────────────────────────────────
+  // 가드의 목적은 '조용한 부분 저장'을 막는 것이지 완주를 막는 것이 아니다.
+  // 1차는 동시 6으로 빠르게 도는데, 집중 호출이 길어지면 서버가 연결을 끊는다
+  // (실측 2026-08-22: 2,592 작업 중 78건이 빈 응답. 직후 단건 호출은 전부 정상 → 쿼터가 아니라
+  //  일시적 타임아웃이었다). 그래서 실패분만 **동시성 1 + 넉넉한 간격**으로 다시 받는다.
   if (failed.length) {
-    // 부분 수집 결과를 저장하면 "그 지역은 거래가 없다"로 굳어진다(실측 사고: 서울 12개 구 누락).
-    // 그래서 조용히 넘기지 않고 크게 실패한다 — 기존 파일은 그대로 보존된다.
-    console.error(`\n  [${label}] ❌ ${failed.length}개 요청이 API 오류로 실패했다:`);
-    failed.slice(0, 15).forEach((f) => console.error('    ' + f));
+    const retryJobs = failed.slice();
+    failed.length = 0;
+    console.log(`\n  [${label}] ${retryJobs.length}건 실패 → 2차 패스(동시성 1, 5초 간격)`);
+    for (let i = 0; i < retryJobs.length; i++) {
+      const { cd, ym } = retryJobs[i];
+      await sleep(5000);
+      let page = 1, ok = true;
+      for (;;) {
+        const url = `https://apis.data.go.kr/1613000/${pathSeg}?serviceKey=${KEY}&LAWD_CD=${cd}&DEAL_YMD=${ym}&numOfRows=1000&pageNo=${page}&_type=xml`;
+        const res = parseItems(await httpGet(url));
+        if (res.err) { failed.push({ cd, ym, page, err: res.err }); ok = false; break; }
+        for (const r of res.items) rows.push(Object.assign(r, { _gu: GU[cd], _sgg: cd }));
+        if (page * 1000 >= res.total || !res.items.length) break;
+        page++;
+      }
+      if ((i + 1) % 20 === 0) console.log(`    2차 ${i + 1}/${retryJobs.length} (누적 ${rows.length.toLocaleString()}건)`);
+      void ok;
+    }
+    console.log(`  [${label}] 2차 패스 완료 — 남은 실패 ${failed.length}건`);
+  }
+
+  // ── 남은 실패의 '성질'을 본다 ─────────────────────────────────────
+  // 원래 사고(2026-08-22)는 **구 12개가 통째로 빠진 것**이었다. 한 구의 12개월 중 2개월이
+  // 빠진 것은 성질이 전혀 다르다 — 그 구는 여전히 지도에 나오고, 빠진 건 일부 기간이다.
+  //
+  // 실측: 2차 패스가 68건 중 66건을 살리고 2건(성동구 202607·202604)만 남았는데, 그 2건 때문에
+  // 48,878건을 버렸다. 직후 단건 호출은 0.2초에 정상(16건·36건) — 순수 일시적 오류였다.
+  // 2건(0.08%) 때문에 전량을 버리는 건 잘못된 교환이다.
+  //
+  // 그래서 기준을 둘로 나눈다:
+  //   ① 어떤 구의 **모든 월**이 실패 → 그 구가 통째로 빠진다 = 원래 사고와 같은 모양 → 중단
+  //   ② 일부 월만 실패 → 저장하되 **무엇이 빠졌는지 산출물과 로그에 남긴다**
+  if (failed.length) {
+    const monthsN = months.length;
+    const byCd = new Map();
+    for (const f of failed) byCd.set(f.cd, (byCd.get(f.cd) || 0) + 1);
+    const wiped = [...byCd.entries()].filter(([, n]) => n >= monthsN).map(([cd]) => `${GU[cd]}(${cd})`);
+
+    console.error(`\n  [${label}] ⚠️ 2차 패스 후 남은 실패 ${failed.length}건 (전체 ${jobs.length}작업의 ${(failed.length / jobs.length * 100).toFixed(2)}%)`);
+    failed.slice(0, 15).forEach((f) => console.error(`    ${GU[f.cd]}(${f.cd}) ${f.ym} p${f.page}: ${f.err}`));
     if (failed.length > 15) console.error(`    … 외 ${failed.length - 15}건`);
-    throw new Error(`${label}: API 오류 ${failed.length}건 — 부분 결과를 저장하지 않고 중단한다.`
-      + ' 쿼터·스로틀링이 의심되면 다른 data.go.kr 수집기를 동시에 돌리지 않았는지 확인할 것'
-      + '(계정당 인증키가 공용이다). 잠시 후 다시 실행하면 이어서 채워진다.');
+
+    if (wiped.length) {
+      throw new Error(`${label}: ${wiped.join(', ')} 가 **전 기간 실패**했다 — 그 지역이 통째로`
+        + ' 빠지므로 저장하지 않는다(서울 12개 구 누락 사고와 같은 모양).'
+        + ' 쿼터 소진이 의심되면 다른 data.go.kr 수집기를 동시에 돌리지 않았는지 확인할 것'
+        + '(계정당 키가 공용이다 — tools/dgk_lock.js). 잠시 후 다시 실행할 것.');
+    }
+    // 일부 기간 누락은 통과시키되 흔적을 남긴다 — 나중에 "왜 그 달이 없나"를 추적할 수 있어야 한다.
+    missing.push(...failed.map((f) => ({ label, gu: GU[f.cd], cd: f.cd, ym: f.ym, err: f.err })));
+    console.error(`  [${label}] → 구 전체 누락은 없다. 일부 기간만 빠진 채로 진행한다(산출물 _meta 에 기록).`);
   }
   console.log(`  [${label}] 완료 — 거래 ${rows.length.toLocaleString()}건`);
   return rows;
@@ -324,6 +378,8 @@ async function fetchAll(pathSeg, label) {
 const GEO_CONC = 2;
 const GEO_GAP_MS = 150;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// 수집 중 끝까지 실패한 (구, 월) 목록. 산출물 _meta 에 실어 "왜 그 달이 없나"를 추적할 수 있게 한다.
+const missing = [];
 
 // 체크포인트. 23,710건을 8.8건/s 로 처리하면 45분이 걸리는데, 중간에 프로세스가
 // 죽으면 통째로 날아간다(실제로 3,000건 지점에서 세션 재시작에 한 번 잃었다).
@@ -591,9 +647,35 @@ async function collectNonRes() {
   const pct = total ? Math.round(masked / total * 100) : 0;
   console.log('\n  건물 ' + bld.size.toLocaleString() + '곳 / 거래 ' + kept.toLocaleString()
     + '건 (지번 마스킹 ' + masked.toLocaleString() + '건 제외, ' + pct + '%)');
-  writeSafe(path.join(OUT_DIR, 'realprice_nonres' + SUFFIX + '.json'), out, Object.keys(out).length, 'realprice_nonres.json');
+
+  // ── 서울 25개 구 커버리지 자체 검증 ──────────────────────────────
+  // 첫 수집에서 서울 12개 구가 통째로 빠졌는데 writeSafe 가드가 못 막았다(비교할 기존 파일이
+  // 없었다). 사람이 기억해서 확인하는 대신 수집기가 스스로 세게 한다.
+  const SEOUL_25 = ['종로구','중구','용산구','성동구','광진구','동대문구','중랑구','성북구','강북구',
+    '도봉구','노원구','은평구','서대문구','마포구','양천구','강서구','구로구','금천구','영등포구',
+    '동작구','관악구','서초구','강남구','송파구','강동구'];
+  const have = new Set(Object.keys(out).map((k) => k.split(' ')[0]));
+  const gone = SEOUL_25.filter((g) => !have.has(g));
+  if (gone.length) {
+    // ONLY_GU 로 일부만 수집한 경우는 정상이므로 경고만 한다.
+    const partial = (process.env.ONLY_GU || '').trim();
+    const msg = `서울 ${gone.length}개 구가 산출물에 없다: ${gone.join(', ')}`;
+    if (partial) console.warn(`  ⚠️ ${msg} (ONLY_GU=${partial} 로 일부만 수집했으므로 정상일 수 있다)`);
+    else throw new Error(`${msg} — 저장하지 않는다. 데이터가 없는 게 아니라 수집이 빠진 것일 가능성이 높다`
+      + '(TROUBLESHOOTING §54). 잠시 후 다시 실행할 것.');
+  } else {
+    console.log('  ✓ 서울 25개 구 전부 확보');
+  }
+  if (missing.length) {
+    // 데이터 맵에 _meta 를 함께 싣는다. 프론트는 `구 동 지번` 형태의 키만 조회하므로 부딪히지 않는다.
+    out._meta = { collectedAt: new Date().toISOString().slice(0, 10), missing };
+    console.warn(`  ⚠️ 일부 기간 누락 ${missing.length}건 — 산출물 _meta.missing 에 기록했다:`);
+    missing.slice(0, 10).forEach((m) => console.warn(`     ${m.label} ${m.gu} ${m.ym}`));
+  }
+  const bldCount = Object.keys(out).filter((k) => k !== '_meta').length;
+  writeSafe(path.join(OUT_DIR, 'realprice_nonres' + SUFFIX + '.json'), out, bldCount, 'realprice_nonres.json');
   const kb = fs.statSync(path.join(OUT_DIR, 'realprice_nonres' + SUFFIX + '.json')).size / 1024;
-  console.log('  realprice_nonres.json 저장 — ' + Object.keys(out).length.toLocaleString() + '곳 / ' + kb.toFixed(0) + 'KB');
+  console.log('  realprice_nonres.json 저장 — ' + bldCount.toLocaleString() + '곳 / ' + kb.toFixed(0) + 'KB');
   console.log('\n완료.');
 }
 

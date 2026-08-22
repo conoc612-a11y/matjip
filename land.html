@@ -4802,6 +4802,37 @@
     // '단독주택' 같은 법적 용도만 뜬다. 그 빈칸을 메우는 유일한 공공데이터다(§50).
     // PNU 하나를 그대로 넘기면 그 필지의 업소 목록이 층과 함께 온다(§51-4 실측).
     // serviceKey 는 Edge Function 에만 둔다(MOLIT_KEY 노출 사고 재발 방지).
+    // ── 건축HUB 건축인허가 (별개 서비스) ─────────────────────────────
+    // ⚠️ 건축인허가는 건축물대장과 **다른 서비스**다(1613000/ArchPmsHubService, op 는 getAp*).
+    //    "ledgerOp 에 op 만 추가하면 된다"고 생각했는데 틀렸다(2026-08-22 확인).
+    //    molit-proxy 에 svc 파라미터를 추가해 서비스별 화이트리스트로 중계한다.
+    //
+    // 무엇을 얻나: 그 필지의 **인허가 이력**(신축·용도변경·가설건축물…)과 진행 상태.
+    // ⚠️ 같은 **필지**의 인허가다 — "옆 필지에 뭐가 올라오나"는 반경 조회가 없어서 알 수 없다.
+    //    그 점을 화면 문구에서도 과장하지 말 것.
+    //
+    // 실측(862-1, 15건): stcnsSchedDay·realStcnsDay 는 **거의 빈값**이다(15건 중 1건만 채워짐).
+    // 착공일을 주력으로 삼으면 빈 화면이 된다 → 허가일·구분·사용승인 유무로 상태를 보여준다.
+    const _pmsCache = new Map();
+    function loadArchPms(pnu, cb) {
+      const pp = pnuParts(pnu);
+      if (!pp) { cb(null); return; }
+      if (_pmsCache.has(pnu)) { cb(_pmsCache.get(pnu)); return; }
+      const q = `svc=ArchPmsHubService&op=getApBasisOulnInfo&sigunguCd=${pp.sigunguCd}`
+        + `&bjdongCd=${pp.bjdongCd}&platGbCd=${pp.platGbCd}&bun=${pp.bun}&ji=${pp.ji}`
+        + '&numOfRows=100&pageNo=1';
+      fetch(`${MOLIT_PROXY}?${q}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => {
+          const b = j && j.response && j.response.body;
+          const it = b && b.items;
+          const arr = !it ? [] : (Array.isArray(it.item) ? it.item : (it.item ? [it.item] : []));
+          // 실패는 캐시하지 않는다(ledgerOp 와 같은 함정 회피). 정상 응답의 빈 배열만 캐시한다.
+          if (b) _pmsCache.set(pnu, arr);
+          cb(b ? arr : null);
+        })
+        .catch(() => cb(null));
+    }
     const SBIZ_PROXY = SUPABASE_URL + '/functions/v1/sbiz-proxy';
     const _sbizCache = new Map();
     function loadStores(pnu, cb) {
@@ -5107,12 +5138,23 @@
       // 일치하면 조용히 하나만, 갈리면 **둘 다** 보여준다 — 어느 쪽이 맞는지 우리가 정할 근거가
       // 없으므로 숨기지 않고 사용자가 판단하게 둔다.
       const jjg = st.jijigu || [];
+      // 건축인허가에도 용도지역/지구/구역이 실려 온다. 실측(862-1)에서 **대장보다 많았다**:
+      //   대장 3건(일반상업지역·일반미관지구·제1종지구단위계획구역)
+      //   인허가 8건(+ 도시지역·가로구역별최고높이제한지역·대공방어협조구역·중점경관관리구역…)
+      // 가로구역별최고높이제한·중점경관관리는 증축 판단에 직결이라 버리면 아깝다 → 합쳐서 쓴다.
+      const pmsZone = (kind) => {
+        const key = { '용도지역': 'jiyukCdNm', '용도지구': 'jiguCdNm', '용도구역': 'guyukCdNm' }[kind];
+        if (!key) return [];
+        return (st.pms || []).map((x) => String(x[key] || '').trim()).filter(Boolean);
+      };
       const jjPick = (gb) => {
         const hit = jjg.filter((x) => x.jijiguCdNm && new RegExp(gb).test(String(x.jijiguGbCdNm || '')));
         // reprYn=1(대표) 을 우선하고, 중복 이름은 접는다
         const sorted = hit.slice().sort((a, b) => (String(b.reprYn) === '1' ? 1 : 0) - (String(a.reprYn) === '1' ? 1 : 0));
         const out = [], seen = new Set();
         for (const x of sorted) { if (seen.has(x.jijiguCdNm)) continue; seen.add(x.jijiguCdNm); out.push(x.jijiguCdNm); }
+        // 인허가 쪽 값을 뒤에 붙인다(대장 대표값을 앞에 두려는 것). 중복은 접는다.
+        for (const v of pmsZone(gb)) { if (!seen.has(v)) { seen.add(v); out.push(v); } }
         return out;
       };
       const zoneB = jjPick('용도지역');
@@ -5201,6 +5243,41 @@
         if (yr) rows.push(`${yr}.${b.useapr_day.slice(4, 6)} 사용승인`);
       }
 
+      // ── 건축 인허가 이력 ──────────────────────────────────────────
+      // 실측(862-1, 15건)에 맞춘 결정:
+      //  · 대부분 '용도변경' 이력이라 전부 나열하면 시끄럽다 → 최근 3건 + 나머지 건수
+      //  · stcnsSchedDay·realStcnsDay 는 거의 빈값(15건 중 1건) → 착공일을 주력으로 쓰지 않는다
+      //  · 사용승인이 없고 최근(5년 내) 허가는 **진행 중**으로 강조한다 — 그게 "뭐가 올라오나"다
+      //  · ⚠️ 같은 **필지**의 인허가다. '옆 필지'가 아니므로 문구에서 과장하지 않는다.
+      let pmsHtml = '';
+      if (st.pms && st.pms.length) {
+        const tr = (v) => String(v == null ? '' : v).trim();
+        const ymd = (v) => (/^\d{8}$/.test(tr(v)) ? tr(v).slice(0, 4) + '.' + tr(v).slice(4, 6) : '');
+        const list = st.pms.slice().sort((a, b) => tr(b.archPmsDay).localeCompare(tr(a.archPmsDay)));
+        const thisYear = new Date().getFullYear();
+        const rows2 = list.slice(0, 3).map((x) => {
+          const py = parseInt(tr(x.archPmsDay).slice(0, 4), 10) || 0;
+          const done = /^\d{8}$/.test(tr(x.useAprDay));
+          // 최근 5년 + 사용승인 없음 = 아직 안 끝난 건. 오래된 미승인은 취소·미착공일 수 있어 강조하지 않는다.
+          const live = !done && py && (thisYear - py) <= 5;
+          const gb = tr(x.archGbCdNm) || '인허가';
+          const use = tr(x.mainPurpsCdNm);
+          const ar = Number(x.totArea) || 0;
+          const bits = [use, ar ? ar.toLocaleString() + '㎡' : '', Number(x.hhldCnt) ? Number(x.hhldCnt) + '세대' : '']
+            .filter(Boolean).join(' · ');
+          const tag = live
+            ? ' <span style="background:var(--c-price);color:#fff;font-size:11px;padding:1px 5px;border-radius:8px;">진행</span>'
+            : (done ? ` <span style="color:var(--c-muted);font-size:12px;">${ymd(x.useAprDay)} 사용승인</span>` : '');
+          return `<span style="color:var(--c-primary);">${esc(ymd(x.archPmsDay) || '-')}</span> ${esc(gb)}${tag}`
+            + (bits ? `<br><span style="font-size:12px;color:var(--c-muted);">${esc(bits)}</span>` : '');
+        });
+        const more = list.length > 3 ? ` <span style="font-size:12px;color:var(--c-muted);">외 ${list.length - 3}건</span>` : '';
+        pmsHtml = '<div style="margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">'
+          + `<b>건축 인허가</b> <span style="font-size:12px;color:var(--c-muted);">이 필지 ${list.length}건</span>${more}<br>`
+          + rows2.join('<br>')
+          + '</div>';
+      }
+
       // ── 이 건물 업소(세입자) ──
       // 층은 78% 만 채워지고 호·동은 아예 오지 않는다(§51-4 실측) → 층은 있을 때만 쓰고
       // 호 단위 표시는 하지 않는다. 층이 있는 것을 위로, 같은 층이면 원래 순서를 유지한다.
@@ -5233,10 +5310,10 @@
           ? ledgerDetailHtml(st)
           : `<button type="button" class="ld-more btn-mini" style="margin-top:5px;">건축물대장 상세 보기</button>`;
       }
-      if (!rows.length && !houseHtml && !detailHtml && !storeHtml && !nrHtml) return '';
+      if (!rows.length && !houseHtml && !detailHtml && !storeHtml && !nrHtml && !pmsHtml) return '';
       return `<div style="font-size:13px;margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">`
         + (rows.length ? `<b>토지·건물 정보</b>${badge}<br>${rows.join('<br>')}` : '')
-        + storeHtml + nrHtml + houseHtml + detailHtml + '</div>';
+        + pmsHtml + storeHtml + nrHtml + houseHtml + detailHtml + '</div>';
     }
 
     // ── 건축물대장 상세 (투자자용 추가 조회) ─────────────────────
@@ -5514,6 +5591,10 @@
         // ledgerOp 은 op|pnu 로 캐시하므로 나중에 '상세 보기'를 눌러도 이 op 는 다시 나가지 않는다.
         ledgerOp('getBrJijiguInfo', pnu, (arr) => {
           if (arr && arr.length) { st.jijigu = arr; render(); }
+        });
+        // 건축인허가 — 클릭당 +1. 인허가 이력과 함께 용도지역/지구/구역을 보강한다(대장보다 많다).
+        loadArchPms(pnu, (arr) => {
+          if (arr && arr.length) { st.pms = arr; render(); }
         });
         // 비주거 실거래 — 정적 JSON 조회라 네트워크 호출이 파일당 1회(첫 클릭)뿐이다.
         const nk = nonresKey(st.parcel && st.parcel.addr, st.parcel && st.parcel.jibun);
