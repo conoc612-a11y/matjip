@@ -6029,7 +6029,7 @@
       agentAnchor = { lat, lng };
       if (landMode === 'agents') renderAgents();
       // 주변 검색 탭이 열려 있으면 새 기준점으로 즉시 다시 찾는다 — 클릭이 곧 기준점 변경이다.
-      if (landMode === 'nearby' && nearbyLastQ) runNearby();
+      if (landMode === 'nearby' && nearbyLastQ) runNearby(nearbyLastQ);
       // 안전장치: 예외나 응답 지연으로 팝업이 '불러오는 중…'에 갇히면 6초 뒤 최소 정보라도 보여준다.
       const _stuckGuard = setTimeout(() => {
         const pel = clickMarker && clickMarker.getPopup() && clickMarker.getPopup().getElement();
@@ -6764,7 +6764,13 @@
       runNearby(nearbyLastQ);
     }
     function runNearby(preset) {
-      const q = String(preset || ($('nearby-q') && $('nearby-q').value) || '').trim();
+      // 우선순위: 명시 인수 > 입력창 > 직전 검색어.
+      // ⚠️ nearbyLastQ 폴백이 없으면 **지도 클릭 재검색이 죽는다** — 클릭 핸들러는 인수 없이
+      //    부르고, 칩이 아니라 프로그램에서 검색한 경우 입력창이 비어 있어 조기 종료했다
+      //    (2026-08-23 배포본 실측: 목록에 '찾을 것을 입력해 주세요' 가 뜨고 결과가 사라졌다).
+      const q = String(preset || ($('nearby-q') && $('nearby-q').value) || nearbyLastQ || '').trim();
+      // 입력창을 현재 검색어와 맞춰 둔다(어떤 경로로 들어왔든 화면에 무엇을 찾는지 보이게).
+      if (q && $('nearby-q') && $('nearby-q').value !== q) $('nearby-q').value = q;
       if (!q) { $('rec-list').innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px 0;">찾을 것을 입력해 주세요.</div>'; return; }
       nearbyLastQ = q;
       // 배너는 renderNearby(탭 진입) 에서만 그렸더니, 지도를 클릭해 기준점이 바뀌어도 문구가
