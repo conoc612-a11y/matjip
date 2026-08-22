@@ -11,3 +11,4 @@ auction_photos/
 tools/finish_auction_collect.log
 tools/_r2_verify_tmp.mjs
 tools/.update_auction.lock
+tools/update_server.log
