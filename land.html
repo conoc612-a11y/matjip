@@ -17,6 +17,11 @@
   <link rel="preconnect" href="https://openapi.map.naver.com" crossorigin />
   <link rel="preconnect" href="https://dapi.kakao.com" crossorigin />
   <link rel="preconnect" href="https://bhgijvaxxjnocgfnaaeu.supabase.co" crossorigin />
+  <!-- 경매 사진(R2). 이 앱에서 가장 무거운 자산인데 preconnect 목록에 빠져 있었다(2026-08-22).
+       실측: 이 호스트는 connect 에만 0.17~0.20초가 든다(TTFB 0.75초 중). 팝업을 열 때
+       비로소 연결을 시작하므로, 미리 열어 두면 첫 사진이 그만큼 빨리 뜬다.
+       ⚠️ PHOTO_BASE(land.html 내 상수)를 바꾸면 이 호스트도 함께 바꿔야 효과가 유지된다. -->
+  <link rel="preconnect" href="https://pub-a6a10fc408f54f35af0436f2731a7e80.r2.dev" crossorigin />
   <link rel="dns-prefetch" href="https://tile.openstreetmap.org" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
