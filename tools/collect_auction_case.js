@@ -213,9 +213,13 @@ async function openSearch(page) {
   // 이 사건에서 아직 없는 것이 있나 — 세 가지를 각각 본다.
   const needPhotos = (cn) => !NO_PHOTOS && !photosDb[cn];
   const needDetail = (cn) => !NO_DETAIL && !detailDb[cn];
-  // 당사자는 나중에 추가된 항목이라 기존 레코드엔 없다. '레코드는 있는데 당사자만 없는' 사건을
-  // 대상에 넣지 않으면 --force 로 전량을 다시 돌리는 수밖에 없다(그래서 이 조건이 필요하다).
+  // 당사자·감정평가정보는 **나중에 추가된 항목**이라 기존 레코드엔 없다. '레코드는 있는데
+  // 이것만 없는' 사건을 대상에 넣지 않으면 --force 로 전량을 다시 돌리는 수밖에 없다.
+  // ⚠️ 새 필드를 또 추가하면 여기에 같은 형태로 한 줄 늘릴 것. 안 늘리면 그 필드는
+  //    기존 사건에서 **영구히 비어 있게 된다**(실제로 겪음: 옛 상세 수집기가 당사자만
+  //    채워 둔 사건들은 aee 조건이 없으면 영원히 감정평가 정보를 못 받았다).
   const needParties = (cn) => !NO_DETAIL && detailDb[cn] && !detailDb[cn].intrps;
+  const needAee = (cn) => !NO_DETAIL && detailDb[cn] && !detailDb[cn].aee;
 
   const seen = new Set();
   let targets = data.rows
@@ -224,14 +228,15 @@ async function openSearch(page) {
     .filter(({ cn, court }) =>
       (ONLY_CN ? cn.includes(ONLY_CN) : true) &&
       (!ONLY_COURT || court.includes(ONLY_COURT)) &&
-      (FORCE || needPhotos(cn) || needDetail(cn) || needParties(cn)));
+      (FORCE || needPhotos(cn) || needDetail(cn) || needParties(cn) || needAee(cn)));
   if (MAX) targets = targets.slice(0, MAX);
 
   const nP = targets.filter((t) => needPhotos(t.cn)).length;
   const nD = targets.filter((t) => needDetail(t.cn)).length;
   const nI = targets.filter((t) => needParties(t.cn)).length;
+  const nA = targets.filter((t) => needAee(t.cn)).length;
   console.log(`대상 ${targets.length}건 / 전체 고유사건 ${seen.size}건`
-    + `  (사진 ${nP} · 상세 ${nD} · 당사자보강 ${nI})`
+    + `  (사진 ${nP} · 상세 ${nD} · 당사자보강 ${nI} · 감정정보보강 ${nA})`
     + `${ONLY_CN || ONLY_COURT ? ' · 필터 ' + (ONLY_CN || ONLY_COURT) : ''}${FORCE ? ' · 강제' : ''}`);
   if (!targets.length) { console.log('할 일 없음 — 종료'); return; }
 
@@ -382,7 +387,7 @@ async function openSearch(page) {
       }
 
       // ── 상세 + 당사자 + 감정평가 정보 저장 ──
-      if (!NO_DETAIL && (FORCE || needDetail(cn) || needParties(cn))) {
+      if (!NO_DETAIL && (FORCE || needDetail(cn) || needParties(cn) || needAee(cn))) {
         const rec = Object.assign({ t: Date.now() }, normalizeDetail(dm), { intrps: parties });
         if (aee) rec.aee = aee;
         detailDb[cn] = rec;

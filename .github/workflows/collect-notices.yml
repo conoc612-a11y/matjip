@@ -1,0 +1,44 @@
+name: SH공사 공고 RSS 자동 갱신
+
+# 왜 별도 워크플로인가 (2026-08-22):
+# 예전엔 collect-auction.yml 의 **뒤쪽 단계**로 들어가 있었다. 그런데 앞 단계인
+# collect_auction.js 가 GitHub Actions(해외 IP)에서 법원 사이트에 접속하지 못해 매일 실패했고
+# (page.goto 30초 타임아웃 ×3), 잡이 거기서 죽어 **이 수집기는 아예 실행되지 못했다.**
+# 그 결과 notices.json 이 2026-08-08 에서 멈춰 있었다.
+# 남의 실패에 발목 잡히지 않게 분리한다 — 출처(i-sh.co.kr)도 다르고 해외 IP 에서도 잘 된다.
+#
+# 이 수집기는 키가 필요 없고 초 단위로 끝난다. RSS 가 EUC-KR 이라 브라우저에서 직접 못 읽기
+# 때문에(CORS + 인코딩) 정적 JSON 으로 미리 만들어 두는 구조다.
+
+on:
+  schedule:
+    - cron: '0 22 * * *'      # 매일 07:00 KST
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - run: node tools/collect_notices.js
+
+      - name: notices.json 변경 시 커밋·푸시
+        run: |
+          if git diff --quiet -- notices.json; then
+            echo "변경 없음 — 커밋 생략"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add notices.json
+          git commit -m "chore(collect): SH공사 공고 자동 갱신 ($(date -u +%Y-%m-%d))"
+          git push
