@@ -5361,8 +5361,14 @@
       ['FD6', '음식점'], ['CE7', '카페'], ['HP8', '병원'], ['PM9', '약국'],
       ['CS2', '편의점'], ['BK9', '은행'], ['AC5', '학원'], ['AG2', '중개업소'],
     ];
+    // 같은 지점을 다시 조회할 때 카카오를 또 8번 부르지 않는다.
+    // 2026-08-22 에 "건물명이 없으면 자동 실행" 을 넣어 호출 빈도가 올라갔으므로 캐시가 필수가 됐다.
+    // 상호는 몇 분 사이에 바뀌지 않으니 세션 동안 유지해도 안전하다.
+    const _poiCache = new Map();
     function findPois(lat, lng, radius, cb) {
       if (!(window.kakao && kakao.maps && kakao.maps.services)) { cb(null); return; }
+      const _pk = lat.toFixed(5) + ',' + lng.toFixed(5) + ',' + radius;
+      if (_poiCache.has(_pk)) { cb(_poiCache.get(_pk)); return; }
       const svc = new kakao.maps.services.Places();
       const loc = new kakao.maps.LatLng(lat, lng);
       const found = [];
@@ -5376,7 +5382,9 @@
           seen.add(p.id);
           uniq.push(p);
         }
-        cb(uniq.slice(0, 5));
+        const out = uniq.slice(0, 5);
+        _poiCache.set(_pk, out);
+        cb(out);
       };
       POI_CATS.forEach(([code, label]) => {
         svc.categorySearch(code, (data, status) => {
@@ -5722,23 +5730,39 @@
             saveBtn.onclick = () => { togglePropSave(clickPropRec()); refreshSaveBtn(); if (landMode === 'favorites') render(); };
           }
           fillLandInfo(_pel, () => clickMarker && clickMarker.getPopup(), lat, lng, (s) => { clickPropInfo = s; refreshSaveBtn(); }, false, jibun);
-          // 상호 조회는 카카오를 8번 부르므로 버튼을 눌렀을 때만 실행한다
+          // ── 이 부근 상호 ──
+          // 카카오 장소 API 를 카테고리마다 한 번씩(POI_CATS = 8회) 부르므로 원래는 버튼을 눌렀을
+          // 때만 실행했다. 그런데 정작 상호가 가장 필요한 경우 — 상가 건물을 클릭했는데 팝업에
+          // '단독주택'만 뜨는 경우 — 에 버튼이 있는 줄 모른다는 지적을 받았다(2026-08-22).
+          //
+          // 왜 '건물명 없음'이 곧 '상호가 필요함'인가:
+          // 팝업의 이름은 역지오코딩·건축물대장에서 온다. 그 장부에는 **상호(임차 업소)가 아예 없다.**
+          // 관악로 232-1 은 법적 용도가 '단독주택'이고, 1층 파리바게뜨는 다른 DB(카카오 장소)에만 있다.
+          // 즉 건물명이 비어 있을 때가 바로 상호로 채워야 하는 순간이다.
+          //
+          // 건물명이 있으면(아파트·빌딩처럼 정체가 이미 드러난 경우) 자동 실행하지 않는다 —
+          // 호출만 8회 늘고 얻는 게 없다. 버튼은 그대로 남으므로 원하면 누르면 된다.
+          // 반복 클릭은 _poiCache 가 막아 준다(findPois).
           const poiBtn = _pel && _pel.querySelector('.poi-btn');
-          if (poiBtn) poiBtn.onclick = () => {
-            poiBtn.textContent = '찾는 중…';
-            poiBtn.disabled = true;
-            findPois(lat, lng, 50, (list) => {
-              const box = _pel.querySelector('.poi-box');
-              if (!box) return;
-              box.innerHTML = (!list || !list.length)
-                ? '<div style="font-size:12px;color:var(--c-muted);">반경 50m에 등록된 상호가 없어요</div>'
-                : `<div style="font-size:13px;border-top:1px solid var(--c-border);padding-top:5px;"><b>이 부근 상호</b><br>`
-                  + list.map((p) => `${esc(p.name)} <span style="color:var(--c-muted);font-size:12px;">${esc(p.label)} · ${p.dist}m</span>`).join('<br>') + '</div>';
-              // 위와 같은 이유(DOM 직접 주입 → update() 미경유)로 여기서도 정밀 재배치한다.
-              const pp2 = clickMarker && clickMarker.getPopup();
-              repanPopup(pp2, true);
-            });
+          const renderPoi = (list, auto) => {
+            const box = _pel && _pel.querySelector('.poi-box');
+            if (!box) return;
+            box.innerHTML = (!list || !list.length)
+              // 자동 실행일 때는 '없다'는 말을 굳이 띄우지 않는다 — 아무 상호도 없는 주택가에서
+              // 팝업마다 빈 줄이 생기는 게 더 시끄럽다. 버튼을 눌렀을 때는 결과를 알려 줘야 한다.
+              ? (auto ? '' : '<div style="font-size:12px;color:var(--c-muted);">반경 50m에 등록된 상호가 없어요</div>')
+              : `<div style="font-size:13px;border-top:1px solid var(--c-border);padding-top:5px;"><b>이 부근 상호</b><br>`
+                + list.map((p) => `${esc(p.name)} <span style="color:var(--c-muted);font-size:12px;">${esc(p.label)} · ${p.dist}m</span>`).join('<br>')
+                + '<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">상호 정보 © Kakao · 건축물대장에는 없는 정보다</div></div>';
+            // 팝업 DOM 을 직접 갈아끼웠으므로(update() 미경유) 정밀 재배치가 필요하다.
+            repanPopup(clickMarker && clickMarker.getPopup(), true);
           };
+          const runPoi = (auto) => {
+            if (poiBtn && !auto) { poiBtn.textContent = '찾는 중…'; poiBtn.disabled = true; }
+            findPois(lat, lng, 50, (list) => renderPoi(list, auto));
+          };
+          if (poiBtn) poiBtn.onclick = () => runPoi(false);
+          if (!bldName) runPoi(true);
         };
         const cacheKey = _gcKey(lat, lng);
         // Object.values() 로 펼치면 캐시 객체를 만드는 4곳 모두가 항상 같은 키 순서로
