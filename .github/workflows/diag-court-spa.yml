@@ -37,7 +37,9 @@ jobs:
 
       - name: SPA 초기화 진단
         run: |
-          cat > /tmp/diag_spa.js <<'JSEOF'
+          # ⚠️ 저장소 안에 쓴다. /tmp 에 두면 그 위에 node_modules 가 없어
+          # playwright-core 를 못 찾는다(TROUBLESHOOTING §45 와 같은 함정 — 또 밟았다).
+          cat > diag_spa.js <<'JSEOF'
           const { chromium } = require('playwright-core');
           const URL_ = 'https://www.courtauction.go.kr/pgj/index.on?w2xPath='
             + encodeURIComponent('/pgj/ui/pgj100/PGJ151F00.xml');
@@ -113,4 +115,4 @@ jobs:
             await b.close();
           })();
           JSEOF
-          node /tmp/diag_spa.js
+          node diag_spa.js
