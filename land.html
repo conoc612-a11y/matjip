@@ -4797,6 +4797,27 @@
     // 주의 1) 구버전 BldRgstService_v2 는 응답이 비어 있다. BldRgstHubService 를 써야 한다.
     // 주의 2) platGbCd 를 빠뜨리면 조회되지 않는다.
     const MOLIT_PROXY = SUPABASE_URL + '/functions/v1/molit-proxy';
+    // ── 소상공인시장진흥공단 상가(상권)정보 — '이 건물 업소' ──────────────
+    // 건축물대장에는 상호(임차 업소)가 아예 없다. 그래서 상가 건물을 클릭해도 팝업엔
+    // '단독주택' 같은 법적 용도만 뜬다. 그 빈칸을 메우는 유일한 공공데이터다(§50).
+    // PNU 하나를 그대로 넘기면 그 필지의 업소 목록이 층과 함께 온다(§51-4 실측).
+    // serviceKey 는 Edge Function 에만 둔다(MOLIT_KEY 노출 사고 재발 방지).
+    const SBIZ_PROXY = SUPABASE_URL + '/functions/v1/sbiz-proxy';
+    const _sbizCache = new Map();
+    function loadStores(pnu, cb) {
+      if (!/^\d{19}$/.test(String(pnu || ''))) { cb(null); return; }
+      if (_sbizCache.has(pnu)) { cb(_sbizCache.get(pnu)); return; }
+      fetch(`${SBIZ_PROXY}?pnu=${pnu}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => {
+          const arr = (j && Array.isArray(j.stores)) ? j.stores : null;
+          // 정상 응답(빈 배열 포함)만 캐시한다. 실패를 캐시하면 그 필지는 영영 재조회를 안 한다
+          // — 건축HUB 에서 겪은 것과 같은 함정이다(ledgerOp 주석 참고).
+          if (arr) _sbizCache.set(pnu, arr);
+          cb(arr);
+        })
+        .catch(() => cb(null));
+    }
     // 헤더 날씨·금리·환율, CCTV 프록시 상수(KMA_PROXY/EXIM_PROXY/CCTV_PROXY)는
     // 위쪽 "헤더 정보" 섹션에서 이미 선언했다(그 자리에서 곧바로 호출하므로 TDZ상 여기보다 앞이어야 함).
     // PNU(19자리) = 시군구5 + 법정동5 + 산여부1 + 본번4 + 부번4
@@ -5052,6 +5073,28 @@
         if (yr) rows.push(`${yr}.${b.useapr_day.slice(4, 6)} 사용승인`);
       }
 
+      // ── 이 건물 업소(세입자) ──
+      // 층은 78% 만 채워지고 호·동은 아예 오지 않는다(§51-4 실측) → 층은 있을 때만 쓰고
+      // 호 단위 표시는 하지 않는다. 층이 있는 것을 위로, 같은 층이면 원래 순서를 유지한다.
+      let storeHtml = '';
+      if (st.stores && st.stores.length) {
+        const ss = st.stores.slice().sort((a, b) => {
+          const fa = a.flr == null ? 999 : Number(a.flr) || 999;
+          const fb = b.flr == null ? 999 : Number(b.flr) || 999;
+          return fa - fb;
+        });
+        storeHtml = `<div style="margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">`
+          + `<b>이 건물 업소</b> <span style="color:var(--c-muted);font-size:12px;">${ss.length}곳</span><br>`
+          + ss.map((x) => {
+            const f = x.flr == null ? '' : `<span style="color:var(--c-primary);">${esc(String(x.flr))}층</span> `;
+            const nm = esc(x.name) + (x.branch ? ' ' + esc(x.branch) : '');
+            return `${f}${nm} <span style="color:var(--c-muted);font-size:12px;">${esc(x.inds)}</span>`;
+          }).join('<br>')
+          // 갱신주기가 분기라 폐업이 최대 3개월 늦게 반영된다 — 기준을 밝혀 오해를 막는다.
+          + `<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">소상공인시장진흥공단 상가정보(분기 갱신) · 폐업이 늦게 반영될 수 있다</div>`
+          + '</div>';
+      }
+
       const houseHtml = houseStatHtml(st.house);
       let detailHtml = '';
       if (st.br && !noDetail) {
@@ -5060,10 +5103,10 @@
           ? ledgerDetailHtml(st)
           : `<button type="button" class="ld-more btn-mini" style="margin-top:5px;">건축물대장 상세 보기</button>`;
       }
-      if (!rows.length && !houseHtml && !detailHtml) return '';
+      if (!rows.length && !houseHtml && !detailHtml && !storeHtml) return '';
       return `<div style="font-size:13px;margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">`
         + (rows.length ? `<b>토지·건물 정보</b>${badge}<br>${rows.join('<br>')}` : '')
-        + houseHtml + detailHtml + '</div>';
+        + storeHtml + houseHtml + detailHtml + '</div>';
     }
 
     // ── 건축물대장 상세 (투자자용 추가 조회) ─────────────────────
@@ -5327,6 +5370,11 @@
         if (!pnu) return;
         buildingRegister(pnu, (it) => {
           if (it) { st.br = it; render(); }
+        });
+        // 같은 PNU 로 '이 건물 업소'도 받는다. 호출 1회뿐이고(건축HUB 는 7회) 응답이 작다.
+        // noDetail(호버 툴팁)은 위에서 이미 return 했으므로 클릭할 때만 나간다.
+        loadStores(pnu, (arr) => {
+          if (arr && arr.length) { st.stores = arr; render(); }
         });
       };
       // 지번 주소가 있으면 V-World 주소 검색으로 PNU를 먼저 확보
