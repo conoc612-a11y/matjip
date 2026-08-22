@@ -1,0 +1,91 @@
+name: 경매 목록 자동 갱신
+
+# 2026-08-22 부활. 한 번 삭제했다가 원인을 찾아 되살린 워크플로다 — 이력을 알고 만질 것.
+#
+# ── 왜 삭제했다가 되살렸나 (TROUBLESHOOTING §48) ────────────────────────
+# 2026-08-15~21 매일 실패/취소, 성공 0회. 나는 "courtauction.go.kr 이 해외 IP 를 차단한다"고
+# 결론내고 워크플로를 삭제했다. **그 결론은 틀렸다.** 진단으로 반증했다:
+#   러너(US Azure)에서 법원 사이트 → DNS OK · TCP OK · TLS OK · **HTTP 200 / 0.74초**
+#   대조군 api.vworld.kr → curl 52 Empty reply (이쪽이 진짜 차단)
+#
+# 진짜 원인은 **SPA 초기화 대기 설정**이었고, 두 곳을 고쳐 해결했다(collect_auction.js):
+#   ① page.goto 의 waitUntil: 'domcontentloaded' → **'commit'**
+#      해외에서 'domcontentloaded' 는 30초 타임아웃. 'commit' 은 같은 러너에서 1,230ms.
+#      (이 화면은 NotoSansKR woff2 4개가 끝까지 pending, en.js·serverTime.wq 가 7.3초씩)
+#   ② 법원 셀렉트 폴링 15초 → **60초**
+#      진단 실측 등장 시각 **17,892ms** — 딱 3초 부족해서 매일 실패하고 있었다.
+#   진단에서 실제 검색까지 성공(서울중앙 1페이지, tr 24개)해 수집 가능성을 확인했다.
+#
+# ⚠️ 되돌리지 말 것: waitUntil 을 'load'/'domcontentloaded' 로 바꾸거나 폴링을 줄이면
+#    해외에서 다시 매일 실패한다.
+#
+# ── 사진·상세·당사자는 이 워크플로가 하지 않는다 ────────────────────────
+# 그건 사건별로 페이지를 여는 무거운 작업이라 로컬 실행기(update.bat → matjip 의 '데이터 갱신'
+# 버튼)로 돌린다. tools/update_auction.js 헤더 참고.
+#
+# ⚠️ 지금은 **수동 실행(workflow_dispatch) 전용**이다. 실제로 몇 번 성공하는지 확인한 뒤에
+#    schedule 을 켤 것. 아래 주석 처리된 cron 을 풀면 매일 07:00 KST 로 돈다.
+
+on:
+  # schedule:
+  #   - cron: '0 22 * * *'      # 매일 07:00 KST — 수동 실행으로 안정성 확인 후 활성화
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    # 14개 법원 × 페이지 순회 + 지오코딩. 해외에서 SPA 초기화가 느려 여유를 크게 둔다.
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - run: npm ci
+
+      # playwright(devDependencies, playwright-core 와 버전 고정)로 브라우저 리비전을 맞춘다.
+      - run: npx playwright install --with-deps chromium
+
+      # V-World 는 해외 IP 에서 **실제로 막힌다**(진단: curl 52 Empty reply) → Supabase
+      # Edge Function 프록시를 경유한다. 법원 사이트와 달리 이건 진짜 차단이다(§19-2, §48).
+      - run: node tools/collect_auction.js
+        env:
+          VWORLD_PROXY: https://bhgijvaxxjnocgfnaaeu.supabase.co/functions/v1/vworld-geocode
+
+      # 매각예정물건(PGJ157M00) — 법원이 화면을 둘로 나눠 놔서 둘 다 받아야 전체가 된다.
+      # 진행=매각기일 오늘~+2주 / 예정=오늘~+2개월. ⚠️ 같은 사이트라 반드시 순차 실행.
+      - run: node tools/collect_auction.js --sched
+        env:
+          VWORLD_PROXY: https://bhgijvaxxjnocgfnaaeu.supabase.co/functions/v1/vworld-geocode
+
+      # 스크립트 안 saveAuction 에도 같은 가드가 있지만, 커밋 직전이 마지막 방어선이다.
+      # 사이트 장애로 부분 수집된 결과가 멀쩡한 데이터를 덮어쓰는 것을 막는다.
+      - name: auction.json 행 수 sanity check
+        run: |
+          new=$(node -e "process.stdout.write(String((require('./auction.json').rows||[]).length))")
+          old=$(git show HEAD:auction.json 2>/dev/null | node -e "
+            let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{
+              try{process.stdout.write(String((JSON.parse(s).rows||[]).length))}catch(e){process.stdout.write('0')}
+            });" || echo 0)
+          echo "직전 ${old}건 → 이번 ${new}건"
+          if [ "$new" -lt 1 ]; then echo "::error::수집 0건 — 커밋 거부"; exit 1; fi
+          if [ "$old" -gt 0 ] && [ "$new" -lt $((old / 2)) ]; then
+            echo "::error::직전(${old}건) 대비 절반 미만(${new}건) — 커밋 거부"; exit 1
+          fi
+
+      - name: 변경 시 커밋·푸시
+        run: |
+          if git diff --quiet -- auction.json auction_sched.json tools/.geocache.json; then
+            echo "변경 없음 — 커밋 생략"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add auction.json auction_sched.json tools/.geocache.json
+          git commit -m "chore(collect): 경매 목록 자동 갱신 ($(date -u +%Y-%m-%d))"
+          git push

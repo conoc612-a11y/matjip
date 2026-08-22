@@ -82,17 +82,28 @@ async function openScreen(page, url, courtSel) {
     // 프로세스가 통째로 죽어 그때까지 모은 수집분이 전부 날아간다(collect_auction_photos.js
     // 에서 실제로 116/2323 지점에서 겪은 사고 — 거기선 고쳤는데 여기엔 안 옮겨져 있었다.
     // 2026-08-14 코드리뷰로 발견. 이 스크립트는 매일 07:00 CI 가 돌리므로 특히 중요).
-    try { await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 }); }
+    // ⚠️ waitUntil 은 'commit' 이어야 한다(2026-08-22 진단으로 확정, TROUBLESHOOTING §48).
+    // 'domcontentloaded' 로 두면 해외(GitHub Actions)에서 30초 타임아웃으로 매번 실패했다.
+    // 진단 실측: 같은 러너에서 'commit' 은 **1,230ms** 에 통과한다.
+    // 이 화면은 NotoSansKR woff2 4개가 끝까지 pending 이고 en.js·serverTime.wq 가 7.3초씩
+    // 걸린다 — 로드 완료를 기다릴 이유가 없다. 어차피 아래에서 셀렉트를 직접 폴링한다.
+    try { await page.goto(url, { waitUntil: 'commit', timeout: 60000 }); }
     catch (e) {
       console.log(`  페이지 이동 실패(${attempt + 1}/3): ${String(e.message || e).split('\n')[0]}`);
       // 실패 직후 즉시 재시도하면 차단을 부른다(§6-11) — 간격을 두고 다시 시도.
       await sleep(GAP_MS);
       continue;
     }
+    // ⚠️ 폴링은 60초까지 기다린다. 예전엔 15초였는데 진단 실측 **17,892ms** 라 3초 부족해
+    // "화면 로드 실패"를 내고 있었다. 해외에서는 SPA 초기화가 느리다.
+    // 옵션이 실제로 채워졌는지까지 본다 — 셀렉트 엘리먼트는 비어 있는 상태로 먼저 생긴다.
     let ok = false;
-    for (let i = 0; i < 15; i++) {
+    for (let i = 0; i < 60; i++) {
       await page.waitForTimeout(1000);
-      ok = await page.evaluate((s) => !!document.querySelector(s), sel).catch(() => false);
+      ok = await page.evaluate((s) => {
+        const el = document.querySelector(s);
+        return !!(el && el.options && el.options.length > 1);
+      }, sel).catch(() => false);
       if (ok) break;
     }
     if (ok) break;
