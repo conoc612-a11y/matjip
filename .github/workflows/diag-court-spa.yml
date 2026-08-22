@@ -1,0 +1,116 @@
+name: (진단2) 법원 SPA 초기화 — 타임아웃 늘리면 되는지 확인
+
+# 일회용 진단 (2026-08-22). §48 에서 남은 질문에 답한다:
+#   "Actions 실패가 해외에서 구조적인가, 아니면 타임아웃만 늘리면 되는가?"
+#
+# §48 로 확정된 것: 법원 사이트 HTML 은 Actions 러너에서 **200/0.74초**로 정상 응답한다.
+# 막히는 건 그 뒤 **SPA 초기화**(page.goto 타임아웃 → 법원 셀렉트 미등장)다.
+#
+# 이 진단이 하는 일:
+#   ① page.goto 타임아웃 30초 → **90초**, waitUntil 을 'commit'(응답 시작만 대기)으로 바꿔
+#      "goto 자체가 문제인가 / 그 뒤 로딩이 문제인가"를 분리한다.
+#   ② 법원 셀렉트 등장까지 **최대 120초** 폴링하며 등장 시각을 기록한다.
+#   ③ **끝나지 않은 요청(pending)과 실패한 요청**을 전부 출력한다 ← 어느 리소스가 목매는지 특정.
+#   ④ 셀렉트가 뜨면 **한 법원의 1페이지만** 실제로 긁어 수집 가능성을 증명한다(사이트 부하 최소).
+#
+# 판정:
+#   셀렉트가 90초 안에 뜬다        → 타임아웃만 늘리면 워크플로 되살리기 가능
+#   특정 리소스가 계속 pending     → 그 호스트가 해외에서 막히는 것 → 우회(차단/무시) 검토
+#   끝까지 안 뜬다                 → 해외에서 구조적. 로컬 실행 유지가 정답
+#
+# 결과를 §48 에 기록한 뒤 **이 파일은 삭제한다.**
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+
+      - name: SPA 초기화 진단
+        run: |
+          cat > /tmp/diag_spa.js <<'JSEOF'
+          const { chromium } = require('playwright-core');
+          const URL_ = 'https://www.courtauction.go.kr/pgj/index.on?w2xPath='
+            + encodeURIComponent('/pgj/ui/pgj100/PGJ151F00.xml');
+          const COURT_SEL = '#mf_wfm_mainFrame_sbx_rletCortOfc';
+          (async () => {
+            const b = await chromium.launch();   // 러너엔 시스템 Chrome 이 없어 번들 사용
+            const page = await b.newPage({ viewport: { width: 1440, height: 1000 } });
+
+            // 요청 추적 — 끝나지 않은 것(pending)이 범인일 가능성이 높다
+            const inflight = new Map(); const failed = []; const slow = [];
+            page.on('request', (r) => inflight.set(r, Date.now()));
+            page.on('requestfinished', (r) => {
+              const t = Date.now() - (inflight.get(r) || Date.now());
+              if (t > 3000) slow.push({ ms: t, url: r.url().slice(0, 120) });
+              inflight.delete(r);
+            });
+            page.on('requestfailed', (r) => {
+              failed.push({ url: r.url().slice(0, 120), err: (r.failure() || {}).errorText });
+              inflight.delete(r);
+            });
+            page.on('console', (m) => { if (m.type() === 'error') console.log('  [console]', m.text().slice(0, 140)); });
+
+            const t0 = Date.now();
+            console.log('── page.goto (waitUntil=commit, 90초)');
+            try {
+              await page.goto(URL_, { waitUntil: 'commit', timeout: 90000 });
+              console.log(`  goto OK — ${Date.now() - t0}ms`);
+            } catch (e) {
+              console.log(`  goto 실패 — ${Date.now() - t0}ms : ${String(e.message).split('\n')[0]}`);
+            }
+
+            console.log('── 법원 셀렉트 등장 폴링 (최대 120초)');
+            let at = null;
+            for (let i = 0; i < 120; i++) {
+              const n = await page.evaluate((s) => {
+                const el = document.querySelector(s);
+                return el ? el.options.length : 0;
+              }, COURT_SEL).catch(() => 0);
+              if (n > 1) { at = Date.now() - t0; console.log(`  ✔ 셀렉트 등장 — ${at}ms, 옵션 ${n}개`); break; }
+              await page.waitForTimeout(1000);
+            }
+            if (at === null) console.log('  ✖ 120초 내 미등장');
+
+            console.log('── 끝나지 않은 요청(pending)');
+            if (!inflight.size) console.log('  (없음)');
+            for (const [r, st] of inflight) console.log(`  ${Date.now() - st}ms 경과  ${r.url().slice(0, 120)}`);
+            console.log('── 실패한 요청');
+            failed.length ? failed.forEach((f) => console.log(`  ${f.err}  ${f.url}`)) : console.log('  (없음)');
+            console.log('── 3초 넘게 걸린 요청');
+            slow.length ? slow.slice(0, 10).forEach((s) => console.log(`  ${s.ms}ms  ${s.url}`)) : console.log('  (없음)');
+
+            // 셀렉트가 떴으면 실제 수집이 되는지 1개 법원·1페이지만 확인 (부하 최소)
+            if (at !== null) {
+              console.log('── 실제 수집 가능성 확인 (서울중앙 1페이지만)');
+              const picked = await page.evaluate((sel) => {
+                const s = document.querySelector(sel);
+                const o = [...s.options].find((x) => x.textContent.trim() === '서울중앙지방법원');
+                if (!o) return null;
+                s.value = o.value; s.dispatchEvent(new Event('change', { bubbles: true }));
+                return o.textContent.trim();
+              }, COURT_SEL);
+              console.log(`  법원 선택: ${picked || '실패'}`);
+              const btn = '#mf_wfm_mainFrame_btn_gdsDtlSrch';
+              const has = await page.locator(btn).count();
+              console.log(`  검색 버튼 존재: ${has ? 'O' : 'X'}`);
+              if (has) {
+                await page.locator(btn).click({ timeout: 20000 }).catch((e) => console.log('  클릭 오류:', e.message.split('\n')[0]));
+                await page.waitForTimeout(8000);
+                const rows = await page.evaluate(() => document.querySelectorAll('tr').length);
+                console.log(`  검색 후 tr 개수: ${rows}`);
+              }
+            }
+            await b.close();
+          })();
+          JSEOF
+          node /tmp/diag_spa.js
