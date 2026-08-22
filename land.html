@@ -4957,16 +4957,55 @@
       return g.gu + ' ' + g.dong + ' ' + jb;
     }
     const NONRES_LABEL = { nrg: '상업·업무용', offi: '오피스텔', indu: '공장·창고' };
-    function nonresHtml(deals) {
+    // ⚠️ 원본 floor 에 이상값이 섞여 있다 — 우리 파싱 버그가 아니다.
+    // 실측: 관악구 봉천동 862-1 은 buildingAr 7.33㎡ · 판매 · 2,250만원인데 floor=80 으로 온다.
+    // 그 건물은 실제로 **지상 15층·지하 8층**이다(사용자 확인). 상가 부스/호 번호가 층 칸에
+    // 들어간 것으로 보인다.
+    //
+    // 그래서 임의의 임계값으로 자르지 않고, **그 건물의 실제 층수와 비교해** 걸러낸다.
+    // 층수를 알 수 있는 자료가 하나가 아니라 여럿이므로 전부 교차 확인한다(추가 호출 없음 —
+    // 팝업이 이미 받아 둔 것들이다):
+    //   ① 건축물대장 표제부 grndFlrCnt / ugrndFlrCnt      (st.br)
+    //   ② 건축HUB 층별개요 getBrFlrOulnInfo 의 지상층 최댓값 (st.detail.floors — '상세 보기' 후)
+    //   ③ V-World 건물 레이어 grnd_flr / ugrnd_flr        (st.bld)
+    //   ④ 위 셋이 전부 없을 때만: **같은 건물 다른 거래의 층** 과 비교(내부 정합성)
+    // 여러 자료가 있으면 그중 가장 큰 값을 상한으로 쓴다 — 한 자료가 낮게 기록돼 있어서
+    // 진짜 고층 거래를 버리는 일을 막기 위함이다.
+    function nonresFloorBounds(st, deals) {
+      const br = st && st.br, bld = st && st.bld;
+      const up = [], down = [];
+      const g1 = Number(br && br.grndFlrCnt) || 0; if (g1) up.push(g1);
+      const u1 = Number(br && br.ugrndFlrCnt) || 0; if (u1) down.push(u1);
+      const g3 = Number(bld && bld.grnd_flr) || 0; if (g3) up.push(g3);
+      const u3 = Number(bld && bld.ugrnd_flr) || 0; if (u3) down.push(u3);
+      const fl = st && st.detail && st.detail.floors;
+      if (Array.isArray(fl)) {
+        const gs = fl.filter((x) => /지상/.test(String(x.flrGbCdNm || ''))).map((x) => Number(x.flrNo) || 0);
+        const us = fl.filter((x) => /지하/.test(String(x.flrGbCdNm || ''))).map((x) => Number(x.flrNo) || 0);
+        if (gs.length) up.push(Math.max.apply(null, gs));
+        if (us.length) down.push(Math.max.apply(null, us));
+      }
+      if (up.length) return { max: Math.max.apply(null, up), min: -(down.length ? Math.max.apply(null, down) : 0) - 1 };
+      // ④ 외부 자료가 하나도 없을 때만 쓰는 최후 기준. 같은 건물 거래가 2건 이상이면
+      //    두 번째로 높은 층의 3배를 상한으로 본다(862-1 처럼 한 건만 80층으로 튀는 경우를 잡는다).
+      const fs2 = (deals || []).map((d) => Number(d.f) || 0).filter((v) => v > 0).sort((a, b) => b - a);
+      if (fs2.length > 1) return { max: fs2[1] * 3, min: -10 };
+      return null;   // 근거가 전혀 없으면 걸러내지 않는다
+    }
+    function nonresFloorOk(f, bounds) {
+      if (!f) return false;
+      if (!bounds) return true;
+      return f <= bounds.max && f >= bounds.min;
+    }
+    function nonresHtml(deals, st) {
       if (!deals || !deals.length) return '';
       // 최신순으로 이미 정렬돼 있다(수집기에서 처리). 너무 길어지지 않게 5건만 보여준다.
       const top = deals.slice(0, 5);
+      const bounds = nonresFloorBounds(st, deals);
       const rows = top.map((d) => {
         const bits = [];
         if (d.a) bits.push(d.a + '㎡');
-        // ⚠️ 층은 원본에 이상값이 섞여 있다(7㎡ 판매시설이 80층으로 오는 사례 실측).
-        //    그래서 강조하지 않고 뒤쪽에 옅게만 둔다. collect_realprice.js 주석 참고.
-        if (d.f) bits.push(d.f + '층');
+        if (nonresFloorOk(d.f, bounds)) bits.push(d.f + '층');
         if (d.y) bits.push(d.y + '년');
         const tag = NONRES_LABEL[d.k] || d.k;
         const nm = d.n ? ' ' + esc(d.n) : '';
@@ -5151,7 +5190,7 @@
           + '</div>';
       }
 
-      const nrHtml = nonresHtml(st.nonres);
+      const nrHtml = nonresHtml(st.nonres, st);
 
       const houseHtml = houseStatHtml(st.house);
       let detailHtml = '';
