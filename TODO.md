@@ -148,38 +148,27 @@ matjip 의 `⟳ 데이터 갱신` → **"보통 갱신 (목록 + 사건 500건)"
 
 ---
 
-## 🟢 3-B. 세입자(상호) 리스트 — data.go.kr API 활용신청이 막고 있다 (사용자 작업)
+## 🟢 3-B. 세입자(상호) 리스트 — **API 승인 완료. 구현만 남았다**
 
-**상태**: 조사 완결. **코드는 아직 안 만들었다.** 막힌 이유는 하나뿐 — API 미신청.
+**상태**: 2026-08-22 사용자가 `15012005` 활용신청 → **승인 확인**. 실제 호출까지 검증 끝났다.
 
+**검증된 것 (다시 조사 불필요)**:
 ```
-GET apis.data.go.kr/B553077/api/open/sdsc2/storeListInRadius  → 403
-{"errMsg":"SERVICE_KEY_IS_NOT_REGISTERED_ERROR","returnAuthMsg":"등록되지 않은 서비스키"}
+GET https://apis.data.go.kr/B553077/api/open/sdsc2/storeListInPnu?serviceKey=<DGK>&key=<PNU>
+→ 봉천동 34-4 (PNU 1162010100100340004) = 파리바게뜨 건물
+   -층 파리바케트 행운점 [빵/도넛] / 2층 JDS헤어디자인 [미용실] / 3층 제이엠뷰티룸 [피부 관리실]
 ```
-키(`DGK`)는 유효하고 경로도 맞다. 그 API 를 신청하지 않은 것이다.
+- 파라미터명은 **`key`** (pnu·lnoCd·cd 는 NO_MANDATORY_REQUEST_PARAMETERS_ERROR)
+- 팝업이 이미 갖고 있는 **PNU 를 그대로** 넘기면 된다(`pnuParts` 가 쓰는 값)
+- 응답 39필드. `flrNo`(층) 채움 **78%**, `hoNo`/`dongNo` **0%** → **호 단위 표시는 포기할 것**
 
-**다음에 할 일 (사용자)**: data.go.kr 에서 **`15012005` 소상공인시장진흥공단_상가(상권)정보_API**
-활용신청. 일반 인증 API 라 보통 자동승인, 1~2시간 내 호출 가능.
+**다음에 할 일 (구현)**:
+1. Edge Function 프록시 신설(`sbiz-proxy` 등) — **serviceKey 를 프론트에 두지 말 것**
+2. `fillLandInfo` 가 건축물대장을 채우는 자리 옆에 붙인다(PNU 가 이미 그 스코프에 있다)
+3. 갱신이 **분기**라 폐업이 최대 3개월 늦다 → "○○년 ○분기 기준" 표기 필요
+4. ⚠️ `DGK` 는 Encoding 키다. `curl --data-urlencode` 로 넘기면 이중 인코딩되어 실패한다
 
-**신청되면 할 일 (구현, 조사 불필요)**:
-1. **`storeListInPnu` 를 쓴다** — 입력이 PNU 다. matjip 은 이미 V-World 지적 레이어에서
-   PNU(19자리)를 받아 건축HUB 조회에 쓰고 있다(`pnuParts`). 같은 값을 그대로 넘기면 끝이다.
-   → 건물관리번호 확보도, 도로명주소 API 추가 신청도, 반경 그룹핑 우회도 **전부 불필요**.
-   붙일 위치: `fillLandInfo` 가 건축물대장을 채우는 자리 옆(PNU 가 이미 그 스코프에 있다).
-2. **serviceKey 를 프론트에 두지 말 것** — `molit-proxy` 처럼 Supabase Edge Function 으로 중계한다.
-   (MOLIT_KEY 노출 사고와 같은 실수를 반복하지 않기 위함)
-3. 첫 응답에서 확인하고 문서에 적을 것: ① 파라미터명이 `key` 인지 `pnu` 인지
-   ② **층정보 필드가 오는지**. 없으면 "세입자 리스트"가 아니라 "이 건물 업소 목록"까지만 가능하다.
-
-**확인된 오퍼레이션 12개**(미신청 상태에서 에러 코드 차이로 열거 — §50-3):
-`storeListInPnu` · `storeListInBuilding` · `storeListInRadius` · `storeListInArea` ·
-`storeListInUpjong` · `storeOne` · `storeZoneOne` · `storeZoneInRadius` ·
-`largeUpjongList` · `middleUpjongList` · `smallUpjongList` · `reqStoreModify`
-
-⚠️ **`DGK` 는 인코딩된 키다**(`%` 포함). `curl --data-urlencode` 로 넘기면 이중 인코딩되어
-승인된 API 도 실패한다. URL 에 그대로 붙일 것(§50-3).
-
-📖 근거: `TROUBLESHOOTING.md` §50 (DB 6종 비교, 안 되는 것 목록, 오퍼레이션 명세)
+📖 근거: `TROUBLESHOOTING.md` §50(DB 6종 비교), §51-4(실측 응답·채움률)
 
 ---
 
