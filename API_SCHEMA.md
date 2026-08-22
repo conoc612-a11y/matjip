@@ -552,24 +552,142 @@ estateAgentSggNm excluUseAr floor jibun offiNm sggCd sggNm slerGbn umdNm
              (두 소스가 서로를 덮어써 38,109건이 사라진 이력이 있다 — §52-2)
 ```
 
-### 6-11. 그 외 연결된 소스 (스키마 미측정)
+### 6-11. 카카오 장소 검색 (SDK) ✅
+
+```
+호출:     kakao.maps.services.Places().categorySearch(code, cb, {location, radius, sort})
+          (REST 가 아니라 JS SDK. land.html findPois() 가 감싼다)
+필수:     카테고리 코드 — matjip 이 쓰는 8종:
+          FD6 음식점 · CE7 카페 · HP8 병원 · PM9 약국 · CS2 편의점 · BK9 은행
+          · AC5 학원 · AG2 중개업소
+응답경로: 콜백 (data[], status) — status 는 문자열 'OK'
+검증용:   CE7, (37.48501,126.95603) radius=200 → 15건, 최근접 "카페인" 22m
+필드(12): place_name:str  category_name:str("음식점 > 카페")  category_group_code:str
+          category_group_name:str  address_name:str(지번)  road_address_name:str(도로명)
+          phone:str  distance:str(m, 문자열!)  id:str  place_url:str  x:str(lng)  y:str(lat)
+함정:     ⚠️ **카테고리 단위로만 주변 조회가 된다** — '전부'가 없어서 카테고리 수만큼 호출한다
+          (그래서 클릭당 8회. _poiCache 로 반복 호출을 막는다)
+          distance·x·y 가 **문자열**이다 → Number() 필요
+          **도메인 잠금** — localhost 에서 안 뜬다
+          ⚠️ ToS 상 저장·재배포 제약이 있다 → 화면 표시만. DB 에 쌓지 말 것
+          (같은 '상호'를 저장해도 되는 것은 소상공인 상가정보다 — 이용허락범위 제한 없음)
+```
+
+### 6-12. 네이버 역지오코딩 (SDK) ✅
+
+```
+호출:     naver.maps.Service.reverseGeocode({coords, orders}, cb)
+          orders = OrderType.ADDR + ',' + OrderType.ROAD_ADDR
+응답경로: cb(status, res) → res.v2.address.{jibunAddress, roadAddress}
+                          → res.v2.results[].{name, code, region, land}
+검증용:   (37.48501,126.95603) → status "200"
+          jibunAddress = "서울특별시 관악구 봉천동  34-4"
+          roadAddress  = "서울특별시 관악구 관악로  232-1"
+          results[].name = ["addr","roadaddr"]
+필드:     v2.status.{code,name,message}
+          v2.address.{jibunAddress, roadAddress}
+          v2.results[].name("addr"|"roadaddr") · .code.{id(법정동10),type,mappingId}
+                      · .region.{area0..area4} · .land.{type,number1,number2,addition0..4,coords}
+함정:     ⚠️ **주소 문자열에 공백이 두 개 들어온다** — "봉천동  34-4" (동 뒤에 2칸).
+          정규식으로 파싱할 때 \s+ 를 쓸 것. \s 하나로 잡으면 실패한다.
+          건물명은 addition0.value 에 오는 경우가 있다(대장 bldNm 과 다를 수 있다)
+          **도메인 잠금**
+```
+
+### 6-13. ODsay 대중교통 ✅
+
+```
+호출:     GET https://api.odsay.com/v1/api/searchPubTransPathT
+              ?apiKey={ODSAY_KEY}&SX={출발lng}&SY={출발lat}&EX={도착lng}&EY={도착lat}&output=json
+응답경로: result.path[].{pathType, info, subPath}
+검증용:   SX=126.9560&SY=37.4850&EX=127.0276&EY=37.4979 → 정상(배포 도메인에서)
+필드:     result.{searchType outTrafficCheck busCount subwayCount subwayBusCount
+                 pointDistance startRadius endRadius path}
+          path[].info.{totalTime(분) payment(원) totalWalk totalWalkTime trafficDistance
+                       busTransitCount subwayTransitCount firstStartStation lastEndStation
+                       totalStationCount busStationCount subwayStationCount totalDistance
+                       checkIntervalTime checkIntervalTimeOverYn totalIntervalTime mapObj}
+함정:     ⚠️ **키가 도메인 잠금이다.** 로컬 curl 은 `[ApiKeyAuthFailed]` 를 준다 —
+          키가 죽은 게 아니다(2026-08-22 실측: 로컬 실패 / 배포본 정상).
+          로컬에서 실패했다고 키를 재발급하지 말 것.
+```
+
+### 6-14. OSRM 도로 경로 ✅ (키 없음)
+
+```
+호출:     GET https://router.project-osrm.org/route/v1/driving/{lng1},{lat1};{lng2},{lat2}
+              ?overview=false
+응답경로: routes[]
+검증용:   126.9560,37.4850;127.0276,37.4979 → code="Ok", distance=8204m, duration=492.9s
+필드:     code:str("Ok")  waypoints[]  routes[].{distance(m) duration(s) legs weight weight_name}
+함정:     공개 데모 서버다 — 가용성 보장이 없고 상업적 대량 호출에 부적절하다.
+          서비스로 키우면 자체 호스팅이나 유료 대안이 필요하다.
+```
+
+### 6-15. 한국수출입은행 환율 ✅
+
+```
+호출:     GET https://oapi.koreaexim.go.kr/site/program/financial/exchangeJSON
+              ?authkey={EXCHANGE_RATE_KEY}&searchdate={YYYYMMDD}&data=AP01
+          (프론트는 eximbank-proxy 경유)
+응답경로: 최상위가 **배열**이다(껍데기 없음)
+검증용:   searchdate=20260821 → AED/AUD/… 통화 목록, deal_bas_r 값 존재
+필드(11): result:num(1=성공)  cur_unit:str("AED","JPY(100)")  cur_nm:str
+          ttb:str(살 때)  tts:str(팔 때)  deal_bas_r:str(매매기준율)  bkpr:str
+          yy_efee_r  ten_dd_efee_r  kftc_bkpr  kftc_deal_bas_r
+함정:     ⚠️ **숫자가 콤마 문자열이다** — "1,001.17" → 콤마 제거 후 Number()
+          ⚠️ `cur_unit` 에 단위가 붙는다 — "JPY(100)" 은 100엔당 값이다. 그대로 곱하면 100배 틀린다
+          주말·공휴일은 **빈 배열**이 온다 → 직전 영업일로 물러설 것
+          환율은 실시간 변동이라 **의도적으로 캐시하지 않는다**(사용자 결정)
+```
+
+### 6-16. 서울 UPIS 도시계획 주제도 ✅ (타일)
+
+```
+호출:     GET https://urban.seoul.go.kr/proxy/proxy.jsp?
+              http://98.33.2.225:6080/arcgis/rest/services/UPIS/20200526_WMS/MapServer/export
+              ?bbox={minx},{miny},{maxx},{maxy}&bboxSR=102100&imageSR=102100
+              &size=256,256&format=png32&transparent=true&dpi=96
+              &layers=show:{레이어id들}&f=image
+응답:     PNG 이미지 (JSON 아님 — '스키마'가 아니라 요청 파라미터가 계약이다)
+필수:     bbox(EPSG:3857) · bboxSR/imageSR=102100 · layers=show:{id}
+함정:     ⚠️ MapServer 가 **http** 라 https 페이지에서 직접 못 부른다 → 서울시 프록시 필수
+          ⚠️ 생 IP(98.33.2.225)다 — 서울시가 바꾸면 조용히 깨진다. 정기 확인 대상
+          ⚠️ 축척이 작으면(줌 아웃) 서버가 **빈 이미지 2.2KB** 를 준다 — 오류가 아니다.
+             레이어가 그려지는지 검증할 때 이 크기와 비교했다
+          레이어 id 는 MapServer `?f=pjson` 목록에서 확인한다(추측 금지)
+```
+
+### 6-17. ITS CCTV 실시간 영상 ✅ (data.go.kr 아님)
+
+```
+호출:     GET https://openapi.its.go.kr:9443/cctvInfo
+              ?apiKey={ITS_CCTV_KEY}&type={ex|its|all}&cctvType=1
+              &minX=&maxX=&minY=&maxY=&getType=json
+          (프론트는 its-cctv-proxy 경유 — http 영상 URL 을 https 페이지에서 쓰기 위함)
+응답경로: response.data[]
+검증용:   type=ex, bbox 126.90~127.10 / 37.45~37.60 → 10건, "[경부선] 서초" 등
+필드(9):  cctvname:str("[경부선] 서초")  cctvurl:str(HLS/MP4 스트림)  cctvformat:str("HLS")
+          cctvtype:num  coordx:num(lng)  coordy:num(lat)
+          roadsectionid:str  cctvresolution:str  filecreatetime:str
+함정:     ⚠️ **`type=its` 는 0건이다** — 실제 데이터는 `ex`(고속도로) 에 있다(실측).
+          `its` 가 안 나온다고 키를 의심하지 말 것.
+          roadsectionid·cctvresolution·filecreatetime 이 **빈 문자열**로 오는 경우가 흔하다
+          cctvurl 이 **http** 다 → https 페이지에서 직접 못 쓴다(프록시 이유)
+          ⚠️ data.go.kr 계열이 아니라 **별개 키·별개 한도**다. DGK 잠금과 무관하다
+```
+
+### 6-18. 그 외 연결된 소스 (스키마 미측정)
+### 6-17. 그 외 연결된 소스 (스키마 미측정)
 
 | 호스트 | 용도 | 경유 | 키·잠금 |
 |---|---|---|---|
 | `api.odcloud.kr/ApplyhomeInfoDetailSvc` | 청약홈 분양정보 | `chungak-proxy` | DGK · 24h 캐시 |
 | `apis.data.go.kr/1360000/VilageFcstInfoService_2.0` | 기상청 단기예보 | `kma-weather-proxy` | DGK |
 | `apis.data.go.kr/B552584/EvCharger` | 전기차 충전소 | 정적 JSON | DGK |
-| `openapi.its.go.kr:9443/cctvInfo` | ITS CCTV(영상) | `its-cctv-proxy` | **data.go.kr 아님**·별개 키 |
-| `oapi.koreaexim.go.kr` | 환율 | `eximbank-proxy` | 별개 키 |
-| `api.odsay.com` | 대중교통 경로 | 직접 | 별개 키 |
-| `router.project-osrm.org` | 도로 경로 | 직접 | 키 없음 |
-| `dapi.kakao.com` (SDK) | 장소 검색 | 직접 | **도메인 잠금** |
 | `openapi.naver.com/v1/search/local` | 지역 검색 | `naver-search` | 별개 키 |
-| `openapi.map.naver.com` | 지도 SDK·역지오코딩 | 직접 | **도메인 잠금** |
-| `urban.seoul.go.kr` | 서울 UPIS 도시계획 | 프록시 경유 | 키 불필요 |
 | `cleanup.seoul.go.kr` | 서울 정비사업 | 직접 | — |
 | `courtauction.go.kr` | 법원 경매(**스크레이핑**) | 수집기 | API 아님 |
-| `98.33.2.225:6080` | ArcGIS(생 IP) | 직접 | — |
 
 ---
 
