@@ -6767,6 +6767,12 @@
       const q = String(preset || ($('nearby-q') && $('nearby-q').value) || '').trim();
       if (!q) { $('rec-list').innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px 0;">찾을 것을 입력해 주세요.</div>'; return; }
       nearbyLastQ = q;
+      // 배너는 renderNearby(탭 진입) 에서만 그렸더니, 지도를 클릭해 기준점이 바뀌어도 문구가
+      // '지도를 클릭해 기준점을 정하면…' 그대로였다(실측). 검색할 때마다 다시 그린다 —
+      // 사용자가 기준점이 잡혔는지 알 수 있어야 한다.
+      $('banner').textContent = agentAnchor
+        ? `클릭한 위치 기준 · 반경 2km · '${q}'`
+        : `지도 중심 기준 · 반경 2km · '${q}' (지도를 클릭하면 그 지점 기준으로 바뀝니다)`;
       if (!(window.kakao && kakao.maps && kakao.maps.services)) {
         $('rec-list').innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px 0;">'
           + '장소검색(카카오)을 불러오지 못했어요.<br>배포본에서만 동작합니다(도메인 잠금).</div>';
