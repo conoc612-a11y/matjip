@@ -179,7 +179,15 @@ async function main() {
     results.push(...seoul);
   }
 
-  if (!ITS_ONLY) {
+  // ⚠️ 2026-08-23 방침 변경: **행안부 표준데이터는 기본 수집에서 제외한다.**
+  // 그 데이터에는 영상 스트림 URL 이 없다(url 필드 0/39,484 실측). 위치·대수·보관일수만 있어서
+  // 카메라 아이콘을 눌렀는데 영상이 안 나오는 경험만 남았다(사용자 결정: "영상 없는 CCTV는
+  // 그냥 필요가 없다"). 파일도 14.89MB → 74KB 로 줄었다.
+  // 필요하면 WITH_STANDARD=1 로 명시적으로 켤 것.
+  //
+  // ⚠️ 이전 문서(§52-2)에는 "표준데이터가 사라진 것은 회귀다, --its-only 결과를 커밋하지 말 것"
+  //    이라고 적혀 있었다. **그 지침은 폐기됐다.** 지금은 ITS 전용이 정상이다.
+  if (!ITS_ONLY && process.env.WITH_STANDARD === '1') {
     if (DGK_KEY) {
       console.log('[표준데이터] data.go.kr CCTV 조회 중...');
       const standard = await fetchStandard(DGK_KEY);
