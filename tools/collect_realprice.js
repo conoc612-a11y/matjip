@@ -144,12 +144,32 @@ function httpGet(url, tries = 3) {
 
 // item 과 totalCount 를 한 번의 문자열 스캔으로 뽑는다. 예전엔 parseItems(전체 스캔) 뒤에
 // xml.match(/<totalCount>/) 로 문자열을 한 번 더 훑었는데, 페이지 XML(~200KB)당 이중 스캔을 줄인다.
+// ⚠️ 2026-08-22: 이 함수가 **오류 응답도 조용히 0건으로 반환**해서 데이터를 통째로 잃었다.
+// data.go.kr 은 쿼터 초과·스로틀링에도 HTTP 200 에 오류 XML 을 실어 보낸다. 예전 구현은
+// <item> 이 없으면 그냥 {items:[], total:0} 을 돌려주고, fetchAll 은 그걸 "그 구·그 달은
+// 거래가 없다"로 해석해 break 했다. 결과: 비주거 첫 수집에서 **서울 12개 구·경기 34개 지역이
+// 통째로 누락**됐는데 스크립트는 exit 0 으로 정상 종료했다(로그의 누적 건수가 100개 작업 동안
+// 5,412 에서 멈춰 있던 것이 유일한 흔적).
+// → 오류를 err 로 구분해 올려보내고, fetchAll 이 재시도하고 그래도 실패하면 **크게 실패**한다.
 function parseItems(xml) {
   const out = [];
   let total = 0;
+  const s = String(xml || '');
+  // resultCode 는 정상이 '00'/'000'. errMsg/returnAuthMsg 는 게이트웨이 오류(쿼터·미신청 등).
+  const rc = s.match(/<resultCode>([^<]*)<\/resultCode>/);
+  const em = s.match(/<errMsg>([^<]*)<\/errMsg>/) || s.match(/<returnAuthMsg>([^<]*)<\/returnAuthMsg>/);
+  if (em) return { items: [], total: 0, err: em[1].trim() };
+  if (rc && !/^0+$/.test(rc[1].trim())) {
+    const rm = s.match(/<resultMsg>([^<]*)<\/resultMsg>/);
+    return { items: [], total: 0, err: 'resultCode=' + rc[1].trim() + (rm ? ' ' + rm[1].trim() : '') };
+  }
+  // 응답 껍데기조차 아니면(빈 본문·HTML 오류페이지) 그것도 오류다 — 0건과 구분해야 한다.
+  if (!/<response|<items|<totalCount/.test(s)) {
+    return { items: [], total: 0, err: '응답 형식 불명(' + s.slice(0, 60).replace(/\s+/g, ' ') + ')' };
+  }
   const re = /<item>([\s\S]*?)<\/item>|<totalCount>(\d+)<\/totalCount>/g;
   let m;
-  while ((m = re.exec(xml))) {
+  while ((m = re.exec(s))) {
     if (m[1] !== undefined) {
       const o = {};
       const r2 = /<([A-Za-z0-9_]+)>([\s\S]*?)<\/\1>/g;
@@ -242,6 +262,7 @@ async function fetchJeonse(pathSeg, label, nameField, withArea) {
 async function fetchAll(pathSeg, label) {
   const months = recentMonths(MONTHS_BACK);
   const rows = [];
+  const failed = [];
   let done = 0;
   const jobs = [];
   for (const cd of Object.keys(GU)) for (const ym of months) jobs.push([cd, ym]);
@@ -253,8 +274,17 @@ async function fetchAll(pathSeg, label) {
       const [cd, ym] = jobs[idx++];
       let page = 1;
       for (;;) {
-        const xml = await httpGet(`https://apis.data.go.kr/1613000/${pathSeg}?serviceKey=${KEY}&LAWD_CD=${cd}&DEAL_YMD=${ym}&numOfRows=1000&pageNo=${page}&_type=xml`);
-        const { items, total } = parseItems(xml);
+        const url = `https://apis.data.go.kr/1613000/${pathSeg}?serviceKey=${KEY}&LAWD_CD=${cd}&DEAL_YMD=${ym}&numOfRows=1000&pageNo=${page}&_type=xml`;
+        // 오류(쿼터·스로틀링)는 '거래 0건'과 절대 같지 않다. 재시도하고, 끝까지 실패하면 기록해 둔다.
+        // 간격을 넉넉히 두는 이유: 스로틀링은 잠깐 멈춰야 풀린다 — 바로 재시도하면 구멍을 더 깊게 판다.
+        let res = null;
+        for (const wait of [0, 3000, 9000, 20000]) {
+          if (wait) await sleep(wait);
+          res = parseItems(await httpGet(url));
+          if (!res.err) break;
+        }
+        if (res.err) { failed.push(`${GU[cd]}(${cd}) ${ym} p${page}: ${res.err}`); break; }
+        const { items, total } = res;
         for (const r of items) rows.push(Object.assign(r, { _gu: GU[cd], _sgg: cd }));
         if (page * 1000 >= total || !items.length) break;
         page++;
@@ -263,6 +293,16 @@ async function fetchAll(pathSeg, label) {
       if (done % 50 === 0) console.log(`  [${label}] ${done}/${jobs.length} (누적 ${rows.length.toLocaleString()}건)`);
     }
   }));
+  if (failed.length) {
+    // 부분 수집 결과를 저장하면 "그 지역은 거래가 없다"로 굳어진다(실측 사고: 서울 12개 구 누락).
+    // 그래서 조용히 넘기지 않고 크게 실패한다 — 기존 파일은 그대로 보존된다.
+    console.error(`\n  [${label}] ❌ ${failed.length}개 요청이 API 오류로 실패했다:`);
+    failed.slice(0, 15).forEach((f) => console.error('    ' + f));
+    if (failed.length > 15) console.error(`    … 외 ${failed.length - 15}건`);
+    throw new Error(`${label}: API 오류 ${failed.length}건 — 부분 결과를 저장하지 않고 중단한다.`
+      + ' 쿼터·스로틀링이 의심되면 다른 data.go.kr 수집기를 동시에 돌리지 않았는지 확인할 것'
+      + '(계정당 인증키가 공용이다). 잠시 후 다시 실행하면 이어서 채워진다.');
+  }
   console.log(`  [${label}] 완료 — 거래 ${rows.length.toLocaleString()}건`);
   return rows;
 }
