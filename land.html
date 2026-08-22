@@ -822,6 +822,17 @@
         <button class="list-tab" data-mode="favorites">즐겨찾기</button>
         <button class="list-tab active" data-mode="agents">인근 공인중개사</button>
         <button class="list-tab" data-mode="ranking">상승률 랭킹</button>
+        <button class="list-tab" data-mode="nearby">주변 검색</button>
+      </div>
+      <!-- 주변 검색: 클릭한 위치(없으면 지도 중심) 기준으로 임의 키워드를 찾는다.
+           '인근 공인중개사'는 키워드가 고정이라 다른 것을 못 찾았다(2026-08-23 사용자 요청). -->
+      <div class="nearby-box" id="nearby-box" style="display:none;padding:8px 12px;border-bottom:1px solid var(--line);">
+        <div style="display:flex;gap:6px;">
+          <input type="text" id="nearby-q" class="search-inp" placeholder="예: 초등학교, 카페, 은행 (Enter)"
+            autocomplete="off" style="flex:1;min-width:0;" />
+          <button type="button" id="nearby-go" class="pc-btn pc-btn-primary" style="flex:none;padding:6px 12px;">찾기</button>
+        </div>
+        <div id="nearby-chips" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;"></div>
       </div>
       <div class="fav-cats" id="fav-cats">
         <button class="fav-cat active" data-cat="전체">전체</button>
@@ -3275,13 +3286,21 @@
           });
         }
       });
-      // X 버튼·경로 버튼으로 팝업을 닫으면 클릭 마커도 제거한다.
-      // 지오코딩은 비동기라 닫은 뒤에야 buildClickPopup()(3603)이 setPopupContent+openPopup 을 실행해
-      // 팝업이 다시 열리는 문제가 있었다 — 마커를 지우면 3598행의 if(!clickMarker) 가드로 재오픈이 차단된다.
+      // 팝업을 닫아도 **클릭 마커는 남긴다**(2026-08-23 사용자 요청).
+      // 어디를 클릭했는지 보이지 않으면 '인근 공인중개사'·'주변 검색'이 어느 지점을 기준으로
+      // 삼고 있는지 알 수 없다(agentAnchor 는 클릭 지점을 쓰는데 그게 화면에 안 보였다).
+      //
+      // ⚠️ 예전에는 여기서 마커를 지웠다. 이유가 있었다 — 지오코딩이 비동기라 닫은 뒤에
+      //    buildClickPopup() 이 setPopupContent+openPopup 을 실행해 **팝업이 다시 열렸다.**
+      //    마커를 지우면 `if (!clickMarker) return` 가드가 재오픈을 막아 줬다.
+      //    이제 마커를 남기므로 그 가드가 안 통한다 → **_dismissed 플래그로 따로 막는다.**
+      //    이 플래그를 지우면 '닫았는데 팝업이 다시 열린다' 버그가 되살아난다.
       map.on('popupclose', (e) => {
         if (clickMarker && e.popup === clickMarker.getPopup()) {
-          map.removeLayer(clickMarker);
-          clickMarker = null;
+          clickMarker._dismissed = true;
+          // 닫힌 뒤에는 '여기를 클릭했다'는 표시로만 남긴다 — 작고 조용한 핀으로 바꾼다.
+          if (clickMarker.setIcon) clickMarker.setIcon(clickPinIcon);
+          clickMarker.bindTooltip('클릭한 위치 · 다시 누르면 정보', { direction: 'top', offset: [0, -10] });
         }
       });
 
@@ -4726,6 +4745,14 @@
 
     // ── 지도 클릭 → 위치 정보(주소 + 근처 실거래가) 표시 ──
     let clickMarker = null;
+    // 팝업이 닫힌 뒤 남는 '여기를 클릭했다' 표시. 기본 Leaflet 핀보다 작고 조용하게 둔다 —
+    // 이건 정보 마커가 아니라 **기준점 표시**다(인근 검색이 이 좌표를 쓴다).
+    const clickPinIcon = L.divIcon({
+      className: '',
+      html: '<div style="width:18px;height:18px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);'
+        + 'background:var(--c-primary);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);"></div>',
+      iconSize: [18, 18], iconAnchor: [9, 18],
+    });
     const _gcCache = new Map(); // 좌표 캐시(≈1m 그리드) → {addr, bldName}
     // 그리드가 너무 크면(예: ×200 = 약 555m) 옆 건물을 클릭해도 같은 셀로 뭉쳐
     // 첫 건물의 주소·건물명·지번이 그대로 재사용된다. ×100000 ≈ 1.1m(위도)로 좁힌다.
@@ -5992,9 +6019,17 @@
       if (_hovTip) { map.removeLayer(_hovTip); _hovTip = null; _hovKey = ''; }
       if (clickMarker) map.removeLayer(clickMarker);
       clickMarker = L.marker([lat, lng]).addTo(map).bindPopup('정보 불러오는 중…').openPopup();
+      // 닫은 뒤 마커를 다시 누르면 정보를 다시 본다. _dismissed 를 풀어야 팝업이 열린다.
+      clickMarker.on('click', () => {
+        if (!clickMarker) return;
+        clickMarker._dismissed = false;
+        clickMarker.openPopup();
+      });
       // 클릭 지점을 공인중개사 검색 기준으로 삼고 목록을 즉시 갱신한다
       agentAnchor = { lat, lng };
       if (landMode === 'agents') renderAgents();
+      // 주변 검색 탭이 열려 있으면 새 기준점으로 즉시 다시 찾는다 — 클릭이 곧 기준점 변경이다.
+      if (landMode === 'nearby' && nearbyLastQ) runNearby();
       // 안전장치: 예외나 응답 지연으로 팝업이 '불러오는 중…'에 갇히면 6초 뒤 최소 정보라도 보여준다.
       const _stuckGuard = setTimeout(() => {
         const pel = clickMarker && clickMarker.getPopup() && clickMarker.getPopup().getElement();
@@ -6048,7 +6083,8 @@
           }
         }
         const buildClickPopup = (addr, bldName, jibun) => {
-          if (!clickMarker) return;
+          // 사용자가 이미 닫았으면 다시 열지 않는다(마커는 남기므로 존재 여부로는 판단할 수 없다).
+          if (!clickMarker || clickMarker._dismissed) return;
           const bldHtml = bldName ? `<div style="font-weight:700;font-size:15px;margin-bottom:2px;">${esc(bldName)}</div>` : '';
           // 클릭한 건물명이 주변(250m) 아파트 단지명의 일부이면 그 단지를 '이 건물의 아파트'로
           // 보여준다. 실거래 등록명이 '동현아파트1~6'처럼 ~N동 형태라 검색된 건물명(동현아파트)과
@@ -6544,6 +6580,7 @@
     function render() {
       if (landMode === 'agents') { renderAgents(); updateCmpBar(); return; }
       if (landMode === 'ranking') { renderRanking(); return; }
+      if (landMode === 'nearby') { renderNearby(); return; }
       renderFavProps();
       updateCmpBar();
     }
@@ -6689,6 +6726,97 @@
       });
     }
 
+    // ── 주변 검색 (클릭 위치 기준 임의 키워드) ─────────────────────────
+    // '인근 공인중개사' 는 키워드가 고정이라 다른 것을 못 찾았다. 여기서는 사용자가 넣은 말을
+    // **클릭한 위치 기준**으로 찾는다(클릭 지점이 없으면 지도 중심).
+    // 기준점이 화면에 보여야 하므로 클릭 마커를 팝업 닫은 뒤에도 남긴다(popupclose 핸들러 참고).
+    const NEARBY_PRESETS = ['초등학교', '중학교', '고등학교', '병원', '약국', '지하철역',
+      '버스정류장', '마트', '카페', '편의점', '은행', '어린이집', '공원', '주차장'];
+    let nearbyMarkers = [];
+    let nearbyLastQ = '';
+    function clearNearbyMarkers() {
+      nearbyMarkers.forEach((m) => map.removeLayer(m));
+      nearbyMarkers = [];
+    }
+    function renderNearby() {
+      clearNearbyMarkers();
+      // 프리셋 칩은 한 번만 그린다(매 렌더마다 다시 만들면 클릭 중 사라진다).
+      const chips = $('nearby-chips');
+      if (chips && !chips.dataset.built) {
+        chips.dataset.built = '1';
+        chips.innerHTML = NEARBY_PRESETS.map((k) =>
+          `<button type="button" class="nb-chip" data-k="${esc(k)}" style="font:inherit;font-size:12px;`
+          + `padding:3px 9px;border-radius:999px;border:1px solid var(--c-border);background:var(--card);`
+          + `color:var(--c-text);cursor:pointer;">${esc(k)}</button>`).join('');
+        chips.querySelectorAll('.nb-chip').forEach((b) => {
+          b.onclick = () => { $('nearby-q').value = b.dataset.k; runNearby(); };
+        });
+      }
+      const anchored = !!agentAnchor;
+      $('banner').textContent = anchored
+        ? '클릭한 위치 기준으로 주변을 찾아요.'
+        : '지도를 클릭해 기준점을 정하면 그 위치 기준으로 찾아요. (지금은 지도 중심 기준)';
+      if (!nearbyLastQ) {
+        $('rec-list').innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px 0;">'
+          + '찾을 것을 입력하거나 위 버튼을 눌러 주세요.</div>';
+        return;
+      }
+      runNearby(nearbyLastQ);
+    }
+    function runNearby(preset) {
+      const q = String(preset || ($('nearby-q') && $('nearby-q').value) || '').trim();
+      if (!q) { $('rec-list').innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px 0;">찾을 것을 입력해 주세요.</div>'; return; }
+      nearbyLastQ = q;
+      if (!(window.kakao && kakao.maps && kakao.maps.services)) {
+        $('rec-list').innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px 0;">'
+          + '장소검색(카카오)을 불러오지 못했어요.<br>배포본에서만 동작합니다(도메인 잠금).</div>';
+        return;
+      }
+      clearNearbyMarkers();
+      const c = agentAnchor || map.getCenter();
+      const lat = c.lat, lng = c.lng;
+      $('rec-list').innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px 0;">찾는 중…</div>';
+      // radius 최대 20,000m. 거리순 정렬로 받아 가까운 것부터 보여준다.
+      new kakao.maps.services.Places().keywordSearch(q, (data, status) => {
+        if (status !== kakao.maps.services.Status.OK || !data || !data.length) {
+          $('rec-list').innerHTML = `<div style="text-align:center;color:var(--muted);padding:24px 0;">`
+            + `반경 2km에 '${esc(q)}' 결과가 없어요.<br>다른 말로 찾아보거나 지도를 옮겨 보세요.</div>`;
+          return;
+        }
+        $('rec-list').innerHTML = data.map((p, i) => {
+          const dm = Number(p.distance) || 0;
+          const dtxt = dm ? `${dm >= 1000 ? (dm / 1000).toFixed(1) + 'km' : dm + 'm'} · 도보 ${Math.max(1, Math.round(dm / 1000 / 4.5 * 60))}분` : '';
+          const cat = (p.category_name || '').split('>').pop().trim();
+          return `<div class="rec nb-rec" data-i="${i}"><h3>${esc(p.place_name)}</h3>`
+            + `<div class="meta">${esc(cat)} · ${esc(p.road_address_name || p.address_name || '')}</div>`
+            + (dtxt ? `<div class="meta" style="color:var(--muted);margin-top:2px;">${dtxt}</div>` : '')
+            + `<div class="actions">${p.phone ? `<a href="tel:${esc(p.phone)}">${esc(p.phone)}</a>` : ''}`
+            + `${p.place_url ? `<a href="${safeUrl(p.place_url)}" target="_blank" rel="noopener">카카오맵</a>` : ''}</div></div>`;
+        }).join('');
+        // 결과 마커 — 공인중개사(보라)와 구분되게 청록으로 둔다.
+        data.forEach((p, i) => {
+          const icon = L.divIcon({
+            className: '',
+            html: '<div style="width:22px;height:22px;background:#0ca678;border:2.5px solid #fff;'
+              + 'border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.45);display:flex;align-items:center;'
+              + 'justify-content:center;color:#fff;font-size:11px;font-weight:700;">' + (i + 1) + '</div>',
+            iconSize: [22, 22], iconAnchor: [11, 11],
+          });
+          const m = L.marker([Number(p.y), Number(p.x)], { icon })
+            .addTo(map)
+            .bindTooltip(`${i + 1}. ${esc(p.place_name)}`, { direction: 'top' });
+          nearbyMarkers.push(m);
+        });
+        // 목록 항목을 누르면 해당 마커로 이동
+        $('rec-list').querySelectorAll('.nb-rec').forEach((r) => {
+          r.onclick = () => {
+            const p = data[Number(r.dataset.i)];
+            if (p) map.setView([Number(p.y), Number(p.x)], Math.max(map.getZoom(), 17));
+          };
+        });
+      }, { location: new kakao.maps.LatLng(lat, lng), radius: 2000, sort: kakao.maps.services.SortBy.DISTANCE });
+    }
+
     // ── 인근 공인중개사 (카카오 장소검색) ──
     // 기준점: 마지막 클릭 지점 > 지도 중심. 지도 클릭 핸들러가 agentAnchor 를 갱신한다.
     // 예전엔 지도 중심 고정이라, 새 주소를 클릭해도 목록이 그대로여서 갱신이 안 되는 것처럼 보였다.
@@ -6798,8 +6926,15 @@
       document.querySelectorAll('.list-tab').forEach((x) => x.classList.remove('active'));
       t.classList.add('active'); landMode = t.dataset.mode;
       $('fav-cats').classList.toggle('on', landMode === 'favorites');
+      $('nearby-box').style.display = landMode === 'nearby' ? 'block' : 'none';
       render();
     }));
+    // 주변 검색 입력 — Enter 와 버튼 둘 다 받는다.
+    (() => {
+      const q = $('nearby-q'), go = $('nearby-go');
+      if (q) q.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); runNearby(); } });
+      if (go) go.addEventListener('click', () => runNearby());
+    })();
     document.querySelectorAll('.fav-cat').forEach((c) => c.addEventListener('click', () => {
       document.querySelectorAll('.fav-cat').forEach((x) => x.classList.remove('active'));
       c.classList.add('active'); propCat = c.dataset.cat; render();
