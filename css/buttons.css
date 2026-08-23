@@ -1,0 +1,132 @@
+/* ── 공용 버튼 애니메이션 (2026-08-12) ──
+   목적: 어떤 요소가 버튼인지 한눈에 알아보도록 한다.
+   - hover: 살짝 떠오르며 그림자 → "누를 수 있는 것"
+   - active: 눌림 축소 → 클릭 즉각 피드백
+   - .btn(주요 액센트 버튼)·.tool-btn.on: 부드러운 글로우 펄스 → 눈에 먼저 들어옴
+   왜 공용 파일인가: 모든 페이지(주소·상세·부동산·ai·관리자)에 같은 애니메이션을
+   한 곳에서 관리하기 위해. 페이지마다 인라인 중복 작성 시 유지보수가 어긋난다. */
+button,
+.btn, .route-btn, .nav-tab, .icon-btn, .tool-btn, .list-tab, .fav-cat,
+.chip, .gps-btn, .kakao-btn, .kakao-back, .ap-fav, .ap-close, .ap-star,
+.ap-cn, .jb-stage, .jb-chip, .pc-btn, .bm-item, .agree, .layer-toggle,
+.logout, .psave, .rec .actions a, .rec .actions button {
+  transition: transform .12s ease, box-shadow .2s ease, background .2s ease,
+    border-color .2s ease, color .2s ease;
+}
+:is(button, .btn, .route-btn, .nav-tab, .icon-btn, .tool-btn, .list-tab,
+    .fav-cat, .chip, .gps-btn, .kakao-btn, .kakao-back, .ap-fav, .ap-close,
+    .ap-star, .ap-cn, .jb-stage, .jb-chip, .pc-btn, .bm-item, .agree,
+    .layer-toggle, .logout, .psave, .rec .actions a, .rec .actions button):not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(0,0,0,.16);
+}
+:is(button, .btn, .route-btn, .nav-tab, .icon-btn, .tool-btn, .list-tab,
+    .fav-cat, .chip, .gps-btn, .kakao-btn, .kakao-back, .ap-fav, .ap-close,
+    .ap-star, .ap-cn, .jb-stage, .jb-chip, .pc-btn, .bm-item, .agree,
+    .layer-toggle, .logout, .psave, .rec .actions a, .rec .actions button):not(:disabled):active {
+  transform: translateY(0) scale(.95);
+  box-shadow: none;
+}
+@keyframes btn-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
+  50%      { box-shadow: 0 0 0 5px rgba(255,255,255,.28); }
+}
+.btn:not(.sec):not(.del):not(:disabled),
+.tool-btn.on,
+#login-view button {
+  animation: btn-glow 2.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+  }
+}
+/* ── 공용 리사이즈·스크롤 UI (2026-08-12) ─────────────────────────
+   목적: 화면 크기조절·스크롤 UI 를 페이지마다 제각각 짜지 않고 한 곳에서 관리.
+   이전 상태(실측): 스크롤바가 .lc(5px)·.lp-body/.ap-list(14px) 로 제각각이고,
+   리사이즈 그립도 .lc-grip/.lp-grip/.sv-grip 3종, 푸터 핸들(.footer-resize)도
+   land/main.html 에 그대로 중복돼 있었다. 드래그 로직은 js/ui-resize.js 의
+   makeResizable() 한 곳으로 모았고, 여기는 그 시각 스타일만 정의한다.
+   - .ui-scroll: 스크롤바를 브라우저 기본(네이티브)으로 통일. 2026-08-13 사용자 요청으로
+     8px 커스텀 알약을 걷어냈다 — ::-webkit-scrollbar 를 한 번이라도 지정하면 Chrome 이
+     위·아래 화살표 버튼을 통째로 없애고 폭도 8px 로 좁아져, 우측 패널(공용 스타일 미적용 =
+     네이티브)과 생김새가 달랐고 좌우가 좁아 끌기 어렵다는 실사용 문제가 있었다.
+     이제 좌측 경매 패널·팝업·범례가 우측 패널과 같은 화살표·폭을 쓴다.
+     (CCTV 팝업 .cctv-pc 는 원래 .ui-scroll 을 안 쓰므로 영향 없음)
+   - .ui-grip(+ .ui-grip-corner): 우하단 코너 리사이즈 그립. 배경이 어두워야 어떤 지도/파노라마
+     위에서도 보이므로 팝업 그립(예전 .lp-grip)도 이 디자인으로 통일했다.
+   - .ui-pop-btn: 팝업 안 24px 아이콘 버튼(닫기·접기) 공용.
+   - .footer-resize: land/main 두 페이지에 중복돼 있던 푸터 크기조절 핸들을 한 곳으로 옮김. */
+/* .ui-scroll 은 이제 스크롤 영역을 표시하는 마커 클래스일 뿐이다.
+   스크롤바 모양은 브라우저 기본을 그대로 쓴다 — 위 주석 참고. 규칙을 다시 넣지 말 것. */
+
+.ui-grip { width:24px; height:24px; cursor:nwse-resize; background:rgba(0,0,0,.82); border:2px solid rgba(255,255,255,.95); border-radius:9px; display:flex; align-items:flex-end; justify-content:flex-end; padding:3px; box-sizing:border-box; box-shadow:0 1px 6px rgba(0,0,0,.5); }
+.ui-grip::after { content:''; width:10px; height:10px; border-right:3px solid #fff; border-bottom:3px solid #fff; border-radius:0 0 4px; }
+.ui-grip:hover, .ui-grip:active { background:rgba(0,0,0,.95); }
+.ui-grip-corner { position:absolute; right:3px; bottom:3px; z-index:1200; }
+
+.ui-pop-btn { width:24px; height:24px; border-radius:7px; border:none; background:var(--c-hover); color:var(--muted); font-size:16px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; padding:0; }
+.ui-pop-btn:hover { background:var(--line); color:var(--text); }
+
+.footer-resize { position:absolute; top:-6px; left:0; right:0; height:12px; cursor:ns-resize; z-index:5; }
+/* 좌·우 패널 리사이저 손잡이(land.html .ap-resizer/.side-resizer/.panel-resizer ::after)와
+   같은 크기(굵기 5px, 길이 64px)로 통일 — 방향만 가로/세로 다르다(2026-08-13 사용자 요청). */
+.footer-resize::after { content:''; position:absolute; top:3px; left:50%; transform:translateX(-50%); width:64px; height:5px; border-radius:3px; background:#c1c4c9; }
+
+/* ── 공용 기반 (2026-08-12) ──
+   box-sizing: 6개 페이지 인라인 중복, .hidden: onboarding·admin 바이트 동일 중복 → 여기로. */
+* { box-sizing:border-box; }
+.hidden { display:none !important; }
+
+/* ── 공용 푸터 (2026-08-12, land 디자인 기준으로 통일) ──
+   land.html:377-392 ↔ main.html:98-114 의 중복. 값 차이가 있어 한쪽(land)으로
+   통일했다 — main 푸터는 테두리 2→1px·패딩 12/24→9/18·글자 12→13·통계 구분선→gap 으로
+   미세 변화. 색은 항상 var(--*) 로 참조해 두 페이지 테마(주황/파랑)를 그대로 따른다. */
+.site-footer { flex:0 0 auto; position:relative; background:var(--card); border-top:1px solid var(--line);
+  padding:9px 18px; display:flex; flex-direction:column; justify-content:center; gap:4px; }
+.footer-top { display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+.footer-links { flex:1; display:flex; gap:14px; white-space:nowrap; }
+.footer-links a { font-size:13px; color:var(--muted); text-decoration:none; }
+.footer-links a:hover { color:var(--accent); }
+.footer-links .footer-attribution { font-size:13px; color:var(--muted); }
+.footer-links .footer-attribution a { color:var(--muted); }
+.footer-links .footer-attribution a:hover { color:var(--accent); }
+.footer-right { flex:1; display:flex; justify-content:flex-end; align-items:center; gap:16px; }
+.footer-stats { flex:0 0 auto; display:flex; gap:14px; align-items:center; font-size:13px; color:var(--muted); white-space:nowrap; }
+.footer-stats b { font-weight:600; color:var(--text); }
+.footer-stats .footer-note { color:var(--muted); font-size:11px; }
+.footer-admin { flex:none; font-size:12px; font-weight:600; color:var(--accent); text-decoration:none;
+  border:1px solid var(--accent); border-radius:6px; padding:2px 10px; margin-left:8px; white-space:nowrap; }
+.footer-admin:hover { background:var(--accent); color:#fff; }
+.footer-contact { font-size:13px; color:var(--muted); white-space:nowrap; }
+
+/* ── 모바일 하단 시트 (2026-08-12, land 디자인 기준) ──
+   main.html:116-126 ↔ land.html:393-405 중복. 82vh/16px/-4px20px 였던 main 은
+   84vh/18px/-6px24px(land)로 통일. land 전용(header·brand-title) 오버라이드는 land 에 남김. */
+.sheet-handle { display:none; }
+@media (max-width:640px) {
+  .layout { display:block; flex:none; }
+  /* 모바일에서 헤더(58px)+stat-bar(34px)=92px 가 실제 레이아웃 공간을 차지하므로
+     지도가 100vh 그대로면 하단 92px 가 뷰포트 밖으로 잘린다(실측 2026-08-15).
+     dvh 는 모바일 주소줄 접힘 대응 — 미지원 브라우저는 첫 줄(vh)이 적용된다. */
+  #map { height:calc(100vh - 92px); height:calc(100dvh - 92px); min-height:0; }
+  .panel { position:fixed; left:0; right:0; bottom:0; max-height:84vh; height:auto; z-index:1200;
+    background:var(--card); border-radius:18px 18px 0 0; box-shadow:0 -6px 24px rgba(0,0,0,.18);
+    transform:translateY(calc(100% - 138px)); transition:transform .28s ease; }
+  .panel.sheet-open { transform:translateY(0); }
+  .sheet-handle { display:block; text-align:center; padding:8px 0 6px; position:sticky; top:0; background:var(--card); border-radius:18px 18px 0 0; cursor:pointer; z-index:2; }
+  .sheet-handle::before { content:''; display:inline-block; width:42px; height:5px; border-radius:3px; background:#c1c4c9; }
+  .site-footer { display:none; }
+}
+
+/* ── 키보드 포커스 링 (접근성, 2026-08-15) ──
+   그동안 포커스 스타일이 검색 입력(.search-inp:focus)에만 있었다 — 키보드로 탭을
+   이동해도 어떤 요소가 선택됐는지 안 보였다. :focus-visible 이라 마우스 클릭에는
+   안 뜨고 키보드(또는 그에 준하는 입력)로 온 경우에만 링이 나타난다.
+   outline 은 레이아웃을 밀지 않으므로 어떤 요소에도 안전하다. (검색 입력의 기존
+   -1px offset 은 인라인 스타일이 더 구체적이라 그대로 우선한다.) */
+:is(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--c-primary);
+  outline-offset: 2px;
+}

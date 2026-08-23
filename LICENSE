@@ -1,0 +1,92 @@
+저작권 및 이용 조건 (Copyright and Terms of Use)
+=================================================
+
+Copyright (c) 2026 conoc612 (matjip). All rights reserved.
+모든 권리 보유.
+
+이 저장소는 **오픈소스가 아닙니다.** 아래에 명시적으로 허용한 것 외의 이용은
+저작권자의 사전 서면 허락이 필요합니다.
+
+---
+
+## 1. 금지되는 것 (Not permitted)
+
+저작권자의 사전 서면 허락 없이 다음을 할 수 없습니다.
+
+- 이 저장소의 소스코드(`land.html`, `js/**`, `tools/**`, `supabase/**` 등)를
+  전부 또는 일부 **복제·배포·재배포**하는 것
+- 이를 기반으로 **파생 서비스를 제작·운영**하는 것 (상업적/비상업적 모두)
+- 문서(`API_SCHEMA.md`, `TROUBLESHOOTING.md`, `HANDOFF.md`, `docs/**`)를
+  전재하거나 실질적으로 옮겨 적는 것
+- 수집 산출물(`*.json` 데이터 파일, `auction_photos/**`)을 **대량 수집(스크레이핑)**
+  하거나 별도 데이터셋으로 재배포하는 것
+
+## 2. 허용되는 것 (Permitted)
+
+- **개인적 열람과 학습.** 코드를 읽고 배우는 것은 자유입니다.
+- **인용.** 출처(저장소 URL)를 밝힌 짧은 코드 조각·문서 인용.
+- **버그 신고·개선 제안.** Issue/PR 환영합니다.
+- 배포된 웹사이트(https://conoc612-a11y.github.io/matjip/)의 **일반적인 이용.**
+
+## 3. 데이터의 출처와 그 조건 (Third-party data)
+
+이 프로젝트가 화면에 표시하는 데이터는 **공공데이터를 원천으로** 합니다.
+각 원천 데이터의 저작권과 이용조건은 **해당 제공기관에 있으며 이 라이선스와 별개**입니다.
+전체 목록: [`docs/API_CATALOG.md`](docs/API_CATALOG.md), [`API_SCHEMA.md`](API_SCHEMA.md)
+
+주요 출처 (2026-08 기준):
+
+| 제공기관 | 내용 |
+|---|---|
+| 국토교통부 | 건축물대장·실거래가·건축인허가·마이홈 공공임대 |
+| 국토지리정보원 (V-World) | 지적·용도지역·건물·지오코딩·배경지도 |
+| 소상공인시장진흥공단 | 상가(상권)정보 |
+| 국세청 | 사업자등록 진위확인·상태조회 |
+| 한국부동산원 | 청약홈 분양·공공지원민간임대 공고 |
+| 법원행정처 | 법원경매 (courtauction.go.kr) |
+| 서울특별시 | UPIS 도시계획 주제도 · 정비사업 · TOPIS 교통 CCTV |
+| 국가교통정보센터 (ITS) | 실시간 도로영상 |
+| 기상청 · 한국환경공단 · 한국수출입은행 | 단기예보 · 전기차 충전소 · 환율 |
+| 카카오 · 네이버 · ODsay · OSRM | 장소검색 · 지도 SDK · 대중교통·도로 경로 |
+
+⚠️ 원천 데이터를 재이용하려면 **제공기관의 이용조건을 직접 확인**하십시오.
+일부는 저장·재배포에 제약이 있습니다(예: 카카오 장소 데이터는 화면 표시만 허용).
+
+## 4. 상표 (Trademarks)
+
+'matjip' 명칭과 로고·아이콘 디자인은 이 라이선스로 이용 허락되지 않습니다.
+
+## 5. 보증의 부인 (Disclaimer)
+
+이 소프트웨어는 **"있는 그대로(AS IS)"** 제공되며, 명시적이든 묵시적이든
+어떠한 보증도 하지 않습니다. 표시되는 부동산·경매·실거래 정보는 **참고용**이며
+정확성·완전성·최신성을 보장하지 않습니다. 원천 데이터의 오류가 그대로 표시될 수
+있습니다(예: 실거래가 API 가 특정 물건의 층수를 `80`으로 주는 사례가 실제로 있습니다).
+
+**투자·거래 판단은 반드시 등기부·건축물대장 원본과 공식 경매 공고로 직접 확인하십시오.**
+이 소프트웨어의 이용으로 발생한 어떠한 손해에 대해서도 저작권자는 책임지지 않습니다.
+
+## 6. 문의 (Contact)
+
+이용 허락·제휴 문의: conoc612@gmail.com
+
+---
+
+### English summary
+
+**All rights reserved. This is NOT open source.**
+
+Reproduction, redistribution, derivative works, and bulk scraping of the collected
+datasets are **prohibited** without prior written permission. Reading the code for
+personal study, short quotations with attribution, and normal use of the deployed
+site are permitted.
+
+The underlying data originates from **Korean public data sources**; copyright and
+terms for that data belong to the respective providers and are **not covered by this
+license** — see `docs/API_CATALOG.md`.
+
+Provided **AS IS** with no warranty. Displayed real-estate, auction, and transaction
+figures are **for reference only** and may reproduce errors present in the source data.
+Verify with official records before making any decision.
+
+Contact: conoc612@gmail.com

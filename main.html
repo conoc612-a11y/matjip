@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="js/auth-guard.js"></script>
+  <title>맛집 탐방 — 메인</title>
+  <!-- DNS/연결 지연 최소화 -->
+  <link rel="preconnect" href="https://oapi.map.naver.com" crossorigin />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="preconnect" href="https://dapi.kakao.com" crossorigin />
+  <link rel="preconnect" href="https://bhgijvaxxjnocgfnaaeu.supabase.co" />
+  <!-- 네이버 지도 v3 (ncpKeyId 방식). 인증은 등록된 도메인(https://conoc612-a11y.github.io)에서만 성공 -->
+  <script src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=kw4t9xfkhz&submodules=geocoder,panorama"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=725e7ddf965a3ffff3da1f2ac771cc57&libraries=services&autoload=false"></script>
+  <script src="js/recommend.js"></script>
+  <link rel="stylesheet" href="css/buttons.css" />
+  <style>
+    :root { --bg:#f4f5f7; --card:#fff; --line:#e6e8eb; --text:#1c1e21; --muted:#8a9099; --accent:#e8590c; --ok:#2f9e44; --c-danger:#e03131; }
+    :root.dark { --bg:#1a1b1e; --card:#25262b; --line:#373a40; --text:#e9ecef; --muted:#909296; }
+    .recent-chip { display:inline-block; margin:2px 4px 2px 0; padding:3px 9px; border:1px solid var(--line); border-radius:12px; text-decoration:none; color:var(--text); background:var(--card); }
+    .recent-chip:hover { border-color:var(--accent); color:var(--accent); }
+    html { height:100%; }
+    body { margin:0; background:var(--bg); color:var(--text);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic",sans-serif;
+      height:100%; display:flex; flex-direction:column; }
+    header { display:flex; justify-content:space-between; align-items:center; padding:12px 16px;
+      background:var(--card); border-bottom:1px solid var(--line); position:sticky; top:0; z-index:1000; flex-shrink:0; }
+    header h1 { font-size:18px; margin:0; }
+    header .right { font-size:13px; color:var(--muted); display:flex; gap:10px; align-items:center; }
+    header a, header button { color:var(--accent); background:none; border:none; cursor:pointer; font:inherit; text-decoration:none; }
+    .nav-tab { color:var(--muted); padding:6px 10px; border-radius:7px; text-decoration:none; }
+    .nav-tab:hover { background:#f1f3f5; }
+    .nav-tab.active { background:var(--accent); color:#fff; }
+    .layout { display:flex; flex-wrap:wrap; flex:8.5; min-height:0; overflow:hidden; }
+    #map { flex:7.5 1 380px; min-height:300px; max-height:100%; }
+    .panel { flex:2.5 1 220px; overflow-y:auto; padding:12px 16px; max-height:100%; }
+    .profile { position:relative; }
+    .profile-menu { position:absolute; right:0; top:calc(100% + 6px); background:#fff; border:1px solid var(--line); border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,.12); min-width:170px; display:none; z-index:2000; overflow:hidden; }
+    .profile-menu.on { display:block; }
+    .profile-menu a, .profile-menu button { display:block; width:100%; text-align:left; padding:9px 12px; font:inherit; font-size:13px; color:var(--text); background:none; border:none; border-bottom:1px solid #f1f3f5; cursor:pointer; text-decoration:none; }
+    .profile-menu a:hover, .profile-menu button:hover { background:#f1f3f5; }
+    .gps-btn { flex:1; min-width:42px; border:1px solid var(--line); background:#fff; color:var(--accent); border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+    .gps-btn:hover { border-color:var(--accent); background:#fff4e6; }
+    .list-tabs { display:flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; margin:12px 0; }
+    .list-tab { flex:1; font:inherit; font-size:12px; padding:8px; border:none; background:#fff; color:var(--muted); cursor:pointer; }
+    .list-tab.active { background:var(--accent); color:#fff; }
+    .fav-cats { display:none; gap:5px; flex-wrap:wrap; margin-bottom:10px; }
+    .fav-cats.on { display:flex; }
+    .fav-cat { font:inherit; font-size:12px; padding:5px 11px; border:1px solid var(--line); background:#fff; color:var(--text); border-radius:16px; cursor:pointer; }
+    .fav-cat.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+    .layer-toggle { display:flex; align-items:center; gap:7px; font-size:13px; color:var(--text);
+      background:#fff; border:1px solid var(--line); border-radius:8px; padding:9px 12px; margin-bottom:12px; cursor:pointer; }
+    .layer-toggle input { accent-color:var(--accent); width:16px; height:16px; }
+    .banner { background:#fff4e6; border:1px solid #ffd8a8; color:#a85; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:12px; }
+    .banner a { color:var(--accent); font-weight:600; }
+    .search-inp { width:100%; font:inherit; padding:10px 12px; border:1px solid var(--line); border-radius:8px; margin-bottom:12px; }
+    .search-inp:focus { outline:2px solid var(--accent); border-color:var(--accent); }
+    .ac-wrap { position:relative; }
+    .ac { position:absolute; left:0; right:0; top:100%; background:#fff; border:1px solid var(--accent); border-top:none; border-radius:0 0 8px 8px; z-index:1500; max-height:240px; overflow-y:auto; display:none; box-shadow:0 4px 10px rgba(0,0,0,.08); }
+    .ac.on { display:block; }
+    .ac-item { padding:8px 12px; font-size:13px; cursor:pointer; display:flex; gap:8px; align-items:center; }
+    .ac-item:hover { background:#f1f3f5; }
+    .ac-item .t { margin-left:auto; color:var(--muted); font-size:11px; }
+    .toolbar { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; }
+    .tool-btn { font:inherit; font-size:12px; padding:6px 9px; border:1px solid var(--line); background:#fff; color:var(--text); border-radius:7px; cursor:pointer; }
+    .tool-btn:hover { border-color:var(--accent); color:var(--accent); }
+    .tool-btn.on { background:var(--accent); color:#fff; border-color:var(--accent); }
+    .kakao-btn { width:100%; font:inherit; padding:9px; border:1px solid var(--accent); color:var(--accent); background:#fff; border-radius:8px; cursor:pointer; margin-bottom:12px; }
+    .kakao-btn:hover { background:var(--accent); color:#fff; }
+    .kakao-back { background:none; border:none; color:var(--accent); cursor:pointer; font:inherit; padding:2px 0 10px; }
+    .rec { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:10px; cursor:pointer; }
+    .rec:hover { border-color:var(--accent); }
+    .rec h3 { margin:0 0 4px; font-size:16px; }
+    .rec .meta { font-size:12px; color:var(--muted); }
+    .rec .tags { margin:8px 0; display:flex; flex-wrap:wrap; gap:6px; }
+    .tag { font-size:11px; background:#f1f3f5; border-radius:12px; padding:3px 9px; }
+    .tag.hit { background:var(--accent); color:#fff; }
+    .rec .why { font-size:12px; color:var(--ok); margin-top:5px; }
+    .rec .actions { display:flex; gap:8px; margin-top:8px; }
+    .rec .actions a, .rec .actions button { font-size:13px; padding:6px 10px; border-radius:7px; border:1px solid var(--line); cursor:pointer; background:#fff; color:var(--text); text-decoration:none; }
+    .rec .actions .save { background:var(--accent); color:#fff; border:none; }
+    .score { float:right; font-size:12px; color:var(--accent); font-weight:700; }
+    /* ── 카드 헤더 (이름 + 거리 뱃지) ── */
+    .rec-header { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+    .dist-badge { font-size:11px; color:var(--accent); background:#fff4e6; padding:2px 8px; border-radius:10px; white-space:nowrap; flex-shrink:0; line-height:1.9; font-weight:600; }
+    :root.dark .dist-badge { background:#3d1f0d; }
+    /* ── 스켈레톤 로딩 ── */
+    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+    .skel { background:linear-gradient(90deg,var(--line) 25%,var(--bg) 50%,var(--line) 75%); background-size:200% 100%; animation:shimmer 1.5s infinite; border-radius:5px; }
+    .skel-card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:10px; }
+    .skel-h { height:16px; width:55%; margin-bottom:10px; }
+    .skel-m { height:12px; width:82%; margin-bottom:6px; }
+    .skel-s { height:11px; width:38%; }
+  </style>
+</head>
+<body>
+  <script src="js/ie-guard.js"></script>
+  <header>
+    <a href="main.html" style="text-decoration:none;color:inherit;"><h1 style="cursor:pointer;">맛집 탐방 🍜</h1></a>
+    <div class="right">
+      <a href="main.html" class="nav-tab active">🍜 맛집</a>
+      <a href="land.html" class="nav-tab">🏙️ 부동산</a>
+      <button id="theme-btn" class="nav-tab" title="다크모드" aria-label="다크모드">🌙</button>
+      <div class="profile">
+        <button id="profile-btn" class="nav-tab">👤 내 정보 ▾</button>
+        <div id="profile-menu" class="profile-menu">
+          <a href="#" id="who" style="color:var(--muted);font-size:11px;pointer-events:none;">로그인 안 됨</a>
+          <a href="onboarding.html">⚙️ 취향 설정</a>
+          <a href="#" id="fav-link">⭐ 즐겨찾기</a>
+          <button id="logout" style="display:none;">🚪 로그아웃</button>
+          <button id="delete-account" style="display:none;color:var(--c-danger);">🗑️ 회원 탈퇴</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <div id="map"></div>
+    <div class="panel">
+      <div class="sheet-handle" id="sheet-handle" title="위로 올려서 목록 보기"></div>
+      <div class="toolbar">
+        <button id="tool-markers" class="tool-btn on" title="맛집 마커 표시/숨기기">🍜 맛집</button>
+        <button id="tool-street" class="tool-btn">🧭 거리뷰</button>
+        <button id="tool-dist" class="tool-btn">📏 거리</button>
+        <button id="tool-radius" class="tool-btn">⭕ 반경</button>
+        <button id="tool-share" class="tool-btn">🔗 공유</button>
+        <button id="tool-clear" class="tool-btn" style="display:none;">✖ 지우기</button>
+      </div>
+      <div id="engine-bar" style="display:flex;gap:4px;margin-bottom:6px;">
+        <button class="tool-btn on" data-engine="naver">네이버</button>
+        <button class="tool-btn" data-engine="kakao">카카오</button>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <div class="ac-wrap" style="flex:9;">
+          <input type="text" id="search" class="search-inp" style="margin-bottom:0;" placeholder="🔍 식당·지역 검색" autocomplete="off" />
+          <div id="ac" class="ac"></div>
+        </div>
+        <button id="geo-btn" class="gps-btn" title="내 위치" aria-label="내 위치"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="7"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"/></svg></button>
+      </div>
+      <div class="list-tabs">
+        <button class="list-tab" data-mode="favorites">⭐ 즐겨찾기</button>
+        <button class="list-tab active" data-mode="recommend">📍 인근식당 추천</button>
+      </div>
+      <div class="fav-cats" id="fav-cats">
+        <button class="fav-cat active" data-cat="전체">전체</button>
+        <button class="fav-cat" data-cat="한식">한식</button>
+        <button class="fav-cat" data-cat="일식">일식</button>
+        <button class="fav-cat" data-cat="중식">중식</button>
+        <button class="fav-cat" data-cat="양식">양식</button>
+      </div>
+      <div class="banner" id="banner"></div>
+      <div id="recent" style="display:none;font-size:12px;margin-bottom:10px;color:var(--muted);"></div>
+      <div id="rec-list"></div>
+    </div>
+  </div>
+  <footer class="site-footer" id="site-footer">
+    <div class="footer-resize" id="footer-resize" title="끌어서 세로 크기 조절"></div>
+    <div class="footer-top">
+      <div class="footer-links">
+        <a href="terms.html#terms">이용약관</a>
+        <a href="terms.html#privacy">개인정보처리방침</a>
+        <a href="terms.html#copyright">저작권정책</a>
+      </div>
+      <div class="footer-stats">
+        <span>회원수 <b id="f-members">—</b></span>
+        <span>오늘방문자 <b id="f-today">—</b></span>
+        <span>누적방문자 <b id="f-total">—</b></span>
+        <span class="footer-note">동일 IP는 하루 1회만 집계됩니다</span>
+      </div>
+      <div class="footer-right">
+        <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com</span>
+        <a href="admin.html" class="footer-admin">관리자</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/common.js"></script>
+  <script src="js/ui-resize.js"></script>
+  <script src="js/footer-resize.js"></script>
+  <script src="js/footer-stats.js"></script>
+  <script src="js/main.js?v=6"></script>
+</body>
+</html>
