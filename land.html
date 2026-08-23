@@ -1560,7 +1560,7 @@
       `https://api.vworld.kr/req/wmts/1.0.0/${VWORLD_KEY}/${layer}/{z}/{y}/{x}.${ext}`,
       { maxZoom: 19, attribution: '© V-World' });
     const osmBase = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-      { maxZoom: 19, attribution: '© OpenStreetMap' });
+      { maxZoom: 19, attribution: '© OpenStreetMap contributors' });  // ODbL 이 요구하는 문구다 — 'contributors' 를 빼지 말 것
     const baseLayers = VWORLD_KEY ? {
       '일반지도': vTile('Base', 'png'),
       '항공영상': vTile('Satellite', 'jpeg'),
