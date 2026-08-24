@@ -5548,6 +5548,8 @@
     // 주의: 아래에서 곧바로 loadRates()/loadWeather()를 호출하므로(TDZ), 이 상수들은
     // MOLIT_PROXY 근처가 아니라 반드시 사용 지점보다 앞에 선언돼 있어야 한다.
     const KMA_PROXY = SUPABASE_URL + '/functions/v1/kma-weather-proxy';
+    const _wxCache = new Map();          // 0.05도(약 5km) 격자 → { text, at }
+    const WX_TTL = 10 * 60 * 1000;
     const EXIM_PROXY = SUPABASE_URL + '/functions/v1/eximbank-proxy';
     const CCTV_PROXY = SUPABASE_URL + '/functions/v1/its-cctv-proxy';
     let _weatherReq = 0;
@@ -5558,12 +5560,28 @@
         const m = addr && addr.match(/(\S+(?:동|읍|면))(?!\S)/);
         $('weather-area').textContent = (m && m[1]) || addr?.split(' ').slice(-2, -1)[0] || '이 지점';
       });
+      // 날씨 캐시 (2026-08-25) — 지도를 클릭할 때마다 호출되던 것을 줄인다.
+      // 키를 0.05도(약 5km) 격자로 잡는 이유: 기상청 단기예보 자체가 5km 격자 단위라
+      // 그 안의 두 지점은 **같은 예보값**을 돌려준다. 즉 정확도 손실 없이 호출만 준다.
+      // TTL 10분: 단기예보 발표는 3시간마다(02·05·08…)이므로 10분은 넉넉히 안전하다.
+      // ⚠️ 실패는 캐시하지 않는다 — _brCache·_pmsCache 와 같은 정책이다.
+      //    실패를 캐시하면 일시 장애가 10분짜리 '조회 실패'로 굳는다.
+      // 쿼터 이득: kma-weather-proxy 는 molit-proxy 와 **같은 MOLIT_KEY** 를 쓴다.
+      //    캐시 히트 1회 = data.go.kr 일한도 1건 절약.
+      const wxKey = `${Math.round(lat / 0.05)}|${Math.round(lng / 0.05)}`;
+      const wxHit = _wxCache.get(wxKey);
+      if (wxHit && Date.now() - wxHit.at < WX_TTL) {
+        $('weather-val').textContent = wxHit.text;
+        return;
+      }
       fetch(`${KMA_PROXY}?lat=${lat}&lng=${lng}`)
         .then((r) => r.json())
         .then((d) => {
           if (reqId !== _weatherReq) return;
           if (d.error) { $('weather-val').textContent = '조회 실패'; return; }
-          $('weather-val').textContent = (d.temp != null ? d.temp + '℃ ' : '') + (d.label || '');
+          const text = (d.temp != null ? d.temp + '℃ ' : '') + (d.label || '');
+          _wxCache.set(wxKey, { text, at: Date.now() });
+          $('weather-val').textContent = text;
         })
         .catch(() => { if (reqId === _weatherReq) $('weather-val').textContent = '조회 실패'; });
     }
