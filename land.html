@@ -2913,6 +2913,102 @@
       //
       // 이 레이어는 auction_detail.json(9MB) 이 필요하다 — 진행 물건 레이어와 달리
       // 목록만으로는 판정할 수 없다. 그래서 켤 때 상세를 기다린다.
+      // ── 공매(온비드) ────────────────────────────────────────────────
+      // 법원경매 옆에 공매를 나란히 놓는다. 물건 풀이 다르므로 둘을 같은 지도에서
+      // 비교하는 것이 이 서비스의 차별점이다. 출처: 한국자산관리공사 온비드
+      // (승인 2026-08-22 확인 · 파라미터·필드 실측 2026-08-25 → API_SCHEMA 8절).
+      //
+      // ⚠️ 상세 API 를 물건마다 부르지 않는다 — **개발계정 일 1,000건**이다(다른 API 는 10,000).
+      //    목록 하나로 감정가·최저가·유찰횟수·면적·용도·썸네일이 다 오므로 목록만으로 성립한다.
+      const onbidCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 60 });
+      let onbidRows = null;
+      let _onbidPromise = null;
+      // 공매는 자물쇠 색으로 구분한다(경매는 망치). 유찰이 있으면 붉게.
+      const _obIconCache = {};
+      function obIcon(color) {
+        if (!_obIconCache[color]) {
+          _obIconCache[color] = L.divIcon({
+            className: '',
+            html: `<div style="width:26px;height:26px;background:${color};border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;font:700 12px/1 system-ui;color:#fff;">공</div>`,
+            iconSize: [26, 26], iconAnchor: [13, 13],
+          });
+        }
+        return _obIconCache[color];
+      }
+      function loadOnbid() {
+        if (!_onbidPromise) {
+          _onbidPromise = fetch('onbid.json')
+            .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+            .then((j) => {
+              const F = {};
+              j.fields.forEach((f, i) => { F[f] = i; });
+              onbidRows = j.rows
+                .filter((r) => r[F.lat] != null && r[F.lng] != null)
+                .map((r, i) => ({
+                  _i: i,
+                  mng: r[F.mng], cdtn: r[F.cdtn], org: j.orgs[r[F.org]] || '',
+                  nm: r[F.nm], use: r[F.use],
+                  appr: r[F.appr], low: r[F.low], fail: r[F.fail],
+                  bgn: r[F.bgn], end: r[F.end], stat: r[F.stat],
+                  pnu: r[F.pnu], land: r[F.land], bld: r[F.bld], img: r[F.img],
+                  lat: r[F.lat], lng: r[F.lng],
+                }));
+            })
+            .catch((e) => {
+              // 빈 레이어는 "이 동네엔 공매가 없구나"로 오해된다 — 실패를 말해 준다.
+              onbidRows = [];
+              toast('공매 목록을 불러오지 못했습니다 (onbid.json — 수집기 실행 필요)');
+              console.warn('공매 로드 실패:', e);
+            });
+        }
+        return _onbidPromise;
+      }
+      // YYYYMMDDHHmm → 'YYYY.MM.DD HH:mm'
+      const obDt = (v) => {
+        const t = String(v || '');
+        return t.length >= 12
+          ? `${t.slice(0, 4)}.${t.slice(4, 6)}.${t.slice(6, 8)} ${t.slice(8, 10)}:${t.slice(10, 12)}`
+          : (t.length >= 8 ? `${t.slice(0, 4)}.${t.slice(4, 6)}.${t.slice(6, 8)}` : '');
+      };
+      // 원 단위로 온다(경매 목록의 만원 단위와 다르다 — 섞지 말 것)
+      const obEok = (v) => (v ? (v / 1e8).toLocaleString('ko-KR', { maximumFractionDigits: 2 }) + '억원' : '-');
+      function onbidPopupHtml(d) {
+        const rate = d.appr && d.low ? Math.round(d.low * 100 / d.appr) : null;
+        return '<div class="pc" style="min-width:250px;">'
+          + `<div class="pc-head"><b>${esc(d.nm)}</b></div>`
+          + '<div class="pc-body" style="font-size:13px;line-height:1.65;">'
+          + `<div><span style="display:inline-block;padding:1px 6px;border-radius:4px;background:#7048e8;color:#fff;font-size:11px;">공매</span> ${esc(d.org)} · ${esc(d.stat)}</div>`
+          + (d.use ? `<div>용도 ${esc(d.use)}</div>` : '')
+          + `<div>감정평가액 <b>${obEok(d.appr)}</b></div>`
+          + `<div>최저입찰가 <b style="color:var(--c-primary);">${obEok(d.low)}</b>${rate != null ? ` <span style="opacity:.7;">(감정가의 ${rate}%)</span>` : ''}</div>`
+          + (d.fail ? `<div>유찰 <b style="color:#fa5252;">${d.fail}회</b></div>` : '')
+          + `<div>입찰 ${obDt(d.bgn)} ~ ${obDt(d.end)}</div>`
+          + ((d.land || d.bld) ? `<div>면적 토지 ${d.land || 0}㎡ · 건물 ${d.bld || 0}㎡</div>` : '')
+          + (d.img ? `<div style="margin-top:6px;"><img src="${esc(d.img)}" alt="" style="max-width:100%;border-radius:6px;" loading="lazy" onerror="this.style.display='none'"></div>` : '')
+          + `<div style="margin-top:8px;"><a href="https://www.onbid.co.kr/op/cta/cltrdtl/collateralRealEstateDetail.do?cltrNo=${encodeURIComponent(d.mng)}" target="_blank" rel="noopener">온비드에서 열기 ↗</a></div>`
+          + '</div></div>';
+      }
+      onbidCluster.on('click', (e) => {
+        const m = e.layer;
+        if (!m || !m._pop) return;
+        if (!m.getPopup() && m._pop) m.bindPopup(m._pop());
+        m.openPopup();
+      });
+      function onbidBuild() {
+        if (!onbidRows) return;
+        onbidCluster.clearLayers();
+        onbidCluster.addLayers(onbidRows.map((d) => {
+          const m = L.marker([d.lat, d.lng], { icon: obIcon(d.fail ? '#fa5252' : '#7048e8') });
+          m._pop = (() => onbidPopupHtml(d));
+          m.bindTooltip(esc(d.nm), { direction: 'top' });
+          return m;
+        }));
+      }
+      map.on('overlayadd', (e) => {
+        if (e.layer !== onbidCluster) return;
+        loadOnbid().then(() => onbidBuild());
+      });
+
       const auctionResaleCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 60 });
       auctionResaleCluster.on('click', (e) => {
         const m = e.layer;
@@ -5018,6 +5114,8 @@
           { name: '매각예정 물건(~2개월)', layer: auctionSchedCluster },
           // 낙찰이 무산돼 다시 나온 물건(미납·매각허가취소). 상세 파일이 필요해 로딩이 조금 걸린다.
           { name: '재매각·허가취소 물건', layer: auctionResaleCluster },
+          // 공매(온비드) — 법원경매와 물건 풀이 다르다. 나란히 두는 것이 요점이다.
+          { name: '공매 (온비드 · 압류재산)', layer: onbidCluster },
         ]],
         // 청약 — 민간분양·공공임대를 한 대분류로 묶었다(사용자 요청 2026-08-23).
         // ⚠️ UI 만 묶은 것이다. 세 제도는 **서로 다른 제도**이고 데이터도 별개다 —
