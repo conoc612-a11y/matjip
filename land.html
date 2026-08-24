@@ -487,7 +487,7 @@
     .lp-cb { flex-shrink:0; accent-color:var(--c-primary); margin:0; }
     .lp-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     /* ── 미활용 API 카탈로그 패널 (별도 버튼, 읽기 전용) ──────────────────
-       data.go.kr 승인만 받고 미활용인 72종의 '항목 이름'을 나열한다.
+       data.go.kr 승인만 받고 미활용인 항목 이름을 나열한다(연동되면 여기서 빼고 레이어 트리로 옮긴다).
        어떤 것도 map 레이어로 붙이지 않으므로 체크박스도 없다(.lp 트리 재활용 X). */
     .ua .lp-body { width:300px; }
     .ua-sec { padding:6px 8px 2px; }
@@ -5096,6 +5096,31 @@
       //   { name, layer }        — 소분류 없는 잎 (기존 matjip 레이어들)
       //   { name, subs:[[id,이름]…] } — UPIS 레이어 id 별 소분류. 켠 것만 합쳐 한 장으로 그린다.
       // 소분류의 색 견본은 MapServer 의 /legend 에서 받은 실제 범례 이미지라 참조와 같다.
+      // ── 팝업 정보 토글 ─────────────────────────────────────────────
+      // 철거·말소, 유지점검, 건축인허가는 **좌표가 있는 레이어가 아니라 팝업 정보**다.
+      // 그런데도 레이어 트리에 넣는 이유: 연동이 끝난 API 를 사용자가 목록에서 볼 수 있어야 하고,
+      // 무엇보다 이 셋은 **팝업을 열 때마다 data.go.kr 을 호출**한다(계정 공용 일한도).
+      // 안 쓰는 항목을 끄면 쿼터가 절약된다 — 그래서 토글에 실익이 있다.
+      //
+      // 레이어 패널은 map.addLayer/removeLayer 로 동작하므로 **빈 layerGroup** 을 붙인다.
+      // 지도에는 아무것도 안 그려지고, overlayadd/overlayremove 로 플래그만 바꾼다.
+      // ⚠️ 기본은 **켜짐**이다. 기존 동작(항상 조회)을 바꾸지 않으려는 것 —
+      //    init 에서 map 에 미리 올려 두면 패널이 체크된 상태로 뜬다.
+      const infoSht = L.layerGroup();
+      const infoMtn = L.layerGroup();
+      const infoPms = L.layerGroup();
+      const wantInfo = { sht: true, mtn: true, pms: true };
+      const _infoMap = [[infoSht, 'sht'], [infoMtn, 'mtn'], [infoPms, 'pms']];
+      map.on('overlayadd', (e) => {
+        const hit = _infoMap.find((x) => x[0] === e.layer);
+        if (hit) wantInfo[hit[1]] = true;
+      });
+      map.on('overlayremove', (e) => {
+        const hit = _infoMap.find((x) => x[0] === e.layer);
+        if (hit) wantInfo[hit[1]] = false;
+      });
+      infoSht.addTo(map); infoMtn.addTo(map); infoPms.addTo(map);
+
       const LAYER_TREE = [
         // 현장 확인 — '지금 이 자리가 어떤지' 보는 레이어를 한데 모았다(사용자 요청 2026-08-23).
         // 계획·규제 레이어(도시계획시설 등)와 성격이 달라 섞으면 계속 혼동된다.
@@ -5107,6 +5132,14 @@
           // parking.json 이 없으면 비어 있다(제공기관 장애, §58).
           { name: '주차장 (실제 시설 · 무료/유료)', layer: parkingCluster },
           { name: '전기차 충전소', layer: evCluster },
+        ]],
+        // 건물 상세 정보 — 지도에 그려지는 레이어가 아니라 **팝업에 붙는 정보**다.
+        // 연동이 끝난 API 를 목록에서 볼 수 있게 하고, 쿼터 절약용으로 끌 수 있게 한다.
+        // (미활용 API 패널에 있던 항목을 연동 후 여기로 옮긴 것이다.)
+        ['건물 상세 정보 (팝업)', [
+          { name: '철거·말소 이력 (폐쇄말소대장)', layer: infoSht },
+          { name: '유지점검 이력', layer: infoMtn },
+          { name: '건축 인허가 이력', layer: infoPms },
         ]],
         ['법원경매', [
           { name: '진행 물건(서울/경기)', layer: auctionCluster },
@@ -5248,6 +5281,10 @@
               + `<input type="checkbox" class="lp-cb lp-midcb"><span class="lp-name">${mid.name}</span></div>`;
             const midCb = row.querySelector('.lp-midcb');
             midCbs.push(midCb);
+            // 이미 지도에 올라가 있는 레이어는 체크된 상태로 그린다.
+            // (기본으로 켜 두는 항목이 있다 — '건물 상세 정보' 팝업 토글. 이게 없으면
+            //  지도엔 켜져 있는데 패널엔 꺼진 것으로 보여 상태가 어긋난다.)
+            if (!hasSubs && mid.layer && map.hasLayer(mid.layer)) midCb.checked = true;
 
             if (!hasSubs) {
               midCb.onchange = () => {
@@ -5377,18 +5414,17 @@
       layerPanel.addTo(map);
 
       // ── 미활용 API 카탈로그 (레이어 트리와 별개 버튼) ─────────────────
-      // data.go.kr 활용신청 94건 중 '승인만 받고 미활용' 항목의 이름을 나열하는
+      // data.go.kr 활용신청 96건 중 '승인만 받고 미활용' 항목의 이름을 나열하는
       // 읽기 전용 패널이다. 켜고 끄는 레이어가 아니므로 체크박스도 map.addLayer 도
       // 없다(항목·건수는 ../matjip-docs/API_CATALOG.md §3 기준, 2026-08-24 전수대조).
       // 연동할 때는 각 항목을 실측(API_SCHEMA.md 에 스키마 기록)한 뒤 여기서 빼고
       // 진짜 레이어로 옮긴다.
       const UA_CATALOG = [
-        ['부동산·건축', ['건축HUB 건축인허가정보', '건축HUB 주택인허가정보', '건축HUB 건물에너지정보',
-          '건축HUB 유지점검정보', '건축HUB 폐쇄말소대장정보', '토지이용규제정보',
+        ['부동산·건축', ['건축HUB 주택인허가정보', '건축HUB 건물에너지정보',
+          '토지이용규제정보',
           '공동주택 기본정보', '공동주택 단지 식별정보(부동산원)', '아파트 분양권전매 실거래가',
           '아파트 매매 실거래가(기본판)', '전국지가변동률 마이크로데이터', '녹색건축 인증현황',
-          '청약 당첨자 정보(청약홈)', '청약 경쟁률·특별공급 현황', '온비드 공매 물건목록',
-          '온비드 공매 물건상세', '온비드 공매 입찰정보', '파산금융회사 매물현황']],
+          '청약 당첨자 정보(청약홈)', '청약 경쟁률·특별공급 현황', '온비드 공매 물건상세', '온비드 공매 입찰정보', '파산금융회사 매물현황']],
         ['공동주택 관리', ['관리비 개별사용료', '관리비 공용관리비', '장기수선충당금', '하자담보책임기간',
           '유지관리 이력', '입찰공고', '입찰결과공지', '수의계약 공지', '단지 목록']],
         ['공공주택·임대', ['LH 임대주택단지(마이홈이 상위호환)', 'LH 분양임대공고 상세',
@@ -6793,15 +6829,16 @@
           if (arr && arr.length) { st.jijigu = arr; render(); }
         });
         // 건축인허가 — 클릭당 +1. 인허가 이력과 함께 용도지역/지구/구역을 보강한다(대장보다 많다).
-        loadArchPms(pnu, (arr) => {
+        // ⚠️ 아래 셋은 레이어 트리 '건물 상세 정보'에서 끌 수 있다 — 끄면 호출 자체를 안 한다.
+        if (wantInfo.pms) loadArchPms(pnu, (arr) => {
           if (arr && arr.length) { st.pms = arr; render(); }
         });
         // 폐쇄말소대장 — 있으면 '철거된 건물'이라는 뜻이다. 없으면 조용히 넘어간다.
-        loadSht(pnu, (arr) => {
+        if (wantInfo.sht) loadSht(pnu, (arr) => {
           if (arr && arr.length) { st.sht = arr; render(); }
         });
         // 유지점검 이력 — 규모 미달이면 0건이 정상이다.
-        loadMtnChk(pnu, (arr) => {
+        if (wantInfo.mtn) loadMtnChk(pnu, (arr) => {
           if (arr && arr.length) { st.mtn = arr; render(); }
         });
         // 비주거 실거래 — 정적 JSON 조회라 네트워크 호출이 파일당 1회(첫 클릭)뿐이다.
