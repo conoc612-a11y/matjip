@@ -5935,6 +5935,56 @@
     }
     const SBIZ_PROXY = SUPABASE_URL + '/functions/v1/sbiz-proxy';
     const _sbizCache = new Map();
+    // ── 폐쇄말소대장 (철거된 건물) ─────────────────────────────────
+    // 경매에서 중요하다: 등기상 건물이 있는데 실물이 없으면 **토지만 낙찰**받는 것이다.
+    // 감정평가서와 현황이 어긋나는 대표 사례이고, 지금은 그걸 알 방법이 없었다.
+    // 정비구역 진행 확인에도 쓴다(철거 = 사업 진행).
+    // 실측 2026-08-25: 은평 불광동 305-35 → 2건, shterDay 20140305 · shterGbCdNm 멸실.
+    const _shtCache = new Map();
+    function loadSht(pnu, cb) {
+      const pp = pnuParts(pnu);
+      if (!pp) { cb(null); return; }
+      if (_shtCache.has(pnu)) { cb(_shtCache.get(pnu)); return; }
+      const q = `svc=ShtRgstHubService&op=getSrTitleInfo&sigunguCd=${pp.sigunguCd}`
+        + `&bjdongCd=${pp.bjdongCd}&platGbCd=${pp.platGbCd}&bun=${pp.bun}&ji=${pp.ji}`
+        + '&numOfRows=20&pageNo=1';
+      fetch(`${MOLIT_PROXY}?${q}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => {
+          const b = j && j.response && j.response.body;
+          const it = b && b.items;
+          const arr = !it ? [] : (Array.isArray(it.item) ? it.item : (it.item ? [it.item] : []));
+          // 실패는 캐시하지 않는다(ledgerOp 와 같은 함정 회피). 정상 응답의 빈 배열만 캐시한다.
+          if (b) _shtCache.set(pnu, arr);
+          cb(b ? arr : null);
+        })
+        .catch(() => cb(null));
+    }
+
+    // ── 건축물 유지점검(정기점검) 이력 ─────────────────────────────
+    // 낙찰 후 수선비 추정에 쓴다. 경매 물건은 관리가 방치된 경우가 많아 일반 매매보다 값이 크다.
+    // ⚠️ **일정 규모 이상 건축물만 대상**이다 — 소규모 주택은 0건이 정상이다(버그가 아니다).
+    //    실측 2026-08-25: 은평 불광동·마포 연남동 주택 0건 / 롯데월드타워 10건.
+    const _mtnCache = new Map();
+    function loadMtnChk(pnu, cb) {
+      const pp = pnuParts(pnu);
+      if (!pp) { cb(null); return; }
+      if (_mtnCache.has(pnu)) { cb(_mtnCache.get(pnu)); return; }
+      const q = `svc=MtnChkHubService&op=getMaintenanceHistory&sigunguCd=${pp.sigunguCd}`
+        + `&bjdongCd=${pp.bjdongCd}&platGbCd=${pp.platGbCd}&bun=${pp.bun}&ji=${pp.ji}`
+        + '&numOfRows=20&pageNo=1';
+      fetch(`${MOLIT_PROXY}?${q}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => {
+          const b = j && j.response && j.response.body;
+          const it = b && b.items;
+          const arr = !it ? [] : (Array.isArray(it.item) ? it.item : (it.item ? [it.item] : []));
+          if (b) _mtnCache.set(pnu, arr);
+          cb(b ? arr : null);
+        })
+        .catch(() => cb(null));
+    }
+
     function loadStores(pnu, cb) {
       if (!/^\d{19}$/.test(String(pnu || ''))) { cb(null); return; }
       if (_sbizCache.has(pnu)) { cb(_sbizCache.get(pnu)); return; }
@@ -6378,6 +6428,56 @@
           + '</div>';
       }
 
+      // ── 폐쇄말소대장 (철거된 건물) ──
+      // 🔴 경매에서 이게 핵심이다. 등기상 건물이 있는데 실물이 없으면 **토지만 낙찰**받는 것이다.
+      //    그래서 눈에 띄게 붉은 테두리로 경고한다 — 다른 섹션과 톤을 일부러 다르게 뒀다.
+      let shtHtml = '';
+      if (st.sht && st.sht.length) {
+        const tr = (v) => String(v == null ? '' : v).trim();
+        const ymd = (v) => (/^\d{8}$/.test(tr(v)) ? tr(v).slice(0, 4) + '.' + tr(v).slice(4, 6) + '.' + tr(v).slice(6, 8) : '');
+        const list = st.sht.slice().sort((a, b) => tr(b.shterDay).localeCompare(tr(a.shterDay)));
+        const rows2 = list.slice(0, 3).map((x) => {
+          const gb = tr(x.shterGbCdNm) || '말소';
+          const nm = tr(x.bldNm);
+          const use = tr(x.mainPurpsCdNm);
+          const ar = Number(x.totArea) || 0;
+          const flr = [Number(x.grndFlrCnt) ? '지상' + Number(x.grndFlrCnt) + '층' : '',
+                       Number(x.ugrndFlrCnt) ? '지하' + Number(x.ugrndFlrCnt) + '층' : ''].filter(Boolean).join('/');
+          const bits = [use, ar ? ar.toLocaleString() + '㎡' : '', flr].filter(Boolean).join(' · ');
+          return `<span style="color:#e03131;font-weight:600;">${esc(ymd(x.shterDay) || '-')} ${esc(gb)}</span>`
+            + (nm ? ` ${esc(nm)}` : '')
+            + (bits ? `<br><span style="font-size:12px;color:var(--c-muted);">${esc(bits)}</span>` : '');
+        });
+        const more = list.length > 3 ? ` <span style="font-size:12px;color:var(--c-muted);">외 ${list.length - 3}건</span>` : '';
+        shtHtml = '<div style="margin-top:6px;border:1px solid #e03131;border-radius:6px;padding:6px 8px;background:rgba(224,49,49,.06);">'
+          + `<b style="color:#e03131;">철거·말소 이력</b> <span style="font-size:12px;color:var(--c-muted);">이 필지 ${list.length}건</span>${more}<br>`
+          + rows2.join('<br>')
+          + '<div style="font-size:11.5px;color:var(--c-muted);margin-top:4px;">등기상 건물이 남아 있어도 <b>현황은 다를 수 있습니다.</b> 입찰 전 현장과 등기부로 직접 확인하십시오.</div>'
+          + '</div>';
+      }
+
+      // ── 건축물 유지점검(정기점검) 이력 ──
+      // 낙찰 후 수선비 추정 재료. ⚠️ 일정 규모 이상만 대상이라 **없는 게 정상인 경우가 많다**
+      // (실측: 소규모 주택 0건 / 롯데월드타워 10건). 없으면 섹션 자체를 그리지 않는다.
+      let mtnHtml = '';
+      if (st.mtn && st.mtn.length) {
+        const tr = (v) => String(v == null ? '' : v).trim();
+        const ymd = (v) => (/^\d{8}$/.test(tr(v)) ? tr(v).slice(0, 4) + '.' + tr(v).slice(4, 6) : '');
+        const list = st.mtn.slice().sort((a, b) => tr(b.chkStrtDay).localeCompare(tr(a.chkStrtDay)));
+        const rows2 = list.slice(0, 3).map((x) => {
+          const co = tr(x.chkCoNm);
+          const dong = tr(x.dongNm);
+          return `<span style="color:var(--c-primary);">${esc(ymd(x.chkStrtDay) || '-')}</span> 정기점검`
+            + (dong ? ` <span style="font-size:12px;color:var(--c-muted);">${esc(dong)}</span>` : '')
+            + (co ? `<br><span style="font-size:12px;color:var(--c-muted);">${esc(co)}</span>` : '');
+        });
+        const more = list.length > 3 ? ` <span style="font-size:12px;color:var(--c-muted);">외 ${list.length - 3}건</span>` : '';
+        mtnHtml = '<div style="margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">'
+          + `<b>유지점검 이력</b> <span style="font-size:12px;color:var(--c-muted);">${list.length}건</span>${more}<br>`
+          + rows2.join('<br>')
+          + '</div>';
+      }
+
       // ── 이 건물 업소(세입자) ──
       // 층은 78% 만 채워지고 호·동은 아예 오지 않는다(§51-4 실측) → 층은 있을 때만 쓰고
       // 호 단위 표시는 하지 않는다. 층이 있는 것을 위로, 같은 층이면 원래 순서를 유지한다.
@@ -6410,10 +6510,10 @@
           ? ledgerDetailHtml(st)
           : `<button type="button" class="ld-more btn-mini" style="margin-top:5px;">건축물대장 상세 보기</button>`;
       }
-      if (!rows.length && !houseHtml && !detailHtml && !storeHtml && !nrHtml && !pmsHtml) return '';
+      if (!rows.length && !houseHtml && !detailHtml && !storeHtml && !nrHtml && !pmsHtml && !shtHtml && !mtnHtml) return '';
       return `<div style="font-size:13px;margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">`
         + (rows.length ? `<b>토지·건물 정보</b>${badge}<br>${rows.join('<br>')}` : '')
-        + pmsHtml + storeHtml + nrHtml + houseHtml + detailHtml + '</div>';
+        + shtHtml + pmsHtml + mtnHtml + storeHtml + nrHtml + houseHtml + detailHtml + '</div>';
     }
 
     // ── 건축물대장 상세 (투자자용 추가 조회) ─────────────────────
@@ -6695,6 +6795,14 @@
         // 건축인허가 — 클릭당 +1. 인허가 이력과 함께 용도지역/지구/구역을 보강한다(대장보다 많다).
         loadArchPms(pnu, (arr) => {
           if (arr && arr.length) { st.pms = arr; render(); }
+        });
+        // 폐쇄말소대장 — 있으면 '철거된 건물'이라는 뜻이다. 없으면 조용히 넘어간다.
+        loadSht(pnu, (arr) => {
+          if (arr && arr.length) { st.sht = arr; render(); }
+        });
+        // 유지점검 이력 — 규모 미달이면 0건이 정상이다.
+        loadMtnChk(pnu, (arr) => {
+          if (arr && arr.length) { st.mtn = arr; render(); }
         });
         // 비주거 실거래 — 정적 JSON 조회라 네트워크 호출이 파일당 1회(첫 클릭)뿐이다.
         const nk = nonresKey(st.parcel && st.parcel.addr, st.parcel && st.parcel.jibun);
