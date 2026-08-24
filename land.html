@@ -486,6 +486,21 @@
     .lp-sw { width:14px; height:12px; flex-shrink:0; border:1px solid var(--line); border-radius:2px; object-fit:cover; }
     .lp-cb { flex-shrink:0; accent-color:var(--c-primary); margin:0; }
     .lp-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    /* ── 미활용 API 카탈로그 패널 (별도 버튼, 읽기 전용) ──────────────────
+       data.go.kr 승인만 받고 미활용인 72종의 '항목 이름'을 나열한다.
+       어떤 것도 map 레이어로 붙이지 않으므로 체크박스도 없다(.lp 트리 재활용 X). */
+    .ua .lp-body { width:300px; }
+    .ua-sec { padding:6px 8px 2px; }
+    .ua-sec b { display:block; font-size:12px; color:var(--muted); margin-bottom:3px; }
+    .ua-wrap.open .ua-detail { display:block; }
+    .ua-item { display:flex; align-items:center; gap:5px; padding:3px 4px; cursor:pointer; border-radius:5px; }
+    .ua-item:hover { background:var(--c-hover); }
+    .ua-nm { font-size:13px; line-height:1.45; }
+    .ua-detail { display:none; margin:2px 4px 5px 26px; padding:4px 9px; font-size:12px;
+      color:var(--muted); line-height:1.55; border-left:2px solid var(--c-primary); }
+    .ua-detail code { font-size:11px; background:var(--c-hover); padding:0 4px; border-radius:3px; }
+    .ua-note { padding:7px 9px; font-size:12px; color:var(--muted); line-height:1.5; }
+    .ua-note b { color:var(--text); }
     /* 줌(+/−)+배경지도 선택을 지도 상단 중앙으로 옮긴다(2026-08-13, 사용자 요청).
        leaflet-top/leaflet-left 코너 흐름에서 빼내 지도 컨테이너에 직접 절대배치한다. */
     /* z-index 는 팝업 페인(1200)보다 높다. 팝업은 앵커에서 위로 자라기 때문에 지도 가운데를
@@ -5262,6 +5277,149 @@
         return div;
       };
       layerPanel.addTo(map);
+
+      // ── 미활용 API 카탈로그 (레이어 트리와 별개 버튼) ─────────────────
+      // data.go.kr 활용신청 94건 중 '승인만 받고 미활용' 항목의 이름을 나열하는
+      // 읽기 전용 패널이다. 켜고 끄는 레이어가 아니므로 체크박스도 map.addLayer 도
+      // 없다(항목·건수는 ../matjip-docs/API_CATALOG.md §3 기준, 2026-08-24 전수대조).
+      // 연동할 때는 각 항목을 실측(API_SCHEMA.md 에 스키마 기록)한 뒤 여기서 빼고
+      // 진짜 레이어로 옮긴다.
+      const UA_CATALOG = [
+        ['부동산·건축', ['건축HUB 건축인허가정보', '건축HUB 주택인허가정보', '건축HUB 건물에너지정보',
+          '건축HUB 유지점검정보', '건축HUB 폐쇄말소대장정보', '토지이용규제정보',
+          '공동주택 기본정보', '공동주택 단지 식별정보(부동산원)', '아파트 분양권전매 실거래가',
+          '아파트 매매 실거래가(기본판)', '전국지가변동률 마이크로데이터', '녹색건축 인증현황',
+          '청약 당첨자 정보(청약홈)', '청약 경쟁률·특별공급 현황', '온비드 공매 물건목록',
+          '온비드 공매 물건상세', '온비드 공매 입찰정보', '파산금융회사 매물현황']],
+        ['공동주택 관리', ['관리비 개별사용료', '관리비 공용관리비', '장기수선충당금', '하자담보책임기간',
+          '유지관리 이력', '입찰공고', '입찰결과공지', '수의계약 공지', '단지 목록']],
+        ['공공주택·임대', ['LH 임대주택단지(마이홈이 상위호환)', 'LH 분양임대공고 상세',
+          'LH 분양임대공고문', '예비입주자 대기현황']],
+        ['생활 인프라', ['병원정보(심평원)', '응급의료기관 정보', '착한가격업소 현황',
+          '생필품 가격 정보', '공중화장실 정보', '공공도서관 소장도서', '정류장 노선 이용량',
+          '서울교통공사 최단경로', '도시고속도로 방음벽', '기상특보 조회', 'CCTV 도로날씨',
+          '노후 공공시설물(안전관리원)', '명산 등산로', '공항 출국장 혼잡도']],
+        ['사업자·기업·금융', ['국민연금 사업장 내역', '국민연금 가입현황', '국민연금 탈퇴사업장',
+          '주식시세정보(금융위)', '기업 재무정보(금융위)', '기업지배구조 공시(금융위)',
+          '지배구조정보(금융위)', '금융회사 공시(금융위)', '크라우드펀딩 업자(금융위)',
+          '주식정보 서비스(예탁결제원)', '기업정보 서비스(예탁결제원)', '가맹본부 일반정보(공정위)',
+          '가맹본부 재무정보(공정위)', '브랜드 가맹점·직영점(공정위)', '기업집단 내부지분(공정위)',
+          '대기업집단 주주현황(공정위)', '지자체 부채규모(지역정보원)', '지자체 경영성과(지역정보원)',
+          '전세자금보증 상품(주금공)']],
+        ['그 외', ['습득물 정보(경찰청)', '분실물 정보(경찰청)', '핸드폰 찾기(경찰청)',
+          '포털기관 습득물(경찰청)', '마을변호사 현황(법무부)', '포락지 관리정보(해수부)',
+          '바다갈라짐 체험지수', '바다여행지수', '나라장터 발주계획(조달청)', '데이터 제공표준(행안부)']],
+      ];
+      // 항목 클릭 시 보여주는 제공 정보. 값은 전부 실측 기록(API_SCHEMA.md §7-1,
+      // API_CATALOG.md §3)에서 옮긴 것 — 추측으로 채우지 않는다. 없는 항목은
+      // 아래 기본 문구로 안내하고, 연동 시점에 실측해 채운다.
+      const UA_DETAILS = {
+        '건축HUB 건축인허가정보': {
+          d: '착공 전 단계까지 보인다 — "옆 필지에 뭐가 허가났나" 확인용.',
+          o: ['getApBasisOulnInfo — 개요', 'getApDongOulnInfo — 동별 개요', 'getApFlrOulnInfo — 층별 개요'],
+          p: '필수: sigunguCd · bjdongCd · platGbCd · bun · ji (건축물대장과 동일 분해)'
+        },
+        '국민연금 사업장 내역': {
+          d: '§53(사업자 연결) 유력 경로 — 사업자등록번호 보유. 단 3인 이상 법인·10인 이상 개인사업자만 수록돼 소규모 상가는 대부분 빠진다.',
+          o: ['getBassInfoSearchV2 — 사업장 검색(wkplNm)', 'getDetailInfoSearchV2 — 상세(seq + dataCrtYm)'],
+          p: '주소가 도로명까지만 제공 — 건물 단위 조인은 불가, 동 단위 지표용'
+        },
+        '온비드 공매 물건목록': { d: '공매 물건 열거.', o: ['getRlstCltrList2'] },
+        '온비드 공매 물건상세': { d: '감정가·최저입찰가. ⚠️ 개발계정 트래픽 일 1,000건 — 물건마다 호출하는 설계는 불가.' },
+        '온비드 공매 입찰정보': { d: '입찰경쟁 정보.', p: 'cltrMngNo + pbctCdtnNo 입력 필요(목록→상세 순서)' },
+        'LH 임대주택단지(마이홈이 상위호환)': {
+          d: '주소가 시·군까지만 제공돼 지도에 못 찍는다. 사용 중인 마이홈 공공임대(HWSPR04)가 상위 호환.'
+        },
+        '아파트 매매 실거래가(기본판)': {
+          d: '사용 중인 상세판(AptTradeDev)보다 필드가 적다 — 별개 데이터셋이라 목록에는 잡히지만 사실상 중복.'
+        },
+        '공동주택 단지 식별정보(부동산원)': {
+          d: '단지 코드 표준 — 현재 단지명 문자열 매칭을 대체할 정확도 개선 1순위.'
+        },
+        '전국지가변동률 마이크로데이터': { d: '지가 추세 — 현재는 시점 값만 활용 가능.' },
+        '토지이용규제정보': { d: '행위제한 원문.' },
+        '건축HUB 폐쇄말소대장정보': { d: '철거된 건물 이력 → 재개발 진행 확인.' },
+        '건축HUB 주택인허가정보': { d: '주택 공급 파이프라인.' },
+        '건축HUB 건물에너지정보': { d: '실제 관리비 추정·노후도 판단.' },
+        '건축HUB 유지점검정보': { d: '안전점검 이력·하자 리스크.' },
+        '녹색건축 인증현황': { d: '인증 여부.' },
+        '청약 당첨자 정보(청약홈)': { d: '청약 경쟁 실적.' },
+        '청약 경쟁률·특별공급 현황': { d: '청약 경쟁 실적.' },
+        '파산금융회사 매물현황': { d: '특수 매물.' },
+        '주식시세정보(금융위)': { d: '헤더에 환율처럼 띄울 예정.' },
+        '기업 재무정보(금융위)': { d: '법인 재무.' },
+        '국민연금 가입현황': { d: '§53 보조 경로 후보(2026-08-23 승인).' },
+        '국민연금 탈퇴사업장': { d: '폐업 사업장 이력(2026-08-23 승인).' },
+        '가맹본부 일반정보(공정위)': { d: '상권의 프랜차이즈 비중·본부 건전성.' },
+        '가맹본부 재무정보(공정위)': { d: '상권의 프랜차이즈 비중·본부 건전성.' },
+        '브랜드 가맹점·직영점(공정위)': { d: '상권의 프랜차이즈 비중·본부 건전성.' },
+        '지자체 부채규모(지역정보원)': { d: '지자체 재정.' },
+        '지자체 경영성과(지역정보원)': { d: '지자체 재정.' },
+        '전세자금보증 상품(주금공)': { d: '전세 대출.' },
+        '관리비 공용관리비': {
+          d: '300세대↑ 의무관리대상 단지의 공용 관리비 공개 데이터 — 개별사용료·장기수선충당금과 한 세트. 2026-08-24 승인(자동승인).',
+          p: '개발계정 일 5,000건 · JSON. 요청주소는 상세기능이 AJAX 로딩이라 아직 미획득 — 연동 시 상세페이지에서 읽을 것'
+        },
+        '노후 공공시설물(안전관리원)': {
+          d: '준공 30년↑ 1·2종 공공시설물(공동주택 제외) 현황 — 전국 4,126건(2026-08-24 실측). 좌표가 경위도(WGS84)로 와서 지도에 바로 찍힌다.',
+          o: ['getFacil30YearsOldList'],
+          p: 'serviceKey · numOfRows · pageNo (+옵션 type/facilNm/facilAddr 지역 필터). sfGrade 안전등급 · mgmBldrgstPk 대장PK 필드 포함'
+        },
+      };
+      const UA_DEFAULT_DETAIL = '제공 항목 상세는 아직 미측정 — 연동 시 data.go.kr 상세페이지의 상세기능을 확인할 것(경로 추측 금지 규칙).';
+      const UA_COUNT = UA_CATALOG.reduce((n, [, items]) => n + items.length, 0);
+      const unusedApiPanel = L.control({ position: 'topright' });
+      unusedApiPanel.onAdd = () => {
+        const div = L.DomUtil.create('div', 'lp ua');
+        div.innerHTML = '<button type="button" class="lp-toggle" title="미활용 API" aria-label="미활용 API">'
+          + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+          + '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>'
+          + '<path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></button>'
+          + '<div class="lp-body ui-scroll"><div class="ua-note">승인만 받고 <b>미활용</b>인 공공데이터포털 API <b>'
+          + UA_COUNT + '종</b>. 체크 = 붙일 후보 선택 · 이름 클릭 = 제공 정보 펼침</div>'
+          + UA_CATALOG.map(([sec, items]) => '<div class="ua-sec"><b>' + sec + ' (' + items.length + ')</b>'
+            + items.map((it) => {
+              const dt = UA_DETAILS[it];
+              let det = dt ? '' : UA_DEFAULT_DETAIL;
+              if (dt) {
+                det = dt.d || '';
+                if (dt.o && dt.o.length) det += '<div style="margin-top:3px">' + dt.o.map((op) => '<code>' + op + '</code>').join(' ') + '</div>';
+                if (dt.p) det += '<div style="margin-top:3px">' + dt.p + '</div>';
+              }
+              return '<div class="ua-wrap"><label class="ua-item">'
+                + '<input type="checkbox" class="lp-cb ua-cb" data-n="' + it + '">'
+                + '<span class="ua-nm">' + it + '</span></label>'
+                + '<div class="ua-detail">' + det + '</div></div>';
+            }).join('') + '</div>').join('')
+          + '</div>';
+        const toggle = div.querySelector('.lp-toggle');
+        toggle.onclick = () => div.classList.toggle('open');
+
+        // 체크 상태 저장/복원 (붙일 후보 표시 용도 — 레이어와 무관)
+        const LS_UA = 'mj_unused_api_v1';
+        let sel = [];
+        try { sel = JSON.parse(localStorage.getItem(LS_UA) || '[]'); } catch (e) {}
+        const selSet = new Set(sel);
+        div.querySelectorAll('.ua-cb').forEach((cb) => {
+          cb.checked = selSet.has(cb.dataset.n);
+          cb.addEventListener('change', () => {
+            cb.checked ? selSet.add(cb.dataset.n) : selSet.delete(cb.dataset.n);
+            try { localStorage.setItem(LS_UA, JSON.stringify([...selSet])); } catch (e) {}
+          });
+        });
+        // 이름 클릭 = 상세 펼침/접음 (체크박스 클릭은 제외)
+        div.querySelectorAll('.ua-item').forEach((lab) => {
+          lab.addEventListener('click', (e) => {
+            if (e.target.tagName === 'INPUT') return;
+            lab.parentElement.classList.toggle('open');
+          });
+        });
+
+        L.DomEvent.disableClickPropagation(div);
+        L.DomEvent.disableScrollPropagation(div);
+        return div;
+      };
+      unusedApiPanel.addTo(map);
 
       // ── 오른쪽 목록 패널 지난번 폭 복원 ──────────────────────────────
       // 폭 조절 자체는 접기 탭이 겸한다(makeSlideTab 의 resize 옵션, 2026-08-14 통합) —
