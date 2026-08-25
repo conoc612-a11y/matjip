@@ -196,6 +196,18 @@
     .ap-cn { text-align:left; border:none; background:none; color:var(--c-primary); cursor:pointer; font-size:12px; padding:0; text-decoration:underline; }
     .ap-court { color:var(--muted); font-size:12px; }
     .ap-meta { margin-top:3px; color:var(--muted); font-size:12px; overflow-wrap:anywhere; }
+    /* 카드 배지 — 할인률·유찰·D-day·리스크. 값은 auction_detail_idx.json 에서 온다.
+       색은 셋으로만 나눈다: 회색=중립 정보, 노랑=확인 필요, 빨강=인수부담 직결.
+       네 번째 색을 만들면 사용자가 색의 뜻을 더 이상 구분하지 못한다. */
+    .ap-tags { margin-top:4px; display:flex; flex-wrap:wrap; gap:3px; }
+    .ap-tag { font-size:11px; line-height:1.5; padding:0 6px; border-radius:999px; white-space:nowrap;
+      border:1px solid transparent; cursor:help; }
+    .ap-tag-cut  { background:#e7f5ff; color:#1864ab; border-color:#a5d8ff; }  /* 할인률 = 값 판단 재료 */
+    .ap-tag-fail { background:#fff4e6; color:#d9480f; border-color:#ffd8a8; }  /* 유찰 = 시장의 판정 */
+    .ap-tag-d    { background:#f1f3f5; color:#495057; border-color:#dee2e6; }
+    .ap-tag-d.urgent { background:#fff5f5; color:#c92a2a; border-color:#ffc9c9; font-weight:700; } /* D-7 이하 */
+    .ap-tag-risk { background:#fff9db; color:#8f6b00; border-color:#ffe066; }  /* warn */
+    .ap-tag-risk.danger { background:#fff0f0; color:#b02525; border-color:#ffa8a8; font-weight:600; }
     /* 드래그 전용 막대는 없앴다(2026-08-14, 사용자 요청) — 폭 조절은 접기 탭이 겸한다.
        이 요소는 탭을 패널 오른쪽 가장자리에 앉히는 자리표시일 뿐이라 클릭을 받지 않는다. */
     .ap-resizer { position:absolute; right:-4px; top:0; bottom:0; width:8px; z-index:2001; background:transparent; pointer-events:none; }
@@ -1279,6 +1291,11 @@
     // SVG 렌더러는 도형마다 <path> DOM을 만들고 팬/줌마다 전부 좌표를 재계산해서 지도가 버벅인다.
     // 팝업 폭 기본값. 정하지 않으면 Leaflet 이 내용 폭을 그대로 재서 지도를 넘는 팝업이 나온다.
     L.Popup.mergeOptions({ maxWidth: 340, minWidth: 220, autoPanPadding: [16, 24] });
+
+    // 개발자 모드 — `?dev=1` 로 켠다. 작업 현황용 패널(미활용 API 카탈로그 등)을 가르는 스위치다.
+    // 투자자가 보는 화면에 '무엇을 아직 안 붙였는지'가 나오면 서비스가 아니라 작업 보드로 읽힌다.
+    // localStorage 에 저장하지 않는다 — 한 번 켜면 계속 켜져 있어 정작 사용자 화면을 확인할 수 없게 된다.
+    const DEV_MODE = new URLSearchParams(location.search).has('dev');
 
     const map = L.map('map', { wheelPxPerZoomLevel: 120, preferCanvas: true }).setView([37.5665, 126.9780], 12);
 
@@ -2763,6 +2780,7 @@
       // 기다렸다(합계 raw 14.4MB). 이제 fetch 는 **같은 시점에 병렬로 시작**하되(총 바이트·
       // 도착시간은 그대로) 마커 렌더는 여기에 묶지 않는다 → 목록·마커가 0.33MB 만 받고 뜬다.
       let _auctionDetailPromise = null, _auctionDetailData = null;
+      let _auctionIdx = null;   // 상세 색인(auction_detail_idx.json) — 아래 loadAuction 에서 채운다
       function loadAuctionDetail() {
         if (!_auctionDetailPromise) {
           _auctionDetailPromise = fetch('auction_detail.json').then((r) => r.json()).catch(() => ({}))
@@ -2790,7 +2808,21 @@
           _auctionPromise = Promise.all([
             fetch('auction.json').then((r) => r.json()),
             fetch('auction_photos.json').then((r) => r.json()).catch(() => ({})),
-          ]).then(([j, ph]) => {
+            // ── 상세 색인(auction_detail_idx.json, 288KB) ──────────────────────────
+            // 목록 카드에 필요한 값만 뽑아 둔 것이다: 감정가·최저가·유찰횟수·매각기일·
+            // 리스크 태그·재매각 여부. 원본 auction_detail.json 은 11.5MB 라 목록을 그리려고
+            // 받을 물건이 아니다(40배 차이). 태그는 tools/build_auction_index.js 가 감정평가서
+            // 요항표를 실측 정규식으로 훑어 구워 넣는다 — 프런트는 판정하지 않고 읽기만 한다.
+            // 실패해도 목록은 떠야 하므로 null 로 넘기고, 다만 **조용히 넘기지 않는다**.
+            fetch('auction_detail_idx.json').then((r) => {
+              if (!r.ok) throw new Error('HTTP ' + r.status);
+              return r.json();
+            }).catch((e) => {
+              console.error('경매 상세 색인을 받지 못했다 — 카드의 가격·유찰·리스크 배지가 빠진다:', e);
+              return null;
+            }),
+          ]).then(([j, ph, idxData]) => {
+            _auctionIdx = idxData;
             const det = _auctionDetailData || {};   // 이미 도착했으면 바로 쓴다
             const F = {};
             j.fields.forEach((f, i) => { F[f] = i; });
@@ -2799,7 +2831,8 @@
               court: j.courts[r[F.court]], cn: r[F.cn], no: r[F.no], addr: r[F.addr], note: r[F.note],
               appr: r[F.appr], dept: r[F.dept], sale: r[F.sale], use: r[F.use], low: r[F.low],
               status: r[F.status], lat: r[F.lat], lng: r[F.lng],
-              photos: getPhotos(r[F.cn]), detail: det[r[F.cn]] || null, _i: i,
+              photos: getPhotos(r[F.cn]), detail: det[r[F.cn]] || null,
+              idx: (idxData && idxData[r[F.cn]]) || null, _i: i,
             }));
             aucApplyDetail();   // 상세가 나중에 도착하는 경우를 대비(도착해 있으면 재적용)
             return auctionRows;
@@ -2823,8 +2856,16 @@
       // **"28,100억원"** 으로 표시됐다. 진행 물건은 appr 이 거의 비어 있어(3,442행 중 2행)
       // 이 버그가 안 보였을 뿐이다.
       const manwonToEok = (v) => (v ? v / 10000 : 0);
-      const aucApprEok = (d) => manwonToEok(d.appr) || (d.detail && d.detail.dspsl && d.detail.dspsl.appr ? d.detail.dspsl.appr / 1e8 : 0);
-      const aucLowEok = (d) => manwonToEok(d.low) || (d.detail && d.detail.dspsl && d.detail.dspsl.low ? d.detail.dspsl.low / 1e8 : 0);
+      // ⚠️ 단위: auction.json 의 appr·low 는 **만원**, 상세 dspsl 과 색인 a·l 은 **원** 이다.
+      //    아래 두 함수는 어느 쪽에서 왔든 **억** 으로 맞춰서 돌려준다. 10000 / 1e8 을 섞지 말 것.
+      //    폴백 순서: 목록(만원) → 색인(원, 288KB) → 상세(원, 11.5MB).
+      //    색인을 상세보다 앞에 두는 이유는 값이 같은데 색인이 40배 작기 때문이다.
+      const aucApprEok = (d) => manwonToEok(d.appr)
+        || (d.idx && d.idx.a ? d.idx.a / 1e8 : 0)
+        || (d.detail && d.detail.dspsl && d.detail.dspsl.appr ? d.detail.dspsl.appr / 1e8 : 0);
+      const aucLowEok = (d) => manwonToEok(d.low)
+        || (d.idx && d.idx.l ? d.idx.l / 1e8 : 0)
+        || (d.detail && d.detail.dspsl && d.detail.dspsl.low ? d.detail.dspsl.low / 1e8 : 0);
       // 경매 사진 호스팅 — 사진 바이너리는 git 밖(Cloudflare R2)에 둔다. 16,000장이 넘어
       // 300MB 를 넘겼고, git 에 두면 GitHub Pages 게시 1GB 제한과 .git 비대화에 걸린다.
       // auction_photos.json 의 file 값이 R2 오브젝트 키와 동일한 상대경로라, 여기서
@@ -3197,6 +3238,61 @@
       // 지도에서 아이콘을 클릭한 물건의 즐겨찾기 키. 목록에서 맨 위로 올린다(2026-08-21 요청).
       // 인덱스가 아니라 키로 잡는다 — 검색·즐겨찾기 필터로 목록이 걸러져도 같은 물건을 가리켜야 한다.
       let auctionPinnedKey = null;
+      // ── 카드 배지: 할인률 · 유찰 · D-day · 리스크 태그 (2026-08-25) ────────────────
+      // 경쟁업체 UI/UX 분석의 지적 — "숫자를 나열하지 말고 무엇을 뜻하는지 말하라".
+      // 값은 전부 색인(d.idx)에서 온다. 프런트에서 판정하는 것은 없다.
+      const AUC_TAG_LV = {
+        // danger = 낙찰가·인수부담에 직접 영향 / warn = 입찰 전 확인이 필요한 사항
+        제시외: 1, 위반건축물: 1, 이행강제금: 1, 유치권: 1, 법정지상권: 1, 지분매각: 1, 무허가: 1,
+        맹지: 0, 분묘: 0, 임차인: 0, 내부미확인: 0, 미등기: 0,
+      };
+      const AUC_TAG_TIP = {
+        제시외: '감정평가서에 제시외 건물·물건이 있다. 낙찰 범위에서 빠질 수 있어 별도 확인이 필요하다.',
+        위반건축물: '건축물대장에 위반건축물로 등재돼 있다. 시정 명령·이행강제금 대상이 될 수 있다.',
+        이행강제금: '원상회복 또는 이행강제금 발생 가능성이 감정평가서에 적혀 있다.',
+        유치권: '유치권 주장이 있다. 낙찰자가 인수할 수 있어 금액 확인이 필요하다.',
+        법정지상권: '법정지상권 성립 가능성이 있다. 토지·건물 소유가 갈릴 때 생긴다.',
+        지분매각: '물건 전부가 아니라 지분만 매각된다. 공유자와의 관계가 남는다.',
+        무허가: '무허가 건축물이 포함돼 있다.',
+        맹지: '도로에 닿지 않는 토지다. 건축·통행에 제약이 있을 수 있다(인근 도로 이용 가능한 경우도 있다).',
+        분묘: '지상에 분묘가 있다. 연고자 확인·이전 문제가 남는다.',
+        임차인: '감정평가서에 임차보증금·확정일자 등 임차 관계가 적혀 있다. 인수 여부를 확인해야 한다.',
+        내부미확인: '현장조사 때 폐문부재 등으로 내부를 보지 못한 물건이다. 상태를 확인할 수 없다.',
+        미등기: '등기되지 않은 부분이 있다.',
+      };
+      // 매각기일까지 남은 날. 색인의 dy(YYYYMMDD) 를 쓴다.
+      function aucDday(d) {
+        const y = d && d.idx && d.idx.dy;
+        if (!y || !/^\d{8}$/.test(y)) return null;
+        const t = new Date(+y.slice(0, 4), +y.slice(4, 6) - 1, +y.slice(6, 8));
+        const now = new Date();
+        // 날짜끼리만 비교한다 — 시각이 섞이면 같은 날이 D-0 이 아니라 D-1 로 나온다.
+        const days = Math.round((t - new Date(now.getFullYear(), now.getMonth(), now.getDate())) / 86400000);
+        return Number.isFinite(days) ? days : null;
+      }
+      function aucBadges(d) {
+        const out = [];
+        // 할인률 — 최저가가 감정가의 몇 %인지. 유찰이 쌓이면 이 값이 떨어진다.
+        // 비율이라 단위(만원/원)에 영향받지 않는다.
+        const a = aucApprEok(d), l = aucLowEok(d);
+        if (a > 0 && l > 0 && l < a) {
+          const pct = Math.round(l / a * 100);
+          out.push('<span class="ap-tag ap-tag-cut" title="최저매각가격이 감정평가액의 '
+            + pct + '% 다. 감정가보다 ' + (100 - pct) + '% 낮다.">감정가의 ' + pct + '%</span>');
+        }
+        const n = d.idx && d.idx.n;
+        if (n) out.push('<span class="ap-tag ap-tag-fail" title="입찰자가 없어 다음 기일로 넘어간 횟수다. 회차마다 최저가가 내려간다.">유찰 ' + n + '회</span>');
+        const dd = aucDday(d);
+        if (dd != null && dd >= 0 && dd <= 60) {
+          out.push('<span class="ap-tag ap-tag-d' + (dd <= 7 ? ' urgent' : '') + '" title="매각기일까지 남은 날">D-' + dd + '</span>');
+        }
+        const tags = (d.idx && d.idx.t) || [];
+        tags.forEach((nm) => {
+          out.push('<span class="ap-tag ap-tag-risk' + (AUC_TAG_LV[nm] ? ' danger' : '')
+            + '" title="' + esc(AUC_TAG_TIP[nm] || nm) + '">' + esc(nm) + '</span>');
+        });
+        return out.join('');
+      }
       function auctionRowHtml(d, fav, idx, pinned) {
         const rows = [
           ['감정', wonEok(aucApprEok(d))], ['최저', wonEok(aucLowEok(d))], ['용도', d.use], ['매각기일', d.sale],
@@ -3213,6 +3309,7 @@
             </div>
             <div class="ap-row-mid" style="margin-top:3px;"><button type="button" class="ap-cn" title="법원 사이트 사건검색에서 조회">${esc((d.cn || '').replace(d.court || '', '').trim())}</button> <span class="ap-court">${esc(d.court)} · 물건${esc(d.no)}</span></div>
             ${rows ? `<div class="ap-meta">${rows}</div>` : ''}
+            ${(() => { const b = aucBadges(d); return b ? `<div class="ap-tags">${b}</div>` : ''; })()}
           </div>
         </div>`;
       }
@@ -5839,7 +5936,13 @@
         L.DomEvent.disableScrollPropagation(div);
         return div;
       };
-      unusedApiPanel.addTo(map);
+      // ⚠️ 이 패널은 **개발자용**이다 — `?dev=1` 일 때만 붙인다(2026-08-25).
+      //    투자자에게 '승인만 받고 미활용인 API 목록'은 아무 값이 없고, 오히려 서비스가 아니라
+      //    작업 현황판으로 읽히게 만든다(경쟁업체 UI/UX 분석 지적). 화면에 남은 기술 용어
+      //    (PNU → bjdCode → kaptCode)도 전부 이 패널 안의 설명문이라 여기만 막으면 같이 사라진다.
+      //    ⛔ 지우지 말 것 — 무엇을 아직 안 붙였는지가 여기에만 기록돼 있다. 숨기는 것이지 버리는 게 아니다.
+      //    보는 방법: land.html?dev=1
+      if (DEV_MODE) unusedApiPanel.addTo(map);
 
       // ── 오른쪽 목록 패널 지난번 폭 복원 ──────────────────────────────
       // 폭 조절 자체는 접기 탭이 겸한다(makeSlideTab 의 resize 옵션, 2026-08-14 통합) —
