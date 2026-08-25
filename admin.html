@@ -14,27 +14,27 @@
   h1 { font-size:22px; margin-bottom:4px; }
   .sub { color:var(--muted); font-size:13px; margin-bottom:24px; }
 
-  /* 로그인 */
+  
   #login-view { max-width:360px; margin:12vh auto 0; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:28px; }
   #login-view h2 { font-size:17px; margin-bottom:18px; }
   #login-view input { width:100%; padding:11px 12px; border-radius:8px; border:1px solid var(--line); background:#0f1622; color:var(--text); font-size:15px; }
   #login-view button { width:100%; margin-top:12px; padding:11px; border:0; border-radius:8px; background:var(--accent); color:#fff; font-size:15px; font-weight:600; cursor:pointer; }
   #login-err { color:#ff7a7a; font-size:13px; margin-top:10px; min-height:18px; }
 
-  /* 대시보드 헤더 */
+  
   .topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; }
   .topbar button { background:var(--card); color:var(--muted); border:1px solid var(--line); border-radius:8px; padding:7px 14px; cursor:pointer; font-size:13px; }
   .tabs { display:flex; gap:8px; margin-bottom:16px; }
   .tabs button { background:var(--card); color:var(--muted); border:1px solid var(--line); border-radius:8px; padding:8px 16px; cursor:pointer; font-size:14px; }
   .tabs button.on { background:var(--accent); color:#fff; border-color:var(--accent); }
 
-  /* 카드 */
+  
   .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; margin-bottom:20px; }
   .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
   .card .k { color:var(--muted); font-size:12px; }
   .card .v { font-size:24px; font-weight:700; margin-top:4px; }
 
-  /* 회원관리 */
+  
   .chips { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
   .chip { background:var(--card); border:1px solid var(--line); color:var(--muted); border-radius:20px; padding:5px 12px; font-size:12px; cursor:pointer; }
   .chip.on { border-color:var(--accent); color:var(--accent); }
@@ -45,7 +45,7 @@
   th { position:sticky; top:0; background:#1e2940; color:var(--muted); font-size:12px; }
   .tag { display:inline-block; background:#16233b; color:#8fb8ff; border-radius:4px; padding:1px 6px; font-size:11px; margin-right:3px; }
 
-  /* 차트 */
+  
   .charts { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:14px; }
   .chartbox { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; }
   .chartbox h3 { font-size:14px; color:var(--muted); margin-bottom:10px; font-weight:600; }
@@ -61,7 +61,7 @@
 </head>
 <body>
   <div class="wrap">
-    <!-- 로그인 -->
+    
     <div id="login-view">
       <h2>관리자 모드</h2>
       <input type="email" id="adm-email" placeholder="관리자 이메일" autocomplete="username" style="margin-bottom:10px;" onkeydown="if(event.key==='Enter')doLogin()">
@@ -73,7 +73,7 @@
       </div>
     </div>
 
-    <!-- 비밀번호 변경: 인증 메일 발송 -->
+    
     <div id="reset-view" class="hidden">
       <div style="max-width:360px;margin:12vh auto 0;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:28px;">
         <h2 style="font-size:17px;margin-bottom:8px;">비밀번호 변경</h2>
@@ -86,7 +86,7 @@
       </div>
     </div>
 
-    <!-- 비밀번호 변경: 이메일 링크 확인 후 새 비밀번호 설정 -->
+    
     <div id="newpw-view" class="hidden">
       <div style="max-width:360px;margin:12vh auto 0;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:28px;">
         <h2 style="font-size:17px;margin-bottom:8px;">새 비밀번호 설정</h2>
@@ -97,7 +97,7 @@
       </div>
     </div>
 
-    <!-- 대시보드 -->
+    
     <div id="dash-view" class="hidden">
       <div class="topbar">
         <div>
@@ -123,7 +123,7 @@
         <button id="tab-loc" onclick="showTab('loc')">방문자 위치</button>
       </div>
 
-      <!-- 회원관리 -->
+      
       <div id="view-member">
         <div class="row">
           <div class="chips" id="member-chips"></div>
@@ -137,7 +137,7 @@
         </div>
       </div>
 
-      <!-- 방문자 통계 -->
+      
       <div id="view-stat" class="hidden">
         <div class="row">
           <div class="sub" style="margin:0;">방문자 수는 동일 IP를 하루 1회만 집계한 값입니다.</div>
@@ -152,7 +152,7 @@
         </div>
       </div>
 
-      <!-- 방문자 위치 -->
+      
       <div id="view-loc" class="hidden">
         <div class="row">
           <div class="sub" style="margin:0;">IP 위치는 ipwho.is 로 조회한 값입니다. IP는 개인정보 보호를 위해 앞 3옥텟만 표시합니다.</div>
@@ -192,7 +192,7 @@ async function doLogin() {
   } catch (e) { err.textContent = '서버 연결 실패: ' + e; }
 }
 
-// ── 비밀번호 변경 (이메일 인증) ──
+
 function showReset() {
   $('login-view').classList.add('hidden');
   $('reset-view').classList.remove('hidden');
@@ -274,7 +274,7 @@ function showTab(t) {
   $('view-loc').classList.toggle('hidden', t !== 'loc');
 }
 
-// ── 방문자 위치 ──
+
 function renderLocations() {
   $('loc-rows').innerHTML = (data.locations || []).map((l) => `
     <tr>
@@ -287,7 +287,7 @@ function renderLocations() {
     </tr>`).join('') || '<tr><td colspan="6" style="color:var(--muted);text-align:center;">위치 정보가 아직 없습니다. 방문이 쌓이면 표시됩니다.</td></tr>';
 }
 
-// ── 회원관리 ──
+
 let segFilter = '전체';
 const SEGS = [
   ['전체',       (m) => true],
@@ -320,7 +320,7 @@ function renderMembers() {
     </tr>`).join('') || '<tr><td colspan="8" style="color:var(--muted);text-align:center;">해당 세그먼트 회원이 없습니다.</td></tr>';
 }
 
-// ── 회원 탈퇴 ──
+
 async function deleteMember(id, label) {
   if (!confirm(`회원 [${label}]을(를) 탈퇴시킬까요?\n저장된 취향·즐겨찾기·방문기록이 모두 삭제되며 되돌릴 수 없습니다.`)) return;
   if (!confirm('정말로 최종 확인합니다. 다시 한 번 누르면 탈퇴됩니다.')) return;
@@ -338,7 +338,7 @@ async function deleteMember(id, label) {
   }
 }
 
-// ── 차트 ──
+
 function mk(id, type, labels, values, label, extra) {
   if (typeof Chart === 'undefined') return;
   if (charts[id]) charts[id].destroy();
@@ -367,7 +367,7 @@ function renderCharts() {
   mk('ch-page', 'doughnut', labels, vals, '방문', { backgroundColor: ['#4da3ff', '#7d5cff'] });
 }
 
-// ── CSV 내보내기 ──
+
 function download(name, text) {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob(['\uFEFF' + text], { type: 'text/csv;charset=utf-8' }));
@@ -404,7 +404,7 @@ function exportLocations() {
     .concat((data.locations || []).map((l) => [(l.date || '').slice(0, 10), l.ip, l.country, l.region, l.city, l.email]))));
 }
 
-// 초기화: 토큰이 있으면 바로 대시보드 / 이메일 링크(?reset=)면 새 비밀번호 화면
+
 let resetToken = new URLSearchParams(location.search).get('reset') || '';
 (async () => {
   if (resetToken) {
