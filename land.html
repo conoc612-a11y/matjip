@@ -2802,6 +2802,32 @@
         if (!m.getPopup() && m._pop) m.bindPopup(m._pop());
         m.openPopup();
       });
+      
+      
+      
+      
+      let lpData = null, _lpPromise = null;
+      function loadLandPrice() {
+        if (!_lpPromise) {
+          _lpPromise = fetch('landprice.json')
+            .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+            .then((j) => { lpData = j; return j; })
+            .catch((e) => { console.error('지가변동률 로드 실패:', e); return null; });
+        }
+        return _lpPromise;
+      }
+      
+      
+      function lpLookup(pnu) {
+        if (!lpData || !pnu || pnu.length < 10) return null;
+        const dong = lpData.regions[pnu.slice(0, 8)];
+        const gu = lpData.regions[pnu.slice(0, 5) + '000'];
+        const seoul = lpData.regions['11000000'];
+        const hit = dong || gu;
+        if (!hit) return null;
+        return { r: hit, isDong: !!dong, gu: gu || null, seoul: seoul || null };
+      }
+
       let busRows = null, _busPromise = null;
       function loadBusStop() {
         if (!_busPromise) {
@@ -5909,10 +5935,11 @@
       const infoMtn = L.layerGroup();
       const infoPms = L.layerGroup();
       const infoHpms = L.layerGroup();
+      const infoLp = L.layerGroup();
       const infoEngy = L.layerGroup();
       const infoFund = L.layerGroup();
-      const wantInfo = { sht: true, mtn: true, pms: true, hpms: true, engy: true, fund: true };
-      const _infoMap = [[infoSht, 'sht'], [infoMtn, 'mtn'], [infoPms, 'pms'], [infoHpms, 'hpms'],
+      const wantInfo = { sht: true, mtn: true, pms: true, hpms: true, engy: true, fund: true, lp: true };
+      const _infoMap = [[infoSht, 'sht'], [infoMtn, 'mtn'], [infoPms, 'pms'], [infoHpms, 'hpms'], [infoLp, 'lp'],
         [infoEngy, 'engy'], [infoFund, 'fund']];
       map.on('overlayadd', (e) => {
         const hit = _infoMap.find((x) => x[0] === e.layer);
@@ -5922,7 +5949,7 @@
         const hit = _infoMap.find((x) => x[0] === e.layer);
         if (hit) wantInfo[hit[1]] = false;
       });
-      infoSht.addTo(map); infoMtn.addTo(map); infoPms.addTo(map); infoHpms.addTo(map);
+      infoSht.addTo(map); infoMtn.addTo(map); infoPms.addTo(map); infoHpms.addTo(map); infoLp.addTo(map);
       infoEngy.addTo(map); infoFund.addTo(map);
 
       const LAYER_TREE = [
@@ -5951,6 +5978,7 @@
           { name: '건축 인허가 이력', layer: infoPms },
           
           { name: '주택 인허가 이력', layer: infoHpms },
+          { name: '지가 변동률 추세', layer: infoLp },
           
           { name: '에너지 사용량 (전기·가스)', layer: infoEngy },
           
@@ -6436,7 +6464,7 @@
         ['🔧 연동 중 (프록시 완료 · 화면 연결 대기)', [
           '토지이용규제정보',
         ]],
-        ['부동산·건축', ['공동주택 기본정보', '아파트 매매 실거래가(기본판)', '전국지가변동률 마이크로데이터', '녹색건축 인증현황',
+        ['부동산·건축', ['공동주택 기본정보', '아파트 매매 실거래가(기본판)', '녹색건축 인증현황',
           '청약 당첨자 정보(청약홈)', '온비드 공매 입찰정보', '파산금융회사 매물현황']],
         
         
@@ -6485,7 +6513,6 @@
         
         
         
-        '전국지가변동률 마이크로데이터': { d: '지가 추세 — 현재는 시점 값만 활용 가능.' },
         '토지이용규제정보': {
           d: '행위제한 원문. 프록시 연동 완료 — <code>DTsearchLunCd</code>(행위명→코드)는 동작 확인. '
             + '단 본 조회 <code>DTarLandUseInfo</code> 는 <code>ucodeList</code>(UQA### 지역지구코드)가 필요한데 '
@@ -7897,6 +7924,76 @@
           + '<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">건축HUB 주택인허가 · 같은 필지 기준</div>'
           + '</div>';
       }
+      
+      
+      
+      
+      let lpHtml = '';
+      if (st.lp && st.lp.r) {
+        const A = st.lp;
+        const compound = (arr) => {
+          const v = arr.filter((x) => x !== null && x !== undefined);
+          if (!v.length) return null;
+          return (v.reduce((a, x) => a * (1 + x / 100), 1) - 1) * 100;
+        };
+        const last = (arr) => { for (let i = arr.length - 1; i >= 0; i--) if (arr[i] !== null) return [i, arr[i]]; return null; };
+        const sign = (v) => (v > 0 ? '+' : '') + v.toFixed(2) + '%';
+        const col = (v) => (v > 0 ? '#e03131' : v < 0 ? '#1971c2' : 'var(--c-muted)');
+        const m12 = compound(A.r.m.slice(-12));
+        const lastM = last(A.r.m);
+        const bits = [];
+        if (lastM) {
+          const t = lpData.months[lastM[0]];
+          bits.push('<span style="color:' + col(lastM[1]) + ';font-weight:600;">' + sign(lastM[1]) + '</span>'
+            + ' <span style="color:var(--c-muted);">' + t.slice(0, 4) + '.' + t.slice(4) + '</span>');
+        }
+        if (m12 !== null) bits.push('최근 1년 <span style="color:' + col(m12) + ';font-weight:600;">' + sign(m12) + '</span>');
+        
+        let cmp = '';
+        if (A.seoul && m12 !== null) {
+          const s12 = compound(A.seoul.m.slice(-12));
+          if (s12 !== null) {
+            const d = m12 - s12;
+            cmp = '<span style="color:var(--c-muted);">서울 평균 ' + sign(s12) + ' · </span>'
+              + '<span style="color:' + col(d) + ';font-weight:600;">' + (d >= 0 ? '평균보다 빠름 ' : '평균보다 느림 ') + sign(d) + '</span>';
+          }
+        }
+        
+        let spark = '';
+        const win = A.r.m.slice(-24).map((v) => (v === null ? 0 : v));
+        if (win.length > 2) {
+          let acc = 100; const pts = win.map((v) => { acc *= (1 + v / 100); return acc; });
+          const mn = Math.min.apply(null, pts), mx = Math.max.apply(null, pts);
+          const rng = (mx - mn) || 1;
+          const W = 150, H = 26;
+          const d = pts.map((p, i) => (i ? 'L' : 'M') + (i / (pts.length - 1) * W).toFixed(1)
+            + ' ' + (H - (p - mn) / rng * (H - 3) - 1.5).toFixed(1)).join(' ');
+          const up = pts[pts.length - 1] >= pts[0];
+          spark = '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" '
+            + 'style="display:block;margin-top:3px;overflow:visible;" aria-hidden="true">'
+            + '<path d="' + d + '" fill="none" stroke="' + (up ? '#e03131' : '#1971c2') + '" stroke-width="1.6" stroke-linejoin="round"/></svg>';
+        }
+        
+        const yv = [];
+        for (let i = lpData.years.length - 1; i >= 0 && yv.length < 5; i--) {
+          if (A.r.y[i] !== null) yv.unshift([lpData.years[i], A.r.y[i]]);
+        }
+        const yLine = yv.length
+          ? '<div style="font-size:11.5px;margin-top:3px;">' + yv.map(([t, v]) =>
+              '<span style="color:var(--c-muted);">' + t.slice(2) + '</span> '
+              + '<span style="color:' + col(v) + ';">' + sign(v) + '</span>').join(' · ') + '</div>'
+          : '';
+        const where = String(A.r.nm || '') + (A.isDong ? '' : ' (자치구 기준)');
+        lpHtml = '<div style="margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">'
+          + '<b>지가 변동률</b> <span style="font-size:12px;">' + esc(where) + '</span>'
+          + (bits.length ? '<div style="font-size:12px;margin-top:2px;">' + bits.join(' · ') + '</div>' : '')
+          + (cmp ? '<div style="font-size:11.5px;margin-top:2px;">' + cmp + '</div>' : '')
+          + spark
+          + yLine
+          + '<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">한국부동산원 지가변동률 · '
+          + (A.isDong ? '법정동' : '자치구') + ' 단위</div>'
+          + '</div>';
+      }
       let pmsHtml = '';
       if (st.pms && st.pms.length) {
         const tr = (v) => String(v == null ? '' : v).trim();
@@ -8116,10 +8213,10 @@
             + '이 땅에 무엇을 지을 수 있나 — 호출 ' + LANDUSE_ACTS.length + '회, 누를 때만 조회합니다.</span>');
         }
       }
-      if (!rows.length && !houseHtml && !detailHtml && !storeHtml && !nrHtml && !pmsHtml && !hpmsHtml && !shtHtml && !mtnHtml && !engyHtml && !reserveHtml && !mgmtHtml) return '';
+      if (!rows.length && !houseHtml && !detailHtml && !storeHtml && !nrHtml && !pmsHtml && !hpmsHtml && !lpHtml && !shtHtml && !mtnHtml && !engyHtml && !reserveHtml && !mgmtHtml) return '';
       return `<div style="font-size:13px;margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">`
         + (rows.length ? `<b>토지·건물 정보</b>${badge}<br>${rows.join('<br>')}` : '')
-        + shtHtml + pmsHtml + hpmsHtml + mtnHtml + engyHtml + reserveHtml + mgmtHtml + luHtml + storeHtml + nrHtml + houseHtml + detailHtml + '</div>';
+        + shtHtml + pmsHtml + hpmsHtml + lpHtml + mtnHtml + engyHtml + reserveHtml + mgmtHtml + luHtml + storeHtml + nrHtml + houseHtml + detailHtml + '</div>';
     }
 
     
@@ -8440,6 +8537,14 @@
         if (wantInfo.hpms) loadHsPms(pnu, (arr) => {
           if (arr && arr.length) { st.hpms = arr; render(); }
         });
+        
+        
+        if (wantInfo.lp) {
+          loadLandPrice().then(() => {
+            const d = lpLookup(pnu);
+            if (d) { st.lp = d; render(); }
+          });
+        }
         
         if (wantInfo.sht) loadSht(pnu, (arr) => {
           if (arr && arr.length) { st.sht = arr; render(); }
