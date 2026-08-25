@@ -2795,6 +2795,70 @@
       
       
       
+      const busCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 50 });
+      busCluster.on('click', (e) => {
+        const m = e.layer;
+        if (!m || !m._pop) return;
+        if (!m.getPopup() && m._pop) m.bindPopup(m._pop());
+        m.openPopup();
+      });
+      let busRows = null, _busPromise = null;
+      function loadBusStop() {
+        if (!_busPromise) {
+          _busPromise = fetch('transit_busstop.json')
+            .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+            .then((j) => {
+              const F = {};
+              j.fields.forEach((f, i) => { F[f] = i; });
+              busRows = j.rows.map((r) => ({
+                no: r[F.no], nm: r[F.nm], ty: j.tys[r[F.ty]], lat: r[F.lat], lng: r[F.lng],
+              }));
+              return busRows;
+            })
+            .catch((e) => { console.error('버스정류소 로드 실패:', e); return null; });
+        }
+        return _busPromise;
+      }
+      
+      const BUS_COLOR = { 중앙차로: '#1971c2', 한강선착장: '#0ca678', 마을버스: '#f59f00' };
+      function busPopupHtml(d) {
+        const isPier = d.ty === '한강선착장';
+        return '<div class="pc"><div class="pc-head">'
+          + `<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${BUS_COLOR[d.ty] || '#868e96'};flex-shrink:0;"></span>`
+          + `<span class="rp-name">${isPier ? '한강버스 선착장' : '버스정류소'}</span></div><div class="pc-body">`
+          + `<div><b>${esc(d.nm)}</b></div>`
+          + `<div style="margin-top:3px;font-size:12px;">${esc(d.ty)}${d.no ? ' · 정류소번호 ' + esc(d.no) : ''}</div>`
+          + '<div style="margin-top:5px;font-size:11px;color:var(--c-muted);">서울 열린데이터광장 버스정류소 위치정보</div>'
+          + '</div></div>';
+      }
+      function busBuild() {
+        if (!busRows) return;
+        busCluster.clearLayers();
+        busCluster.addLayers(busRows.map((d) => {
+          const m = L.circleMarker([d.lat, d.lng], {
+            radius: d.ty === '한강선착장' ? 9 : 5, color: '#000',
+            weight: d.ty === '한강선착장' ? 2 : 1,
+            fillColor: BUS_COLOR[d.ty] || '#868e96', fillOpacity: 0.85,
+          });
+          m._pop = (() => busPopupHtml(d));
+          return m;
+        }));
+      }
+      map.on('overlayadd', (e) => {
+        if (e.layer !== busCluster) return;
+        loadBusStop().then((r) => {
+          if (!r) { toast('버스정류소를 불러오지 못했습니다.'); return; }
+          busBuild();
+          toast('버스정류소 ' + r.length.toLocaleString() + '곳 — 파란색은 중앙차로, 초록은 한강버스 선착장');
+        });
+      });
+
+      
+      
+      
+      
+      
+      
       const HOSP_COLOR = { 상급종합: '#c2255c', 종합병원: '#e64980', 병원: '#f06595', 요양병원: '#f783ac' };
       const hospCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 55 });
       const emrgCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 45 });
@@ -5872,6 +5936,8 @@
           
           { name: '병원·의원 (심평원)', layer: hospCluster },
           { name: '응급의료기관', layer: emrgCluster },
+          
+          { name: '버스정류소 (11,239곳)', layer: busCluster },
         ]],
         
         
