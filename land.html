@@ -5274,8 +5274,9 @@
       const infoMtn = L.layerGroup();
       const infoPms = L.layerGroup();
       const infoEngy = L.layerGroup();
-      const wantInfo = { sht: true, mtn: true, pms: true, engy: true };
-      const _infoMap = [[infoSht, 'sht'], [infoMtn, 'mtn'], [infoPms, 'pms'], [infoEngy, 'engy']];
+      const infoFund = L.layerGroup();
+      const wantInfo = { sht: true, mtn: true, pms: true, engy: true, fund: true };
+      const _infoMap = [[infoSht, 'sht'], [infoMtn, 'mtn'], [infoPms, 'pms'], [infoEngy, 'engy'], [infoFund, 'fund']];
       map.on('overlayadd', (e) => {
         const hit = _infoMap.find((x) => x[0] === e.layer);
         if (hit) wantInfo[hit[1]] = true;
@@ -5284,7 +5285,7 @@
         const hit = _infoMap.find((x) => x[0] === e.layer);
         if (hit) wantInfo[hit[1]] = false;
       });
-      infoSht.addTo(map); infoMtn.addTo(map); infoPms.addTo(map); infoEngy.addTo(map);
+      infoSht.addTo(map); infoMtn.addTo(map); infoPms.addTo(map); infoEngy.addTo(map); infoFund.addTo(map);
 
       const LAYER_TREE = [
         // 현장 확인 — '지금 이 자리가 어떤지' 보는 레이어를 한데 모았다(사용자 요청 2026-08-23).
@@ -5307,6 +5308,8 @@
           { name: '건축 인허가 이력', layer: infoPms },
           // 전기·가스 사용량. 클릭당 호출이 2회(최신 월이 비어 있으면 최대 6회) 늘어난다.
           { name: '에너지 사용량 (전기·가스)', layer: infoEngy },
+          // 아파트 보유비용. 클릭당 호출 2회(법정동→단지목록, 단지→잔액) — 같은 동은 캐시된다.
+          { name: '장기수선충당금 (아파트)', layer: infoFund },
         ]],
         ['법원경매', [
           { name: '진행 물건(서울/경기)', layer: auctionCluster },
@@ -5671,15 +5674,18 @@
         // 사용자가 켰는데 아무것도 안 나온다. 진행 상태를 그대로 드러내는 칸이 필요했다
         // (사용자 지적 2026-08-25: "연동한 건 미활용 목록에서 빼고 활용 목록에 넣어야지").
         // ⚠️ 화면까지 붙으면 **여기서 빼고 레이어 트리로 옮긴다** — 건물에너지가 그렇게 갔다.
+        // 장기수선충당금·단지목록은 팝업까지 연결돼 **레이어 트리로 옮겼다**(2026-08-25).
+        // 남은 토지이용규제는 ucodeList(UQA 코드)를 얻을 경로가 없어 여기 머문다.
         ['🔧 연동 중 (프록시 완료 · 화면 연결 대기)', [
-          '장기수선충당금', '공동주택 단지 목록(kaptCode 브리지)', '토지이용규제정보',
+          '토지이용규제정보',
         ]],
         ['부동산·건축', ['건축HUB 주택인허가정보',
           '공동주택 기본정보', '아파트 분양권전매 실거래가',
           '아파트 매매 실거래가(기본판)', '전국지가변동률 마이크로데이터', '녹색건축 인증현황',
           '청약 당첨자 정보(청약홈)', '청약 경쟁률·특별공급 현황', '온비드 공매 물건상세', '온비드 공매 입찰정보', '파산금융회사 매물현황']],
         // 장기수선충당금·단지 목록은 위 '연동 중' 칸으로 옮겼다(중복 표기 금지).
-        ['공동주택 관리', ['관리비 개별사용료', '관리비 공용관리비', '하자담보책임기간',
+        // 관리비 2종(공용·개별)은 팝업 '관리비 보기'로 연결돼 여기서 빠졌다(2026-08-25).
+        ['공동주택 관리', ['하자담보책임기간',
           '유지관리 이력', '입찰공고', '입찰결과공지', '수의계약 공지']],
         ['공공주택·임대', ['LH 임대주택단지(마이홈이 상위호환)', 'LH 분양임대공고 상세',
           'LH 분양임대공고문', '예비입주자 대기현황']],
@@ -5757,9 +5763,22 @@
         '지자체 부채규모(지역정보원)': { d: '지자체 재정.' },
         '지자체 경영성과(지역정보원)': { d: '지자체 재정.' },
         '전세자금보증 상품(주금공)': { d: '전세 대출.' },
-        '관리비 공용관리비': {
-          d: '300세대↑ 의무관리대상 단지의 공용 관리비 공개 데이터 — 개별사용료·장기수선충당금과 한 세트. 2026-08-24 승인(자동승인).',
-          p: '개발계정 일 5,000건 · JSON. 요청주소는 상세기능이 AJAX 로딩이라 아직 미획득 — 연동 시 상세페이지에서 읽을 것'
+        // ⚠️ '관리비 공용관리비'·'관리비 개별사용료' 설명은 **지웠다**(2026-08-25) —
+        //    팝업 '관리비 보기'로 연결돼 미활용 목록에서 빠졌기 때문이다.
+        //    (예전 설명에 "요청주소 미획득"이라고 적혀 있었는데, 마이페이지 활용명세로 확인했다:
+        //     AptCmnuseManageCostServiceV2 op 17 / AptIndvdlzManageCostServiceV2 op 10,
+        //     입력은 kaptCode + searchDate. → `API_ENDPOINTS.md`)
+        '하자담보책임기간': {
+          d: '⛔ <b>연결 보류 — 데이터가 없다</b>(2026-08-25 실측). 경로·파라미터는 확인됐다'
+            + '(<code>ApHusWrantRspnsblPdInfoOfferServiceV2/getWrantRspnsblPdNtcnInfoSearchV2</code>, kaptCode). '
+            + '응답은 정상(<code>NORMAL SERVICE</code>)인데 <b>표본 30개 단지 전부 0건</b>이다. '
+            + '붙이면 빈 섹션만 생긴다 — 다시 조사하지 말 것.',
+        },
+        '유지관리 이력': {
+          d: '⛔ <b>연결 보류 — 데이터가 희소하다</b>(2026-08-25 실측). '
+            + '<code>ApHusMntMngHistInfoOfferServiceV2</code> op 6종(외부/내부/전기·승강기/급수·가스/난방/옥외), kaptCode 입력. '
+            + '<b>표본 30개 중 2곳만</b> 데이터가 있었다(헬리오시티 13건 · 힐스테이트관악센트씨엘 1건). '
+            + '대단지 위주로는 쓸 수 있어 보이지만 표본이 너무 적어 보류했다.',
         },
         '노후 공공시설물(안전관리원)': {
           d: '준공 30년↑ 1·2종 공공시설물(공동주택 제외) 현황 — 전국 4,126건(2026-08-24 실측). 좌표가 경위도(WGS84)로 와서 지도에 바로 찍힌다.',
@@ -6355,6 +6374,155 @@
       });
     }
 
+    // ── 장기수선충당금 (아파트 보유비용) ──────────────────────────────────
+    // 같은 가격대에서 실제로 갈리는 판단 재료다. 경로가 두 단계라 브리지가 하나 더 있다:
+    //   PNU 앞 10자리(법정동코드) ─ AptListService4/getLegaldongAptList4 ─→ kaptCode
+    //                            └─ AptRepairsCostServiceV2/getHsmpReserveBalanceInfoV2 ─→ sTot
+    // 🔑 `COMPLEX_PK` 가 아니라 **`kaptCode`** 다 — 문서에 오래 남아 있던 전제가 틀렸다
+    //    (`API_SCHEMA.md` §7). aptid.json(25MB)은 이 용도에 필요하지 않다.
+    // ⚠️ 300세대 이상 의무관리대상만 공개된다 → **빈 값이 정상인 단지가 많다.**
+    //    없는 kaptCode 도 200 + `NORMAL SERVICE.` 를 주고 필드만 null 이므로 sTot 유무로 판정한다.
+    // ⚠️ 발생년월(searchDate)도 지연이 있다. 건물에너지와 같은 방식으로 **최신 월을 한 번만
+    //    찾아 세션에서 공유**한다 — 갱신이 국가 단위 일괄이라 단지마다 다르지 않다.
+    const _kaptCache = new Map();    // bjdCode → [{code, name}]
+    const _reserveCache = new Map(); // pnu → [] | [{ym, sTot, name}]
+    let _reserveLatestYm = null;
+    // 발생년월(searchDate)은 지연이 있다. 최신 월을 한 번만 찾아 세션에서 공유한다 —
+    // 갱신이 국가 단위 일괄이라 단지마다 다르지 않다(건물에너지와 같은 방식).
+    // 장기수선충당금·관리비가 같은 값을 쓴다.
+    const aptMonths = (cached) => {
+      if (cached) return [cached];
+      const out = [];
+      const now = new Date();
+      for (let i = 0; i < 8; i++) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        out.push(String(d.getFullYear()) + String(d.getMonth() + 1).padStart(2, '0'));
+      }
+      return out;
+    };
+    // ── PNU → kaptCode (장기수선충당금·관리비가 공유하는 브리지) ──────────────
+    // 법정동코드(PNU 앞 10)로 단지 목록을 받고, 건물명으로 하나를 고른다.
+    // ⚠️ 한 동에 단지가 여럿이다(송파 가락동 = 23곳). 이름으로 유일하게 좁혀지지 않으면
+    //    **포기한다** — 틀린 단지의 관리비를 보여주는 것보다 안 보여주는 게 낫다.
+    function findKaptCode(pnu, bldNm, cb) {
+      const s = String(pnu || '');
+      if (!/^\d{19}$/.test(s)) { cb(null, false); return; }
+      const bjd = s.slice(0, 10);
+      const pick = (list) => {
+        if (!list || !list.length) return null;
+        const norm = (t) => String(t).replace(/\s+/g, '');
+        const nm = norm(bldNm || '');
+        if (!nm) return list.length === 1 ? list[0] : null;
+        let hit = list.filter((x) => norm(x.name) === nm);
+        if (!hit.length) hit = list.filter((x) => norm(x.name).includes(nm) || nm.includes(norm(x.name)));
+        return hit.length === 1 ? hit[0] : null;
+      };
+      if (_kaptCache.has(bjd)) { cb(pick(_kaptCache.get(bjd)), false); return; }
+      fetch(`${MOLIT_PROXY}?svc=AptListService4&op=getLegaldongAptList4&bjdCode=${bjd}&numOfRows=100&pageNo=1`)
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error('http'))))
+        .then((j) => {
+          const b = j && j.response && j.response.body;
+          const it = b && b.items;
+          const arr = !it ? [] : (Array.isArray(it) ? it : (Array.isArray(it.item) ? it.item : (it.item ? [it.item] : [])));
+          const list = arr.filter((x) => x && x.kaptCode).map((x) => ({ code: x.kaptCode, name: String(x.kaptName || '') }));
+          if (b) _kaptCache.set(bjd, list);   // 정상 응답만 캐시(실패는 다시 시도할 수 있게)
+          cb(pick(list), false);
+        })
+        .catch(() => cb(null, true));   // 두 번째 인자 = 통신 실패
+    }
+    function loadReserveFund(pnu, bldNm, cb) {
+      const s = String(pnu || '');
+      if (!/^\d{19}$/.test(s)) { cb(null); return; }
+      if (_reserveCache.has(s)) { cb(_reserveCache.get(s)); return; }
+      const months = () => aptMonths(_reserveLatestYm);
+      const scan = (code, list, i, done) => {
+        if (i >= list.length) { done(null, null, false); return; }
+        fetch(`${MOLIT_PROXY}?svc=AptRepairsCostServiceV2&op=getHsmpReserveBalanceInfoV2&kaptCode=${code}&searchDate=${list[i]}`)
+          .then((r) => (r.ok ? r.json() : Promise.reject(new Error('http'))))
+          .then((j) => {
+            const it = j && j.response && j.response.body && j.response.body.item;
+            const v = it && it.sTot;
+            if (v != null && v !== '') { done(list[i], Number(v), false); return; }
+            scan(code, list, i + 1, done);
+          })
+          .catch(() => done(null, null, true));
+      };
+      findKaptCode(s, bldNm, (one, netFail) => {
+        if (netFail) { cb(null); return; }              // 통신 실패는 캐시하지 않는다
+        if (!one) { _reserveCache.set(s, []); cb([]); return; }   // 단지를 특정 못함 = 정상적 없음
+        scan(one.code, months(), 0, (ym, sTot, failed) => {
+          if (failed) { cb(null); return; }
+          if (ym) _reserveLatestYm = ym;
+          const out = sTot == null ? [] : [{ ym, sTot, name: one.name }];
+          _reserveCache.set(s, out);
+          cb(out);
+        });
+      });
+    }
+
+    // ── 공동주택 관리비 (공용관리비 + 개별사용료) ─────────────────────────
+    // "같은 가격이면 관리비 싼 단지가 낫다"를 판단할 재료다.
+    // ⚠️ API 가 주는 값은 **단지 전체의 월 금액**이다(헬리오시티 경비비 2.6억/월).
+    //    그래서 세대수로 나눠 **세대당 월액**으로 환산해 보여준다 — 그래야 단지끼리 비교된다.
+    // ⚠️ op 가 공용 17 + 개별 10 = 27개다. 전부 부르면 클릭 한 번에 27회로 molit-proxy
+    //    레이트리밋(분당 42)을 바로 넘긴다. 그래서 **팝업에서 자동 조회하지 않고**
+    //    '관리비 보기' 버튼을 눌렀을 때만 **대표 11개**를 부른다.
+    // ⛔ 그 11개는 총 관리비가 아니다 — 화면에 "주요 항목 합"이라고 밝힌다(말없이 축소 금지).
+    const MGMT_OPS = [
+      // [구분, 표시명, 서비스, op, 합산할 필드들]
+      ['공용', '인건비', 'AptCmnuseManageCostServiceV2', 'getHsmpLaborCostInfoV2',
+        ['pay', 'sundryCost', 'bonus', 'pension', 'accidentPremium', 'employPremium', 'nationalPension', 'healthPremium', 'welfareBenefit']],
+      ['공용', '청소비', 'AptCmnuseManageCostServiceV2', 'getHsmpCleaningCostInfoV2', ['cleanCost']],
+      ['공용', '경비비', 'AptCmnuseManageCostServiceV2', 'getHsmpGuardCostInfoV2', ['guardCost']],
+      ['공용', '승강기유지', 'AptCmnuseManageCostServiceV2', 'getHsmpElevatorMntncCostInfoV2', ['elevCost']],
+      ['공용', '위탁수수료', 'AptCmnuseManageCostServiceV2', 'getHsmpConsignManageFeeInfoV2', ['manageCost']],
+      ['공용', '수선비', 'AptCmnuseManageCostServiceV2', 'getHsmpRepairsCostInfoV2', ['lrefCost1']],
+      ['개별', '난방비', 'AptIndvdlzManageCostServiceV2', 'getHsmpHeatCostInfoV2', ['heatC', 'heatP']],
+      ['개별', '급탕비', 'AptIndvdlzManageCostServiceV2', 'getHsmpHotWaterCostInfoV2', ['waterHotC', 'waterHotP']],
+      ['개별', '전기료', 'AptIndvdlzManageCostServiceV2', 'getHsmpElectricityCostInfoV2', ['electC', 'electP']],
+      ['개별', '수도료', 'AptIndvdlzManageCostServiceV2', 'getHsmpWaterCostInfoV2', ['waterCoolC', 'waterCoolP']],
+      ['개별', '가스', 'AptIndvdlzManageCostServiceV2', 'getHsmpGasRentalFeeInfoV2', ['gasC', 'gasP']],
+    ];
+    const _mgmtCache = new Map();   // pnu → { ym, name, items:[{grp,label,won}] }
+    let _mgmtLatestYm = null;
+    function loadMgmtCost(pnu, bldNm, cb) {
+      const s = String(pnu || '');
+      if (!/^\d{19}$/.test(s)) { cb(null); return; }
+      if (_mgmtCache.has(s)) { cb(_mgmtCache.get(s)); return; }
+      findKaptCode(s, bldNm, (one, netFail) => {
+        if (netFail) { cb(null); return; }
+        if (!one) { _mgmtCache.set(s, { items: [] }); cb({ items: [] }); return; }
+        const ask = (svc, op, ym) => fetch(`${MOLIT_PROXY}?svc=${svc}&op=${op}&kaptCode=${one.code}&searchDate=${ym}`)
+          .then((r) => (r.ok ? r.json() : Promise.reject(new Error('http'))))
+          .then((j) => (j && j.response && j.response.body && j.response.body.item) || null)
+          .catch(() => null);
+        // 먼저 한 op 로 최신 월을 찾는다(전기료 — 어느 단지나 값이 있다). 그다음 나머지를 그 달로.
+        const findYm = (list, i, done) => {
+          if (i >= list.length) { done(null); return; }
+          ask('AptIndvdlzManageCostServiceV2', 'getHsmpElectricityCostInfoV2', list[i]).then((it) => {
+            const v = it && (Number(it.electC) || Number(it.electP));
+            if (v) { done(list[i]); return; }
+            findYm(list, i + 1, done);
+          });
+        };
+        findYm(aptMonths(_mgmtLatestYm), 0, (ym) => {
+          if (!ym) { _mgmtCache.set(s, { items: [] }); cb({ items: [] }); return; }
+          _mgmtLatestYm = ym;
+          Promise.all(MGMT_OPS.map(([grp, label, svc, op, fields]) =>
+            ask(svc, op, ym).then((it) => {
+              if (!it) return null;
+              const won = fields.reduce((a, f) => a + (Number(it[f]) || 0), 0);
+              return won > 0 ? { grp, label, won } : null;
+            })
+          )).then((arr) => {
+            const out = { ym, name: one.name, items: arr.filter(Boolean) };
+            _mgmtCache.set(s, out);
+            cb(out);
+          });
+        });
+      });
+    }
+
     function loadStores(pnu, cb) {
       if (!/^\d{19}$/.test(String(pnu || ''))) { cb(null); return; }
       if (_sbizCache.has(pnu)) { cb(_sbizCache.get(pnu)); return; }
@@ -6902,10 +7070,63 @@
           ? ledgerDetailHtml(st)
           : `<button type="button" class="ld-more btn-mini" style="margin-top:5px;">건축물대장 상세 보기</button>`;
       }
-      if (!rows.length && !houseHtml && !detailHtml && !storeHtml && !nrHtml && !pmsHtml && !shtHtml && !mtnHtml && !engyHtml) return '';
+      // ── 장기수선충당금 ──
+      // 같은 가격대에서 갈리는 '보유 비용'. 300세대↑ 의무관리대상만 공개되므로 없으면 섹션을 안 그린다.
+      // 단지명을 함께 보여준다 — 한 필지에 단지가 여럿일 수 있어 '어느 단지 값인지'가 중요하다.
+      let reserveHtml = '';
+      if (st.reserve && st.reserve.length && st.reserve[0].sTot != null) {
+        const r0 = st.reserve[0];
+        const ymTxt = /^\d{6}$/.test(String(r0.ym || '')) ? `${r0.ym.slice(0, 4)}.${r0.ym.slice(4, 6)}` : '';
+        reserveHtml = '<div style="margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">'
+          + '<b>장기수선충당금</b>'
+          + (ymTxt ? ` <span style="font-size:12px;color:var(--c-muted);">${esc(ymTxt)} 기준</span>` : '')
+          + `<br>적립 잔액 <b>${wonEok(r0.sTot / 100000000)}</b>`
+          + (r0.name ? ` <span style="font-size:12px;color:var(--c-muted);">${esc(r0.name)}</span>` : '')
+          + '<div style="font-size:11.5px;color:var(--c-muted);margin-top:3px;">300세대 이상 의무관리대상만 공개됩니다 —'
+          + ' 잔액이 적으면 향후 수선 시 추가 부담이 생길 수 있습니다.</div>'
+          + '</div>';
+      }
+      // ── 관리비 (공용 + 개별) ──
+      // 자동 조회하지 않는다 — op 11개를 부르므로 레이트리밋을 아낀다. 버튼을 눌러야 조회한다.
+      // 세대수(건축물대장 hhldCnt/fmlyCnt)가 있으면 **세대당 월액**으로 환산한다.
+      let mgmtHtml = '';
+      if (st.reserve || (st.br && (st.br.hhldCnt || st.br.fmlyCnt))) {
+        const hh = Number(st.br && (st.br.hhldCnt || st.br.fmlyCnt)) || 0;
+        if (st.mgmt === 'loading') {
+          mgmtHtml = '<div style="margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;font-size:12px;color:var(--c-muted);">관리비 불러오는 중…</div>';
+        } else if (st.mgmt && st.mgmt.items && st.mgmt.items.length) {
+          const m = st.mgmt;
+          const ymTxt = /^\d{6}$/.test(String(m.ym || '')) ? `${m.ym.slice(0, 4)}.${m.ym.slice(4, 6)}` : '';
+          const per = (won) => (hh ? Math.round(won / hh).toLocaleString() + '원' : Math.round(won / 10000).toLocaleString() + '만원');
+          const sum = (g) => m.items.filter((x) => x.grp === g).reduce((a, x) => a + x.won, 0);
+          const line = (g) => m.items.filter((x) => x.grp === g)
+            .sort((a, b) => b.won - a.won)
+            .map((x) => `${esc(x.label)} ${per(x.won)}`).join(' · ');
+          const cm = sum('공용'), iv = sum('개별');
+          mgmtHtml = '<div style="margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">'
+            + '<b>관리비</b>'
+            + (ymTxt ? ` <span style="font-size:12px;color:var(--c-muted);">${esc(ymTxt)} 기준</span>` : '')
+            + (hh ? ` <span style="font-size:12px;color:var(--c-muted);">세대당 월액 · ${hh.toLocaleString()}세대</span>`
+                  : ' <span style="font-size:12px;color:var(--c-muted);">단지 전체 월액(세대수 미확인)</span>')
+            + `<br>주요 항목 합 <b>${per(cm + iv)}</b>`
+            + ` <span style="font-size:12px;color:var(--c-muted);">공용 ${per(cm)} + 개별 ${per(iv)}</span>`
+            + (line('공용') ? `<div style="font-size:12px;color:var(--c-muted);margin-top:3px;">공용 — ${line('공용')}</div>` : '')
+            + (line('개별') ? `<div style="font-size:12px;color:var(--c-muted);">개별 — ${line('개별')}</div>` : '')
+            + '<div style="font-size:11.5px;color:var(--c-muted);margin-top:3px;">주요 11개 항목만 합한 값입니다 —'
+            + ' 관리비 총액이 아닙니다. 300세대 이상 의무관리대상만 공개됩니다.</div>'
+            + '</div>';
+        } else if (st.mgmt && st.mgmt.items && !st.mgmt.items.length) {
+          mgmtHtml = '<div style="margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;font-size:12px;color:var(--c-muted);">관리비 공개 대상이 아닙니다 (300세대 미만 등)</div>';
+        } else if (wantInfo.fund) {
+          mgmtHtml = '<div style="margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">'
+            + '<button type="button" class="ld-mgmt btn-mini">관리비 보기</button>'
+            + '<span style="font-size:11.5px;color:var(--c-muted);margin-left:6px;">호출 11회 — 누를 때만 조회합니다</span></div>';
+        }
+      }
+      if (!rows.length && !houseHtml && !detailHtml && !storeHtml && !nrHtml && !pmsHtml && !shtHtml && !mtnHtml && !engyHtml && !reserveHtml && !mgmtHtml) return '';
       return `<div style="font-size:13px;margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">`
         + (rows.length ? `<b>토지·건물 정보</b>${badge}<br>${rows.join('<br>')}` : '')
-        + shtHtml + pmsHtml + mtnHtml + engyHtml + storeHtml + nrHtml + houseHtml + detailHtml + '</div>';
+        + shtHtml + pmsHtml + mtnHtml + engyHtml + reserveHtml + mgmtHtml + storeHtml + nrHtml + houseHtml + detailHtml + '</div>';
     }
 
     // ── 건축물대장 상세 (투자자용 추가 조회) ─────────────────────
@@ -7120,6 +7341,21 @@
         const stop = (ev) => { if (ev) { ev.preventDefault(); ev.stopPropagation(); } };
         const btn = slot.querySelector('.ld-more');
         if (btn) btn.onclick = (ev) => { stop(ev); loadLedgerDetail(st, render); };
+        // 관리비는 op 11개를 부르므로 자동 조회하지 않는다 — 버튼을 눌렀을 때만.
+        const mb = slot.querySelector('.ld-mgmt');
+        if (mb) mb.onclick = (ev) => {
+          stop(ev);
+          st.mgmt = 'loading';
+          render();
+          // ⚠️ `st.pnu` 는 없다. PNU 는 이 세 곳에서 조합한다(landInfoHtml·afterBase 와 같은 식).
+          const _pnu = st.addrPnu || (st.bld && st.bld.pnu) || (st.parcel && st.parcel.pnu) || '';
+          loadMgmtCost(_pnu, (st.br && st.br.bldNm) || '', (r) => {
+            // 통신 실패(null)면 버튼을 되살려 다시 시도할 수 있게 한다 — 조용히 비우지 않는다.
+            st.mgmt = r || null;
+            if (!r) toast('관리비를 불러오지 못했습니다. 다시 시도해 주세요.');
+            render();
+          });
+        };
         const rb = slot.querySelector('.ld-retry');
         if (rb) rb.onclick = (ev) => {
           stop(ev);
@@ -7201,6 +7437,12 @@
         // 당월부터 역순으로 찾는다 — 자세한 이유는 loadBldEngy 주석.
         if (wantInfo.engy) loadBldEngy(pnu, (arr) => {
           if (arr && arr.length) { st.engy = arr; render(); }
+        });
+        // 장기수선충당금 — 두 단계다(법정동→kaptCode→잔액). 건물명으로 단지를 특정하므로
+        // 표제부(st.br)가 온 뒤에 부르는 편이 정확하지만, 이름이 없어도 그 동에 단지가
+        // 하나뿐이면 특정된다. 모호하면 loadReserveFund 가 스스로 포기한다(빈 배열).
+        if (wantInfo.fund) loadReserveFund(pnu, (st.br && st.br.bldNm) || '', (arr) => {
+          if (arr && arr.length) { st.reserve = arr; render(); }
         });
         // 비주거 실거래 — 정적 JSON 조회라 네트워크 호출이 파일당 1회(첫 클릭)뿐이다.
         const nk = nonresKey(st.parcel && st.parcel.addr, st.parcel && st.parcel.jibun);
