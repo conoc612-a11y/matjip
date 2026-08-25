@@ -5302,6 +5302,25 @@
         if (!mid._layer) mid._layer = upis('', mid.opacity);
         return mid._layer;
       }
+      // ── UPIS 레이어별 minScale → 필요한 최소 줌 ────────────────────────────
+      // MapServer 는 축척이 minScale 보다 작으면(=줌이 낮으면) **빈 이미지**를 준다.
+      // 그래서 체크는 켜졌는데 지도에 아무 변화가 없어 "고장났다"로 보인다
+      // (사용자 지적 2026-08-25: "용도지역·지구·구역 항목들이 하나도 안 보인다").
+      // 값은 `/MapServer?f=pjson` 의 minScale 실측이고, 줌 환산은 웹메르카토르 기준
+      // 559,082,264 / 2^z 다. ⛔ 추측으로 채우지 말 것 — 위 엔드포인트에서 확인한다.
+      //   minScale 300000 → z11  (용도지역·지구·구역 19~34, 123)
+      //   minScale  25000 → z15  (도시계획시설 도로 3, 주차장 12 등)
+      //   minScale   5000 → z17  (획지예정선 39)
+      //   minScale      0 → 제한 없음 (정비사업 94~, 주제도 162·333·339~)
+      const UPIS_MINZOOM = { 300000: 11, 25000: 15, 5000: 17 };
+      const UPIS_LAYER_MINZOOM = (() => {
+        const m = {};
+        [19, 20, 21, 22, 23, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 123].forEach((id) => { m[id] = UPIS_MINZOOM[300000]; });
+        [3, 12, 11, 13, 14].forEach((id) => { m[id] = UPIS_MINZOOM[25000]; });
+        m[39] = UPIS_MINZOOM[5000];
+        return m;
+      })();
+      let _upisZoomWarned = 0;
       function refreshUpisGroup(mid) {
         const lyr = upisGroupLayer(mid);
         const ids = [...mid._on];
@@ -5309,6 +5328,18 @@
         lyr.options.upisLayers = ids.join(',');
         if (!map.hasLayer(lyr)) lyr.addTo(map);
         else lyr.redraw();
+        // 켠 것 전부가 현재 줌에서 안 그려지면 이유를 알려준다. 레이어는 그대로 둔다 —
+        // 줌을 올리면 저절로 보이므로 끄면 오히려 사용자가 다시 켜야 한다.
+        const need = ids.map((id) => UPIS_LAYER_MINZOOM[id] || 0);
+        const z = map.getZoom();
+        if (need.length && need.every((n) => n > z)) {
+          const minNeed = Math.min(...need);
+          const now = Date.now();
+          if (now - _upisZoomWarned > 4000) {   // 소분류를 연달아 켤 때 토스트가 쌓이지 않게
+            _upisZoomWarned = now;
+            toast(`이 레이어는 확대해야 보입니다 — 줌 ${minNeed} 이상 (지금 ${z})`);
+          }
+        }
       }
 
       const layerPanel = L.control({ position: 'topright' });
@@ -7870,10 +7901,25 @@
     }
 
     function render() {
+      // landMode 가 비어 있으면 '아무 탭도 안 켠 상태'다 — 같은 탭을 두 번 누르면 이렇게 된다
+      // (사용자 요청 2026-08-25: "인근 공인중개사가 항시 눌러져 있다. 두 번 누르면 꺼지게").
+      // ⚠️ 아래 fallthrough 는 즐겨찾기로 흐르므로, 여기서 끊지 않으면 꺼도 즐겨찾기가 나온다.
+      if (!landMode) { renderOff(); return; }
       if (landMode === 'agents') { renderAgents(); updateCmpBar(); return; }
       if (landMode === 'ranking') { renderRanking(); return; }
       if (landMode === 'nearby') { renderNearby(); return; }
       renderFavProps();
+      updateCmpBar();
+    }
+
+    // 탭을 모두 끈 상태 — 목록·마커를 치우고 안내만 남긴다.
+    // 마커 정리 코드는 renderFavProps 의 앞부분과 같은 일을 한다(둘 다 '내가 그린 것'을 걷어낸다).
+    function renderOff() {
+      Object.values(markers).forEach((m) => map.removeLayer(m));
+      for (const k in markers) delete markers[k];   // markers 는 const — 재대입 대신 비운다
+      agentMarkers.forEach((m) => map.removeLayer(m)); agentMarkers = [];
+      $('banner').textContent = '위의 탭을 누르면 목록이 나옵니다. (켠 탭을 한 번 더 누르면 닫힙니다)';
+      $('rec-list').innerHTML = '';
       updateCmpBar();
     }
 
@@ -8226,13 +8272,29 @@
       });
     }
     // 목록 탭 전환 + GPS
-    document.querySelectorAll('.list-tab').forEach((t) => t.addEventListener('click', () => {
-      document.querySelectorAll('.list-tab').forEach((x) => x.classList.remove('active'));
-      t.classList.add('active'); landMode = t.dataset.mode;
+    // 탭은 **토글**이다 — 켜져 있는 탭을 한 번 더 누르면 꺼진다(landMode = '').
+    // 예전에는 넷 중 하나가 반드시 켜져 있어서 '인근 공인중개사'를 끌 방법이 없었다
+    // (사용자 지적 2026-08-25: "항시 눌러져 있다 / 두 번 누르면 꺼지게 해달라").
+    // 끈 상태는 저장한다 — 새로고침하면 다시 켜지면 끈 의미가 없다.
+    const LS_LANDMODE = 'mj_land_mode_v1';
+    function applyLandMode(mode, save) {
+      landMode = mode || '';
+      document.querySelectorAll('.list-tab').forEach((x) => x.classList.toggle('active', !!landMode && x.dataset.mode === landMode));
       $('fav-cats').classList.toggle('on', landMode === 'favorites');
       $('nearby-box').style.display = landMode === 'nearby' ? 'block' : 'none';
+      if (save) { try { localStorage.setItem(LS_LANDMODE, landMode); } catch (e) {} }
       render();
+    }
+    document.querySelectorAll('.list-tab').forEach((t) => t.addEventListener('click', () => {
+      applyLandMode(t.classList.contains('active') ? '' : t.dataset.mode, true);
     }));
+    // 저장된 상태 복원. 빈 문자열('')도 유효한 값이다 — '꺼 둔 것'이므로 되살리지 않는다.
+    // 키가 아예 없을 때만 기본값(HTML 의 active = agents)을 그대로 둔다.
+    (() => {
+      let saved = null;
+      try { saved = localStorage.getItem(LS_LANDMODE); } catch (e) {}
+      if (saved !== null) applyLandMode(saved, false);
+    })();
     // 주변 검색 입력 — Enter 와 버튼 둘 다 받는다.
     (() => {
       const q = $('nearby-q'), go = $('nearby-go');
