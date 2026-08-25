@@ -484,6 +484,13 @@
     .lp-sub { display:flex; align-items:center; gap:5px; padding:3px 4px; cursor:pointer; color:var(--muted); border-radius:5px; }
     .lp-sub:hover { background:var(--c-hover); color:var(--text); }
     .lp-sw { width:14px; height:12px; flex-shrink:0; border:1px solid var(--line); border-radius:2px; object-fit:cover; }
+    /* UPIS 주제도 타일을 진하게 — 원본 팔레트가 연한 레이어(지구단위계획·획지예정선 등)가
+       배경지도에 묻히는 문제 대응(사용자 지적 2026-08-25). MapServer 색을 바꿀 수 없으니
+       받은 이미지의 채도·명암을 올린다. 값은 보수적으로: 더 세게 하면 색이 실제와 달라 보인다.
+       ⚠️ 배경지도·마커에는 적용되지 않는다 — UpisTile 에만 className 을 주기 때문이다. */
+    .upis-tile { filter: saturate(1.6) contrast(1.12); }
+    /* 범례 색 견본도 같이 진하게 해야 지도와 눈으로 대조가 된다 */
+    .lp-sw { filter: saturate(1.6) contrast(1.12); }
     .lp-cb { flex-shrink:0; accent-color:var(--c-primary); margin:0; }
     .lp-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     /* ── 미활용 API 카탈로그 패널 (별도 버튼, 읽기 전용) ──────────────────
@@ -1901,8 +1908,18 @@
       });
       // 레이어 id 는 MapServer 의 ?f=pjson 목록에서 확인했고, 각 묶음이 실제로 그려지는지
       // export 호출로 하나씩 검증했다(빈 이미지 2.2KB 와 비교).
+      // ⚠️ 색·기호는 MapServer 가 정한다 — 우리가 팔레트를 바꿀 수 없다.
+      //    그런데 레이어마다 원본 진하기가 크게 다르다: 신속통합기획(94)은 진한 빨강이라 잘 보이는데
+      //    지구단위계획구역·획지예정선 등은 연해서 배경지도에 묻힌다(사용자 지적 2026-08-25).
+      // 그래서 두 가지로 대응한다.
+      //   ① opacity 0.75 → 0.9   (배경에 덜 묻힌다)
+      //   ② `upis-tile` 클래스에 CSS filter(채도·명암)  ← 실질적인 개선은 이쪽이다.
+      //      원본이 연한 색도 채도를 올리면 식별된다. 라벨 글씨도 함께 진해지는데 가독성엔 도움이다.
+      // 참조 사이트(urban.seoul.go.kr)와 픽셀 단위로 같게 보이는 것을 포기한 선택이다 —
+      // 육안 식별이 우선이라는 사용자 판단.
       const upis = (ids, opacity) => new UpisTile('', {
-        upisLayers: ids, opacity: opacity == null ? 0.75 : opacity, maxZoom: 19,
+        upisLayers: ids, opacity: opacity == null ? 0.9 : opacity, maxZoom: 19,
+        className: 'upis-tile',
         attribution: '© 서울도시공간포털',
       });
 
@@ -3764,6 +3781,20 @@
       const jbPolyLayer = L.featureGroup();
       let jbRows = null, jbPolys = null;
       const jbFilter = { '신통': true, '재개발': true, '재건축': true, '지역주택': true, '재정비촉진': true, '모아': true, '역세권': true, '노후계획도시': true, '기타': true };
+      // ── 레이어 트리 '정비사업' 소분류 → 벡터 bz 화이트리스트 ──────────────
+      // 예전에는 '정비사업 상세' 체크 하나가 **모든 유형의 벡터를 한꺼번에** 켰다.
+      // 사용자 지적(2026-08-25): "신속부터 주거환경개선까지 한번에 다 나온다 — 유형별로 보고 싶다".
+      // 그래서 소분류 7개가 각자 자기 유형의 벡터만 켜게 했고 '정비사업 상세' 항목은 없앴다.
+      //
+      // 🔑 UPIS 레이어 id 와 bz 코드는 **1:1** 이다(2026-08-25 서버에서 확인, 추측 아님):
+      //    /MapServer?f=pjson  →  94=UPIS_C_UQ120_BZ101 … 100=UPIS_C_UQ120_BZ108
+      //    ⚠️ BZ106 은 존재하지 않는다 — 99=BZ107, 100=BZ108 로 건너뛴다.
+      //    한글 라벨은 /legend?f=pjson 의 label 이 진실이다(그걸로 오타 2건을 잡았다).
+      const UPIS_BZ = { 94: 'BZ101', 95: 'BZ102', 96: 'BZ103', 97: 'BZ104', 98: 'BZ105', 99: 'BZ107', 100: 'BZ108' };
+      // null = 제한 없음(기존 동작). Set = 그 bz 만 보여준다.
+      // ⚠️ `jbFilter`(전용 패널의 유형 필터)와 **AND** 로 걸린다 — 둘 다 통과해야 보인다.
+      //    전용 패널을 안 만지면 전부 true 이므로 실질적으로 이 화이트리스트가 결정한다.
+      let jbBzOn = null;
       let jbActiveStage = 'all';
       const STAGE_COLOR_MAP = { '착공': '#2f9e44', '준공': '#1c7ed6', '관리처분': '#7048e8', '사업시행': '#e8590c', '사업계획': '#e8590c', '조합설립': '#f08c00', '추진위': '#aaa', '기획': '#e8590c', '대상지선정': '#f08c00' };
       function stageColor(s) { s = s || ''; for (const [k, v] of Object.entries(STAGE_COLOR_MAP)) { if (s.includes(k)) return v; } return '#868e96'; }
@@ -4074,6 +4105,8 @@
           const d = jbRows[i];
           if (d.lat == null || d.lng == null) continue;  // 좌표 미확보 레코드(수집 데이터 중 소수)는 건너뜀
           if (!jbFilter[d._g]) continue;
+          // 레이어 트리 '정비사업' 소분류로 켠 유형만 — null 이면 제한 없음(기존 동작).
+          if (jbBzOn && !jbBzOn.has(d.bz)) continue;
           if (jbActiveStage !== 'all' && !(d.stage || '').includes(jbActiveStage)) continue;
           if (!bounds.contains([d.lat, d.lng])) continue;  // 뷰포트 밖 폴리곤·마커 스킵
           visible.push(i);
@@ -4239,12 +4272,34 @@
       // 사용자 선택(2026-08-21): 벡터만 남긴다 — 클릭 팝업·구역 합산 선택이 벡터에 붙어 있다.
       // 대분류를 한 번에 켜면(bigCb) mid 순회 중에 이 핸들러가 불릴 수 있어 setTimeout 0 으로
       // 그 배치가 끝난 뒤에 정리한다(순서에 의존하지 않게).
+      // 🔴 `:not([data-vec])` 가 중요하다 — 2026-08-25 부터 '정비사업' 소분류는 raster 가 아니라
+      //    **벡터를 켜는 스위치**다. 그것까지 끄면 방금 켠 체크를 스스로 해제해 버린다
+      //    (jbCluster 를 올리면 이 함수가 불리므로 무한히 꺼지는 구조가 된다).
+      //    남은 대상은 소규모정비·재정비촉진·역세권·국토부·기타의 raster 뿐이고,
+      //    그것들은 jbBzOn 화이트리스트 덕분에 벡터와 유형이 겹치지 않는다 —
+      //    벡터는 켠 bz 만 그리기 때문이다. 그래도 안전판으로 이 정리는 남겨 둔다.
       function jbDropDupRaster() {
         setTimeout(() => {
-          document.querySelectorAll('input.lp-cb[data-sec="도시계획사업"][data-id]').forEach((cb) => {
+          document.querySelectorAll('input.lp-cb[data-sec="도시계획사업"][data-id]:not([data-vec])').forEach((cb) => {
             if (cb.checked) { cb.checked = false; if (cb.onchange) cb.onchange(); }
           });
         }, 0);
+      }
+      // 레이어 트리 '정비사업' 소분류 상태 → 벡터 bz 화이트리스트 + 레이어 on/off
+      function applyJbBz(mid) {
+        const ids = [...mid._on];
+        if (!ids.length) {
+          jbBzOn = null;
+          if (map.hasLayer(jbCluster)) { map.removeLayer(jbCluster); map.fire('overlayremove', { layer: jbCluster }); }
+          if (map.hasLayer(jbPolyLayer)) map.removeLayer(jbPolyLayer);
+          return;
+        }
+        jbBzOn = new Set(ids.map((i) => UPIS_BZ[i]).filter(Boolean));
+        // overlayadd 를 직접 fire 해야 데이터 로드·전용 패널 표시가 걸린다(커스텀 패널이라
+        // Leaflet 이 이벤트를 안 쏜다 — 소분류 경로와 같은 사정).
+        if (!map.hasLayer(jbCluster)) { jbCluster.addTo(map); map.fire('overlayadd', { layer: jbCluster }); }
+        if (!map.hasLayer(jbPolyLayer)) jbPolyLayer.addTo(map);
+        jbBuild();
       }
       map.on('overlayadd', (e) => {
         if (e.layer !== jbCluster) return;
@@ -5183,8 +5238,12 @@
           { name: '행정동 경계', layer: wms('lt_c_ademd', 0.7) },
         ]],
         ['도시계획사업', [
-          { name: '정비사업', subs: [[94, '신속통합기획'], [95, '재개발(도시정비형)'], [96, '재개발(주택정비형)'], [97, '재건축(단독)'], [98, '재건축(공동)'], [99, '주거환경개선(관리형)'], [100, '주거환경개선(정비형)']] },
-          { name: '정비사업 상세', layer: jbCluster },
+          // `vecBz: true` — 이 소분류들은 raster 가 아니라 **벡터(클릭 팝업·구역 선택이 붙은 폴리곤)**
+          // 를 유형별로 켠다. 예전에는 아래에 '정비사업 상세' 라는 항목이 따로 있어서 그것 하나가
+          // 모든 유형의 벡터를 한꺼번에 켰다 — "신속부터 주거환경개선까지 한번에 다 나온다"는
+          // 사용자 지적(2026-08-25)으로 그 항목을 없애고 소분류에 각각 붙였다.
+          // 라벨은 UPIS /legend?f=pjson 의 label 그대로다(추측 아님. 이걸로 오타 2건을 잡았다).
+          { name: '정비사업', vecBz: true, subs: [[94, '신속통합기획'], [95, '재개발(도시정비형)'], [96, '재개발(주택정비형)'], [97, '재건축(단독)'], [98, '재건축(공동)'], [99, '주거환경개선(관리형)'], [100, '주거환경개선(정비형)']] },
           { name: '소규모정비사업', subs: [[101, '모아타운'], [102, '가로주택정비사업'], [103, '자율주택정비사업'], [104, '소규모재건축사업'], [105, '소규모재개발사업']] },
           { name: '재정비촉진사업', subs: [[112, '재정비촉진지구'], [113, '재정비촉진구역'], [114, '존치정비구역'], [115, '존치관리구역']] },
           { name: '역세권사업', subs: [[106, '장기전세주택'], [107, '역세권 활성화'], [108, '청년안심주택'], [109, '어르신안심주택'], [110, '신혼부부안심주택'], [111, '미리내집']] },
@@ -5279,15 +5338,46 @@
           const midCbs = [];
           mids.forEach((mid) => {
             const row = L.DomUtil.create('div', 'lp-mid', kids);
-            const hasSubs = !!mid.subs;
+            // 소분류가 **하나뿐이면 펼치는 단계를 만들지 않는다.** 이름이 중복되고
+            // (`지구단위계획구역 > 지구단위계획구역`) 클릭이 두 번 드는데 얻는 게 없다
+            // (사용자 지적 2026-08-25). 지구단위계획 3개뿐 아니라 도시계획시설의
+            // 도로·광장·주차장 등에도 해당한다 — 그래서 개별 예외가 아니라 일반 규칙으로 둔다.
+            const singleSub = !!mid.subs && mid.subs.length === 1;
+            const hasSubs = !!mid.subs && !singleSub;
+            // 단계를 없애면 소분류에 있던 색 견본이 사라진다 → 중분류 줄에 그대로 옮겨 붙인다.
+            const soloSw = singleSub && UPIS_SWATCH[mid.subs[0][0]]
+              ? `<img class="lp-sw" src="data:image/png;base64,${UPIS_SWATCH[mid.subs[0][0]]}" alt="">`
+              : '';
             row.innerHTML = `<div class="lp-midhead">${hasSubs ? '<span class="lp-exp">＋</span>' : '<span class="lp-exp lp-exp-none"></span>'}`
-              + `<input type="checkbox" class="lp-cb lp-midcb"><span class="lp-name">${mid.name}</span></div>`;
+              + `<input type="checkbox" class="lp-cb lp-midcb">${soloSw}<span class="lp-name">${mid.name}</span></div>`;
             const midCb = row.querySelector('.lp-midcb');
             midCbs.push(midCb);
             // 이미 지도에 올라가 있는 레이어는 체크된 상태로 그린다.
             // (기본으로 켜 두는 항목이 있다 — '건물 상세 정보' 팝업 토글. 이게 없으면
             //  지도엔 켜져 있는데 패널엔 꺼진 것으로 보여 상태가 어긋난다.)
             if (!hasSubs && mid.layer && map.hasLayer(mid.layer)) midCb.checked = true;
+
+            // 소분류 1개 — 체크박스 하나가 그 UPIS 레이어를 바로 켠다.
+            // ⚠️ 이 항목엔 `mid.layer` 가 없다(UPIS 는 id 로 그린다). 아래 `!hasSubs` 경로로
+            //    내려가면 `mid.layer.addTo` 에서 죽으므로 여기서 반드시 끊는다.
+            if (singleSub) {
+              const soloId = mid.subs[0][0];
+              mid._on = new Set();
+              midCb.onchange = () => {
+                // 벡터 '정비사업 상세'와 같은 구역을 겹쳐 그리지 않는다(소분류 경로와 같은 규칙).
+                if (midCb.checked && big === '도시계획사업'
+                    && typeof jbCluster !== 'undefined' && map.hasLayer(jbCluster)) {
+                  midCb.checked = false;
+                  toast('‘정비사업 상세’(벡터)를 끄면 이 레이어를 켤 수 있어요 — 겹쳐 그리면 경계가 이중으로 보입니다.');
+                  return;
+                }
+                mid._on = new Set(midCb.checked ? [soloId] : []);
+                refreshUpisGroup(mid);
+                syncBig();
+                saveLayerState();
+              };
+              return;
+            }
 
             if (!hasSubs) {
               midCb.onchange = () => {
@@ -5311,17 +5401,20 @@
               const cb = s.querySelector('input');
               cb.dataset.id = id;   // 레이어 상태 저장/복원용
               cb.dataset.sec = big; // 벡터 레이어와 중복되는 raster 를 찾아 끄는 데 쓴다(jbDropDupRaster)
+              // 벡터를 켜는 스위치는 jbDropDupRaster 의 정리 대상에서 빠져야 한다(그 함수 주석 참고).
+              if (mid.vecBz) cb.dataset.vec = '1';
               subCbs.push(cb);
               cb.onchange = () => {
-                // 벡터 '정비사업 상세'가 켜져 있으면 같은 구역을 겹쳐 그리지 않는다(그림자처럼 보임).
+                // 벡터가 켜져 있으면 같은 구역을 raster 로 한 번 더 그리지 않는다(그림자처럼 보임).
                 // 조용히 무시하면 "왜 안 켜지지?"가 되므로 이유를 토스트로 알린다.
-                if (cb.checked && big === '도시계획사업' && typeof jbCluster !== 'undefined' && map.hasLayer(jbCluster)) {
+                // ⚠️ 정비사업 소분류(vecBz)는 **자기가 벡터를 켜는 쪽**이라 이 차단을 받지 않는다.
+                if (!mid.vecBz && cb.checked && big === '도시계획사업' && typeof jbCluster !== 'undefined' && map.hasLayer(jbCluster)) {
                   cb.checked = false;
-                  toast('‘정비사업 상세’(벡터)를 끄면 이 레이어를 켤 수 있어요 — 겹쳐 그리면 경계가 이중으로 보입니다.');
+                  toast('‘정비사업’(벡터)을 끄면 이 레이어를 켤 수 있어요 — 겹쳐 그리면 경계가 이중으로 보입니다.');
                   return;
                 }
                 cb.checked ? mid._on.add(id) : mid._on.delete(id);
-                refreshUpisGroup(mid);
+                if (mid.vecBz) applyJbBz(mid); else refreshUpisGroup(mid);
                 midCb.checked = subCbs.some((c) => c.checked);
                 midCb.indeterminate = midCb.checked && !subCbs.every((c) => c.checked);
                 // 브라우저는 부분선택(indeterminate) 체크박스를 누르면 '해제'로 간다.
@@ -5339,7 +5432,7 @@
               subCbs.forEach((c) => { c.checked = midCb.checked; });
               mid._on = new Set(midCb.checked ? mid.subs.map(([id]) => id) : []);
               midCb.indeterminate = false;
-              refreshUpisGroup(mid);
+              if (mid.vecBz) applyJbBz(mid); else refreshUpisGroup(mid);
               syncBig();
               saveLayerState();
             };
@@ -5401,7 +5494,10 @@
               if (subs.length) {
                 const want = new Set(Array.isArray(v) ? v : []);
                 subs.forEach((cb) => { if (want.has(cb.dataset.id)) { cb.checked = true; cb.onchange(); } });
-              } else if (v === true) {
+              } else if (v === true || (Array.isArray(v) && v.length)) {
+                // 배열도 받는다 — 소분류가 1개뿐인 항목의 단계를 없앤 뒤(2026-08-25),
+                // 그 전에 `["33"]` 처럼 배열로 저장된 값이 남아 있다. `v === true` 만 보면
+                // 옛 저장값이 조용히 무시돼 "F5 하면 체크가 풀린다"가 된다.
                 midCb.checked = true;
                 midCb.onchange();
               }
