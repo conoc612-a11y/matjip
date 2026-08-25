@@ -2948,6 +2948,109 @@
       
       
       
+      const TRDAR_SE_COLOR = { 골목상권: '#1971c2', 발달상권: '#e8590c', 전통시장: '#7048e8', 관광특구: '#0ca678' };
+      const trdarCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 50 });
+      let trdarRows = null, _trdarPromise = null, trdarQ = null;
+      function loadTrdar() {
+        if (!_trdarPromise) {
+          _trdarPromise = fetch('trdar.json')
+            .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+            .then((j) => { trdarRows = j.rows || []; trdarQ = j.q || null; return trdarRows; })
+            .catch((e) => { console.error('상권 로드 실패:', e); return null; });
+        }
+        return _trdarPromise;
+      }
+      
+      
+      const qLabel = (q) => (/^\d{5}$/.test(String(q)) ? String(q).slice(0, 4) + '년 ' + String(q).slice(4) + '분기' : '');
+      
+      const manwonEok = (v) => {
+        if (v == null) return '';
+        if (v >= 1e4) return (v / 1e4).toLocaleString('ko-KR', { maximumFractionDigits: 0 }) + '억';
+        return v.toLocaleString('ko-KR') + '만';
+      };
+      function trdarBody(d, dist) {
+        const rows = [];
+        const head = [d.se, d.gu, d.dong].filter(Boolean).join(' · ');
+        rows.push('<div><b>' + esc(d.nm) + '</b></div>');
+        rows.push('<div style="margin-top:2px;font-size:12px;">' + esc(head)
+          + (dist != null ? ' <span style="color:var(--c-muted);">직선 ' + dist + 'm</span>' : '') + '</div>');
+        const bits = [];
+        if (d.amt != null) bits.push('분기매출 <b>' + manwonEok(d.amt) + '원</b>');
+        if (d.flp != null) bits.push('유동 ' + d.flp.toLocaleString('ko-KR'));
+        if (d.wrcp != null) bits.push('직장 ' + d.wrcp.toLocaleString('ko-KR'));
+        if (bits.length) rows.push('<div style="margin-top:3px;font-size:12px;">' + bits.join(' · ') + '</div>');
+        if (d.ind && d.ind.length) {
+          rows.push('<div style="margin-top:2px;font-size:11.5px;color:var(--c-muted);">'
+            + d.ind.map((x) => esc(x[0]) + ' ' + manwonEok(x[1])).join(' · ') + '</div>');
+        }
+        
+        if (d.tz && d.tz.some((v) => v > 0)) {
+          const LB = ['0-6', '6-11', '11-14', '14-17', '17-21', '21-24'];
+          const mx = Math.max.apply(null, d.tz);
+          const peak = d.tz.indexOf(mx);
+          rows.push('<div style="margin-top:3px;height:22px;line-height:0;">'
+            + d.tz.map((v, i) => '<span title="' + LB[i] + '시 ' + manwonEok(v) + '원" style="display:inline-block;'
+              + 'width:15.5%;height:' + Math.max(3, Math.round(v / mx * 100)) + '%;background:'
+              + (i === peak ? '#e8590c' : '#ced4da') + ';vertical-align:bottom;margin-right:1%;"></span>').join('')
+            + '</div>'
+            + '<div style="font-size:11px;color:var(--c-muted);">최다 ' + LB[peak] + '시'
+            + (d.wk && (d.wk[0] + d.wk[1]) > 0
+              ? ' · 주중 ' + Math.round(d.wk[0] / (d.wk[0] + d.wk[1]) * 100) + '% / 주말 '
+                + Math.round(d.wk[1] / (d.wk[0] + d.wk[1]) * 100) + '%' : '')
+            + '</div>');
+        }
+        const q = trdarQ || {};
+        rows.push('<div style="margin-top:5px;font-size:11px;color:var(--c-muted);">서울 상권분석서비스'
+          + (q.sel ? ' · 매출 ' + qLabel(q.sel) : '')
+          + (q.wrc && q.wrc !== q.sel ? ' · 직장인구 ' + qLabel(q.wrc) : '') + '</div>');
+        return rows.join('');
+      }
+      function trdarPopupHtml(d) {
+        return '<div class="pc"><div class="pc-head">'
+          + '<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:'
+          + (TRDAR_SE_COLOR[d.se] || '#868e96') + ';flex-shrink:0;"></span>'
+          + '<span class="rp-name">' + esc(d.se || '상권') + '</span></div><div class="pc-body">'
+          + trdarBody(d, null) + '</div></div>';
+      }
+      function trdarBuild() {
+        if (!trdarRows) return;
+        trdarCluster.clearLayers();
+        
+        const mx = Math.max.apply(null, trdarRows.map((d) => d.amt || 0).concat([1]));
+        trdarCluster.addLayers(trdarRows.map((d) => {
+          const rr = 5 + Math.round(Math.sqrt((d.amt || 0) / mx) * 9);
+          const m = L.circleMarker([d.lat, d.lng], {
+            radius: rr, color: '#000', weight: 1.2,
+            fillColor: TRDAR_SE_COLOR[d.se] || '#868e96', fillOpacity: 0.8,
+          });
+          m._pop = (() => trdarPopupHtml(d));
+          m.bindTooltip(esc(d.nm), { direction: 'top' });
+          return m;
+        }));
+      }
+      
+      
+      const TRDAR_NEAR = 700;
+      function trdarNear(lat, lng) {
+        if (!trdarRows) return null;
+        const R = 6371000, rad = Math.PI / 180;
+        let best = null, bd = Infinity;
+        for (const d of trdarRows) {
+          if (Math.abs(d.lat - lat) > 0.011 || Math.abs(d.lng - lng) > 0.014) continue;
+          const dLat = (d.lat - lat) * rad, dLng = (d.lng - lng) * rad;
+          const a = Math.sin(dLat / 2) ** 2
+            + Math.cos(lat * rad) * Math.cos(d.lat * rad) * Math.sin(dLng / 2) ** 2;
+          const m = 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+          if (m < bd) { bd = m; best = d; }
+        }
+        return best && bd <= TRDAR_NEAR ? Object.assign({ _d: Math.round(bd) }, best) : null;
+      }
+      
+      
+      
+      
+      
       const SCHOOL_COLOR = { 초: '#f59f00', 중: '#1971c2', 고: '#c2255c' };
       const schoolCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 50 });
       const hospCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 55 });
@@ -3111,7 +3214,17 @@
         }));
       }
       map.on('overlayadd', (e) => {
-        if (e.layer === schoolCluster) {
+        if (e.layer === trdarCluster) {
+          loadTrdar().then((r) => {
+            if (!r) { toast('상권 정보를 불러오지 못했습니다.'); return; }
+            trdarBuild();
+            const c = {};
+            r.forEach((d) => { c[d.se] = (c[d.se] || 0) + 1; });
+            toast('상권 ' + r.length.toLocaleString() + '곳 — '
+              + Object.entries(c).sort((a, b) => b[1] - a[1]).map((x) => x[0] + ' ' + x[1]).join(' · ')
+              + ' · 원 크기는 매출 규모');
+          });
+        } else if (e.layer === schoolCluster) {
           loadSchool().then((r) => {
             if (!r) { toast('학교 정보를 불러오지 못했습니다.'); return; }
             schoolBuild();
@@ -6078,10 +6191,11 @@
       const infoLp = L.layerGroup();
       const infoTrdar = L.layerGroup();
       const infoSch = L.layerGroup();
+      const infoTrd = L.layerGroup();
       const infoEngy = L.layerGroup();
       const infoFund = L.layerGroup();
-      const wantInfo = { sht: true, mtn: true, pms: true, hpms: true, engy: true, fund: true, lp: true, trdar: true, sch: true };
-      const _infoMap = [[infoSht, 'sht'], [infoMtn, 'mtn'], [infoPms, 'pms'], [infoHpms, 'hpms'], [infoLp, 'lp'], [infoTrdar, 'trdar'], [infoSch, 'sch'],
+      const wantInfo = { sht: true, mtn: true, pms: true, hpms: true, engy: true, fund: true, lp: true, trdar: true, sch: true, trd: true };
+      const _infoMap = [[infoSht, 'sht'], [infoMtn, 'mtn'], [infoPms, 'pms'], [infoHpms, 'hpms'], [infoLp, 'lp'], [infoTrdar, 'trdar'], [infoSch, 'sch'], [infoTrd, 'trd'],
         [infoEngy, 'engy'], [infoFund, 'fund']];
       map.on('overlayadd', (e) => {
         const hit = _infoMap.find((x) => x[0] === e.layer);
@@ -6091,7 +6205,7 @@
         const hit = _infoMap.find((x) => x[0] === e.layer);
         if (hit) wantInfo[hit[1]] = false;
       });
-      infoSht.addTo(map); infoMtn.addTo(map); infoPms.addTo(map); infoHpms.addTo(map); infoLp.addTo(map); infoTrdar.addTo(map); infoSch.addTo(map);
+      infoSht.addTo(map); infoMtn.addTo(map); infoPms.addTo(map); infoHpms.addTo(map); infoLp.addTo(map); infoTrdar.addTo(map); infoSch.addTo(map); infoTrd.addTo(map);
       infoEngy.addTo(map); infoFund.addTo(map);
 
       const LAYER_TREE = [
@@ -6106,6 +6220,7 @@
           { name: '주차장 (실제 시설 · 무료/유료)', layer: parkingCluster },
           { name: '전기차 충전소', layer: evCluster },
           
+          { name: '상권 (매출·유동인구)', layer: trdarCluster },
           { name: '학교 (초·중·고)', layer: schoolCluster },
           { name: '병원·의원 (심평원)', layer: hospCluster },
           { name: '응급의료기관', layer: emrgCluster },
@@ -6124,6 +6239,7 @@
           { name: '지가 변동률 추세', layer: infoLp },
           { name: '주변 상권 (반경 150m)', layer: infoTrdar },
           { name: '학군 (직선 800m)', layer: infoSch },
+          { name: '상권 매출 (가장 가까운)', layer: infoTrd },
           
           { name: '에너지 사용량 (전기·가스)', layer: infoEngy },
           
@@ -8135,6 +8251,17 @@
       
       
       
+      let trdHtml = '';
+      if (st.trd) {
+        trdHtml = '<div style="margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">'
+          + '<b>상권 매출</b> <span style="font-size:12px;color:var(--c-muted);">가장 가까운 상권</span>'
+          + '<div style="margin-top:2px;">' + trdarBody(st.trd, st.trd._d) + '</div>'
+          + '</div>';
+      }
+      
+      
+      
+      
       
       let trdarHtml = '';
       if (st.trdar && st.trdar.total) {
@@ -8453,10 +8580,10 @@
             + '이 땅에 무엇을 지을 수 있나 — 호출 ' + LANDUSE_ACTS.length + '회, 누를 때만 조회합니다.</span>');
         }
       }
-      if (!rows.length && !houseHtml && !detailHtml && !storeHtml && !nrHtml && !pmsHtml && !hpmsHtml && !lpHtml && !trdarHtml && !schHtml && !shtHtml && !mtnHtml && !engyHtml && !reserveHtml && !mgmtHtml) return '';
+      if (!rows.length && !houseHtml && !detailHtml && !storeHtml && !nrHtml && !pmsHtml && !hpmsHtml && !lpHtml && !trdarHtml && !schHtml && !trdHtml && !shtHtml && !mtnHtml && !engyHtml && !reserveHtml && !mgmtHtml) return '';
       return `<div style="font-size:13px;margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">`
         + (rows.length ? `<b>토지·건물 정보</b>${badge}<br>${rows.join('<br>')}` : '')
-        + shtHtml + pmsHtml + hpmsHtml + schHtml + trdarHtml + lpHtml + mtnHtml + engyHtml + reserveHtml + mgmtHtml + luHtml + storeHtml + nrHtml + houseHtml + detailHtml + '</div>';
+        + shtHtml + pmsHtml + hpmsHtml + schHtml + trdarHtml + trdHtml + lpHtml + mtnHtml + engyHtml + reserveHtml + mgmtHtml + luHtml + storeHtml + nrHtml + houseHtml + detailHtml + '</div>';
     }
 
     
@@ -8659,7 +8786,7 @@
     function fillLandInfo(popupEl, getPopup, lat, lng, onInfo, noDetail, jibun) {
       const slot = popupEl && popupEl.querySelector('.bld-info');
       if (!slot) return;
-      const st = { zone: '', parcel: null, br: null, bld: null, house: null, detail: null, addrPnu: null, trdar: null, sch: null };
+      const st = { zone: '', parcel: null, br: null, bld: null, house: null, detail: null, addrPnu: null, trdar: null, sch: null, trd: null };
       const render = () => {
         slot.innerHTML = landInfoHtml(st, noDetail);
         
@@ -8777,6 +8904,13 @@
         if (wantInfo.hpms) loadHsPms(pnu, (arr) => {
           if (arr && arr.length) { st.hpms = arr; render(); }
         });
+        
+        if (wantInfo.trd) {
+          loadTrdar().then(() => {
+            const z = trdarNear(lat, lng);
+            if (z) { st.trd = z; render(); }
+          });
+        }
         
         if (wantInfo.sch) {
           loadSchool().then(() => {
