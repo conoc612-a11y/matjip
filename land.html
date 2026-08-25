@@ -5394,6 +5394,56 @@
       
       
       const subLayer = L.layerGroup();
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      const _cmpetCache = new Map();   
+      function loadChungakCmpet(pblancNo, cb) {
+        if (!pblancNo) { cb(null); return; }
+        if (_cmpetCache.has(pblancNo)) { cb(_cmpetCache.get(pblancNo)); return; }
+        const call = (op) => {
+          const q = new URLSearchParams({
+            op, page: '1', perPage: '100', returnType: 'JSON',
+            'cond[PBLANC_NO::EQ]': String(pblancNo),
+          });
+          return fetch(SUBSCRIPTION_ENDPOINT + '?' + q)
+            .then((r) => (r.ok ? r.json() : null))
+            .catch(() => null);
+        };
+        Promise.all([call('getAPTLttotPblancCmpet'), call('getAPTSpsplyReqstStus')])
+          .then(([c, s]) => {
+            const out = {
+              rate: (c && Array.isArray(c.data)) ? c.data : [],
+              sp: (s && s.matchCount) || 0,
+            };
+            _cmpetCache.set(pblancNo, out);
+            cb(out);
+          });
+      }
+      
+      
+      function cmpetSummary(rows) {
+        const first = rows.filter((x) => String(x.SUBSCRPT_RANK_CODE) === '1'
+          && String(x.RESIDE_SECD) === '01' && Number(x.CMPET_RATE) > 0);
+        const use = first.length ? first : rows.filter((x) => Number(x.CMPET_RATE) > 0);
+        if (!use.length) return null;
+        const rates = use.map((x) => Number(x.CMPET_RATE));
+        const req = use.reduce((a, x) => a + (Number(x.REQ_CNT) || 0), 0);
+        const sup = use.reduce((a, x) => a + (Number(x.SUPLY_HSHLDCO) || 0), 0);
+        const top = use.slice().sort((a, b) => Number(b.CMPET_RATE) - Number(a.CMPET_RATE)).slice(0, 3);
+        return {
+          max: Math.max.apply(null, rates),
+          avg: sup > 0 ? req / sup : rates.reduce((a, b) => a + b, 0) / rates.length,
+          req, sup, top,
+          scope: first.length ? '1순위 해당지역' : '전체 순위',
+        };
+      }
       function subPopupHtml(it) {
         const range = (a, b) => (a || '?') + (b && b !== a ? ' ~ ' + b : '');
         const rows = [`<b>${esc(it.name)}</b>`, esc(it.addr)];
@@ -5401,9 +5451,50 @@
         if (it.pblancDe) rows.push(`모집공고일: ${it.pblancDe}`);
         if (it.spStart) rows.push(`특별공급 접수: ${range(it.spStart, it.spEnd)}`);
         if (it.rcptStart) rows.push(`일반(1순위) 접수: ${range(it.rcptStart, it.rcptEnd)}`);
+        
+        if (it._cmpet === 'loading') {
+          rows.push('<span style="color:var(--c-muted);font-size:12px;">경쟁률 조회 중…</span>');
+        } else if (it._cmpet) {
+          const s = cmpetSummary(it._cmpet.rate);
+          if (s) {
+            const n1 = (v) => Number(v).toFixed(1);
+            rows.push('<div style="margin-top:4px;padding-top:4px;border-top:1px solid var(--c-border);">'
+              + `<b>청약 경쟁률</b> <span style="font-size:11.5px;color:var(--c-muted);">${esc(s.scope)}</span><br>`
+              + `평균 <b>${n1(s.avg)}</b> : 1 · 최고 <b>${n1(s.max)}</b> : 1<br>`
+              + `공급 ${s.sup.toLocaleString()}세대 · 신청 ${s.req.toLocaleString()}건`
+              + (s.top.length ? '<br><span style="font-size:11.5px;color:var(--c-muted);">'
+                + s.top.map((x) => esc(String(x.HOUSE_TY || '')) + ' ' + n1(x.CMPET_RATE)).join(' · ')
+                + '</span>' : '')
+              + (it._cmpet.sp ? `<br><span style="font-size:11.5px;color:var(--c-muted);">특별공급 신청현황 ${it._cmpet.sp}건 집계됨</span>` : '')
+              + '</div>');
+          } else {
+            
+            const open = it.rcptEnd && it.rcptEnd >= chungakToday();
+            rows.push('<span style="color:var(--c-muted);font-size:12px;">'
+              + (open ? '경쟁률은 접수 마감 후 집계됩니다.' : '이 공고의 경쟁률 자료가 없습니다.')
+              + '</span>');
+          }
+        }
         if (it.url) rows.push(`<a href="${safeUrl(it.url)}" target="_blank" rel="noopener">청약홈 상세 보기</a>`);
         return rows.join('<br>');
       }
+      
+      
+      
+      map.on('popupopen', (e) => {
+        const m = e.popup && e.popup._source;
+        if (!m || !m._sub) return;
+        const it = m._sub;
+        if (it._cmpet !== undefined) return;      
+        it._cmpet = 'loading';
+        e.popup.setContent(subPopupHtml(it));
+        loadChungakCmpet(it.pblancNo, (r) => {
+          it._cmpet = r || { rate: [], sp: 0 };
+          
+          if (map.hasLayer(e.popup)) e.popup.setContent(subPopupHtml(it));
+        });
+      });
+
       let _subRendered = false;
       function renderSubscriptions() {
         if (_subRendered) return;
@@ -5424,7 +5515,9 @@
                       iconSize: [58, 20], iconAnchor: [29, 10],
                     }),
                     title: it.name,
-                  }).addTo(subLayer).bindPopup(subPopupHtml(it));
+                  }).addTo(subLayer).bindPopup(subPopupHtml(it))
+                    
+                    ._sub = it;
                 }
                 next();
               });
@@ -5972,7 +6065,7 @@
         ['부동산·건축', ['건축HUB 주택인허가정보',
           '공동주택 기본정보', '아파트 분양권전매 실거래가',
           '아파트 매매 실거래가(기본판)', '전국지가변동률 마이크로데이터', '녹색건축 인증현황',
-          '청약 당첨자 정보(청약홈)', '청약 경쟁률·특별공급 현황', '온비드 공매 물건상세', '온비드 공매 입찰정보', '파산금융회사 매물현황']],
+          '청약 당첨자 정보(청약홈)', '온비드 공매 물건상세', '온비드 공매 입찰정보', '파산금융회사 매물현황']],
         
         
         ['공동주택 관리', ['하자담보책임기간',
@@ -6041,7 +6134,6 @@
         '건축HUB 유지점검정보': { d: '안전점검 이력·하자 리스크.' },
         '녹색건축 인증현황': { d: '인증 여부.' },
         '청약 당첨자 정보(청약홈)': { d: '청약 경쟁 실적.' },
-        '청약 경쟁률·특별공급 현황': { d: '청약 경쟁 실적.' },
         '파산금융회사 매물현황': { d: '특수 매물.' },
         '주식시세정보(금융위)': { d: '헤더에 환율처럼 띄울 예정.' },
         '기업 재무정보(금융위)': { d: '법인 재무.' },
