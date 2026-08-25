@@ -3215,6 +3215,85 @@
       };
       
       const obEok = (v) => (v ? (v / 1e8).toLocaleString('ko-KR', { maximumFractionDigits: 2 }) + '억원' : '-');
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      const ONBID_PROXY = MOLIT_PROXY;
+      const _obDtlCache = new Map();
+      function loadOnbidDetail(mng, cdtn, cb) {
+        if (!mng) { cb(null); return; }
+        if (_obDtlCache.has(mng)) { cb(_obDtlCache.get(mng)); return; }
+        const q = new URLSearchParams({
+          svc: 'OnbidRlstDtlSrvc2', op: 'getRlstDtlInf2',
+          cltrMngNo: mng, pbctCdtnNo: String(cdtn || ''),
+        });
+        fetch(ONBID_PROXY + '?' + q)
+          .then((r) => (r.ok ? r.json() : null))
+          .then((o) => {
+            
+            
+            const root = (o && o.response) || o || {};
+            const it = root.body && root.body.items && root.body.items.item;
+            const d = Array.isArray(it) ? it[0] : it;
+            const out = d ? {
+              lease: d.leasInfList || [], rights: d.rgstPrmrInfList || [],
+              apsl: d.apslEvlClgList || [], sqms: d.sqmsList || [],
+              dtbt: d.dtbtRqrMtrsList || [], ocpy: d.ocpyRelList || [],
+            } : null;
+            _obDtlCache.set(mng, out);
+            cb(out);
+          })
+          .catch(() => cb(null));
+      }
+      const obYmd = (s) => (s && /^\d{8}$/.test(s) ? s.slice(0, 4) + '.' + s.slice(4, 6) + '.' + s.slice(6) : (s || '—'));
+      function onbidDetailHtml(x) {
+        if (!x) return '';
+        const box = (t) => '<div style="margin-top:6px;padding-top:5px;border-top:1px solid var(--c-border);">' + t + '</div>';
+        const out = [];
+        if (x.lease.length) {
+          out.push('<b>임대차</b> <span style="font-size:11px;color:var(--c-muted);">보증금·확정일자·전입일</span><br>'
+            + x.lease.map((l) => {
+              const amt = l.bidGrteeAmt ? obEok(l.bidGrteeAmt) : '금액 미상';
+              return '<span style="font-size:12px;">' + esc(l.irstDivNm || '권리')
+                + ' <b>' + esc(amt) + '</b> · 확정 ' + esc(obYmd(l.cfmtnYmd))
+                + ' · 전입 ' + esc(obYmd(l.mvinYmd)) + '</span>';
+            }).join('<br>'));
+        }
+        if (x.rights.length) {
+          out.push('<b>등기 권리</b><br>' + x.rights.slice(0, 8).map((r) => '<span style="font-size:12px;">'
+            + esc(r.irstDivNm || '') + ' · ' + esc(obYmd(r.rgstYmd))
+            + (r.inprStngAmt ? ' · ' + esc(obEok(r.inprStngAmt)) : '') + '</span>').join('<br>')
+            + (x.rights.length > 8 ? '<br><span style="font-size:11px;color:var(--c-muted);">외 ' + (x.rights.length - 8) + '건</span>' : ''));
+        }
+        if (x.sqms.length) {
+          
+          out.push('<b>면적 명세</b><br>' + x.sqms.map((s) => '<span style="font-size:12px;">'
+            + esc(s.clandCont || '') + ' ' + esc(s.sqmsCont || '')
+            + (s.dtlCltrNm ? ' · ' + esc(s.dtlCltrNm) : '') + '</span>').join('<br>'));
+        }
+        if (x.apsl.length) {
+          out.push('<b>감정평가</b><br>' + x.apsl.map((a) => '<span style="font-size:12px;">'
+            + esc(obYmd(a.apslEvlYmd)) + ' ' + esc(a.apslEvlOrgNm || '')
+            + (a.apslEvlAmt ? ' <b>' + esc(obEok(a.apslEvlAmt)) + '</b>' : '')
+            + (a.urlAdr ? ' <a href="' + safeUrl(a.urlAdr) + '" target="_blank" rel="noopener">평가서</a>' : '')
+            + '</span>').join('<br>'));
+        }
+        if (x.dtbt.length) out.push('<b>배당요구</b> ' + x.dtbt.length + '건');
+        if (x.ocpy.length) out.push('<b>점유관계</b> ' + x.ocpy.length + '건');
+        if (!out.length) return box('<span style="font-size:12px;color:var(--c-muted);">이 물건의 권리·임대차 자료가 없습니다.</span>');
+        return box(out.join('<div style="height:5px;"></div>')
+          + '<div style="margin-top:5px;font-size:11px;color:var(--c-muted);">'
+          + '온비드 물건상세 · 순위·인수 여부는 등기 전부와 배당요구를 함께 봐야 합니다</div>');
+      }
       function onbidPopupHtml(d) {
         const rate = d.appr && d.low ? Math.round(d.low * 100 / d.appr) : null;
         return '<div class="pc" style="min-width:250px;">'
@@ -3228,9 +3307,36 @@
           + `<div>입찰 ${obDt(d.bgn)} ~ ${obDt(d.end)}</div>`
           + ((d.land || d.bld) ? `<div>면적 토지 ${d.land || 0}㎡ · 건물 ${d.bld || 0}㎡</div>` : '')
           + (d.img ? `<div style="margin-top:6px;"><img src="${esc(d.img)}" alt="" style="max-width:100%;border-radius:6px;" loading="lazy" onerror="this.style.display='none'"></div>` : '')
+          
+          + (d._obDtl === 'loading'
+            ? '<div style="margin-top:6px;font-size:12px;color:var(--c-muted);">권리·임대차 조회 중…</div>'
+            : (d._obDtl !== undefined ? onbidDetailHtml(d._obDtl)
+              : '<div style="margin-top:6px;"><button type="button" class="ob-dtl btn-mini">권리·임대차 보기</button>'
+                + '<span style="font-size:11px;color:var(--c-muted);margin-left:6px;">임차 보증금·확정일자·등기 권리</span></div>'))
           + `<div style="margin-top:8px;"><a href="https://www.onbid.co.kr/op/cta/cltrdtl/collateralRealEstateDetail.do?cltrNo=${encodeURIComponent(d.mng)}" target="_blank" rel="noopener">온비드에서 열기 ↗</a></div>`
           + '</div></div>';
       }
+      
+      map.on('popupopen', (e) => {
+        const el = e.popup && e.popup.getElement && e.popup.getElement();
+        const btn = el && el.querySelector('.ob-dtl');
+        if (!btn) return;
+        const m = e.popup._source;
+        const d = m && m._ob;
+        if (!d) return;
+        btn.onclick = (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          d._obDtl = 'loading';
+          e.popup.setContent(onbidPopupHtml(d));
+          loadOnbidDetail(d.mng, d.cdtn, (x) => {
+            
+            if (x) d._obDtl = x;
+            else { delete d._obDtl; toast('권리·임대차를 불러오지 못했습니다.'); }
+            if (map.hasLayer(e.popup)) e.popup.setContent(onbidPopupHtml(d));
+          });
+        };
+      });
       onbidCluster.on('click', (e) => {
         const m = e.layer;
         if (!m || !m._pop) return;
@@ -3243,6 +3349,7 @@
         onbidCluster.addLayers(onbidRows.map((d) => {
           const m = L.marker([d.lat, d.lng], { icon: obIcon(d.fail ? '#fa5252' : '#7048e8') });
           m._pop = (() => onbidPopupHtml(d));
+          m._ob = d;   
           m.bindTooltip(esc(d.nm), { direction: 'top' });
           return m;
         }));
@@ -6141,7 +6248,7 @@
         ]],
         ['부동산·건축', ['건축HUB 주택인허가정보',
           '공동주택 기본정보', '아파트 매매 실거래가(기본판)', '전국지가변동률 마이크로데이터', '녹색건축 인증현황',
-          '청약 당첨자 정보(청약홈)', '온비드 공매 물건상세', '온비드 공매 입찰정보', '파산금융회사 매물현황']],
+          '청약 당첨자 정보(청약홈)', '온비드 공매 입찰정보', '파산금융회사 매물현황']],
         
         
         ['공동주택 관리', ['하자담보책임기간',
@@ -6178,8 +6285,7 @@
           p: '주소가 도로명까지만 제공 — 건물 단위 조인은 불가, 동 단위 지표용'
         },
         '온비드 공매 물건목록': { d: '공매 물건 열거.', o: ['getRlstCltrList2'] },
-        '온비드 공매 물건상세': { d: '감정가·최저입찰가. ⚠️ 개발계정 트래픽 일 1,000건 — 물건마다 호출하는 설계는 불가.' },
-        '온비드 공매 입찰정보': { d: '입찰경쟁 정보.', p: 'cltrMngNo + pbctCdtnNo 입력 필요(목록→상세 순서)' },
+        '온비드 공매 입찰정보': { d: '입찰 방식·제한 정보(공동입찰·대리입찰·차순위 가능 여부, 대금 납부 조건). 실호출로 확인한 결과 <b>직전 회차 결과·최저가 필드는 비어 있었고</b>(유찰 10회 물건에서도 null), 감정가·최저가·유찰은 이미 물건목록에 있습니다. 판단의 핵심 숫자가 아니라 보조 정보라 연결 순위를 뒤로 뒀습니다.', p: 'cltrMngNo + pbctCdtnNo' },
         'LH 임대주택단지(마이홈이 상위호환)': {
           d: '주소가 시·군까지만 제공돼 지도에 못 찍는다. 사용 중인 마이홈 공공임대(HWSPR04)가 상위 호환.'
         },
