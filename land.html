@@ -3172,6 +3172,12 @@
       const auctionList = $('ap-list');
       let auctionFavOnly = false;
       let auctionQuery = '';
+      // 지도를 움직이면 목록을 '보이는 순'으로 다시 세운다(사용자 요청 2026-08-25).
+      // 끄면 데이터 원래 순서 그대로다 — 정렬 로직은 auctionRenderList 안에 있다.
+      let auctionSortByView = true;
+      // 거리순 정렬 시 렌더 상한. 전량(3,500행)은 재렌더에 300ms 넘게 들어 지도 드래그가 끊긴다.
+      // 가까운 것부터 이만큼만 그리고 건수 표시로 밝힌다(검색·즐겨찾기 중에는 적용하지 않는다).
+      const AUC_RENDER_CAP = 300;
       const auctionMatch = (d) => {
         const q = auctionQuery.trim().toLowerCase();
         if (!q) return true;
@@ -3216,14 +3222,40 @@
         const q = auctionQuery.trim().toLowerCase();
         const shown = auctionRows.map((d, i) => ({ d, i, fav: favs.has(auctionFavKey(d)), key: auctionFavKey(d) }))
           .filter((x) => (!auctionFavOnly || x.fav) && (!q || auctionMatch(x.d)));
+        // ── 지도에 보이는 물건을 목록 위로 (사용자 요청 2026-08-25) ──────────────
+        // "지도에서 위치를 옮기면 지도에 나오는 경매 순으로 좌측 목록 순서가 바뀌면 좋겠다".
+        // 화면 안(뷰포트) 물건을 먼저, 그 안에서는 **지도 중심에서 가까운 순**.
+        // 화면 밖 물건은 지우지 않고 뒤로 보낸다 — 건수가 갑자기 줄면 사라진 것처럼 보인다.
+        if (auctionSortByView) {
+          const c = map.getCenter();
+          const b = map.getBounds();
+          shown.forEach((x) => {
+            const d = x.d;
+            const has = d.lat != null && d.lng != null;
+            x._out = has && b.contains([d.lat, d.lng]) ? 0 : 1;   // 0 = 화면 안이라 먼저
+            x._dist = has ? map.distance([d.lat, d.lng], [c.lat, c.lng]) : Infinity;
+          });
+          shown.sort((p, r) => p._out - r._out || p._dist - r._dist);
+        }
         // 지도에서 클릭한 물건을 맨 위로. 나머지 순서는 건드리지 않는다(안정 정렬).
         // 필터에 걸려 목록에 없으면 핀은 그냥 무시된다 — 필터를 임의로 풀지 않는다.
         if (auctionPinnedKey) {
           const at = shown.findIndex((x) => x.key === auctionPinnedKey);
           if (at > 0) shown.unshift(shown.splice(at, 1)[0]);
         }
-        $('ap-count').textContent = (q || auctionFavOnly ? shown.length + '/' + auctionRows.length + '건' : auctionRows.length + '건');
-        auctionList.innerHTML = shown.map((x) => auctionRowHtml(x.d, x.fav, x.i, x.key === auctionPinnedKey)).join('');
+        // ⚠️ 3,500행을 매번 다시 그리면 **306~317ms**(실측) 가 든다. 지도를 드래그할 때마다
+        //    그만큼 멈추므로, 거리순으로 세운 뒤 **가까운 것부터 상한까지만** 그린다.
+        //    검색·즐겨찾기 필터를 쓰는 중이면 자르지 않는다 — 그때는 사용자가 특정 물건을
+        //    찾는 것이고 결과가 잘리면 "왜 안 나오지"가 된다.
+        //    ⛔ 말없이 자르지 않는다 — 아래 건수 표시에 '가까운 N건 / 전체 M건'으로 밝힌다.
+        const capped = (auctionSortByView && !q && !auctionFavOnly && shown.length > AUC_RENDER_CAP)
+          ? shown.slice(0, AUC_RENDER_CAP) : shown;
+        $('ap-count').textContent = q || auctionFavOnly
+          ? shown.length + '/' + auctionRows.length + '건'
+          : (capped.length < shown.length
+            ? '가까운 ' + capped.length + '건 / 전체 ' + shown.length + '건'
+            : shown.length + '건');
+        auctionList.innerHTML = capped.map((x) => auctionRowHtml(x.d, x.fav, x.i, x.key === auctionPinnedKey)).join('');
       }
       // 지도 아이콘 클릭 → 그 물건을 목록 맨 위로 올리고 목록을 보여준다(2026-08-21 요청).
       function auctionPinToTop(d) {
@@ -3234,6 +3266,23 @@
         auctionRenderList();
         auctionList.scrollTop = 0;             // 아래로 스크롤된 상태였다면 맨 위로
       }
+      // 지도를 옮기면 목록을 다시 세운다. 지키는 조건 넷:
+      //   · 패널이 닫혀 있으면 하지 않는다(보이지 않는 목록을 3천 행씩 다시 그릴 이유가 없다)
+      //   · **상세를 보는 중이면 하지 않는다** — 읽고 있는 화면이 갑자기 목록으로 바뀌면 안 된다
+      //   · 디바운스 250ms — moveend 는 드래그 한 번에도 여러 번 온다
+      //   · 다시 그린 뒤 맨 위로 스크롤한다. 순서가 바뀌었으므로 이전 위치는 의미가 없고,
+      //     맨 위가 '지금 화면 중심에서 가장 가까운 물건'이라 그게 사용자가 보려던 것이다
+      let _aucSortTimer = null;
+      map.on('moveend', () => {
+        if (!auctionSortByView) return;
+        if (!auctionRows || auctionPanel.hidden) return;
+        if (auctionDetail && !auctionDetail.hidden) return;
+        clearTimeout(_aucSortTimer);
+        _aucSortTimer = setTimeout(() => {
+          auctionRenderList();
+          auctionList.scrollTop = 0;
+        }, 250);
+      });
       $('ap-search').oninput = (e) => { auctionQuery = e.target.value; auctionRenderList(); };
       auctionList.onclick = (e) => {
         const star = e.target.closest('.ap-star');
