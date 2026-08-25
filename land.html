@@ -2886,6 +2886,13 @@
       
       
       const HOSP_COLOR = { 상급종합: '#c2255c', 종합병원: '#e64980', 병원: '#f06595', 요양병원: '#f783ac' };
+      
+      
+      
+      
+      
+      const SCHOOL_COLOR = { 초: '#f59f00', 중: '#1971c2', 고: '#c2255c' };
+      const schoolCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 50 });
       const hospCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 55 });
       const emrgCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 45 });
       [hospCluster, emrgCluster].forEach((cl) => cl.on('click', (e) => {
@@ -2894,6 +2901,74 @@
         if (!m.getPopup() && m._pop) m.bindPopup(m._pop());
         m.openPopup();
       }));
+      const SCH_RADIUS = 800;   
+      
+      function schoolsNear(lat, lng, radius) {
+        if (!schoolRows) return null;
+        const R = 6371000, rad = Math.PI / 180;
+        const out = [];
+        for (const d of schoolRows) {
+          
+          if (Math.abs(d.lat - lat) > 0.012 || Math.abs(d.lng - lng) > 0.015) continue;
+          const dLat = (d.lat - lat) * rad, dLng = (d.lng - lng) * rad;
+          const a = Math.sin(dLat / 2) ** 2
+            + Math.cos(lat * rad) * Math.cos(d.lat * rad) * Math.sin(dLng / 2) ** 2;
+          const m = 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+          if (m <= radius) out.push(Object.assign({ d: Math.round(m) }, d));
+        }
+        return out.sort((x, y) => x.d - y.d);
+      }
+      let schoolRows = null, _schoolPromise = null;
+      function loadSchool() {
+        if (!_schoolPromise) {
+          _schoolPromise = fetch('school.json')
+            .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+            .then((j) => { schoolRows = j.rows || []; schoolRows._yr = j.grdYear; return schoolRows; })
+            .catch((e) => { console.error('학교 로드 실패:', e); return null; });
+        }
+        return _schoolPromise;
+      }
+      function schoolPopupHtml(d) {
+        const rows = [`<div style="margin-bottom:3px;"><b>${esc(d.nm)}</b></div>`];
+        const head = [d.knd, d.fnd, d.co].filter(Boolean).join(' · ');
+        if (head) rows.push(`<div style="font-size:12px;">${esc(head)}</div>`);
+        
+        if (d.stu != null || d.per != null) {
+          const bits = [];
+          if (d.stu != null) bits.push('학생 ' + d.stu.toLocaleString('ko-KR') + '명');
+          if (d.cls != null) bits.push('학급 ' + d.cls);
+          if (d.per != null) bits.push('<b>학급당 ' + d.per + '명</b>');
+          if (d.tcr != null) bits.push('교원 ' + d.tcr);
+          rows.push(`<div style="margin-top:3px;font-size:12px;">${bits.join(' · ')}</div>`);
+        } else {
+          
+          rows.push('<div style="margin-top:3px;font-size:11.5px;color:var(--c-muted);">학급·학생수 정보 없음</div>');
+        }
+        if (d.addr) rows.push(`<div style="margin-top:3px;font-size:12px;color:var(--c-muted);">${esc(d.addr)}</div>`);
+        const tail = [];
+        if (d.tel) tail.push(telLink(d.tel));
+        if (d.hp) tail.push(`<a href="${esc(/^https?:/.test(d.hp) ? d.hp : 'http://' + d.hp)}" target="_blank" rel="noopener">홈페이지</a>`);
+        if (tail.length) rows.push(`<div style="margin-top:3px;font-size:12px;">${tail.join(' · ')}</div>`);
+        if (d.ofc) rows.push(`<div style="margin-top:3px;font-size:11.5px;color:var(--c-muted);">${esc(d.ofc)}</div>`);
+        rows.push('<div style="margin-top:5px;font-size:11px;color:var(--c-muted);">서울 열린데이터광장 학교 기본정보'
+          + (d.yr ? ' · 학급·학생수 ' + d.yr + '년 공시' : '') + '</div>');
+        return `<div class="pc"><div class="pc-head">`
+          + `<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${SCHOOL_COLOR[d.lv] || '#868e96'};flex-shrink:0;"></span>`
+          + `<span class="rp-name">${esc(d.knd || '학교')}</span></div><div class="pc-body">${rows.join('')}</div></div>`;
+      }
+      function schoolBuild() {
+        if (!schoolRows) return;
+        schoolCluster.clearLayers();
+        schoolCluster.addLayers(schoolRows.map((d) => {
+          const m = L.circleMarker([d.lat, d.lng], {
+            radius: d.lv ? 8 : 6, color: '#000', weight: 1.5,
+            fillColor: SCHOOL_COLOR[d.lv] || '#868e96', fillOpacity: 0.85,
+          });
+          m._pop = (() => schoolPopupHtml(d));
+          m.bindTooltip(esc(d.nm), { direction: 'top' });
+          return m;
+        }));
+      }
       let hospRows = null, _hospPromise = null;
       function loadHosp() {
         if (!_hospPromise) {
@@ -2979,7 +3054,15 @@
         }));
       }
       map.on('overlayadd', (e) => {
-        if (e.layer === hospCluster) {
+        if (e.layer === schoolCluster) {
+          loadSchool().then((r) => {
+            if (!r) { toast('학교 정보를 불러오지 못했습니다.'); return; }
+            schoolBuild();
+            const c = { 초: 0, 중: 0, 고: 0 };
+            r.forEach((d) => { if (c[d.lv] != null) c[d.lv]++; });
+            toast('학교 ' + r.length.toLocaleString() + '곳 — 초 ' + c['초'] + ' · 중 ' + c['중'] + ' · 고 ' + c['고'] + ' (색 구분)');
+          });
+        } else if (e.layer === hospCluster) {
           loadHosp().then((r) => {
             if (!r) { toast('병원 정보를 불러오지 못했습니다.'); return; }
             hospBuild();
@@ -5937,10 +6020,11 @@
       const infoHpms = L.layerGroup();
       const infoLp = L.layerGroup();
       const infoTrdar = L.layerGroup();
+      const infoSch = L.layerGroup();
       const infoEngy = L.layerGroup();
       const infoFund = L.layerGroup();
-      const wantInfo = { sht: true, mtn: true, pms: true, hpms: true, engy: true, fund: true, lp: true, trdar: true };
-      const _infoMap = [[infoSht, 'sht'], [infoMtn, 'mtn'], [infoPms, 'pms'], [infoHpms, 'hpms'], [infoLp, 'lp'], [infoTrdar, 'trdar'],
+      const wantInfo = { sht: true, mtn: true, pms: true, hpms: true, engy: true, fund: true, lp: true, trdar: true, sch: true };
+      const _infoMap = [[infoSht, 'sht'], [infoMtn, 'mtn'], [infoPms, 'pms'], [infoHpms, 'hpms'], [infoLp, 'lp'], [infoTrdar, 'trdar'], [infoSch, 'sch'],
         [infoEngy, 'engy'], [infoFund, 'fund']];
       map.on('overlayadd', (e) => {
         const hit = _infoMap.find((x) => x[0] === e.layer);
@@ -5950,7 +6034,7 @@
         const hit = _infoMap.find((x) => x[0] === e.layer);
         if (hit) wantInfo[hit[1]] = false;
       });
-      infoSht.addTo(map); infoMtn.addTo(map); infoPms.addTo(map); infoHpms.addTo(map); infoLp.addTo(map); infoTrdar.addTo(map);
+      infoSht.addTo(map); infoMtn.addTo(map); infoPms.addTo(map); infoHpms.addTo(map); infoLp.addTo(map); infoTrdar.addTo(map); infoSch.addTo(map);
       infoEngy.addTo(map); infoFund.addTo(map);
 
       const LAYER_TREE = [
@@ -5965,6 +6049,7 @@
           { name: '주차장 (실제 시설 · 무료/유료)', layer: parkingCluster },
           { name: '전기차 충전소', layer: evCluster },
           
+          { name: '학교 (초·중·고)', layer: schoolCluster },
           { name: '병원·의원 (심평원)', layer: hospCluster },
           { name: '응급의료기관', layer: emrgCluster },
           
@@ -5981,6 +6066,7 @@
           { name: '주택 인허가 이력', layer: infoHpms },
           { name: '지가 변동률 추세', layer: infoLp },
           { name: '주변 상권 (반경 150m)', layer: infoTrdar },
+          { name: '학군 (직선 800m)', layer: infoSch },
           
           { name: '에너지 사용량 (전기·가스)', layer: infoEngy },
           
@@ -7957,6 +8043,42 @@
       
       
       
+      
+      let schHtml = '';
+      if (st.sch && st.sch.length) {
+        const lvOrder = { 초: 0, 중: 1, 고: 2 };
+        const byLv = { 초: [], 중: [], 고: [] };
+        st.sch.forEach((x) => { if (byLv[x.lv]) byLv[x.lv].push(x); });
+        const line = (lv) => {
+          const arr = byLv[lv];
+          if (!arr.length) return '';
+          const a = arr[0];
+          const bits = ['<b>' + esc(a.nm) + '</b>', a.d + 'm'];
+          if (a.per != null) bits.push('학급당 ' + a.per + '명');
+          else if (a.stu != null) bits.push('학생 ' + a.stu.toLocaleString('ko-KR'));
+          return '<div style="margin-top:2px;font-size:12px;">'
+            + '<span style="color:' + (SCHOOL_COLOR[lv] || '#868e96') + ';">■</span> '
+            + lv + ' ' + bits.join(' · ')
+            + (arr.length > 1 ? ' <span style="color:var(--c-muted);">외 ' + (arr.length - 1) + '</span>' : '')
+            + '</div>';
+        };
+        const lines = ['초', '중', '고'].map(line).filter(Boolean);
+        if (lines.length) {
+          const yr = st.sch.find((x) => x.yr) || {};
+          schHtml = '<div style="margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">'
+            + '<b>학군</b> <span style="font-size:12px;color:var(--c-muted);">직선 ' + SCH_RADIUS + 'm 안</span>'
+            + lines.join('')
+            + '<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">서울 열린데이터광장 학교 기본정보'
+            + (yr.yr ? ' · 학급·학생수 ' + yr.yr + '년 공시' : '')
+            + ' · 통학구역(배정) 정보는 아직 없음</div>'
+            + '</div>';
+        }
+      }
+      
+      
+      
+      
+      
       let trdarHtml = '';
       if (st.trdar && st.trdar.total) {
         const T = st.trdar;
@@ -8274,10 +8396,10 @@
             + '이 땅에 무엇을 지을 수 있나 — 호출 ' + LANDUSE_ACTS.length + '회, 누를 때만 조회합니다.</span>');
         }
       }
-      if (!rows.length && !houseHtml && !detailHtml && !storeHtml && !nrHtml && !pmsHtml && !hpmsHtml && !lpHtml && !trdarHtml && !shtHtml && !mtnHtml && !engyHtml && !reserveHtml && !mgmtHtml) return '';
+      if (!rows.length && !houseHtml && !detailHtml && !storeHtml && !nrHtml && !pmsHtml && !hpmsHtml && !lpHtml && !trdarHtml && !schHtml && !shtHtml && !mtnHtml && !engyHtml && !reserveHtml && !mgmtHtml) return '';
       return `<div style="font-size:13px;margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">`
         + (rows.length ? `<b>토지·건물 정보</b>${badge}<br>${rows.join('<br>')}` : '')
-        + shtHtml + pmsHtml + hpmsHtml + trdarHtml + lpHtml + mtnHtml + engyHtml + reserveHtml + mgmtHtml + luHtml + storeHtml + nrHtml + houseHtml + detailHtml + '</div>';
+        + shtHtml + pmsHtml + hpmsHtml + schHtml + trdarHtml + lpHtml + mtnHtml + engyHtml + reserveHtml + mgmtHtml + luHtml + storeHtml + nrHtml + houseHtml + detailHtml + '</div>';
     }
 
     
@@ -8480,7 +8602,7 @@
     function fillLandInfo(popupEl, getPopup, lat, lng, onInfo, noDetail, jibun) {
       const slot = popupEl && popupEl.querySelector('.bld-info');
       if (!slot) return;
-      const st = { zone: '', parcel: null, br: null, bld: null, house: null, detail: null, addrPnu: null, trdar: null };
+      const st = { zone: '', parcel: null, br: null, bld: null, house: null, detail: null, addrPnu: null, trdar: null, sch: null };
       const render = () => {
         slot.innerHTML = landInfoHtml(st, noDetail);
         
@@ -8598,6 +8720,13 @@
         if (wantInfo.hpms) loadHsPms(pnu, (arr) => {
           if (arr && arr.length) { st.hpms = arr; render(); }
         });
+        
+        if (wantInfo.sch) {
+          loadSchool().then(() => {
+            const near = schoolsNear(lat, lng, SCH_RADIUS);
+            if (near && near.length) { st.sch = near; render(); }
+          });
+        }
         
         
         if (wantInfo.trdar) loadTrdar(lat, lng, (d) => {
