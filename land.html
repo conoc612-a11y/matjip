@@ -2718,6 +2718,80 @@
       
       
       
+      
+      
+      
+      
+      const silvCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 60 });
+      silvCluster.on('click', (e) => {
+        const m = e.layer;
+        if (!m || !m._pop) return;
+        if (!m.getPopup() && m._pop) m.bindPopup(m._pop());
+        m.openPopup();
+      });
+      let silvRows = null, _silvPromise = null, _silvNoGeo = 0;
+      function loadSilv() {
+        if (!_silvPromise) {
+          _silvPromise = fetch('realprice_silv.json')
+            .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+            .then((j) => {
+              const F = {};
+              j.fields.forEach((f, i) => { F[f] = i; });
+              const all = j.rows.map((r) => ({
+                gu: j.gus[r[F.gu]], dong: r[F.dong], apt: r[F.apt], jibun: r[F.jibun],
+                area: r[F.area], floor: r[F.floor], amt: r[F.amt], ymd: r[F.ymd],
+                agent: r[F.agent], lat: r[F.lat], lng: r[F.lng],
+              }));
+              silvRows = all.filter((d) => d.lat && d.lng);
+              _silvNoGeo = all.length - silvRows.length;
+              return silvRows;
+            })
+            .catch((e) => { console.error('분양권전매 로드 실패:', e); return null; });
+        }
+        return _silvPromise;
+      }
+      function silvPopupHtml(d) {
+        const rows = [];
+        rows.push(`<div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div>`);
+        rows.push(`<div class="pc-price">${d.amt}억원</div>`);
+        if (d.apt) rows.push(`<div style="margin-top:3px;"><b>${esc(d.apt)}</b></div>`);
+        const meta = [];
+        if (d.area) meta.push('전용 ' + uAreaTxt(d.area));
+        if (d.floor) meta.push(d.floor + '층');
+        if (d.ymd) meta.push('계약 ' + esc(d.ymd));
+        if (meta.length) rows.push(`<div style="margin-top:3px;">${meta.join(' · ')}</div>`);
+        if (d.agent) rows.push(`<div style="margin-top:3px;font-size:12px;color:var(--c-muted);">중개 ${esc(d.agent)}</div>`);
+        rows.push('<div style="margin-top:6px;font-size:12px;color:var(--c-muted);">'
+          + '국토교통부 분양권·입주권 전매 실거래가 · 개인정보 보호로 층만 공개됩니다</div>');
+        return `<div class="pc"><div class="pc-head">`
+          + `<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#9c36b5;flex-shrink:0;"></span>`
+          + `<span class="rp-name">분양권 전매</span></div><div class="pc-body">${rows.join('')}</div></div>`;
+      }
+      function silvBuild() {
+        if (!silvRows) return;
+        silvCluster.clearLayers();
+        silvCluster.addLayers(silvRows.map((d) => {
+          const m = L.circleMarker([d.lat, d.lng], {
+            radius: 9, color: '#000', weight: 2, fillColor: '#9c36b5', fillOpacity: 0.9,
+          });
+          m._pop = (() => silvPopupHtml(d));
+          return m;
+        }));
+      }
+      map.on('overlayadd', (e) => {
+        if (e.layer !== silvCluster) return;
+        loadSilv().then((rows) => {
+          if (!rows) { toast('분양권 전매 데이터를 불러오지 못했습니다.'); return; }
+          silvBuild();
+          
+          if (_silvNoGeo) toast('분양권 전매 ' + rows.length.toLocaleString() + '건 표시 · '
+            + _silvNoGeo + '건은 좌표를 얻지 못해 지도에 없습니다');
+        });
+      });
+
+      
+      
+      
       const evCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 60 });
       evCluster.on('click', (e) => {
         const m = e.layer;
@@ -5618,6 +5692,8 @@
           
           
           { name: '오피스텔 매매', layer: officelSaleCluster },
+          
+          { name: '아파트 분양권·입주권 전매', layer: silvCluster },
         ]],
         ['지적·행정경계', [
           { name: '지적도 (필지 경계)', layer: wms('lt_c_landinfobasemap', 0.85) },
@@ -5794,7 +5870,8 @@
           ['분양업자', '공급 물량과 청약 경쟁을 본다', [
             ['청약', '*'],
             ['도시계획사업', ['정비사업', '역세권사업', '국토부사업']],
-            ['실거래', ['아파트 실거래가·노후도']],
+            
+            ['실거래', ['아파트 실거래가·노후도', '아파트 분양권·입주권 전매']],
           ]],
         ];
         const roleBar = L.DomUtil.create('div', 'lp-roles', body);
@@ -6063,8 +6140,7 @@
           '토지이용규제정보',
         ]],
         ['부동산·건축', ['건축HUB 주택인허가정보',
-          '공동주택 기본정보', '아파트 분양권전매 실거래가',
-          '아파트 매매 실거래가(기본판)', '전국지가변동률 마이크로데이터', '녹색건축 인증현황',
+          '공동주택 기본정보', '아파트 매매 실거래가(기본판)', '전국지가변동률 마이크로데이터', '녹색건축 인증현황',
           '청약 당첨자 정보(청약홈)', '온비드 공매 물건상세', '온비드 공매 입찰정보', '파산금융회사 매물현황']],
         
         
