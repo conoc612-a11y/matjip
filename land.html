@@ -2786,7 +2786,13 @@
       const aucRsltNm = (c) => AUC_RSLT_NM[String(c || '')] || String(c || '');
       const aucRsltUnknown = (c) => !!c && !AUC_RSLT_NM[String(c)];
       // 해당 물건의 기일 이력에서 재매각 사유를 찾아 가장 최근 것을 돌려준다.
+      // 색인(auction_detail_idx.json, 288KB)에 판정 결과가 이미 구워져 있으므로 그걸 먼저 본다 —
+      // 이 레이어 하나 때문에 11.5MB 상세를 받던 것을 없앤 지점이다(색인 rs = [연월일, 결과코드]).
+      // 사용처는 `rs.y` 와 `rs.rslt` 둘만 쓴다(실측: 팝업 배지·안내문 2곳, 레이어 필터 1곳).
+      // 색인 147건 = 옛 로직 147건, 불일치 0건으로 대체 가능을 확인했다(TROUBLESHOOTING §76).
+      // 상세 분기는 남겨 둔다 — 색인이 아직 없는 사건(수집 직후)에서도 동작해야 한다.
       function aucResaleOf(d) {
+        if (d && d.idx && d.idx.rs) return { y: d.idx.rs[0], rslt: d.idx.rs[1] };
         const g = (d && d.detail && d.detail.gihui) || [];
         const hits = g.filter((x) => AUC_RESALE.includes(String(x.rslt || '')));
         return hits.length ? hits[hits.length - 1] : null;
@@ -2829,10 +2835,26 @@
           else if (typeof auctionRenderList === 'function') auctionRenderList();
         } catch (e) { /* 렌더 실패가 데이터 적용을 되돌리진 않게 */ }
       }
+      // 목록이 뜬 뒤 브라우저가 한가할 때 상세(11.5MB)를 미리 받아 둔다.
+      // requestIdleCallback 은 스크롤·렌더가 없는 틈에만 실행되므로 목록 조작을 방해하지 않는다.
+      // 지원하지 않는 브라우저(Safari)는 setTimeout 으로 대신한다 — 늦게라도 받아 두면 된다.
+      // ⚠️ 여러 번 호출돼도 loadAuctionDetail() 이 프라미스를 재사용하므로 중복 다운로드는 없다.
+      let _aucIdleQueued = false;
+      function aucIdlePrefetch() {
+        if (_aucIdleQueued || _auctionDetailPromise) return;
+        _aucIdleQueued = true;
+        const go = () => loadAuctionDetail();
+        if (typeof requestIdleCallback === 'function') requestIdleCallback(go, { timeout: 8000 });
+        else setTimeout(go, 3000);
+      }
       function loadAuction() {
         if (!_auctionPromise) {
-          // 상세도 지금 같이 시작한다(병렬) — 단 아래 Promise.all 에는 넣지 않는다.
-          loadAuctionDetail();
+          // ⛔ 여기서 loadAuctionDetail() 을 호출하지 않는다(2026-08-25). 예전엔 목록을 받을 때
+          //    11.5MB 상세를 **같이 시작**했다 — 목록·마커에는 필요하지 않은 바이트다.
+          //    지금은 목록에 필요한 값(감정가·최저가·유찰·기일·태그·재매각)이 전부 288KB 색인에
+          //    들어 있어서(아래 fetch) 상세는 '물건을 열 때'까지 필요가 없다.
+          //    다만 아주 안 받으면 첫 상세 클릭이 느려지므로, **목록이 뜬 뒤 유휴 시간에** 조용히
+          //    받아 둔다(아래 aucIdlePrefetch). 목록은 빠르고 상세도 대체로 이미 도착해 있다.
           // auction.json(목록·좌표) + auction_photos.json(사진 메타) 병렬 fetch.
           // 사진 본체(jpg)는 R2, 상세는 위에서 별도 로드(2026-08-13, 2026-08-17, 2026-08-21).
           _auctionPromise = Promise.all([
@@ -2865,6 +2887,7 @@
               idx: (idxData && idxData[r[F.cn]]) || null, _i: i,
             }));
             aucApplyDetail();   // 상세가 나중에 도착하는 경우를 대비(도착해 있으면 재적용)
+            aucIdlePrefetch();  // 목록이 준비됐으니 한가해지면 상세를 미리 받아 둔다
             return auctionRows;
           }).catch(() => null);
         }
@@ -3170,11 +3193,9 @@
       }
       map.on('overlayadd', (e) => {
         if (e.layer !== auctionResaleCluster) return;
-        // 목록과 상세가 둘 다 있어야 판정된다. 상세는 크므로 시간이 걸릴 수 있다.
-        Promise.all([loadAuction(), loadAuctionDetail()]).then(() => {
-          aucApplyDetail();
-          auctionResaleBuild();
-        });
+        // 재매각 판정은 이제 **색인**으로 한다(loadAuction 이 색인을 함께 받는다).
+        // 예전엔 여기서 11.5MB 상세를 기다렸다 — 이 레이어를 켜는 것만으로 그만큼을 받았다.
+        loadAuction().then(() => { auctionResaleBuild(); });
       });
 
       // ── 매각예정 물건 (2026-08-21 신설) ──────────────────────────────
@@ -3466,6 +3487,14 @@
         auctionDetail.hidden = false;
         auctionDetail.scrollTop = 0;
         auctionRenderDetail();
+        // 상세(11.5MB)는 더 이상 페이지 로드에 묶여 있지 않다(유휴 시간에 미리 받는다).
+        // 그래도 사용자가 그보다 먼저 물건을 열 수 있으므로, 아직 없으면 지금 받아 다시 그린다.
+        // ⚠️ 무한 재귀는 없다 — loadAuctionDetail 은 실패해도 {} 로 resolve 하고,
+        //    성공하면 aucApplyDetail() 이 d.detail 을 채워 이 분기를 다시 타지 않는다.
+        //    다른 물건으로 옮겨간 뒤 도착하면 덮어쓰지 않도록 apdD 가 그대로인지 확인한다.
+        if (!_auctionDetailData) {
+          loadAuctionDetail().then(() => { if (apdD === d) auctionRenderDetail(); });
+        }
         // 지도에서 해당 물건으로 이동 (상세와 지도가 동시에 보이도록)
         const m = (() => { let out = null; auctionCluster.eachLayer((l) => { if (!out && l._idx === d._i) out = l; }); return out; })();
         if (m) { auctionCluster.zoomToShowLayer(m, () => { }); } else { map.setView([d.lat, d.lng], 16); }
