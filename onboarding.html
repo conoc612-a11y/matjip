@@ -69,7 +69,7 @@
       <span class="nav-tab active">👤 내 정보</span>
     </div>
 
-    <!-- (A) 로그인/회원가입 -->
+    
     <div id="auth-view">
       <h1>맛집 탐방 🍜</h1>
       <p class="sub">취향을 알려주시면 딱 맞는 서울 맛집을 추천해 드려요. 먼저 로그인해 주세요.</p>
@@ -114,7 +114,7 @@
       </div>
     </div>
 
-    <!-- (A2) 비밀번호 재설정: 가입한 이메일로 확인 메일 발송 -->
+    
     <div id="reset-view" class="hidden">
       <h1>비밀번호 재설정</h1>
       <p class="sub">가입 시 등록한 이메일로 재설정 링크를 보내드려요.</p>
@@ -127,7 +127,7 @@
       </div>
     </div>
 
-    <!-- (A3) 메일 링크 확인 후 새 비밀번호 설정 -->
+    
     <div id="newpw-view" class="hidden">
       <h1>새 비밀번호 설정</h1>
       <p class="sub">이메일 확인이 완료되었습니다. 새 비밀번호를 입력해 주세요.</p>
@@ -139,7 +139,7 @@
       </div>
     </div>
 
-    <!-- (B) 온보딩 설문 -->
+    
     <div id="onb-view" class="hidden">
       <div class="topbar">
         <div><h1 style="font-size:22px;margin:0;">취향 온보딩</h1><span class="sub" id="who"></span></div>
@@ -185,13 +185,13 @@
 
     const FLAVORS = ['매콤','담백','단짠','새콤','기름진','달콤'];
     const SITUATIONS = ['혼밥','회식','데이트','가족모임','친구모임'];
-    let mode = 'login'; // login | signup
+    let mode = 'login'; 
 
-    // 로그인 시 이메일 기억 — 매번 아이디 입력 안 하도록 (2026-08-16). 비밀번호는 저장하지 않는다.
+    
     const _savedEmail = localStorage.getItem('mj_last_email');
     if (_savedEmail) $('email').value = _savedEmail;
 
-    // ── 태그 칩 렌더 ──
+    
     function renderChips(el, items) {
       el.innerHTML = items.map((t) => `<span class="chip" data-tag="${t}">${t}</span>`).join('');
       el.querySelectorAll('.chip').forEach((c) =>
@@ -209,7 +209,7 @@
 
     $('spicy').addEventListener('input', () => { $('spicy-val').textContent = $('spicy').value; });
 
-    // 동의 박스 클릭 → 해당 약관 내용 펼치기(접기) + 자동 체크. '내용 보기' 링크는 새 탭만.
+    
     let termsCache = null;
     async function termContent(sec) {
       if (!termsCache) termsCache = await fetch('terms.html').then((r) => r.text());
@@ -236,7 +236,7 @@
     document.querySelectorAll('.agree-open').forEach((a) =>
       a.addEventListener('click', () => { a.closest('.agree').querySelector('input').checked = true; }));
 
-    // ── 로그인/회원가입 전환 ──
+    
     function bindSwitch() {
       const link = $('auth-switch').querySelector('a');
       if (link) link.addEventListener('click', toggleMode);
@@ -255,9 +255,9 @@
     }
     bindSwitch();
 
-    // ── 로그인/회원가입 실행 ──
+    
     const next = new URLSearchParams(location.search).get('next') || '';
-    if (next) sessionStorage.setItem('mj_next', next); // 이메일 확인 리다이렉트 후에도 유지
+    if (next) sessionStorage.setItem('mj_next', next); 
     $('auth-btn').addEventListener('click', async () => {
       const email = $('email').value.trim();
       const password = $('password').value;
@@ -275,7 +275,7 @@
       const { data, error } = await fn;
       $('auth-btn').disabled = false;
       if (error) { msg.textContent = error.message; msg.className = 'msg err'; return; }
-      if (!data.session) { // 이메일 확인이 켜져 있는 경우
+      if (!data.session) { 
         msg.textContent = '가입 확인 메일을 보냈어요. 메일을 확인해 주세요.'; msg.className = 'msg ok'; return;
       }
       localStorage.setItem('mj_last_email', email);
@@ -288,7 +288,7 @@
       $('auth-view').classList.remove('hidden');
     });
 
-    // ── 비밀번호 재설정 (가입한 이메일로 확인 메일 발송) ──
+    
     $('forgot').addEventListener('click', () => {
       $('auth-view').classList.add('hidden');
       $('reset-view').classList.remove('hidden');
@@ -330,7 +330,7 @@
       $('newpw-view').classList.remove('hidden');
     }
 
-    // ── 취향 저장 ──
+    
     $('save-btn').addEventListener('click', async () => {
       const { data: { user } } = await sb.auth.getUser();
       if (!user) return;
@@ -354,7 +354,7 @@
       $('done-card').scrollIntoView({ behavior: 'smooth' });
     });
 
-    // ── 화면 전환 + 기존 취향 불러오기 ──
+    
     async function showOnboarding(user) {
       $('auth-view').classList.add('hidden');
       $('onb-view').classList.remove('hidden');
@@ -368,7 +368,7 @@
       }
     }
 
-    // ── 세션 확인 (새로고침해도 로그인 유지) ──
+    
     (async () => {
       const { data: { session } } = await sb.auth.getSession();
       const isRecovery = new URLSearchParams(location.hash.slice(1)).get('type') === 'recovery';

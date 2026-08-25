@@ -74,7 +74,7 @@
   <script>
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // ── 카카오 장소검색 SDK ──
+    
     const KAKAO_JS_KEY = '725e7ddf965a3ffff3da1f2ac771cc57';
     let kakaoReady = false;
     if (KAKAO_JS_KEY) {
@@ -84,7 +84,7 @@
       document.head.appendChild(ks);
     }
 
-    // ── 자연어 → 취향 파싱 (키워드 규칙) ──
+    
     function parse(text) {
       const t = text.toLowerCase();
       const flavor = new Set(), situation = new Set();
@@ -102,9 +102,9 @@
       return { spicy_level: spicy, flavor_tags: [...flavor], situation_tags: [...situation] };
     }
 
-    // score()는 js/recommend.js의 window.score 사용
+    
 
-    // 장소검색용: 문장에서 조사/불용어 제거 → 상호만 남기기
+    
     function cleanQuery(text) {
       return text.replace(/내\s*근처|근처|주변|위치|어디(에|야|인지)?|알려\s*줘|찾아\s*줘|좀|추천\s*해\s*줘|추천|해\s*줘|가고\s*싶어|\?/g, '').trim();
     }
@@ -112,8 +112,8 @@
     async function run(text) {
       const taste = parse(text);
       const hasTaste = taste.flavor_tags.length || taste.situation_tags.length;
-      if (hasTaste) return recommendByTaste(taste);      // 취향 문장 → DB 추천
-      return placeSearch(cleanQuery(text) || text);       // 상호/브랜드 → 카카오 장소검색
+      if (hasTaste) return recommendByTaste(taste);      
+      return placeSearch(cleanQuery(text) || text);       
     }
 
     async function recommendByTaste(taste) {

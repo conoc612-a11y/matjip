@@ -6,12 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="js/auth-guard.js"></script>
   <title>맛집 탐방 — 메인</title>
-  <!-- DNS/연결 지연 최소화 -->
+  
   <link rel="preconnect" href="https://oapi.map.naver.com" crossorigin />
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <link rel="preconnect" href="https://dapi.kakao.com" crossorigin />
   <link rel="preconnect" href="https://bhgijvaxxjnocgfnaaeu.supabase.co" />
-  <!-- 네이버 지도 v3 (ncpKeyId 방식). 인증은 등록된 도메인(https://conoc612-a11y.github.io)에서만 성공 -->
+  
   <script src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=kw4t9xfkhz&submodules=geocoder,panorama"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=725e7ddf965a3ffff3da1f2ac771cc57&libraries=services&autoload=false"></script>
@@ -83,11 +83,11 @@
     .rec .actions a, .rec .actions button { font-size:13px; padding:6px 10px; border-radius:7px; border:1px solid var(--line); cursor:pointer; background:#fff; color:var(--text); text-decoration:none; }
     .rec .actions .save { background:var(--accent); color:#fff; border:none; }
     .score { float:right; font-size:12px; color:var(--accent); font-weight:700; }
-    /* ── 카드 헤더 (이름 + 거리 뱃지) ── */
+    
     .rec-header { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
     .dist-badge { font-size:11px; color:var(--accent); background:#fff4e6; padding:2px 8px; border-radius:10px; white-space:nowrap; flex-shrink:0; line-height:1.9; font-weight:600; }
     :root.dark .dist-badge { background:#3d1f0d; }
-    /* ── 스켈레톤 로딩 ── */
+    
     @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
     .skel { background:linear-gradient(90deg,var(--line) 25%,var(--bg) 50%,var(--line) 75%); background-size:200% 100%; animation:shimmer 1.5s infinite; border-radius:5px; }
     .skel-card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:10px; }
