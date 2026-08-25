@@ -2840,7 +2840,13 @@
         }
         return _auctionPromise;
       }
-      const wonEok = (v) => v ? v.toLocaleString('ko-KR', { maximumFractionDigits: 2 }) + '억원' : '';
+      // 인자는 **억** 단위. 1억 미만을 '0.38억원' 으로 쓰면 사람이 못 읽는다(실측 191건이
+      // 여기 걸린다 — 3,800만원짜리 상가·지분 물건이 흔하다). 억 미만은 만원으로 바꿔 쓴다.
+      const wonEok = (v) => {
+        if (!v) return '';
+        if (v < 1) return Math.round(v * 1e4).toLocaleString('ko-KR') + '만원';
+        return v.toLocaleString('ko-KR', { maximumFractionDigits: 2 }) + '억원';
+      };
       const aucColor = (s) => (s || '').includes('유찰') ? '#fa5252' : '#f08c00';
       // 감정평가액·최저매각가격은 auction.json 에 사실상 없다 — 실측 3,442행 중 appr 2행 / low 1행뿐
       // (목록 API 가 이 두 값을 잘 안 채워준다). 같은 값이 auction_detail.json 의 dspsl 에는
@@ -3260,6 +3266,18 @@
         내부미확인: '현장조사 때 폐문부재 등으로 내부를 보지 못한 물건이다. 상태를 확인할 수 없다.',
         미등기: '등기되지 않은 부분이 있다.',
       };
+      // ⚠️ 목록(auction.json)의 status 에 적힌 '유찰 N회' 는 **낡는다**. 실측(2026-08-25):
+      //    유찰 표기가 있는 2,985건 중 **1,608건(54%)** 이 상세 기일내역과 어긋났다. 예:
+      //      2025타경102915 → 목록 "유찰 4회" / 기일내역엔 20251210~20260722 유찰 7회
+      //    기일내역이 진실이다(법원이 목록 요약을 늦게 갱신한다). 색인이 있으면 그걸 쓴다.
+      //    ⛔ 이걸 되돌리면 사용자에게 틀린 유찰 횟수를 보여주게 된다 — 값 판단의 핵심 숫자다.
+      //    색인이 없는 사건(수집 전)은 목록 값을 그대로 둔다. 없는 것보다는 낡은 게 낫다.
+      function aucStatusText(d) {
+        if (!d || !d.idx) return (d && d.status) || '';
+        const n = d.idx.n || 0;
+        if (n > 0) return '유찰 ' + n + '회';
+        return d.status || '';
+      }
       // 매각기일까지 남은 날. 색인의 dy(YYYYMMDD) 를 쓴다.
       function aucDday(d) {
         const y = d && d.idx && d.idx.dy;
@@ -3278,10 +3296,10 @@
         if (a > 0 && l > 0 && l < a) {
           const pct = Math.round(l / a * 100);
           out.push('<span class="ap-tag ap-tag-cut" title="최저매각가격이 감정평가액의 '
-            + pct + '% 다. 감정가보다 ' + (100 - pct) + '% 낮다.">감정가의 ' + pct + '%</span>');
+            + pct + '%다. 감정가보다 ' + (100 - pct) + '% 낮다.">감정가의 ' + pct + '%</span>');
         }
-        const n = d.idx && d.idx.n;
-        if (n) out.push('<span class="ap-tag ap-tag-fail" title="입찰자가 없어 다음 기일로 넘어간 횟수다. 회차마다 최저가가 내려간다.">유찰 ' + n + '회</span>');
+        // 유찰 횟수는 여기 넣지 않는다 — 위쪽 상태 배지(aucStatusText)가 이미 말한다.
+        // 같은 값을 카드에 두 번 쓰면 사용자는 둘이 다른 뜻인가 찾게 된다.
         const dd = aucDday(d);
         if (dd != null && dd >= 0 && dd <= 60) {
           out.push('<span class="ap-tag ap-tag-d' + (dd <= 7 ? ' urgent' : '') + '" title="매각기일까지 남은 날">D-' + dd + '</span>');
@@ -3303,7 +3321,7 @@
           <div class="ap-row-main">
             <div class="ap-row-top">
               ${pinned ? '<span class="ap-pin-tag">지도 선택</span>' : ''}
-              <span class="ap-badge" style="background:${aucColor(d.status)};">${esc(d.status)}</span>
+              <span class="ap-badge" style="background:${aucColor(d.status)};">${esc(aucStatusText(d))}</span>
               <b class="ap-addr">${esc(d.addr)}</b>
               <button type="button" class="ap-star${fav ? ' on' : ''}" title="즐겨찾기">${fav ? '★' : '☆'}</button>
             </div>
@@ -3631,7 +3649,7 @@
         bodyEl.innerHTML = `
           <div class="apd-addr">${esc(d.addr)}</div>
           <div class="apd-badges">
-            <span class="apd-badge" style="background:${aucColor(d.status)};">${esc(d.status)}</span>
+            <span class="apd-badge" style="background:${aucColor(d.status)};">${esc(aucStatusText(d))}</span>
             ${d.sale ? `<span class="apd-badge" style="background:var(--c-primary);">${esc(aucDDay(d.sale))}</span>` : ''}
           </div>
           <div class="apd-cards">
