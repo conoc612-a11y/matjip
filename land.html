@@ -2792,6 +2792,120 @@
       
       
       
+      
+      
+      
+      const HOSP_COLOR = { 상급종합: '#c2255c', 종합병원: '#e64980', 병원: '#f06595', 요양병원: '#f783ac' };
+      const hospCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 55 });
+      const emrgCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 45 });
+      [hospCluster, emrgCluster].forEach((cl) => cl.on('click', (e) => {
+        const m = e.layer;
+        if (!m || !m._pop) return;
+        if (!m.getPopup() && m._pop) m.bindPopup(m._pop());
+        m.openPopup();
+      }));
+      let hospRows = null, _hospPromise = null;
+      function loadHosp() {
+        if (!_hospPromise) {
+          _hospPromise = fetch('health_hosp.json')
+            .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+            .then((j) => {
+              const F = {};
+              j.fields.forEach((f, i) => { F[f] = i; });
+              hospRows = j.rows.map((r) => ({
+                nm: r[F.nm], cl: j.cls[r[F.cl]], gu: j.gus[r[F.gu]], dong: j.dongs[r[F.dong]],
+                addr: String(r[F.addr] || '').trim(), tel: r[F.tel], dr: r[F.dr],
+                lat: r[F.lat], lng: r[F.lng],
+              }));
+              return hospRows;
+            })
+            .catch((e) => { console.error('병원 로드 실패:', e); return null; });
+        }
+        return _hospPromise;
+      }
+      let emrgRows = null, _emrgPromise = null;
+      function loadEmrg() {
+        if (!_emrgPromise) {
+          _emrgPromise = fetch('health_emrg.json')
+            .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+            .then((j) => {
+              const F = {};
+              j.fields.forEach((f, i) => { F[f] = i; });
+              emrgRows = j.rows.map((r) => ({
+                nm: r[F.nm], kind: r[F.kind], addr: r[F.addr],
+                tel: r[F.tel], ertel: r[F.ertel], lat: r[F.lat], lng: r[F.lng],
+              }));
+              return emrgRows;
+            })
+            .catch((e) => { console.error('응급의료 로드 실패:', e); return null; });
+        }
+        return _emrgPromise;
+      }
+      const telLink = (t) => (t ? '<a href="tel:' + esc(String(t).replace(/[^0-9+]/g, '')) + '">' + esc(t) + '</a>' : '');
+      function hospPopupHtml(d) {
+        const rows = [`<div style="margin-bottom:3px;"><b>${esc(d.nm)}</b></div>`];
+        rows.push(`<div style="font-size:12px;">${esc(d.cl)}${d.dr ? ' · 의사 ' + d.dr + '명' : ''}</div>`);
+        rows.push(`<div style="margin-top:3px;font-size:12px;color:var(--c-muted);">서울 ${esc(d.gu)} ${esc(d.dong)} ${esc(d.addr)}</div>`);
+        if (d.tel) rows.push(`<div style="margin-top:3px;font-size:12px;">${telLink(d.tel)}</div>`);
+        rows.push('<div style="margin-top:5px;font-size:11px;color:var(--c-muted);">건강보험심사평가원 병원정보</div>');
+        return `<div class="pc"><div class="pc-head">`
+          + `<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${HOSP_COLOR[d.cl] || '#f8a5c2'};flex-shrink:0;"></span>`
+          + `<span class="rp-name">병원·의원</span></div><div class="pc-body">${rows.join('')}</div></div>`;
+      }
+      function emrgPopupHtml(d) {
+        const rows = [`<div style="margin-bottom:3px;"><b>${esc(d.nm)}</b></div>`];
+        if (d.kind) rows.push(`<div style="font-size:12px;">${esc(d.kind)}</div>`);
+        if (d.addr) rows.push(`<div style="margin-top:3px;font-size:12px;color:var(--c-muted);">${esc(d.addr)}</div>`);
+        
+        if (d.ertel) rows.push(`<div style="margin-top:3px;font-size:12px;">응급실 ${telLink(d.ertel)}</div>`);
+        if (d.tel) rows.push(`<div style="font-size:12px;">대표 ${telLink(d.tel)}</div>`);
+        rows.push('<div style="margin-top:5px;font-size:11px;color:var(--c-muted);">국립중앙의료원 응급의료기관</div>');
+        return `<div class="pc"><div class="pc-head">`
+          + `<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#e03131;flex-shrink:0;"></span>`
+          + `<span class="rp-name">응급의료</span></div><div class="pc-body">${rows.join('')}</div></div>`;
+      }
+      function hospBuild() {
+        if (!hospRows) return;
+        hospCluster.clearLayers();
+        hospCluster.addLayers(hospRows.map((d) => {
+          const m = L.circleMarker([d.lat, d.lng], {
+            radius: HOSP_COLOR[d.cl] ? 8 : 6, color: '#000', weight: 1.5,
+            fillColor: HOSP_COLOR[d.cl] || '#f8a5c2', fillOpacity: 0.85,
+          });
+          m._pop = (() => hospPopupHtml(d));
+          return m;
+        }));
+      }
+      function emrgBuild() {
+        if (!emrgRows) return;
+        emrgCluster.clearLayers();
+        emrgCluster.addLayers(emrgRows.map((d) => {
+          const m = L.circleMarker([d.lat, d.lng], {
+            radius: 10, color: '#000', weight: 2, fillColor: '#e03131', fillOpacity: 0.95,
+          });
+          m._pop = (() => emrgPopupHtml(d));
+          m.bindTooltip(esc(d.nm), { direction: 'top' });
+          return m;
+        }));
+      }
+      map.on('overlayadd', (e) => {
+        if (e.layer === hospCluster) {
+          loadHosp().then((r) => {
+            if (!r) { toast('병원 정보를 불러오지 못했습니다.'); return; }
+            hospBuild();
+            toast('병원·의원 ' + r.length.toLocaleString() + '곳 — 종별로 색이 다릅니다(상급종합이 가장 진함)');
+          });
+        } else if (e.layer === emrgCluster) {
+          loadEmrg().then((r) => {
+            if (!r) { toast('응급의료기관을 불러오지 못했습니다.'); return; }
+            emrgBuild();
+          });
+        }
+      });
+
+      
+      
+      
       const evCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 60 });
       evCluster.on('click', (e) => {
         const m = e.layer;
@@ -5755,6 +5869,9 @@
           
           { name: '주차장 (실제 시설 · 무료/유료)', layer: parkingCluster },
           { name: '전기차 충전소', layer: evCluster },
+          
+          { name: '병원·의원 (심평원)', layer: hospCluster },
+          { name: '응급의료기관', layer: emrgCluster },
         ]],
         
         
@@ -5948,6 +6065,7 @@
           ]],
           ['중개업자', '거래 시세와 생활 여건을 설명한다', [
             ['실거래', '*'],
+            
             ['현장 확인', '*'],
             ['청약', ['분양예정 (청약홈)']],
           ]],
@@ -5956,6 +6074,7 @@
           
           
           ['임장업자', '현장에서 확인할 것 — 소음·동선·주변 여건', [
+            
             ['현장 확인', '*'],
             ['실거래', ['아파트 실거래가·노후도', '연립·다세대 실거래가']],
             ['지적·행정경계', ['지적도 (필지 경계)']],
@@ -6255,7 +6374,7 @@
           '유지관리 이력', '입찰공고', '입찰결과공지', '수의계약 공지']],
         ['공공주택·임대', ['LH 임대주택단지(마이홈이 상위호환)', 'LH 분양임대공고 상세',
           'LH 분양임대공고문', '예비입주자 대기현황']],
-        ['생활 인프라', ['병원정보(심평원)', '응급의료기관 정보', '착한가격업소 현황',
+        ['생활 인프라', ['착한가격업소 현황',
           '생필품 가격 정보', '공중화장실 정보', '공공도서관 소장도서', '정류장 노선 이용량',
           '서울교통공사 최단경로', '도시고속도로 방음벽', '기상특보 조회', 'CCTV 도로날씨',
           '노후 공공시설물(안전관리원)', '명산 등산로', '공항 출국장 혼잡도']],
