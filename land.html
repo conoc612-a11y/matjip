@@ -5936,10 +5936,11 @@
       const infoPms = L.layerGroup();
       const infoHpms = L.layerGroup();
       const infoLp = L.layerGroup();
+      const infoTrdar = L.layerGroup();
       const infoEngy = L.layerGroup();
       const infoFund = L.layerGroup();
-      const wantInfo = { sht: true, mtn: true, pms: true, hpms: true, engy: true, fund: true, lp: true };
-      const _infoMap = [[infoSht, 'sht'], [infoMtn, 'mtn'], [infoPms, 'pms'], [infoHpms, 'hpms'], [infoLp, 'lp'],
+      const wantInfo = { sht: true, mtn: true, pms: true, hpms: true, engy: true, fund: true, lp: true, trdar: true };
+      const _infoMap = [[infoSht, 'sht'], [infoMtn, 'mtn'], [infoPms, 'pms'], [infoHpms, 'hpms'], [infoLp, 'lp'], [infoTrdar, 'trdar'],
         [infoEngy, 'engy'], [infoFund, 'fund']];
       map.on('overlayadd', (e) => {
         const hit = _infoMap.find((x) => x[0] === e.layer);
@@ -5949,7 +5950,7 @@
         const hit = _infoMap.find((x) => x[0] === e.layer);
         if (hit) wantInfo[hit[1]] = false;
       });
-      infoSht.addTo(map); infoMtn.addTo(map); infoPms.addTo(map); infoHpms.addTo(map); infoLp.addTo(map);
+      infoSht.addTo(map); infoMtn.addTo(map); infoPms.addTo(map); infoHpms.addTo(map); infoLp.addTo(map); infoTrdar.addTo(map);
       infoEngy.addTo(map); infoFund.addTo(map);
 
       const LAYER_TREE = [
@@ -5979,6 +5980,7 @@
           
           { name: '주택 인허가 이력', layer: infoHpms },
           { name: '지가 변동률 추세', layer: infoLp },
+          { name: '주변 상권 (반경 150m)', layer: infoTrdar },
           
           { name: '에너지 사용량 (전기·가스)', layer: infoEngy },
           
@@ -7121,6 +7123,16 @@
     const _sbizCache = new Map();
     
     
+    const _trdarCache = new Map();
+    
+    const TRDAR_COLORS = {
+      음식: '#e8590c', 소매: '#1971c2', '수리·개인': '#7048e8', 보건의료: '#0ca678',
+      '과학·기술': '#495057', 교육: '#f08c00', 부동산: '#c2255c', '시설관리·임대': '#5c940d',
+      숙박: '#1098ad', '예술·스포츠': '#d6336c',
+    };
+    const TRDAR_COLOR = (k) => TRDAR_COLORS[k] || '#868e96';
+    
+    
     
     
     
@@ -7453,6 +7465,22 @@
           cb(arr);
         })
         .catch(() => cb(null));
+    }
+
+    
+    
+    
+    function loadTrdar(lat, lng, cb) {
+      const ck = lat.toFixed(4) + ',' + lng.toFixed(4);
+      if (_trdarCache.has(ck)) { cb(_trdarCache.get(ck)); return; }
+      fetch(`${SBIZ_PROXY}?mode=radius&cx=${lng.toFixed(6)}&cy=${lat.toFixed(6)}`)
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+        .then((o) => {
+          const d = o && !o.error && Number(o.total) > 0 ? o : null;
+          _trdarCache.set(ck, d);
+          cb(d);
+        })
+        .catch((e) => { console.error('주변 상권 조회 실패:', e); cb(null); });
     }
     
     
@@ -7928,6 +7956,39 @@
       
       
       
+      
+      let trdarHtml = '';
+      if (st.trdar && st.trdar.total) {
+        const T = st.trdar;
+        const lcls = T.lcls || [], mcls = T.mcls || [];
+        
+        const top = lcls[0];
+        const share = top ? Math.round(top[1] / T.counted * 100) : 0;
+        const bar = lcls.slice(0, 5).map(([k, v]) => {
+          const pct = Math.max(2, Math.round(v / T.counted * 100));
+          return '<span title="' + esc(k) + ' ' + v + '곳" style="display:inline-block;height:7px;width:'
+            + pct + '%;background:' + TRDAR_COLOR(k) + ';"></span>';
+        }).join('');
+        trdarHtml = '<div style="margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">'
+          + '<b>주변 상권</b> <span style="font-size:12px;">반경 ' + T.radius + 'm · 상가업소 '
+          + T.total.toLocaleString('ko-KR') + '곳</span>'
+          + (top ? '<div style="font-size:12px;margin-top:2px;"><b>' + esc(top[0]) + '</b> 중심 '
+              + '<span style="color:var(--c-muted);">' + share + '%</span></div>' : '')
+          + (bar ? '<div style="margin-top:3px;line-height:0;border-radius:3px;overflow:hidden;">' + bar + '</div>' : '')
+          + '<div style="font-size:11.5px;margin-top:3px;">' + lcls.slice(0, 5).map(([k, v]) =>
+              '<span style="color:' + TRDAR_COLOR(k) + ';">■</span> ' + esc(k) + ' ' + v).join(' · ') + '</div>'
+          + (mcls.length ? '<div style="font-size:11.5px;color:var(--c-muted);margin-top:2px;">'
+              + mcls.slice(0, 4).map(([k, v]) => esc(k) + ' ' + v).join(' · ') + '</div>' : '')
+          
+          + (T.partial ? '<div style="font-size:11px;color:var(--c-price);margin-top:2px;">업종 구성은 '
+              + T.counted.toLocaleString('ko-KR') + '곳 기준(전체 ' + T.total.toLocaleString('ko-KR') + ')</div>' : '')
+          + '<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">소상공인시장진흥공단 상가(상권)정보 · 분기 갱신</div>'
+          + '</div>';
+      }
+      
+      
+      
+      
       let lpHtml = '';
       if (st.lp && st.lp.r) {
         const A = st.lp;
@@ -8213,10 +8274,10 @@
             + '이 땅에 무엇을 지을 수 있나 — 호출 ' + LANDUSE_ACTS.length + '회, 누를 때만 조회합니다.</span>');
         }
       }
-      if (!rows.length && !houseHtml && !detailHtml && !storeHtml && !nrHtml && !pmsHtml && !hpmsHtml && !lpHtml && !shtHtml && !mtnHtml && !engyHtml && !reserveHtml && !mgmtHtml) return '';
+      if (!rows.length && !houseHtml && !detailHtml && !storeHtml && !nrHtml && !pmsHtml && !hpmsHtml && !lpHtml && !trdarHtml && !shtHtml && !mtnHtml && !engyHtml && !reserveHtml && !mgmtHtml) return '';
       return `<div style="font-size:13px;margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">`
         + (rows.length ? `<b>토지·건물 정보</b>${badge}<br>${rows.join('<br>')}` : '')
-        + shtHtml + pmsHtml + hpmsHtml + lpHtml + mtnHtml + engyHtml + reserveHtml + mgmtHtml + luHtml + storeHtml + nrHtml + houseHtml + detailHtml + '</div>';
+        + shtHtml + pmsHtml + hpmsHtml + trdarHtml + lpHtml + mtnHtml + engyHtml + reserveHtml + mgmtHtml + luHtml + storeHtml + nrHtml + houseHtml + detailHtml + '</div>';
     }
 
     
@@ -8419,7 +8480,7 @@
     function fillLandInfo(popupEl, getPopup, lat, lng, onInfo, noDetail, jibun) {
       const slot = popupEl && popupEl.querySelector('.bld-info');
       if (!slot) return;
-      const st = { zone: '', parcel: null, br: null, bld: null, house: null, detail: null, addrPnu: null };
+      const st = { zone: '', parcel: null, br: null, bld: null, house: null, detail: null, addrPnu: null, trdar: null };
       const render = () => {
         slot.innerHTML = landInfoHtml(st, noDetail);
         
@@ -8536,6 +8597,11 @@
         
         if (wantInfo.hpms) loadHsPms(pnu, (arr) => {
           if (arr && arr.length) { st.hpms = arr; render(); }
+        });
+        
+        
+        if (wantInfo.trdar) loadTrdar(lat, lng, (d) => {
+          if (d) { st.trdar = d; render(); }
         });
         
         
