@@ -524,6 +524,15 @@
       border:1px solid var(--line); border-radius:10px; box-shadow:var(--c-shadow-lg); padding:6px 4px;
       max-height:calc(100vh - 220px); overflow-y:auto; overscroll-behavior:contain; font-size:14px; }
     .lp.open .lp-body { display:block; }
+    /* 업무별 추천 레이어(역할 프리셋) — 레이어 트리 맨 위 줄.
+       9개 대분류를 처음 본 사람이 무엇을 켤지 모르는 문제를 푼다. */
+    .lp-roles { display:flex; flex-wrap:wrap; gap:4px; align-items:center; padding:0 0 6px; border-bottom:1px solid var(--line); margin-bottom:6px; }
+    .lp-roles-lbl { width:100%; font-size:11px; color:var(--muted); margin-bottom:2px; }
+    .lp-role { font:inherit; font-size:12px; padding:3px 9px; border-radius:999px; cursor:pointer;
+      border:1px solid var(--line); background:var(--card); color:var(--text); transition:all .12s; }
+    .lp-role:hover { border-color:var(--c-primary); color:var(--c-primary); }
+    .lp-role.on { background:var(--c-primary); border-color:var(--c-primary); color:#fff; font-weight:600; }
+    .lp-role-off { color:var(--muted); }
     .lp-sec + .lp-sec { border-top:1px solid var(--line); margin-top:4px; padding-top:4px; }
     .lp-head { display:flex; align-items:center; gap:6px; padding:5px 8px; font-weight:700; cursor:pointer; border-radius:6px; }
     .lp-head:hover { background:var(--c-hover); }
@@ -5638,6 +5647,59 @@
         const toggle = div.querySelector('.lp-toggle');
         toggle.onclick = () => div.classList.toggle('open');
 
+        // ── 역할 프리셋 (2026-08-25 사용자 지시: "자료만 있으면 뭐해") ─────────────
+        // 레이어가 9개 대분류로 쌓여 있어서, 처음 온 사람은 무엇을 켜야 하는지 모른다.
+        // 직군별로 **필요한 것만** 켜 준다. V-World 활용사례를 보면 같은 데이터로 서로 다른
+        // 도구가 나온다 — SKETCHES(건축 규모 검토) · LandScope(지적 경계) · FGIS/ProX(대장 조회)
+        // · 차세대 온비드(공매 물건 지도). 우리는 한 화면에서 역할만 바꾼다.
+        // ⚠️ 대분류·중분류 **이름 문자열로 매칭**한다. LAYER_TREE 의 이름을 바꾸면 여기도 바꿀 것
+        //    (조용히 안 켜진다). 아래 검사 로그가 매칭 실패를 콘솔에 남긴다.
+        // 회원 역할 6종. 같은 데이터로 서로 다른 도구가 된다 — 역할마다 **필요한 것만** 켠다.
+        // ⚠️ 아직 안 붙인 API 가 역할별로 남아 있다(미활용 API 패널 참고). 무엇을 먼저 붙일지는
+        //    이 표의 빈칸이 정한다 — 예: 분양업자에게는 청약 경쟁률·분양권전매가, 중개업자에게는
+        //    병원·학교·정류장이 아직 없다. 연결되면 이 프리셋에 항목을 추가할 것.
+        const ROLE_PRESETS = [
+          ['부동산투자자', '실거래·보유비용으로 값을 판단한다', [
+            ['실거래', '*'],
+            ['건물 상세 정보 (팝업)', '*'],
+            ['도시계획사업', ['정비사업']],
+          ]],
+          ['경매업자', '경매·공매 물건을 발굴하고 권리를 본다', [
+            ['법원경매', '*'],
+            ['실거래', ['아파트 실거래가·노후도', '연립·다세대 실거래가']],
+            ['지적·행정경계', ['지적도 (필지 경계)']],
+            ['건물 상세 정보 (팝업)', ['철거·말소 이력 (폐쇄말소대장)', '건축 인허가 이력']],
+          ]],
+          ['중개업자', '거래 시세와 생활 여건을 설명한다', [
+            ['실거래', '*'],
+            ['현장 확인', '*'],
+            ['청약', ['분양예정 (청약홈)']],
+          ]],
+          ['건축사', '이 땅에 무엇을 얼마나 지을 수 있나', [
+            ['용도지역·지구·구역', '*'],
+            ['지구단위계획구역', ['지구단위계획구역', '획지예정선']],
+            ['도시계획시설', ['도로']],
+            ['주제도', ['가로구역별 건축물 높이기준']],
+            ['건물 상세 정보 (팝업)', ['건축 인허가 이력', '철거·말소 이력 (폐쇄말소대장)']],
+          ]],
+          ['시행사', '사업 가능한 부지인가, 어느 단계인가', [
+            ['도시계획사업', '*'],
+            ['지구단위계획구역', ['지구단위계획구역', '특별계획구역']],
+            ['규제구역', '*'],
+            ['실거래', ['아파트 실거래가·노후도']],
+          ]],
+          ['분양업자', '공급 물량과 청약 경쟁을 본다', [
+            ['청약', '*'],
+            ['도시계획사업', ['정비사업', '역세권사업', '국토부사업']],
+            ['실거래', ['아파트 실거래가·노후도']],
+          ]],
+        ];
+        const roleBar = L.DomUtil.create('div', 'lp-roles', body);
+        roleBar.innerHTML = '<div class="lp-roles-lbl">업무별 추천 레이어</div>'
+          + ROLE_PRESETS.map(([nm, tip], i) => '<button type="button" class="lp-role" data-i="' + i
+            + '" title="' + esc(tip) + '">' + esc(nm) + '</button>').join('')
+          + '<button type="button" class="lp-role lp-role-off" title="모든 레이어를 끕니다">전체 해제</button>';
+
         LAYER_TREE.forEach(([big, mids]) => {
           const sec = L.DomUtil.create('div', 'lp-sec', body);
           const head = L.DomUtil.create('div', 'lp-head', sec);
@@ -5828,6 +5890,50 @@
             });
           });
         }
+
+        // ── 역할 프리셋 적용 ──────────────────────────────────────────────
+        // 중분류 체크박스를 목표 상태로 맞추고 onchange 를 부른다. 레이어 add/remove 로직을
+        // 그대로 재사용하려는 것이다 — 여기서 map.addLayer 를 직접 부르면 대분류 동기화
+        // (syncBig)와 저장이 어긋난다.
+        // ⚠️ 프리셋에 없는 대분류는 **끈다.** '추천 레이어'는 켜는 것뿐 아니라 관계없는 것을
+        //    치우는 것까지가 목적이다. 사용자가 그 뒤에 개별 조정하면 그 상태가 저장된다.
+        function applyRolePreset(spec) {
+          const want = new Map(spec);
+          const missed = [];
+          div.querySelectorAll('.lp-sec').forEach((sec) => {
+            const bigNm = sec.querySelector('.lp-head .lp-name').textContent.trim();
+            const w = want.get(bigNm);
+            const seen = [];
+            sec.querySelectorAll('.lp-mid').forEach((row) => {
+              const midNm = row.querySelector('.lp-name').textContent.trim();
+              const cb = row.querySelector('.lp-midcb');
+              if (!cb) return;
+              seen.push(midNm);
+              const on = w === '*' ? true : (Array.isArray(w) ? w.indexOf(midNm) >= 0 : false);
+              if (cb.checked !== on) { cb.checked = on; cb.dataset.wasInd = '0'; cb.onchange(); }
+            });
+            // 이름이 바뀌어 매칭에 실패한 항목을 조용히 넘기지 않는다.
+            if (Array.isArray(w)) w.forEach((n) => { if (seen.indexOf(n) < 0) missed.push(bigNm + ' > ' + n); });
+          });
+          // 프리셋이 가리키는 대분류 자체가 없는 경우도 잡는다.
+          const bigs = [...div.querySelectorAll('.lp-sec .lp-head .lp-name')].map((e) => e.textContent.trim());
+          spec.forEach(([b]) => { if (bigs.indexOf(b) < 0) missed.push('(대분류 없음) ' + b); });
+          if (missed.length) {
+            console.warn('역할 프리셋에서 찾지 못한 레이어 이름 — LAYER_TREE 와 ROLE_PRESETS 를 맞출 것:', missed);
+          }
+          saveLayerState();
+        }
+        roleBar.querySelectorAll('.lp-role').forEach((b) => {
+          b.onclick = (e) => {
+            e.stopPropagation();
+            roleBar.querySelectorAll('.lp-role').forEach((x) => x.classList.remove('on'));
+            if (b.classList.contains('lp-role-off')) { applyRolePreset([]); return; }
+            b.classList.add('on');
+            const p = ROLE_PRESETS[+b.dataset.i];
+            applyRolePreset(p[2]);
+            toast(p[0] + ' 레이어를 켰습니다 — ' + p[1]);
+          };
+        });
 
         L.DomEvent.disableClickPropagation(div);
         L.DomEvent.disableScrollPropagation(div);
@@ -6303,6 +6409,56 @@
       setTimeout(() => finish([]), 7000);
     }
 
+    // ── V-World WFS 조회 (JSONP) ─────────────────────────────────────────
+    // 위 vworldFeature 는 **2D데이터 API**(`req/data`)를 쓴다. 그쪽은 필드가 축약돼 있어
+    // 용도지역의 `ucode`(UQA###)를 **주지 않는다** — properties 가 5개뿐이다(실측:
+    // uname, dyear, dnum, sido_name, sigg_name). 그 때문에 "ucode 출처를 못 찾겠다"고
+    // 두 세션을 보류했다(TROUBLESHOOTING §83).
+    // WFS(`req/wfs`)는 `PROPERTYNAME` 으로 **필드를 골라 받을 수 있다.** 필드 이름은
+    // 추측하지 말고 `REQUEST=DescribeFeatureType&TYPENAME=<레이어>` 로 확인한다.
+    //   lt_c_uq111 계열(용도지역·지구 13종, 동일 스키마):
+    //     mnum alias remark std_sggcd admin_cd sido_cd sigungu_cd dyear dnum
+    //     ucode bon_bun bu_bun sido_name sigg_name uname ag_geom
+    // ⚠️ EPSG:4326 은 BBOX 순서가 **(ymin,xmin,ymax,xmax)** 다 — 명세에 명시돼 있고
+    //    뒤집으면 조용히 0건이 온다.
+    // ⚠️ JSONP 는 `OUTPUT=text/javascript` + `format_options=callback:<함수명>` 이다
+    //    (`callback=` 이 아니다 — 2D데이터 API 와 파라미터가 다르다). 실측으로 확인했다.
+    const _vwfCache = new Map();
+    function vworldWfs(typeName, lat, lng, propertyName, cb) {
+      const key = typeName + '@' + _gcKey(lat, lng);
+      if (_vwfCache.has(key)) { cb(_vwfCache.get(key)); return; }
+      const cbName = '__vwf' + (++_vwSeq) + '_' + Math.abs(lat * 1e5 | 0);
+      let done = false;
+      const finish = (val) => {
+        if (done) return;
+        done = true;
+        try { delete window[cbName]; } catch (e) {}
+        _vwfCache.set(key, val);
+        cb(val);
+      };
+      window[cbName] = (data) => {
+        let props = [];
+        try {
+          props = ((data && data.features) || []).map((f) => f.properties || {}).filter(Boolean);
+        } catch (e) { /* 형태가 달라도 빈 배열로 넘긴다 */ }
+        finish(props);
+      };
+      // 약 26m 상자. 필지 하나 안에 들어가는 크기다(실측: 강남 은마 주변에서 2건 —
+      // 제3종일반주거 + uname 이 빈 대분류 코드). uname 이 없는 행은 호출부에서 걸러 쓴다.
+      const d = 0.00012;
+      const bbox = [lat - d, lng - d, lat + d, lng + d].map((v) => v.toFixed(6)).join(',');
+      const s = document.createElement('script');
+      s.src = 'https://api.vworld.kr/req/wfs?SERVICE=WFS&REQUEST=GetFeature&VERSION=1.1.0'
+        + '&TYPENAME=' + encodeURIComponent(typeName)
+        + '&PROPERTYNAME=' + encodeURIComponent(propertyName)
+        + '&BBOX=' + bbox + '&SRSNAME=EPSG:4326&MAXFEATURES=10'
+        + '&OUTPUT=text/javascript&format_options=callback:' + cbName
+        + '&KEY=' + VWORLD_KEY + '&DOMAIN=' + encodeURIComponent(location.origin);
+      s.onerror = () => finish([]);
+      document.head.appendChild(s);
+      setTimeout(() => finish([]), 8000);
+    }
+
     // ── 주소 → PNU 조회 (지번 주소로 V-World 검색 → PNU + 좌표) ──
     // 클릭 시 네이버 역지오코딩에서 받은 지번 주소를 이용해 정확한 PNU를 찾는다.
     // POINT 쿼리가 경계 오류로 잘못된 필지를 줄 때의 폴백이자 주요 PNU 원천.
@@ -6648,6 +6804,61 @@
     //    레이트리밋(분당 42)을 바로 넘긴다. 그래서 **팝업에서 자동 조회하지 않고**
     //    '관리비 보기' 버튼을 눌렀을 때만 **대표 11개**를 부른다.
     // ⛔ 그 11개는 총 관리비가 아니다 — 화면에 "주요 항목 합"이라고 밝힌다(말없이 축소 금지).
+    // ── 토지이용규제: 이 땅에 무엇을 지을 수 있나 (2026-08-25) ──────────────────
+    // `DTarLandUseInfo` 는 "이 시군구의 이 지역지구에서 **이 행위**가 가능한가"를 답한다.
+    // 필수 파라미터가 **4개 전부**다(data.go.kr Swagger 실측, §83):
+    //   serviceKey(프록시) · areaCd(시군구코드=PNU 앞5) · ucodeList(UQA###) · landUseNm(행위명)
+    // ⛔ landUseNm 을 빼면 resultCode 11(NO_MANDATORY_REQUEST__PARAMETER_ERROR) 이다.
+    //    이것 때문에 "출처 불명"으로 두 세션을 보류했다.
+    //
+    // 아래 행위명은 **추측이 아니라 `DTsearchLunCd` 로 확인한 정확한 이름**이고,
+    // 강남구 제3종일반주거(UQA123)에서 **실제로 답을 준 것만** 골랐다(20개 후보 중 10개).
+    // ⚠️ 답이 없는 조합이 많다 — 이 API 는 규제안내서에 등재된 조합만 담는다.
+    //    그래서 "해당 없음"은 화면에 쓰지 않는다(없는 것을 규제로 오해하게 만든다).
+    // ⚠️ 행위마다 1회 호출이라 10회다. 팝업에서 자동 조회하지 않고 **버튼을 눌렀을 때만** 부른다
+    //    (개발계정 일 1,000건 · molit-proxy 레이트리밋). 결과는 areaCd+ucode 로 캐시하는데,
+    //    같은 구·같은 지역지구면 답이 같으므로 한 번 받으면 그 구역 필지 전체에 재사용된다.
+    const LANDUSE_ACTS = [
+      '단독주택', '다가구주택', '다세대주택', '연립주택', '아파트', '오피스텔',
+      '판매시설', '숙박시설', '공장', '운동시설',
+    ];
+    const _luCache = new Map();   // 'areaCd|ucode' → [{act, reg, node, law}]
+    function loadLandUse(areaCd, ucode, cb) {
+      if (!areaCd || !ucode) { cb(null); return; }
+      const key = areaCd + '|' + ucode;
+      if (_luCache.has(key)) { cb(_luCache.get(key)); return; }
+      const pick = (t, tag) => {
+        const out = [];
+        const re = new RegExp('<' + tag + '>([\\s\\S]*?)</' + tag + '>', 'g');
+        let m;
+        while ((m = re.exec(t))) out.push(m[1]);
+        return out;
+      };
+      // ⚠️ 이 서비스는 응답이 **XML** 이다(다른 서비스는 _type=json 으로 JSON 을 받는다).
+      //    그래서 `.json()` 이 아니라 `.text()` 로 받아 태그를 직접 훑는다.
+      //    프록시 입력 파라미터 이름은 **svc** 다 — `service` 로 보내면 기본값
+      //    BldRgstHubService 로 처리돼 엉뚱한 op 오류가 온다(실측 2026-08-25).
+      const one = (act) => fetch(MOLIT_PROXY + '?svc=arLandUseInfoService&op=DTarLandUseInfo'
+        + '&areaCd=' + encodeURIComponent(areaCd)
+        + '&ucodeList=' + encodeURIComponent(ucode)
+        + '&landUseNm=' + encodeURIComponent(act))
+        .then((r) => (r.ok ? r.text() : null))
+        .then((t) => {
+          if (!t || pick(t, 'resultCode')[0] !== '0') return [];
+          const A = pick(t, 'ACT_NM'), R = pick(t, 'REG_NM');
+          const N = pick(t, 'NODE_DESC'), L = pick(t, 'LU_REF_LAW_NM1');
+          return A.map((a, i) => ({
+            ask: act, act: a, reg: R[i] || '', node: N[i] || '', law: L[i] || '',
+          }));
+        })
+        .catch(() => []);
+      Promise.all(LANDUSE_ACTS.map(one)).then((rs) => {
+        const rows = rs.flat();
+        _luCache.set(key, rows);
+        cb(rows);
+      });
+    }
+
     const MGMT_OPS = [
       // [구분, 표시명, 서비스, op, 합산할 필드들]
       ['공용', '인건비', 'AptCmnuseManageCostServiceV2', 'getHsmpLaborCostInfoV2',
@@ -7303,10 +7514,43 @@
             + '<span style="font-size:11.5px;color:var(--c-muted);margin-left:6px;">호출 11회 — 누를 때만 조회합니다</span></div>';
         }
       }
+      // ── 토지이용규제(행위제한) — "이 땅에 무엇을 지을 수 있나" ────────────────
+      // 지역지구 코드(st.zoneCode = V-World WFS 의 ucode)가 있어야 물을 수 있다.
+      // 호출이 10회라 자동 조회하지 않는다 — 관리비와 같은 방식으로 버튼을 눌렀을 때만.
+      let luHtml = '';
+      const _luArea = (st.addrPnu || (st.bld && st.bld.pnu) || (st.parcel && st.parcel.pnu) || '').slice(0, 5);
+      if (st.zoneCode && _luArea) {
+        const box = (inner) => '<div style="margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">' + inner + '</div>';
+        if (st.landuse === 'loading') {
+          luHtml = box('<span style="font-size:12px;color:var(--c-muted);">행위제한 조회 중…</span>');
+        } else if (Array.isArray(st.landuse) && st.landuse.length) {
+          // 가능/금지로 갈라 보여준다. 같은 행위에 둘 다 있을 수 있다(예: 공장 가능 / 정비공장 금지).
+          const ok = st.landuse.filter((x) => /가능/.test(x.reg));
+          const no = st.landuse.filter((x) => /금지|제한|불가/.test(x.reg));
+          const chip = (x, good) => '<span title="' + esc((x.act || '') + ' · ' + (x.law || '')) + '"'
+            + ' style="display:inline-block;font-size:11.5px;line-height:1.6;padding:0 7px;border-radius:999px;margin:2px 3px 0 0;'
+            + (good ? 'background:#e6f4ea;color:#166534;border:1px solid #a7d8b4;' : 'background:#fdeaea;color:#9b1c1c;border:1px solid #f0b4b4;')
+            + '">' + esc(x.node || x.ask) + '</span>';
+          luHtml = box('<b>행위제한</b> <span style="font-size:11.5px;color:var(--c-muted);">'
+            + esc(st.zone || '') + '</span>'
+            + (ok.length ? '<div style="margin-top:3px;">가능 ' + ok.map((x) => chip(x, true)).join('') + '</div>' : '')
+            + (no.length ? '<div style="margin-top:3px;">금지 ' + no.map((x) => chip(x, false)).join('') + '</div>' : '')
+            // ⛔ 축소해 보여주는 것을 밝힌다 — 전체 규제가 아니라 대표 10개 행위만 물었다.
+            + '<div style="font-size:11.5px;color:var(--c-muted);margin-top:3px;">'
+            + '대표 ' + LANDUSE_ACTS.length + '개 행위만 조회한 결과입니다 — 전체 행위제한이 아닙니다.'
+            + ' 근거는 각 항목에 마우스를 올리면 보입니다(국토교통부 토지이용규제).</div>');
+        } else if (Array.isArray(st.landuse)) {
+          luHtml = box('<span style="font-size:12px;color:var(--c-muted);">이 지역지구에 등재된 행위제한이 없습니다.</span>');
+        } else {
+          luHtml = box('<button type="button" class="ld-landuse btn-mini">행위제한 보기</button>'
+            + '<span style="font-size:11.5px;color:var(--c-muted);margin-left:6px;">'
+            + '이 땅에 무엇을 지을 수 있나 — 호출 ' + LANDUSE_ACTS.length + '회, 누를 때만 조회합니다.</span>');
+        }
+      }
       if (!rows.length && !houseHtml && !detailHtml && !storeHtml && !nrHtml && !pmsHtml && !shtHtml && !mtnHtml && !engyHtml && !reserveHtml && !mgmtHtml) return '';
       return `<div style="font-size:13px;margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">`
         + (rows.length ? `<b>토지·건물 정보</b>${badge}<br>${rows.join('<br>')}` : '')
-        + shtHtml + pmsHtml + mtnHtml + engyHtml + reserveHtml + mgmtHtml + storeHtml + nrHtml + houseHtml + detailHtml + '</div>';
+        + shtHtml + pmsHtml + mtnHtml + engyHtml + reserveHtml + mgmtHtml + luHtml + storeHtml + nrHtml + houseHtml + detailHtml + '</div>';
     }
 
     // ── 건축물대장 상세 (투자자용 추가 조회) ─────────────────────
@@ -7536,7 +7780,24 @@
             render();
           });
         };
-        const rb = slot.querySelector('.ld-retry');
+        // 행위제한도 호출이 10회라 버튼을 눌렀을 때만 부른다(관리비와 같은 이유).
+      const lb = slot.querySelector('.ld-landuse');
+      if (lb) lb.onclick = (ev) => {
+        stop(ev);
+        // areaCd 는 시군구코드 = PNU 앞 5자리. PNU 는 위 관리비와 같은 세 곳에서 조합한다.
+        const _pnu = st.addrPnu || (st.bld && st.bld.pnu) || (st.parcel && st.parcel.pnu) || '';
+        const areaCd = _pnu.slice(0, 5);
+        if (!areaCd || !st.zoneCode) { toast('용도지역 코드를 얻지 못해 조회할 수 없습니다.'); return; }
+        st.landuse = 'loading';
+        render();
+        loadLandUse(areaCd, st.zoneCode, (rows) => {
+          // 실패(null)면 버튼을 되살린다 — 조용히 빈 화면으로 끝내지 않는다.
+          st.landuse = rows || undefined;
+          if (!rows) toast('행위제한을 불러오지 못했습니다. 다시 시도해 주세요.');
+          render();
+        });
+      };
+      const rb = slot.querySelector('.ld-retry');
         if (rb) rb.onclick = (ev) => {
           stop(ev);
           st.detail = null;
@@ -7640,8 +7901,13 @@
           afterBase();
         });
       }
-      vworldFeature('LT_C_UQ111', lat, lng, (ps) => {
-        st.zone = ((ps || []).find((x) => x.uname) || {}).uname || '';
+      // 용도지역 — WFS 로 받는다. 2D데이터 API 는 `ucode` 를 주지 않기 때문이다(§83).
+      // `ucode`(UQA###)가 있어야 토지이용규제 행위제한(DTarLandUseInfo)을 물을 수 있다.
+      // uname 이 빈 행이 함께 오므로(대분류 코드) uname 있는 것만 쓴다.
+      vworldWfs('lt_c_uq111', lat, lng, 'ucode,uname,dyear,dnum,sigg_name', (ps) => {
+        const hit = (ps || []).find((x) => x.uname) || {};
+        st.zone = hit.uname || '';
+        st.zoneCode = hit.ucode || '';     // 행위제한 조회에 쓴다
         afterBase();
       });
       vworldFeature('LP_PA_CBND_BUBUN', lat, lng, (ps) => {
