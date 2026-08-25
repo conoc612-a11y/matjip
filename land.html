@@ -5908,10 +5908,12 @@
       const infoSht = L.layerGroup();
       const infoMtn = L.layerGroup();
       const infoPms = L.layerGroup();
+      const infoHpms = L.layerGroup();
       const infoEngy = L.layerGroup();
       const infoFund = L.layerGroup();
-      const wantInfo = { sht: true, mtn: true, pms: true, engy: true, fund: true };
-      const _infoMap = [[infoSht, 'sht'], [infoMtn, 'mtn'], [infoPms, 'pms'], [infoEngy, 'engy'], [infoFund, 'fund']];
+      const wantInfo = { sht: true, mtn: true, pms: true, hpms: true, engy: true, fund: true };
+      const _infoMap = [[infoSht, 'sht'], [infoMtn, 'mtn'], [infoPms, 'pms'], [infoHpms, 'hpms'],
+        [infoEngy, 'engy'], [infoFund, 'fund']];
       map.on('overlayadd', (e) => {
         const hit = _infoMap.find((x) => x[0] === e.layer);
         if (hit) wantInfo[hit[1]] = true;
@@ -5920,7 +5922,8 @@
         const hit = _infoMap.find((x) => x[0] === e.layer);
         if (hit) wantInfo[hit[1]] = false;
       });
-      infoSht.addTo(map); infoMtn.addTo(map); infoPms.addTo(map); infoEngy.addTo(map); infoFund.addTo(map);
+      infoSht.addTo(map); infoMtn.addTo(map); infoPms.addTo(map); infoHpms.addTo(map);
+      infoEngy.addTo(map); infoFund.addTo(map);
 
       const LAYER_TREE = [
         
@@ -5946,6 +5949,8 @@
           { name: '철거·말소 이력 (폐쇄말소대장)', layer: infoSht },
           { name: '유지점검 이력', layer: infoMtn },
           { name: '건축 인허가 이력', layer: infoPms },
+          
+          { name: '주택 인허가 이력', layer: infoHpms },
           
           { name: '에너지 사용량 (전기·가스)', layer: infoEngy },
           
@@ -6431,8 +6436,7 @@
         ['🔧 연동 중 (프록시 완료 · 화면 연결 대기)', [
           '토지이용규제정보',
         ]],
-        ['부동산·건축', ['건축HUB 주택인허가정보',
-          '공동주택 기본정보', '아파트 매매 실거래가(기본판)', '전국지가변동률 마이크로데이터', '녹색건축 인증현황',
+        ['부동산·건축', ['공동주택 기본정보', '아파트 매매 실거래가(기본판)', '전국지가변동률 마이크로데이터', '녹색건축 인증현황',
           '청약 당첨자 정보(청약홈)', '온비드 공매 입찰정보', '파산금융회사 매물현황']],
         
         
@@ -6497,7 +6501,6 @@
             + '부를 수 없습니다.',
         },
         '건축HUB 폐쇄말소대장정보': { d: '철거된 건물 이력 → 재개발 진행 확인.' },
-        '건축HUB 주택인허가정보': { d: '주택 공급 파이프라인.' },
         '건축HUB 유지점검정보': { d: '안전점검 이력·하자 리스크.' },
         '녹색건축 인증현황': { d: '인증 여부.' },
         '청약 당첨자 정보(청약홈)': { d: '청약 경쟁 실적.' },
@@ -7034,6 +7037,39 @@
     
     
     
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    const _hpmsCache = new Map();
+    function loadHsPms(pnu, cb) {
+      const pp = pnuParts(pnu);
+      if (!pp) { cb(null); return; }
+      if (_hpmsCache.has(pnu)) { cb(_hpmsCache.get(pnu)); return; }
+      const q = `svc=HsPmsHubService&op=getHpActOulnInfo&sigunguCd=${pp.sigunguCd}`
+        + `&bjdongCd=${pp.bjdongCd}&platGbCd=${pp.platGbCd}&bun=${pp.bun}&ji=${pp.ji}`
+        + '&numOfRows=100&pageNo=1';
+      fetch(`${MOLIT_PROXY}?${q}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => {
+          const b = j && j.response && j.response.body;
+          const it = b && b.items && b.items.item;
+          const arr = Array.isArray(it) ? it : (it ? [it] : []);
+          _hpmsCache.set(pnu, arr);
+          cb(arr);
+        })
+        .catch(() => cb(null));
+    }
+
     const _pmsCache = new Map();
     function loadArchPms(pnu, cb) {
       const pp = pnuParts(pnu);
@@ -7791,6 +7827,76 @@
       
       
       
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      let hpmsHtml = '';
+      if (st.hpms && st.hpms.length) {
+        const tr = (v) => String(v == null ? '' : v).trim();
+        const ymd6 = (v) => (/^\d{8}$/.test(tr(v)) ? tr(v).slice(0, 4) + '.' + tr(v).slice(4, 6) : '');
+        const list = st.hpms.slice().sort((a, b) =>
+          tr(b.stcnsSchedDay || b.crtnDay).localeCompare(tr(a.stcnsSchedDay || a.crtnDay)));
+        
+        const nameCnt = new Map();
+        list.forEach((x) => {
+          const n = tr(x.cmplxNm);
+          if (!n) return;
+          const k = n.replace(/\s+/g, '');
+          const cur = nameCnt.get(k) || { n, c: 0 };
+          if (cur.c === 0) cur.n = n;
+          cur.c += 1;
+          nameCnt.set(k, cur);
+        });
+        const names = [...nameCnt.values()].sort((a, b) => b.c - a.c).map((v) => v.n);
+        const hh = Math.max.apply(null, list.map((x) => Number(x.hhldCnt) || 0));
+        
+        
+        const purpCnt = {};
+        list.forEach((x) => { const v = tr(x.mainPurpsCdNm); if (v) purpCnt[v] = (purpCnt[v] || 0) + 1; });
+        const purpSorted = Object.entries(purpCnt).sort((a, b) => b[1] - a[1]).map(([k]) => k);
+        const purps = purpSorted.length
+          ? [purpSorted[0] + (purpSorted.length > 1 ? ' 외 ' + (purpSorted.length - 1) : '')]
+          : [];
+        const head = [];
+        if (names.length) head.push('<b>' + esc(names.slice(0, 2).join(' / ')) + '</b>');
+        if (purps.length) head.push(esc(purps.join('·')));
+        if (hh) head.push(hh.toLocaleString() + '세대');
+        
+        const rows3 = list.slice(0, 3).map((x) => {
+          const bits = [];
+          if (tr(x.actGbCdNm)) bits.push('<b>' + esc(tr(x.actGbCdNm)) + '</b>');
+          const where = tr(x.cmplxFlrCntDongCnt);
+          if (where) bits.push(esc(where) + (Number(x.grndFlrCnt) ? ' (' + Number(x.grndFlrCnt) + '층)' : ''));
+          const when = [];
+          if (ymd6(x.stcnsSchedDay)) when.push('착공예정 ' + ymd6(x.stcnsSchedDay));
+          if (ymd6(x.useInsptSchedDay)) when.push('사용검사 ' + ymd6(x.useInsptSchedDay));
+          return '<div style="margin-top:2px;font-size:12px;">' + bits.join(' · ')
+            + (when.length ? ' <span style="color:var(--c-muted);">' + when.join(' · ') + '</span>' : '')
+            + '</div>';
+        });
+        
+        
+        const actCnt = {};
+        list.forEach((x) => { const a = tr(x.actGbCdNm) || '기타'; actCnt[a] = (actCnt[a] || 0) + 1; });
+        const actSum = Object.entries(actCnt).sort((a, b) => b[1] - a[1])
+          .slice(0, 3).map(([k, v]) => esc(k) + ' ' + v).join(' · ');
+        hpmsHtml = '<div style="margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">'
+          + '<b>주택 인허가</b> '
+          + (head.length ? '<span style="font-size:12px;">' + head.join(' · ') + '</span>' : '')
+          + `<div style="font-size:11.5px;color:var(--c-muted);margin-top:2px;">행위 ${list.length}건 — ${actSum}</div>`
+          + rows3.join('')
+          + (list.length > 3 ? `<div style="font-size:11.5px;color:var(--c-muted);margin-top:2px;">외 ${list.length - 3}건</div>` : '')
+          
+          + '<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">건축HUB 주택인허가 · 같은 필지 기준</div>'
+          + '</div>';
+      }
       let pmsHtml = '';
       if (st.pms && st.pms.length) {
         const tr = (v) => String(v == null ? '' : v).trim();
@@ -8010,10 +8116,10 @@
             + '이 땅에 무엇을 지을 수 있나 — 호출 ' + LANDUSE_ACTS.length + '회, 누를 때만 조회합니다.</span>');
         }
       }
-      if (!rows.length && !houseHtml && !detailHtml && !storeHtml && !nrHtml && !pmsHtml && !shtHtml && !mtnHtml && !engyHtml && !reserveHtml && !mgmtHtml) return '';
+      if (!rows.length && !houseHtml && !detailHtml && !storeHtml && !nrHtml && !pmsHtml && !hpmsHtml && !shtHtml && !mtnHtml && !engyHtml && !reserveHtml && !mgmtHtml) return '';
       return `<div style="font-size:13px;margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">`
         + (rows.length ? `<b>토지·건물 정보</b>${badge}<br>${rows.join('<br>')}` : '')
-        + shtHtml + pmsHtml + mtnHtml + engyHtml + reserveHtml + mgmtHtml + luHtml + storeHtml + nrHtml + houseHtml + detailHtml + '</div>';
+        + shtHtml + pmsHtml + hpmsHtml + mtnHtml + engyHtml + reserveHtml + mgmtHtml + luHtml + storeHtml + nrHtml + houseHtml + detailHtml + '</div>';
     }
 
     
@@ -8328,6 +8434,11 @@
         
         if (wantInfo.pms) loadArchPms(pnu, (arr) => {
           if (arr && arr.length) { st.pms = arr; render(); }
+        });
+        
+        
+        if (wantInfo.hpms) loadHsPms(pnu, (arr) => {
+          if (arr && arr.length) { st.hpms = arr; render(); }
         });
         
         if (wantInfo.sht) loadSht(pnu, (arr) => {
