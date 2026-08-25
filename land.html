@@ -2846,6 +2846,56 @@
         return _busPromise;
       }
       
+      
+      
+      let busVol = null, _busVolPromise = null;
+      function loadBusVolume() {
+        if (!_busVolPromise) {
+          _busVolPromise = fetch('transit_busvolume.json')
+            .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+            .then((j) => {
+              const m = new Map();
+              (j.rows || []).forEach((r) => { m.set(String(r[0]), { on: r[1], off: r[2], rte: r[3], h: r[4] }); });
+              busVol = { ym: j.ym, by: m };
+              return busVol;
+            })
+            .catch((e) => { console.error('정류장 이용량 로드 실패:', e); return null; });
+        }
+        return _busVolPromise;
+      }
+      
+      
+      function busVolHtml(d) {
+        if (!busVol) return '';
+        const v = busVol.by.get(String(d.no));
+        
+        if (!v) return '';
+        const tot = (v.on || 0) + (v.off || 0);
+        const h = v.h || [];
+        
+        
+        if (!tot || !h.length) return '';
+        const mx = Math.max.apply(null, h);
+        if (!mx) return '';
+        const peak = h.indexOf(mx);
+        const bars = h.map((x, i) => {
+          const pct = Math.max(2, Math.round(x / mx * 100));
+          
+          const rush = (i >= 7 && i <= 9) || (i >= 18 && i <= 20);
+          return '<span title="' + i + '시 ' + x.toLocaleString('ko-KR') + '명" style="display:inline-block;'
+            + 'width:3.6%;height:' + pct + '%;background:' + (i === peak ? '#e8590c' : rush ? '#748ffc' : '#ced4da')
+            + ';vertical-align:bottom;"></span>';
+        }).join('');
+        return '<div style="margin-top:4px;font-size:12px;">'
+          + '일평균 <b>' + tot.toLocaleString('ko-KR') + '명</b>'
+          + ' <span style="color:var(--c-muted);">승차 ' + (v.on || 0).toLocaleString('ko-KR')
+          + ' · 하차 ' + (v.off || 0).toLocaleString('ko-KR') + '</span>'
+          + (v.rte ? ' · 노선 ' + v.rte + '개' : '') + '</div>'
+          + '<div style="margin-top:3px;height:26px;line-height:0;">' + bars + '</div>'
+          + '<div style="font-size:11px;color:var(--c-muted);">최다 ' + peak + '시'
+          + ' <span style="color:#748ffc;">■</span> 출퇴근(7~9·18~20)</div>';
+      }
+      
       const BUS_COLOR = { 중앙차로: '#1971c2', 한강선착장: '#0ca678', 마을버스: '#f59f00' };
       function busPopupHtml(d) {
         const isPier = d.ty === '한강선착장';
@@ -2854,7 +2904,10 @@
           + `<span class="rp-name">${isPier ? '한강버스 선착장' : '버스정류소'}</span></div><div class="pc-body">`
           + `<div><b>${esc(d.nm)}</b></div>`
           + `<div style="margin-top:3px;font-size:12px;">${esc(d.ty)}${d.no ? ' · 정류소번호 ' + esc(d.no) : ''}</div>`
-          + '<div style="margin-top:5px;font-size:11px;color:var(--c-muted);">서울 열린데이터광장 버스정류소 위치정보</div>'
+          + busVolHtml(d)
+          + '<div style="margin-top:5px;font-size:11px;color:var(--c-muted);">서울 열린데이터광장 버스정류소 위치정보'
+          + (busVol && busVol.by.has(String(d.no)) ? ' · 승하차 ' + busVol.ym.slice(0, 4) + '.' + busVol.ym.slice(4) + ' 일평균' : '')
+          + '</div>'
           + '</div></div>';
       }
       function busBuild() {
@@ -2872,10 +2925,14 @@
       }
       map.on('overlayadd', (e) => {
         if (e.layer !== busCluster) return;
-        loadBusStop().then((r) => {
+        
+        
+        Promise.all([loadBusStop(), loadBusVolume()]).then(([r, v]) => {
           if (!r) { toast('버스정류소를 불러오지 못했습니다.'); return; }
           busBuild();
-          toast('버스정류소 ' + r.length.toLocaleString() + '곳 — 파란색은 중앙차로, 초록은 한강버스 선착장');
+          const n = v ? v.by.size : 0;
+          toast('버스정류소 ' + r.length.toLocaleString() + '곳 — 파란색은 중앙차로, 초록은 한강버스 선착장'
+            + (n ? ' · ' + n.toLocaleString() + '곳에 승하차 이용량' : ''));
         });
       });
 
