@@ -611,6 +611,11 @@
     .pc-head { font-weight:700; font-size:15px; margin-bottom:8px; display:flex; align-items:center; gap:6px; flex-wrap:wrap; line-height:1.35; color:var(--text); }
     .pc-body { font-size:13px; color:var(--muted); margin-bottom:12px; line-height:1.6; }
     .pc-body b { color:var(--text); }
+    
+
+
+
+    .ls-sec { margin-top:6px; border-top:1px solid var(--c-border); padding-top:5px; }
     .pc-actions { display:flex; flex-direction:column; gap:7px; }
     .pc-btn { display:block; width:100%; padding:9px 10px; border-radius:8px; font-family:inherit; font-size:14px; font-weight:500; cursor:pointer; text-align:center; text-decoration:none; box-sizing:border-box; background:var(--card); border:1px solid var(--line); color:var(--text); transition:all .15s; }
     .pc-btn:hover { border-color:var(--c-primary); color:var(--c-primary); }
@@ -8010,6 +8015,30 @@
     
     
     
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    const LVP_CODE_MAP = {
+      '11680675': { cd: '11680740', was: null },              
+      '11740525': { cd: '11740520', was: '상일동' },           
+      '11740526': { cd: '11740520', was: '상일동' },           
+      '11230515': { cd: '11230536', was: '신설·용두동' },      
+      '11230533': { cd: '11230536', was: '신설·용두동' },      
+    };
     let lvpRows = null, lvpMeta = null, _lvpPromise = null;
     function loadLivingPop() {
       if (!_lvpPromise) {
@@ -8254,7 +8283,7 @@
       });
       const more = deals.length > top.length
         ? ' <span style="font-size:12px;color:var(--c-muted);">외 ' + (deals.length - top.length) + '건</span>' : '';
-      return '<div style="margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">'
+      return '<div class="ls-sec">'
         + '<b>이 건물 비주거 실거래</b> <span style="font-size:12px;color:var(--c-muted);">최근 12개월 ' + deals.length + '건</span>' + more
         + '<br>' + rows.join('<br>') + '</div>';
     }
@@ -8516,7 +8545,7 @@
         list.forEach((x) => { const a = tr(x.actGbCdNm) || '기타'; actCnt[a] = (actCnt[a] || 0) + 1; });
         const actSum = Object.entries(actCnt).sort((a, b) => b[1] - a[1])
           .slice(0, 3).map(([k, v]) => esc(k) + ' ' + v).join(' · ');
-        hpmsHtml = '<div style="margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">'
+        hpmsHtml = '<div class="ls-sec">'
           + '<b>주택 인허가</b> '
           + (head.length ? '<span style="font-size:12px;">' + head.join(' · ') + '</span>' : '')
           + `<div style="font-size:11.5px;color:var(--c-muted);margin-top:2px;">행위 ${list.length}건 — ${actSum}</div>`
@@ -8540,7 +8569,7 @@
             + ' <b>' + esc(d.nm) + '</b> <span style="color:var(--c-muted);">' + d._d + 'm</span>'
             + (tot ? ' · 일평균 ' + tot.toLocaleString('ko-KR') + '명' : '') + '</div>';
         });
-        subHtml = '<div style="margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">'
+        subHtml = '<div class="ls-sec">'
           + '<b>역세권</b> <span style="font-size:12px;color:var(--c-muted);">직선 ' + SUB_NEAR + 'm 안 '
           + st.sub.length + '곳</span>'
           + lines.join('')
@@ -8594,7 +8623,7 @@
         }
         if (lines.length) {
           const yr = st.sch.find((x) => x.yr) || {};
-          schHtml = '<div style="margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">'
+          schHtml = '<div class="ls-sec">'
             + '<b>학군</b> <span style="font-size:12px;color:var(--c-muted);">직선 ' + SCH_RADIUS + 'm 안</span>'
             + lines.join('')
             + '<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">서울 열린데이터광장 학교 기본정보'
@@ -8609,7 +8638,7 @@
       
       let trdHtml = '';
       if (st.trd) {
-        trdHtml = '<div style="margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">'
+        trdHtml = '<div class="ls-sec">'
           + '<b>상권 매출</b> <span style="font-size:12px;color:var(--c-muted);">가장 가까운 상권</span>'
           + '<div style="margin-top:2px;">' + trdarBody(st.trd, st.trd._d) + '</div>'
           + '</div>';
@@ -8640,8 +8669,11 @@
           : V.ratio >= 1.5 ? '낮에 사람이 모이는 곳 (업무·상업)'
           : V.ratio <= 0.85 ? '낮에 비는 주거지'
           : '낮과 밤이 비슷한 동네';
-        lvpHtml = '<div style="margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">'
+        lvpHtml = '<div class="ls-sec">'
           + '<b>생활인구</b> <span style="font-size:12px;">' + esc(V.nm || V.cd) + '</span>'
+          
+          + (st.lvpWas ? ' <span style="font-size:11px;color:var(--c-price);">분동 전 '
+              + esc(st.lvpWas) + ' 기준</span>' : '')
           + (V.day && V.night ? '<div style="font-size:12px;margin-top:2px;">낮 <b>'
               + V.day.toLocaleString('ko-KR') + '명</b> · 밤 <b>' + V.night.toLocaleString('ko-KR') + '명</b>'
               + (V.ratio ? ' <span style="color:var(--c-muted);">(' + V.ratio + '배)</span>' : '') + '</div>' : '')
@@ -8700,7 +8732,7 @@
             + ' <span style="color:var(--c-muted);">(' + t.slice(0, 4) + '년 ' + t.slice(4) + '분기)</span></div>');
         }
         if (rows.length) {
-          rgHtml = '<div style="margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">'
+          rgHtml = '<div class="ls-sec">'
             + '<b>자치구 동향</b> <span style="font-size:12px;color:var(--c-muted);">'
             + esc(G.nm) + ' 단위 (필지 값이 아님)</span>'
             + rows.join('')
@@ -8721,7 +8753,7 @@
           return '<span title="' + esc(k) + ' ' + v + '곳" style="display:inline-block;height:7px;width:'
             + pct + '%;background:' + TRDAR_COLOR(k) + ';"></span>';
         }).join('');
-        trdarHtml = '<div style="margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">'
+        trdarHtml = '<div class="ls-sec">'
           + '<b>주변 상권</b> <span style="font-size:12px;">반경 ' + T.radius + 'm · 상가업소 '
           + T.total.toLocaleString('ko-KR') + '곳</span>'
           + (top ? '<div style="font-size:12px;margin-top:2px;"><b>' + esc(top[0]) + '</b> 중심 '
@@ -8797,7 +8829,7 @@
               + '<span style="color:' + col(v) + ';">' + sign(v) + '</span>').join(' · ') + '</div>'
           : '';
         const where = String(A.r.nm || '') + (A.isDong ? '' : ' (자치구 기준)');
-        lpHtml = '<div style="margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">'
+        lpHtml = '<div class="ls-sec">'
           + '<b>지가 변동률</b> <span style="font-size:12px;">' + esc(where) + '</span>'
           + (bits.length ? '<div style="font-size:12px;margin-top:2px;">' + bits.join(' · ') + '</div>' : '')
           + (cmp ? '<div style="font-size:11.5px;margin-top:2px;">' + cmp + '</div>' : '')
@@ -8830,7 +8862,7 @@
             + (bits ? `<br><span style="font-size:12px;color:var(--c-muted);">${esc(bits)}</span>` : '');
         });
         const more = list.length > 3 ? ` <span style="font-size:12px;color:var(--c-muted);">외 ${list.length - 3}건</span>` : '';
-        pmsHtml = '<div style="margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">'
+        pmsHtml = '<div class="ls-sec">'
           + `<b>건축 인허가</b> <span style="font-size:12px;color:var(--c-muted);">이 필지 ${list.length}건</span>${more}<br>`
           + rows2.join('<br>')
           + '</div>';
@@ -8880,7 +8912,7 @@
             + (co ? `<br><span style="font-size:12px;color:var(--c-muted);">${esc(co)}</span>` : '');
         });
         const more = list.length > 3 ? ` <span style="font-size:12px;color:var(--c-muted);">외 ${list.length - 3}건</span>` : '';
-        mtnHtml = '<div style="margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">'
+        mtnHtml = '<div class="ls-sec">'
           + `<b>유지점검 이력</b> <span style="font-size:12px;color:var(--c-muted);">${list.length}건</span>${more}<br>`
           + rows2.join('<br>')
           + '</div>';
@@ -8898,7 +8930,7 @@
         if (e.elcty != null) parts.push(`전기 <b>${num(e.elcty)}</b>`);
         if (e.gas != null) parts.push(`가스 <b>${num(e.gas)}</b>`);
         if (parts.length) {
-          engyHtml = '<div style="margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">'
+          engyHtml = '<div class="ls-sec">'
             + '<b>에너지 사용량</b>'
             + (ymTxt ? ` <span style="font-size:12px;color:var(--c-muted);">${esc(ymTxt)} 기준</span>` : '')
             + '<br>' + parts.join(' · ')
@@ -8918,7 +8950,7 @@
           const fb = b.flr == null ? 999 : Number(b.flr) || 999;
           return fa - fb;
         });
-        storeHtml = `<div style="margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">`
+        storeHtml = `<div class="ls-sec">`
           + `<b>이 건물 업소</b> <span style="color:var(--c-muted);font-size:12px;">${ss.length}곳</span><br>`
           + ss.map((x) => {
             const f = x.flr == null ? '' : `<span style="color:var(--c-primary);">${esc(String(x.flr))}층</span> `;
@@ -8947,7 +8979,7 @@
       if (st.reserve && st.reserve.length && st.reserve[0].sTot != null) {
         const r0 = st.reserve[0];
         const ymTxt = /^\d{6}$/.test(String(r0.ym || '')) ? `${r0.ym.slice(0, 4)}.${r0.ym.slice(4, 6)}` : '';
-        reserveHtml = '<div style="margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">'
+        reserveHtml = '<div class="ls-sec">'
           + '<b>장기수선충당금</b>'
           + (ymTxt ? ` <span style="font-size:12px;color:var(--c-muted);">${esc(ymTxt)} 기준</span>` : '')
           + `<br>적립 잔액 <b>${wonEok(r0.sTot / 100000000)}</b>`
@@ -8963,7 +8995,7 @@
       if (st.reserve || (st.br && (st.br.hhldCnt || st.br.fmlyCnt))) {
         const hh = Number(st.br && (st.br.hhldCnt || st.br.fmlyCnt)) || 0;
         if (st.mgmt === 'loading') {
-          mgmtHtml = '<div style="margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;font-size:12px;color:var(--c-muted);">관리비 불러오는 중…</div>';
+          mgmtHtml = '<div class="ls-sec" style="font-size:12px;color:var(--c-muted);">관리비 불러오는 중…</div>';
         } else if (st.mgmt && st.mgmt.items && st.mgmt.items.length) {
           const m = st.mgmt;
           const ymTxt = /^\d{6}$/.test(String(m.ym || '')) ? `${m.ym.slice(0, 4)}.${m.ym.slice(4, 6)}` : '';
@@ -8973,7 +9005,7 @@
             .sort((a, b) => b.won - a.won)
             .map((x) => `${esc(x.label)} ${per(x.won)}`).join(' · ');
           const cm = sum('공용'), iv = sum('개별');
-          mgmtHtml = '<div style="margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">'
+          mgmtHtml = '<div class="ls-sec">'
             + '<b>관리비</b>'
             + (ymTxt ? ` <span style="font-size:12px;color:var(--c-muted);">${esc(ymTxt)} 기준</span>` : '')
             + (hh ? ` <span style="font-size:12px;color:var(--c-muted);">세대당 월액 · ${hh.toLocaleString()}세대</span>`
@@ -8986,9 +9018,9 @@
             + ' 관리비 총액이 아닙니다. 300세대 이상 의무관리대상만 공개됩니다.</div>'
             + '</div>';
         } else if (st.mgmt && st.mgmt.items && !st.mgmt.items.length) {
-          mgmtHtml = '<div style="margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;font-size:12px;color:var(--c-muted);">관리비 공개 대상이 아닙니다 (300세대 미만 등)</div>';
+          mgmtHtml = '<div class="ls-sec" style="font-size:12px;color:var(--c-muted);">관리비 공개 대상이 아닙니다 (300세대 미만 등)</div>';
         } else if (wantInfo.fund) {
-          mgmtHtml = '<div style="margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">'
+          mgmtHtml = '<div class="ls-sec">'
             + '<button type="button" class="ld-mgmt btn-mini">관리비 보기</button>'
             + '<span style="font-size:11.5px;color:var(--c-muted);margin-left:6px;">호출 11회 — 누를 때만 조회합니다</span></div>';
         }
@@ -8999,7 +9031,7 @@
       let luHtml = '';
       const _luArea = (st.addrPnu || (st.bld && st.bld.pnu) || (st.parcel && st.parcel.pnu) || '').slice(0, 5);
       if (st.zoneCode && _luArea) {
-        const box = (inner) => '<div style="margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">' + inner + '</div>';
+        const box = (inner) => '<div class="ls-sec">' + inner + '</div>';
         if (st.landuse === 'loading') {
           luHtml = box('<span style="font-size:12px;color:var(--c-muted);">행위제한 조회 중…</span>');
         } else if (Array.isArray(st.landuse) && st.landuse.length) {
@@ -9027,7 +9059,7 @@
         }
       }
       if (!rows.length && !houseHtml && !detailHtml && !storeHtml && !nrHtml && !pmsHtml && !hpmsHtml && !lpHtml && !trdarHtml && !schHtml && !trdHtml && !subHtml && !lvpHtml && !rgHtml && !shtHtml && !mtnHtml && !engyHtml && !reserveHtml && !mgmtHtml) return '';
-      return `<div style="font-size:13px;margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">`
+      return `<div class="ls-sec" style="font-size:13px;">`
         + (rows.length ? `<b>토지·건물 정보</b>${badge}<br>${rows.join('<br>')}` : '')
         + shtHtml + pmsHtml + hpmsHtml + subHtml + schHtml + trdarHtml + lvpHtml + trdHtml + lpHtml + rgHtml + mtnHtml + engyHtml + reserveHtml + mgmtHtml + luHtml + storeHtml + nrHtml + houseHtml + detailHtml + '</div>';
     }
@@ -9232,7 +9264,7 @@
     function fillLandInfo(popupEl, getPopup, lat, lng, onInfo, noDetail, jibun) {
       const slot = popupEl && popupEl.querySelector('.bld-info');
       if (!slot) return;
-      const st = { zone: '', parcel: null, br: null, bld: null, house: null, detail: null, addrPnu: null, trdar: null, sch: null, trd: null, sub: null, lvp: null, rg: null, rgSeoul: null };
+      const st = { zone: '', parcel: null, br: null, bld: null, house: null, detail: null, addrPnu: null, trdar: null, sch: null, trd: null, sub: null, lvp: null, lvpWas: null, rg: null, rgSeoul: null };
       const render = () => {
         slot.innerHTML = landInfoHtml(st, noDetail);
         
@@ -9397,9 +9429,14 @@
             if (wantInfo.lvp && d.adong && d.adong.cd) {
               loadLivingPop().then((m) => {
                 if (!m) return;
-                const v = m.get(d.adong.cd);
                 
-                if (v) { st.lvp = v; render(); }
+                let v = m.get(d.adong.cd), was = null;
+                if (!v) {
+                  const alt = LVP_CODE_MAP[d.adong.cd];
+                  if (alt) { v = m.get(alt.cd); was = alt.was; }
+                }
+                
+                if (v) { st.lvp = v; st.lvpWas = was; render(); }
               });
             }
           }
@@ -9759,7 +9796,7 @@
           const npy = best.area && best.priceEok && uUnit.price === 'total' ? ' · ' + uPriceSub(best).replace('평단가 ', '') : '';
           const nOld = parseInt(best.build) <= 1994
             ? '<span style="background:#e03131;color:#fff;font-size:11px;padding:1px 5px;border-radius:8px;margin-left:4px;">30년↑</span>' : '';
-          nearHtml = `<div style="font-size:13px;margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">`
+          nearHtml = `<div class="ls-sec" style="font-size:13px;">`
             + `<b>근처 아파트 실거래</b> <span style="font-size:12px;color:var(--c-muted);">참고 · 반경 700m ${cnt}건</span><br>`
             + `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${ageColor(best.build)};margin-right:5px;"></span>`
             + `<b>${esc(best.name)}</b> <span style="color:var(--c-muted);font-size:12px;">여기서 ${Math.round(bd * 1000)}m</span><br>`
@@ -9773,7 +9810,7 @@
         if (_jbRowsGlobal && _jbRowsGlobal.length) {
           const near = _jbRowsGlobal.filter(r => r.lat && kmDist(lat, lng, r.lat, r.lng) < 0.5).slice(0, 3);
           if (near.length) {
-            jbNearHtml = `<div style="font-size:12px;margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;"><b>500m 내 정비사업 ${near.length}건</b><br>`
+            jbNearHtml = `<div class="ls-sec" style="font-size:12px;"><b>500m 내 정비사업 ${near.length}건</b><br>`
               + near.map(r => `<span style="color:${JB_COLOR[jbGroup(r)]||'#868e96'}">●</span> ${esc(r.name)} <span style="color:var(--c-muted)">${esc(r.stage||'')}</span>`).join('<br>') + '</div>';
           }
         }
@@ -9800,7 +9837,7 @@
               if (kmDist(lat, lng, r.lat, r.lng) > 0.25) continue;
               const nOld = parseInt(r.build) <= 1994 ? ' <span style="background:#e03131;color:#fff;font-size:11px;padding:1px 5px;border-radius:8px;">30년↑</span>' : '';
               const npy = r.area && r.priceEok && uUnit.price === 'total' ? ' <span style="color:var(--c-muted);">' + uPriceSub(r).replace('평단가 ', '') + '</span>' : '';
-              mApHtml = `<div style="font-size:13px;margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;"><b>이 건물의 아파트 실거래</b> <span style="font-size:12px;color:var(--c-muted);">${esc(r.name)} · ${esc(r.gu)} ${esc(r.dong)}</span><br>`
+              mApHtml = `<div class="ls-sec" style="font-size:13px;"><b>이 건물의 아파트 실거래</b> <span style="font-size:12px;color:var(--c-muted);">${esc(r.name)} · ${esc(r.gu)} ${esc(r.dong)}</span><br>`
                 + `<span class="pc-price">매매 ${uPriceMain(r)}</span>${npy}<br>`
                 + `전용 ${uAreaTxt(r.area)} · ${esc(r.floor || '?')}층 · 거래 ${esc(r.ymd)}${nOld}`
                 + `${jeonseHtml(r, '평형 기준')}${rpFlagsHtml(r)}${rpTrendHtml(r)}${rpDealTableHtml(r)}</div>`;
