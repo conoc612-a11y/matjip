@@ -6658,25 +6658,16 @@
         const div = L.DomUtil.create('div', 'lp');
         div.innerHTML = '<button type="button" class="lp-toggle" title="레이어" aria-label="레이어">'
           + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l9 5-9 5-9-5 9-5z"/><path d="M3 12l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg></button>'
-          + '<div class="lp-body ui-scroll"></div>'
-          
-          
-          + '<div class="ui-grip" title="크기 조절"></div>';
+          + '<div class="lp-body ui-scroll"></div>';
         const body = div.querySelector('.lp-body');
         const toggle = div.querySelector('.lp-toggle');
         toggle.onclick = () => div.classList.toggle('open');
         
-        const grip = div.querySelector('.ui-grip');
-        L.DomEvent.disableClickPropagation(div);
-        L.DomEvent.disableScrollPropagation(body);
-        if (typeof makeResizable === 'function') {
-          
-          makeResizable(grip, body, {
-            minW: 220, minH: 160,
-            maxW: Math.min(720, window.innerWidth - 40),
-            dragEnabled: () => div.classList.contains('open'),
-          });
-        }
+        
+        
+        
+        
+        
 
         
         
@@ -7000,21 +6991,28 @@
         
         
         
-        ['🔧 연동 중 (프록시 완료 · 화면 연결 대기)', [
-          '토지이용규제정보',
-        ]],
+        
+        
+        
+        
+        
         ['부동산·건축', ['공동주택 기본정보', '아파트 매매 실거래가(기본판)', '녹색건축 인증현황',
-          '청약 당첨자 정보(청약홈)', '온비드 공매 입찰정보', '파산금융회사 매물현황']],
+          '청약 당첨자 정보(청약홈)', '파산금융회사 매물현황']],
         
         
         ['공동주택 관리', ['하자담보책임기간',
-          '유지관리 이력', '입찰공고', '입찰결과공지', '수의계약 공지']],
+          '입찰공고', '입찰결과공지', '수의계약 공지']],
         ['공공주택·임대', ['LH 임대주택단지(마이홈이 상위호환)', 'LH 분양임대공고 상세',
           'LH 분양임대공고문', '예비입주자 대기현황']],
         ['생활 인프라', ['착한가격업소 현황',
-          '생필품 가격 정보', '공중화장실 정보', '공공도서관 소장도서', '정류장 노선 이용량',
+          '생필품 가격 정보', '공중화장실 정보', '공공도서관 소장도서',
           '서울교통공사 최단경로', '도시고속도로 방음벽', '기상특보 조회', 'CCTV 도로날씨',
           '노후 공공시설물(안전관리원)', '명산 등산로', '공항 출국장 혼잡도']],
+        
+        
+        
+        ['서울 상권 보강 (즉시 가능)', ['상권 집객시설', '상권 아파트', '상권 상주인구',
+          '자치구 변화지표']],
         ['사업자·기업·금융', ['국민연금 사업장 내역', '국민연금 가입현황', '국민연금 탈퇴사업장',
           '주식시세정보(금융위)', '기업 재무정보(금융위)', '기업지배구조 공시(금융위)',
           '지배구조정보(금융위)', '금융회사 공시(금융위)', '크라우드펀딩 업자(금융위)',
