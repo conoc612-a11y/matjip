@@ -61,9 +61,19 @@ button,
 /* .ui-scroll 은 이제 스크롤 영역을 표시하는 마커 클래스일 뿐이다.
    스크롤바 모양은 브라우저 기본을 그대로 쓴다 — 위 주석 참고. 규칙을 다시 넣지 말 것. */
 
-.ui-grip { width:24px; height:24px; cursor:nwse-resize; background:rgba(0,0,0,.82); border:2px solid rgba(255,255,255,.95); border-radius:9px; display:flex; align-items:flex-end; justify-content:flex-end; padding:3px; box-sizing:border-box; box-shadow:0 1px 6px rgba(0,0,0,.5); }
-.ui-grip::after { content:''; width:10px; height:10px; border-right:3px solid #fff; border-bottom:3px solid #fff; border-radius:0 0 4px; }
-.ui-grip:hover, .ui-grip:active { background:rgba(0,0,0,.95); }
+/* 크기조절 그립 — **얇은 이중 코너선 하나로 통일한다.** 팝업·사진창·거리뷰 전부 같은 모양.
+   예전엔 기본형이 '검은 둥근 박스'였고 팝업 안에서만 코너선으로 덮어써서, 같은 클래스인데
+   창마다 다르게 보였다. 기본형을 코너선으로 바꾸고 덮개를 없앴다.
+   ⚠️ 어두운 배경(사진창 #111·파노라마)에서도 보이도록 흰색 계열 + 그림자를 함께 준다. */
+.ui-grip { width:24px; height:24px; cursor:nwse-resize; background:none; border:none; padding:0;
+  box-sizing:border-box; position:relative; }
+.ui-grip::before, .ui-grip::after { content:''; position:absolute;
+  border-right:2px solid #C8C8C8; border-bottom:2px solid #C8C8C8; border-radius:0 0 3px;
+  filter:drop-shadow(0 0 1px rgba(0,0,0,.55)); }
+.ui-grip::before { right:3px; bottom:3px; width:16px; height:16px; }
+.ui-grip::after  { right:6px; bottom:6px; width:9px;  height:9px; }
+.ui-grip:hover::before, .ui-grip:hover::after,
+.ui-grip:active::before, .ui-grip:active::after { border-color:#fff; }
 .ui-grip-corner { position:absolute; right:3px; bottom:3px; z-index:1200; }
 
 .ui-pop-btn { width:24px; height:24px; border-radius:7px; border:none; background:var(--c-hover); color:var(--muted); font-size:16px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; padding:0; }

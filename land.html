@@ -283,7 +283,7 @@
     .apd-photo { position:relative; border-radius:10px; overflow:hidden; background:var(--c-hover); aspect-ratio:4/3; }
     .apd-photo img { width:100%; height:100%; object-fit:cover; display:block; cursor:zoom-in; }
     .apd-photo .apd-ph { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:13px; color:var(--muted); text-align:center; line-height:1.5; }
-    .apd-nav { position:absolute; top:50%; transform:translateY(-50%); width:30px; height:46px; border:none; background:rgba(0,0,0,.45); color:#fff; font-size:20px; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+    .apd-nav { position:absolute; top:50%; margin-top:-23px; width:30px; height:46px; border:none; background:rgba(0,0,0,.45); color:#fff; font-size:20px; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
     .apd-nav:hover { background:rgba(0,0,0,.7); }
     .apd-prev { left:6px; } .apd-next { right:6px; }
     .apd-cap { position:absolute; left:0; right:0; bottom:6px; text-align:center; color:#fff; font-size:12px; text-shadow:0 1px 3px rgba(0,0,0,.8); }
@@ -366,7 +366,14 @@
 
 
 
-    .apd-lb-nav { position:absolute; top:50%; transform:translateY(-50%); z-index:2;
+
+
+
+
+
+
+
+    .apd-lb-nav { position:absolute; top:50%; margin-top:-60px; z-index:2;
       width:44px; height:120px; border:none; border-radius:9px;
       background:rgba(255,255,255,.12); color:#fff; font-size:26px; cursor:pointer;
       display:flex; align-items:center; justify-content:center;
@@ -376,9 +383,10 @@
 
 
 
+
     .apd-lb-nav::before { content:''; position:absolute; inset:-34px -22px; border-radius:14px; }
-    .apd-lb-nav:hover { background:rgba(255,255,255,.34); transform:translateY(-50%) scale(1.14); }
-    .apd-lb-nav:active { background:rgba(255,255,255,.46); transform:translateY(-50%) scale(1.06); }
+    .apd-lb-nav:hover { background:rgba(255,255,255,.34); transform:scale(1.14); }
+    .apd-lb-nav:active { background:rgba(255,255,255,.46); transform:scale(1.06); }
     .apd-lb-prev { left:8px; } .apd-lb-next { right:8px; }
     
 
@@ -530,8 +538,14 @@
 
 
 
-    .lp-resizer { position:absolute; left:-4px; top:0; bottom:0; width:8px; z-index:2001;
+
+
+    .lp-resizer { display:none; position:absolute; width:8px; z-index:2001;
       background:transparent; pointer-events:none; }
+    .lp.open .lp-resizer { display:block; }
+    
+
+    .lp-body { transition:right .2s ease; }
     
 
     .lp-roles { display:flex; flex-wrap:wrap; gap:4px; align-items:center; padding:0 0 6px; border-bottom:1px solid var(--line); margin-bottom:6px; }
@@ -737,14 +751,7 @@
 
 
 
-    .leaflet-popup .ui-grip { background:none; border:none; box-shadow:none; padding:0; }
-    .leaflet-popup .ui-grip:hover, .leaflet-popup .ui-grip:active { background:none; }
-    .leaflet-popup .ui-grip::before,
-    .leaflet-popup .ui-grip::after {
-      content:''; position:absolute; border-right:2px solid #C8C8C8; border-bottom:2px solid #C8C8C8; border-radius:0 0 3px;
-    }
-    .leaflet-popup .ui-grip::before { right:3px; bottom:3px; width:16px; height:16px; }
-    .leaflet-popup .ui-grip::after { right:6px; bottom:6px; width:9px; height:9px; }
+    
     
     .leaflet-popup .pc table.rp-deals { width:100%; border-collapse:collapse; font-size:12px; }
     .leaflet-popup .pc table.rp-deals th { text-align:left; font-weight:600; color:var(--c-muted); padding:3px 4px 3px 0; border-bottom:1px solid var(--line); white-space:nowrap; }
@@ -900,7 +907,6 @@
         <button type="button" class="apd-lb-close" id="apd-lb-close" aria-label="닫기">✕</button>
         <div class="apd-lb-zoom">
           <button type="button" id="apd-lb-zoom-out" aria-label="축소" title="축소">−</button>
-          <button type="button" id="apd-lb-zoom-reset" aria-label="원래 크기(맞춤)" title="원래 크기(맞춤)">⤢</button>
           <button type="button" id="apd-lb-zoom-in" aria-label="확대" title="확대">+</button>
         </div>
         <button type="button" class="apd-lb-nav apd-lb-prev" id="apd-lb-prev" aria-label="이전">‹</button>
@@ -4704,7 +4710,6 @@
       lbImg.ondblclick = () => lbSetZoom(lbZoom > 1 ? 1 : 2.2);
       $('apd-lb-zoom-in').onclick = (e) => { e.stopPropagation(); lbSetZoom(lbZoom * 1.4); };
       $('apd-lb-zoom-out').onclick = (e) => { e.stopPropagation(); lbSetZoom(lbZoom / 1.4); };
-      $('apd-lb-zoom-reset').onclick = (e) => { e.stopPropagation(); lbSetZoom(1); };
       
       
       makeResizable($('apd-lb-grip'), lbFrame, {
@@ -6669,7 +6674,13 @@
           + '<div class="lp-body ui-scroll"></div>';
         const body = div.querySelector('.lp-body');
         const toggle = div.querySelector('.lp-toggle');
-        toggle.onclick = () => div.classList.toggle('open');
+        let lpPlaceTab = null;
+        toggle.onclick = () => {
+          div.classList.toggle('open');
+          
+          if (div.classList.contains('open') && lpPlaceTab) lpPlaceTab();
+        };
+        
         
         
         
@@ -6685,17 +6696,52 @@
           const tab = document.createElement('button');
           tab.type = 'button';
           tab.className = 'panel-slide-tab';
-          tab.textContent = '‹';
-          tab.title = '드래그해서 레이어 창 너비 조절';
-          tab.setAttribute('aria-label', '레이어 창 너비 조절');
+          
+          
+          tab.textContent = '›';
+          tab.title = '클릭: 숨기기 · 드래그: 너비 조절';
+          tab.setAttribute('aria-label', '레이어 창 숨기기 (드래그하면 너비 조절)');
           rz.appendChild(tab);
-          body.appendChild(rz);
+          
+          
+          
+          div.appendChild(rz);
+          
+          
+          
+          const LP_RAIL = 22;
+          let collapsed = false;
+          
+          
+          const place = () => {
+            rz.style.left = (body.offsetLeft - 4) + 'px';
+            rz.style.right = '';
+            rz.style.top = body.offsetTop + 'px';
+            rz.style.height = body.offsetHeight + 'px';
+          };
+          const setCollapsed = (v) => {
+            collapsed = v;
+            
+            body.style.right = v ? (-(body.offsetWidth - LP_RAIL) + 'px') : '0px';
+            
+            tab.textContent = v ? '‹' : '›';
+            tab.title = v ? '클릭: 펼치기 · 드래그: 너비 조절' : '클릭: 숨기기 · 드래그: 너비 조절';
+            tab.setAttribute('aria-label', v ? '레이어 창 펼치기' : '레이어 창 숨기기 (드래그하면 너비 조절)');
+            
+            place(); setTimeout(place, 210);
+          };
           makeResizable(tab, body, {
             axis: 'w',            
             reverseW: true,       
             minW: 220, maxW: Math.min(560, window.innerWidth - 60),
             gripClass: 'dragging',
+            onResize: place,      
+            dragThreshold: 4,     
+            dragEnabled: () => !collapsed,   
+            onClick: () => setCollapsed(!collapsed),
           });
+          
+          lpPlaceTab = () => { setCollapsed(false); };
         })();
         
         
