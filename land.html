@@ -3737,7 +3737,15 @@
       
       
       
-      const ONBID_PROXY = MOLIT_PROXY;
+      
+      
+      
+      
+      
+      
+      
+      
+      const onbidProxy = () => MOLIT_PROXY;
       const _obDtlCache = new Map();
       function loadOnbidDetail(mng, cdtn, cb) {
         if (!mng) { cb(null); return; }
@@ -3746,7 +3754,7 @@
           svc: 'OnbidRlstDtlSrvc2', op: 'getRlstDtlInf2',
           cltrMngNo: mng, pbctCdtnNo: String(cdtn || ''),
         });
-        fetch(ONBID_PROXY + '?' + q)
+        fetch(onbidProxy() + '?' + q)
           .then((r) => (r.ok ? r.json() : null))
           .then((o) => {
             
