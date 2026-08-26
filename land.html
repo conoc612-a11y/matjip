@@ -6404,10 +6404,11 @@
       const infoSch = L.layerGroup();
       const infoTrd = L.layerGroup();
       const infoSub = L.layerGroup();
+      const infoLvp = L.layerGroup();
       const infoEngy = L.layerGroup();
       const infoFund = L.layerGroup();
-      const wantInfo = { sht: true, mtn: true, pms: true, hpms: true, engy: true, fund: true, lp: true, trdar: true, sch: true, trd: true, sub: true };
-      const _infoMap = [[infoSht, 'sht'], [infoMtn, 'mtn'], [infoPms, 'pms'], [infoHpms, 'hpms'], [infoLp, 'lp'], [infoTrdar, 'trdar'], [infoSch, 'sch'], [infoTrd, 'trd'], [infoSub, 'sub'],
+      const wantInfo = { sht: true, mtn: true, pms: true, hpms: true, engy: true, fund: true, lp: true, trdar: true, sch: true, trd: true, sub: true, lvp: true };
+      const _infoMap = [[infoSht, 'sht'], [infoMtn, 'mtn'], [infoPms, 'pms'], [infoHpms, 'hpms'], [infoLp, 'lp'], [infoTrdar, 'trdar'], [infoSch, 'sch'], [infoTrd, 'trd'], [infoSub, 'sub'], [infoLvp, 'lvp'],
         [infoEngy, 'engy'], [infoFund, 'fund']];
       map.on('overlayadd', (e) => {
         const hit = _infoMap.find((x) => x[0] === e.layer);
@@ -6417,7 +6418,7 @@
         const hit = _infoMap.find((x) => x[0] === e.layer);
         if (hit) wantInfo[hit[1]] = false;
       });
-      infoSht.addTo(map); infoMtn.addTo(map); infoPms.addTo(map); infoHpms.addTo(map); infoLp.addTo(map); infoTrdar.addTo(map); infoSch.addTo(map); infoTrd.addTo(map); infoSub.addTo(map);
+      infoSht.addTo(map); infoMtn.addTo(map); infoPms.addTo(map); infoHpms.addTo(map); infoLp.addTo(map); infoTrdar.addTo(map); infoSch.addTo(map); infoTrd.addTo(map); infoSub.addTo(map); infoLvp.addTo(map);
       infoEngy.addTo(map); infoFund.addTo(map);
 
       const LAYER_TREE = [
@@ -6455,6 +6456,7 @@
           { name: '학군 (직선 800m)', layer: infoSch },
           { name: '상권 매출 (가장 가까운)', layer: infoTrd },
           { name: '역세권 (직선 800m)', layer: infoSub },
+          { name: '생활인구 (행정동 낮/밤)', layer: infoLvp },
           
           { name: '에너지 사용량 (전기·가스)', layer: infoEngy },
           
@@ -7944,6 +7946,28 @@
     
     
     
+    
+    
+    
+    
+    
+    
+    
+    
+    let lvpRows = null, lvpMeta = null, _lvpPromise = null;
+    function loadLivingPop() {
+      if (!_lvpPromise) {
+        _lvpPromise = fetch('livingpop.json')
+          .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+          .then((j) => {
+            lvpMeta = j;
+            lvpRows = new Map((j.rows || []).map((x) => [x.cd, x]));
+            return lvpRows;
+          })
+          .catch((e) => { console.error('생활인구 로드 실패:', e); return null; });
+      }
+      return _lvpPromise;
+    }
     function loadTrdar(lat, lng, cb) {
       const ck = lat.toFixed(4) + ',' + lng.toFixed(4);
       if (_trdarCache.has(ck)) { cb(_trdarCache.get(ck)); return; }
@@ -8500,6 +8524,45 @@
       
       
       
+      
+      
+      
+      let lvpHtml = '';
+      if (st.lvp) {
+        const V = st.lvp, h = V.h || [];
+        const mx = Math.max.apply(null, h.filter((x) => x !== null).concat([0]));
+        const bars = mx ? h.map((v, i) => {
+          if (v === null) return '<span style="display:inline-block;width:4%;"></span>';
+          const pct = Math.max(2, Math.round(v / mx * 100));
+          
+          const isDay = i >= 10 && i <= 17;
+          return '<span title="' + i + '시 ' + v.toLocaleString('ko-KR') + '명" style="display:inline-block;'
+            + 'width:4%;height:' + pct + '%;background:'
+            + (v === mx ? '#e8590c' : isDay ? '#ffa94d' : '#adb5bd') + ';vertical-align:bottom;"></span>';
+        }).join('') : '';
+        
+        const say = !V.ratio ? ''
+          : V.ratio >= 1.5 ? '낮에 사람이 모이는 곳 (업무·상업)'
+          : V.ratio <= 0.85 ? '낮에 비는 주거지'
+          : '낮과 밤이 비슷한 동네';
+        lvpHtml = '<div style="margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">'
+          + '<b>생활인구</b> <span style="font-size:12px;">' + esc(V.nm || V.cd) + '</span>'
+          + (V.day && V.night ? '<div style="font-size:12px;margin-top:2px;">낮 <b>'
+              + V.day.toLocaleString('ko-KR') + '명</b> · 밤 <b>' + V.night.toLocaleString('ko-KR') + '명</b>'
+              + (V.ratio ? ' <span style="color:var(--c-muted);">(' + V.ratio + '배)</span>' : '') + '</div>' : '')
+          + (bars ? '<div style="margin-top:3px;height:26px;line-height:0;">' + bars + '</div>'
+              + '<div style="font-size:11px;color:var(--c-muted);">0시 → 23시 · '
+              + '<span style="color:#ffa94d;">■</span> 낮(10~17시)</div>' : '')
+          + (say ? '<div style="font-size:11.5px;margin-top:2px;">' + say + '</div>' : '')
+          
+          + (st.trdar && st.trdar.adong && st.trdar.adong.share < 60
+              ? '<div style="font-size:11px;color:var(--c-price);margin-top:2px;">행정동 판정 근거가 약합니다('
+                + st.trdar.adong.share + '% · 동 경계)</div>' : '')
+          + '<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">서울 열린데이터광장 생활인구 추정'
+          + (lvpMeta && lvpMeta.date ? ' · ' + lvpMeta.date.slice(0, 4) + '.' + lvpMeta.date.slice(4, 6)
+              + '.' + lvpMeta.date.slice(6) + ' 기준' : '') + '</div>'
+          + '</div>';
+      }
       let trdarHtml = '';
       if (st.trdar && st.trdar.total) {
         const T = st.trdar;
@@ -8817,10 +8880,10 @@
             + '이 땅에 무엇을 지을 수 있나 — 호출 ' + LANDUSE_ACTS.length + '회, 누를 때만 조회합니다.</span>');
         }
       }
-      if (!rows.length && !houseHtml && !detailHtml && !storeHtml && !nrHtml && !pmsHtml && !hpmsHtml && !lpHtml && !trdarHtml && !schHtml && !trdHtml && !subHtml && !shtHtml && !mtnHtml && !engyHtml && !reserveHtml && !mgmtHtml) return '';
+      if (!rows.length && !houseHtml && !detailHtml && !storeHtml && !nrHtml && !pmsHtml && !hpmsHtml && !lpHtml && !trdarHtml && !schHtml && !trdHtml && !subHtml && !lvpHtml && !shtHtml && !mtnHtml && !engyHtml && !reserveHtml && !mgmtHtml) return '';
       return `<div style="font-size:13px;margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">`
         + (rows.length ? `<b>토지·건물 정보</b>${badge}<br>${rows.join('<br>')}` : '')
-        + shtHtml + pmsHtml + hpmsHtml + subHtml + schHtml + trdarHtml + trdHtml + lpHtml + mtnHtml + engyHtml + reserveHtml + mgmtHtml + luHtml + storeHtml + nrHtml + houseHtml + detailHtml + '</div>';
+        + shtHtml + pmsHtml + hpmsHtml + subHtml + schHtml + trdarHtml + lvpHtml + trdHtml + lpHtml + mtnHtml + engyHtml + reserveHtml + mgmtHtml + luHtml + storeHtml + nrHtml + houseHtml + detailHtml + '</div>';
     }
 
     
@@ -9023,7 +9086,7 @@
     function fillLandInfo(popupEl, getPopup, lat, lng, onInfo, noDetail, jibun) {
       const slot = popupEl && popupEl.querySelector('.bld-info');
       if (!slot) return;
-      const st = { zone: '', parcel: null, br: null, bld: null, house: null, detail: null, addrPnu: null, trdar: null, sch: null, trd: null, sub: null };
+      const st = { zone: '', parcel: null, br: null, bld: null, house: null, detail: null, addrPnu: null, trdar: null, sch: null, trd: null, sub: null, lvp: null };
       const render = () => {
         slot.innerHTML = landInfoHtml(st, noDetail);
         
@@ -9165,7 +9228,18 @@
         
         
         if (wantInfo.trdar) loadTrdar(lat, lng, (d) => {
-          if (d) { st.trdar = d; render(); }
+          if (d) {
+            st.trdar = d; render();
+            
+            if (wantInfo.lvp && d.adong && d.adong.cd) {
+              loadLivingPop().then((m) => {
+                if (!m) return;
+                const v = m.get(d.adong.cd);
+                
+                if (v) { st.lvp = v; render(); }
+              });
+            }
+          }
         });
         
         
