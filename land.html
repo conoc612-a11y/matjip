@@ -2948,6 +2948,104 @@
       
       
       
+      
+      const subCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 40 });
+      let subRows = null, subMeta = null, _subPromise = null;
+      function loadSubway() {
+        if (!_subPromise) {
+          _subPromise = fetch('transit_subway.json')
+            .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+            .then((j) => { subRows = j.rows || []; subMeta = j; return subRows; })
+            .catch((e) => { console.error('지하철 로드 실패:', e); return null; });
+        }
+        return _subPromise;
+      }
+      
+      const SUB_LINE_COLOR = {
+        '1호선': '#0052A4', '2호선': '#00A84D', '3호선': '#EF7C1C', '4호선': '#00A5DE',
+        '5호선': '#996CAC', '6호선': '#CD7C2F', '7호선': '#747F00', '8호선': '#E6186C',
+        '9호선': '#BDB092', '경의중앙선': '#77C4A3', '분당선': '#FABE00', '신분당선': '#D31145',
+        '경춘선': '#0C8E72', '수인선': '#FABE00', '공항철도 1호선': '#0090D2', '우이신설선': '#B0CE18',
+        '경강선': '#003DA5', '서해선': '#8FC31F', '김포골드라인': '#A17E46', '신림선': '#6789CA',
+      };
+      const subColor = (d) => (d.ln && d.ln.length ? (SUB_LINE_COLOR[d.ln[0]] || '#495057') : '#495057');
+      function subPopupHtml(d) {
+        const tot = (d.on || 0) + (d.off || 0);
+        const h = d.h || [];
+        const hours = (subMeta && subMeta.hours) || [];
+        const mx = Math.max.apply(null, h.concat([0]));
+        const peak = mx ? hours[h.indexOf(mx)] : null;
+        const bars = mx ? h.map((v, i) => {
+          const pct = Math.max(2, Math.round(v / mx * 100));
+          const hh = hours[i];
+          
+          const rush = (hh >= 7 && hh <= 9) || (hh >= 18 && hh <= 20);
+          return '<span title="' + hh + '시 ' + v.toLocaleString('ko-KR') + '명" style="display:inline-block;'
+            + 'width:3.6%;height:' + pct + '%;background:'
+            + (v === mx ? '#e8590c' : rush ? '#748ffc' : '#ced4da') + ';vertical-align:bottom;"></span>';
+        }).join('') : '';
+        const rows = [];
+        rows.push('<div><b>' + esc(d.nm) + '</b></div>');
+        if (d.ln && d.ln.length) {
+          rows.push('<div style="margin-top:2px;font-size:12px;">' + d.ln.map((x) =>
+            '<span style="display:inline-block;padding:0 5px;border-radius:8px;color:#fff;font-size:11px;'
+            + 'background:' + (SUB_LINE_COLOR[x] || '#495057') + ';">' + esc(x) + '</span>').join(' ') + '</div>');
+        }
+        if (tot) {
+          rows.push('<div style="margin-top:3px;font-size:12px;">일평균 <b>' + tot.toLocaleString('ko-KR') + '명</b>'
+            + ' <span style="color:var(--c-muted);">승차 ' + (d.on || 0).toLocaleString('ko-KR')
+            + ' · 하차 ' + (d.off || 0).toLocaleString('ko-KR') + '</span></div>');
+        }
+        if (bars) {
+          rows.push('<div style="margin-top:3px;height:26px;line-height:0;">' + bars + '</div>');
+          rows.push('<div style="font-size:11px;color:var(--c-muted);">최다 ' + peak + '시'
+            + ' <span style="color:#748ffc;">■</span> 출퇴근(7~9·18~20)</div>');
+        }
+        rows.push('<div style="margin-top:5px;font-size:11px;color:var(--c-muted);">서울 열린데이터광장 지하철 승하차'
+          + (subMeta && subMeta.ym ? ' · ' + subMeta.ym.slice(0, 4) + '.' + subMeta.ym.slice(4) + ' 일평균' : '') + '</div>');
+        return '<div class="pc"><div class="pc-head">'
+          + '<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:'
+          + subColor(d) + ';flex-shrink:0;"></span>'
+          + '<span class="rp-name">지하철역</span></div><div class="pc-body">' + rows.join('') + '</div></div>';
+      }
+      function subBuild() {
+        if (!subRows) return;
+        subCluster.clearLayers();
+        
+        const mx = Math.max.apply(null, subRows.map((d) => (d.on || 0) + (d.off || 0)).concat([1]));
+        subCluster.addLayers(subRows.map((d) => {
+          const tot = (d.on || 0) + (d.off || 0);
+          const rr = 5 + Math.round(Math.sqrt(tot / mx) * 8);
+          const mk = L.circleMarker([d.lat, d.lng], {
+            radius: rr, color: '#000', weight: 1.4,
+            fillColor: subColor(d), fillOpacity: 0.85,
+          });
+          mk._pop = (() => subPopupHtml(d));
+          mk.bindTooltip(esc(d.nm), { direction: 'top' });
+          return mk;
+        }));
+      }
+      
+      const SUB_NEAR = 800;
+      function subwayNear(lat, lng) {
+        if (!subRows) return null;
+        const R = 6371000, rad = Math.PI / 180;
+        const out = [];
+        for (const d of subRows) {
+          if (Math.abs(d.lat - lat) > 0.012 || Math.abs(d.lng - lng) > 0.015) continue;
+          const dLat = (d.lat - lat) * rad, dLng = (d.lng - lng) * rad;
+          const a = Math.sin(dLat / 2) ** 2
+            + Math.cos(lat * rad) * Math.cos(d.lat * rad) * Math.sin(dLng / 2) ** 2;
+          const mm = 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+          if (mm <= SUB_NEAR) out.push(Object.assign({ _d: Math.round(mm) }, d));
+        }
+        return out.sort((x, y) => x._d - y._d);
+      }
+      
+      
+      
+      
+      
       const TRDAR_SE_COLOR = { 골목상권: '#1971c2', 발달상권: '#e8590c', 전통시장: '#7048e8', 관광특구: '#0ca678' };
       const trdarCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 50 });
       let trdarRows = null, _trdarPromise = null, trdarQ = null;
@@ -3214,7 +3312,13 @@
         }));
       }
       map.on('overlayadd', (e) => {
-        if (e.layer === trdarCluster) {
+        if (e.layer === subCluster) {
+          loadSubway().then((r) => {
+            if (!r) { toast('지하철 정보를 불러오지 못했습니다.'); return; }
+            subBuild();
+            toast('지하철역 ' + r.length + '곳 — 원 크기는 이용량, 색은 호선');
+          });
+        } else if (e.layer === trdarCluster) {
           loadTrdar().then((r) => {
             if (!r) { toast('상권 정보를 불러오지 못했습니다.'); return; }
             trdarBuild();
@@ -6251,10 +6355,11 @@
       const infoTrdar = L.layerGroup();
       const infoSch = L.layerGroup();
       const infoTrd = L.layerGroup();
+      const infoSub = L.layerGroup();
       const infoEngy = L.layerGroup();
       const infoFund = L.layerGroup();
-      const wantInfo = { sht: true, mtn: true, pms: true, hpms: true, engy: true, fund: true, lp: true, trdar: true, sch: true, trd: true };
-      const _infoMap = [[infoSht, 'sht'], [infoMtn, 'mtn'], [infoPms, 'pms'], [infoHpms, 'hpms'], [infoLp, 'lp'], [infoTrdar, 'trdar'], [infoSch, 'sch'], [infoTrd, 'trd'],
+      const wantInfo = { sht: true, mtn: true, pms: true, hpms: true, engy: true, fund: true, lp: true, trdar: true, sch: true, trd: true, sub: true };
+      const _infoMap = [[infoSht, 'sht'], [infoMtn, 'mtn'], [infoPms, 'pms'], [infoHpms, 'hpms'], [infoLp, 'lp'], [infoTrdar, 'trdar'], [infoSch, 'sch'], [infoTrd, 'trd'], [infoSub, 'sub'],
         [infoEngy, 'engy'], [infoFund, 'fund']];
       map.on('overlayadd', (e) => {
         const hit = _infoMap.find((x) => x[0] === e.layer);
@@ -6264,7 +6369,7 @@
         const hit = _infoMap.find((x) => x[0] === e.layer);
         if (hit) wantInfo[hit[1]] = false;
       });
-      infoSht.addTo(map); infoMtn.addTo(map); infoPms.addTo(map); infoHpms.addTo(map); infoLp.addTo(map); infoTrdar.addTo(map); infoSch.addTo(map); infoTrd.addTo(map);
+      infoSht.addTo(map); infoMtn.addTo(map); infoPms.addTo(map); infoHpms.addTo(map); infoLp.addTo(map); infoTrdar.addTo(map); infoSch.addTo(map); infoTrd.addTo(map); infoSub.addTo(map);
       infoEngy.addTo(map); infoFund.addTo(map);
 
       const LAYER_TREE = [
@@ -6279,6 +6384,7 @@
           { name: '주차장 (실제 시설 · 무료/유료)', layer: parkingCluster },
           { name: '전기차 충전소', layer: evCluster },
           
+          { name: '지하철역 (역세권 강도)', layer: subCluster },
           { name: '상권 (매출·유동인구)', layer: trdarCluster },
           { name: '학교 (초·중·고)', layer: schoolCluster },
           { name: '병원·의원 (심평원)', layer: hospCluster },
@@ -6299,6 +6405,7 @@
           { name: '주변 상권 (반경 150m)', layer: infoTrdar },
           { name: '학군 (직선 800m)', layer: infoSch },
           { name: '상권 매출 (가장 가까운)', layer: infoTrd },
+          { name: '역세권 (직선 800m)', layer: infoSub },
           
           { name: '에너지 사용량 (전기·가스)', layer: infoEngy },
           
@@ -8272,6 +8379,28 @@
       }
       
       
+      let subHtml = '';
+      if (st.sub && st.sub.length) {
+        const near = st.sub.slice(0, 2);
+        const lines = near.map((d) => {
+          const tot = (d.on || 0) + (d.off || 0);
+          const badge = (d.ln || []).slice(0, 3).map((x) =>
+            '<span style="display:inline-block;padding:0 4px;border-radius:7px;color:#fff;font-size:10.5px;'
+            + 'background:' + (SUB_LINE_COLOR[x] || '#495057') + ';">' + esc(x.replace('호선', '')) + '</span>').join(' ');
+          return '<div style="margin-top:2px;font-size:12px;">' + badge
+            + ' <b>' + esc(d.nm) + '</b> <span style="color:var(--c-muted);">' + d._d + 'm</span>'
+            + (tot ? ' · 일평균 ' + tot.toLocaleString('ko-KR') + '명' : '') + '</div>';
+        });
+        subHtml = '<div style="margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">'
+          + '<b>역세권</b> <span style="font-size:12px;color:var(--c-muted);">직선 ' + SUB_NEAR + 'm 안 '
+          + st.sub.length + '곳</span>'
+          + lines.join('')
+          + '<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">서울 열린데이터광장 지하철 승하차'
+          + (subMeta && subMeta.ym ? ' · ' + subMeta.ym.slice(0, 4) + '.' + subMeta.ym.slice(4) : '') + '</div>'
+          + '</div>';
+      }
+      
+      
       
       
       
@@ -8639,10 +8768,10 @@
             + '이 땅에 무엇을 지을 수 있나 — 호출 ' + LANDUSE_ACTS.length + '회, 누를 때만 조회합니다.</span>');
         }
       }
-      if (!rows.length && !houseHtml && !detailHtml && !storeHtml && !nrHtml && !pmsHtml && !hpmsHtml && !lpHtml && !trdarHtml && !schHtml && !trdHtml && !shtHtml && !mtnHtml && !engyHtml && !reserveHtml && !mgmtHtml) return '';
+      if (!rows.length && !houseHtml && !detailHtml && !storeHtml && !nrHtml && !pmsHtml && !hpmsHtml && !lpHtml && !trdarHtml && !schHtml && !trdHtml && !subHtml && !shtHtml && !mtnHtml && !engyHtml && !reserveHtml && !mgmtHtml) return '';
       return `<div style="font-size:13px;margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">`
         + (rows.length ? `<b>토지·건물 정보</b>${badge}<br>${rows.join('<br>')}` : '')
-        + shtHtml + pmsHtml + hpmsHtml + schHtml + trdarHtml + trdHtml + lpHtml + mtnHtml + engyHtml + reserveHtml + mgmtHtml + luHtml + storeHtml + nrHtml + houseHtml + detailHtml + '</div>';
+        + shtHtml + pmsHtml + hpmsHtml + subHtml + schHtml + trdarHtml + trdHtml + lpHtml + mtnHtml + engyHtml + reserveHtml + mgmtHtml + luHtml + storeHtml + nrHtml + houseHtml + detailHtml + '</div>';
     }
 
     
@@ -8845,7 +8974,7 @@
     function fillLandInfo(popupEl, getPopup, lat, lng, onInfo, noDetail, jibun) {
       const slot = popupEl && popupEl.querySelector('.bld-info');
       if (!slot) return;
-      const st = { zone: '', parcel: null, br: null, bld: null, house: null, detail: null, addrPnu: null, trdar: null, sch: null, trd: null };
+      const st = { zone: '', parcel: null, br: null, bld: null, house: null, detail: null, addrPnu: null, trdar: null, sch: null, trd: null, sub: null };
       const render = () => {
         slot.innerHTML = landInfoHtml(st, noDetail);
         
@@ -8963,6 +9092,13 @@
         if (wantInfo.hpms) loadHsPms(pnu, (arr) => {
           if (arr && arr.length) { st.hpms = arr; render(); }
         });
+        
+        if (wantInfo.sub) {
+          loadSubway().then(() => {
+            const near = subwayNear(lat, lng);
+            if (near && near.length) { st.sub = near; render(); }
+          });
+        }
         
         if (wantInfo.trd) {
           loadTrdar().then(() => {
