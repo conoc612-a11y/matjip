@@ -2947,6 +2947,46 @@
       
       
       
+      const bikeCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 55 });
+      let bikeRows = null, _bikePromise = null;
+      function loadBike() {
+        if (!_bikePromise) {
+          _bikePromise = fetch('transit_bike.json')
+            .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+            .then((j) => { bikeRows = j.rows || []; return bikeRows; })
+            .catch((e) => { console.error('따릉이 로드 실패:', e); return null; });
+        }
+        return _bikePromise;
+      }
+      function bikePopupHtml(d) {
+        const rows = ['<div><b>' + esc(d.nm || d.id) + '</b></div>'];
+        const bits = [];
+        if (d.hold) bits.push('거치대 ' + d.hold + '대');
+        if (d.gu) bits.push(esc(d.gu));
+        if (bits.length) rows.push('<div style="margin-top:2px;font-size:12px;">' + bits.join(' · ') + '</div>');
+        if (d.addr) rows.push('<div style="margin-top:3px;font-size:12px;color:var(--c-muted);">' + esc(d.addr) + '</div>');
+        rows.push('<div style="margin-top:5px;font-size:11px;color:var(--c-muted);">서울 열린데이터광장 따릉이 대여소</div>');
+        return '<div class="pc"><div class="pc-head">'
+          + '<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#2f9e44;flex-shrink:0;"></span>'
+          + '<span class="rp-name">따릉이 대여소</span></div><div class="pc-body">' + rows.join('') + '</div></div>';
+      }
+      function bikeBuild() {
+        if (!bikeRows) return;
+        bikeCluster.clearLayers();
+        bikeCluster.addLayers(bikeRows.map((d) => {
+          
+          const rr = d.hold ? Math.min(9, 4 + Math.round(d.hold / 8)) : 4;
+          const mk = L.circleMarker([d.lat, d.lng], {
+            radius: rr, color: '#000', weight: 1, fillColor: '#2f9e44', fillOpacity: 0.8,
+          });
+          mk._pop = (() => bikePopupHtml(d));
+          return mk;
+        }));
+      }
+      
+      
+      
+      
       
       
       const subCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 40 });
@@ -3312,7 +3352,15 @@
         }));
       }
       map.on('overlayadd', (e) => {
-        if (e.layer === subCluster) {
+        if (e.layer === bikeCluster) {
+          loadBike().then((r) => {
+            if (!r) { toast('따릉이 정보를 불러오지 못했습니다.'); return; }
+            bikeBuild();
+            const wh = r.filter((x) => x.hold).length;
+            toast('따릉이 대여소 ' + r.length.toLocaleString() + '곳 — 원 크기는 거치대 수('
+              + wh.toLocaleString() + '곳에 정보 있음)');
+          });
+        } else if (e.layer === subCluster) {
           loadSubway().then((r) => {
             if (!r) { toast('지하철 정보를 불러오지 못했습니다.'); return; }
             subBuild();
@@ -6385,6 +6433,7 @@
           { name: '전기차 충전소', layer: evCluster },
           
           { name: '지하철역 (역세권 강도)', layer: subCluster },
+          { name: '따릉이 대여소', layer: bikeCluster },
           { name: '상권 (매출·유동인구)', layer: trdarCluster },
           { name: '학교 (초·중·고)', layer: schoolCluster },
           { name: '병원·의원 (심평원)', layer: hospCluster },
