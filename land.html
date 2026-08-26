@@ -526,6 +526,14 @@
     .lp.open .lp-body { display:block; }
     
 
+
+
+
+
+    .lp-resizer { position:absolute; left:-4px; top:0; bottom:0; width:8px; z-index:2001;
+      background:transparent; pointer-events:none; }
+    
+
     .lp-roles { display:flex; flex-wrap:wrap; gap:4px; align-items:center; padding:0 0 6px; border-bottom:1px solid var(--line); margin-bottom:6px; }
     .lp-roles-lbl { width:100%; font-size:11px; color:var(--muted); margin-bottom:2px; }
     .lp-role { font:inherit; font-size:12px; padding:3px 9px; border-radius:999px; cursor:pointer;
@@ -6662,6 +6670,33 @@
         const body = div.querySelector('.lp-body');
         const toggle = div.querySelector('.lp-toggle');
         toggle.onclick = () => div.classList.toggle('open');
+        
+        
+        
+        
+        
+        
+        
+        
+        (function addWidthTab() {
+          if (typeof makeResizable !== 'function') return;
+          const rz = document.createElement('div');
+          rz.className = 'lp-resizer';
+          const tab = document.createElement('button');
+          tab.type = 'button';
+          tab.className = 'panel-slide-tab';
+          tab.textContent = '‹';
+          tab.title = '드래그해서 레이어 창 너비 조절';
+          tab.setAttribute('aria-label', '레이어 창 너비 조절');
+          rz.appendChild(tab);
+          body.appendChild(rz);
+          makeResizable(tab, body, {
+            axis: 'w',            
+            reverseW: true,       
+            minW: 220, maxW: Math.min(560, window.innerWidth - 60),
+            gripClass: 'dragging',
+          });
+        })();
         
         
         
