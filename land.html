@@ -6432,10 +6432,11 @@
       const infoTrd = L.layerGroup();
       const infoSub = L.layerGroup();
       const infoLvp = L.layerGroup();
+      const infoRg = L.layerGroup();
       const infoEngy = L.layerGroup();
       const infoFund = L.layerGroup();
-      const wantInfo = { sht: true, mtn: true, pms: true, hpms: true, engy: true, fund: true, lp: true, trdar: true, sch: true, trd: true, sub: true, lvp: true };
-      const _infoMap = [[infoSht, 'sht'], [infoMtn, 'mtn'], [infoPms, 'pms'], [infoHpms, 'hpms'], [infoLp, 'lp'], [infoTrdar, 'trdar'], [infoSch, 'sch'], [infoTrd, 'trd'], [infoSub, 'sub'], [infoLvp, 'lvp'],
+      const wantInfo = { sht: true, mtn: true, pms: true, hpms: true, engy: true, fund: true, lp: true, trdar: true, sch: true, trd: true, sub: true, lvp: true, rg: true };
+      const _infoMap = [[infoSht, 'sht'], [infoMtn, 'mtn'], [infoPms, 'pms'], [infoHpms, 'hpms'], [infoLp, 'lp'], [infoTrdar, 'trdar'], [infoSch, 'sch'], [infoTrd, 'trd'], [infoSub, 'sub'], [infoLvp, 'lvp'], [infoRg, 'rg'],
         [infoEngy, 'engy'], [infoFund, 'fund']];
       map.on('overlayadd', (e) => {
         const hit = _infoMap.find((x) => x[0] === e.layer);
@@ -6445,7 +6446,7 @@
         const hit = _infoMap.find((x) => x[0] === e.layer);
         if (hit) wantInfo[hit[1]] = false;
       });
-      infoSht.addTo(map); infoMtn.addTo(map); infoPms.addTo(map); infoHpms.addTo(map); infoLp.addTo(map); infoTrdar.addTo(map); infoSch.addTo(map); infoTrd.addTo(map); infoSub.addTo(map); infoLvp.addTo(map);
+      infoSht.addTo(map); infoMtn.addTo(map); infoPms.addTo(map); infoHpms.addTo(map); infoLp.addTo(map); infoTrdar.addTo(map); infoSch.addTo(map); infoTrd.addTo(map); infoSub.addTo(map); infoLvp.addTo(map); infoRg.addTo(map);
       infoEngy.addTo(map); infoFund.addTo(map);
 
       const LAYER_TREE = [
@@ -6484,6 +6485,7 @@
           { name: '상권 매출 (가장 가까운)', layer: infoTrd },
           { name: '역세권 (직선 800m)', layer: infoSub },
           { name: '생활인구 (행정동 낮/밤)', layer: infoLvp },
+          { name: '자치구 동향 (인구이동·매매지수)', layer: infoRg },
           
           { name: '에너지 사용량 (전기·가스)', layer: infoEngy },
           
@@ -8022,6 +8024,26 @@
       }
       return _lvpPromise;
     }
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    let rgData = null, _rgPromise = null;
+    function loadRoneGu() {
+      if (!_rgPromise) {
+        _rgPromise = fetch('rone_gu.json')
+          .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+          .then((j) => { rgData = j; return j; })
+          .catch((e) => { console.error('자치구 동향 로드 실패:', e); return null; });
+      }
+      return _rgPromise;
+    }
     function loadTrdar(lat, lng, cb) {
       const ck = lat.toFixed(4) + ',' + lng.toFixed(4);
       if (_trdarCache.has(ck)) { cb(_trdarCache.get(ck)); return; }
@@ -8636,6 +8658,57 @@
               + '.' + lvpMeta.date.slice(6) + ' 기준' : '') + '</div>'
           + '</div>';
       }
+      
+      
+      let rgHtml = '';
+      if (st.rg) {
+        const G = st.rg, seoul = st.rgSeoul;
+        const rows = [];
+        if (G.mig && G.mig.net && G.mig.net.length) {
+          const net = G.mig.net, times = G.mig.times;
+          const last = net.slice(-12), lastT = times.slice(-12);
+          const sum = G.net12 != null ? G.net12 : last.reduce((a, b) => a + b, 0);
+          const mx = Math.max.apply(null, last.map(Math.abs).concat([1]));
+          
+          const bars = last.map((v, i) => {
+            const pct = Math.max(2, Math.round(Math.abs(v) / mx * 100)) / 2;
+            const up = v >= 0;
+            return '<span title="' + lastT[i].slice(0, 4) + '.' + lastT[i].slice(4) + ' '
+              + (v > 0 ? '+' : '') + v.toLocaleString('ko-KR') + '명" style="display:inline-block;width:7.5%;'
+              + 'height:26px;vertical-align:middle;position:relative;">'
+              + '<span style="position:absolute;left:1px;right:1px;' + (up ? 'bottom:13px;' : 'top:13px;')
+              + 'height:' + pct + '%;background:' + (up ? '#1971c2' : '#e8590c') + ';"></span></span>';
+          }).join('');
+          rows.push('<div style="font-size:12px;">12개월 순이동 <b style="color:'
+            + (sum >= 0 ? '#1971c2' : '#e8590c') + ';">' + (sum > 0 ? '+' : '')
+            + sum.toLocaleString('ko-KR') + '명</b>'
+            + (seoul && seoul.net12 != null ? ' <span style="color:var(--c-muted);">(서울 전체 '
+                + (seoul.net12 > 0 ? '+' : '') + seoul.net12.toLocaleString('ko-KR') + ')</span>' : '')
+            + '</div>');
+          rows.push('<div style="margin-top:2px;line-height:0;border-top:1px dashed var(--c-border);'
+            + 'border-bottom:1px dashed var(--c-border);">' + bars + '</div>');
+          rows.push('<div style="font-size:11px;color:var(--c-muted);">'
+            + '<span style="color:#1971c2;">■</span> 유입 <span style="color:#e8590c;">■</span> 유출 · 월별 12개월</div>');
+        }
+        if (G.idx && G.idx.vals && G.idx.vals.length) {
+          const v = G.idx.vals[G.idx.vals.length - 1];
+          const t = G.idx.times[G.idx.times.length - 1];
+          const yoy = G.idxYoY;
+          rows.push('<div style="margin-top:3px;font-size:12px;">아파트 매매지수 <b>' + v + '</b>'
+            + (yoy != null ? ' <span style="color:' + (yoy >= 0 ? '#c2255c' : '#1971c2') + ';">'
+                + (yoy > 0 ? '+' : '') + yoy + '%</span> <span style="color:var(--c-muted);">전년 동기</span>' : '')
+            + ' <span style="color:var(--c-muted);">(' + t.slice(0, 4) + '년 ' + t.slice(4) + '분기)</span></div>');
+        }
+        if (rows.length) {
+          rgHtml = '<div style="margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">'
+            + '<b>자치구 동향</b> <span style="font-size:12px;color:var(--c-muted);">'
+            + esc(G.nm) + ' 단위 (필지 값이 아님)</span>'
+            + rows.join('')
+            + '<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">한국부동산원 R-ONE — '
+            + '시군구별 이동자수(월) · 시군구별 매매지수_아파트(분기)</div>'
+            + '</div>';
+        }
+      }
       let trdarHtml = '';
       if (st.trdar && st.trdar.total) {
         const T = st.trdar;
@@ -8953,10 +9026,10 @@
             + '이 땅에 무엇을 지을 수 있나 — 호출 ' + LANDUSE_ACTS.length + '회, 누를 때만 조회합니다.</span>');
         }
       }
-      if (!rows.length && !houseHtml && !detailHtml && !storeHtml && !nrHtml && !pmsHtml && !hpmsHtml && !lpHtml && !trdarHtml && !schHtml && !trdHtml && !subHtml && !lvpHtml && !shtHtml && !mtnHtml && !engyHtml && !reserveHtml && !mgmtHtml) return '';
+      if (!rows.length && !houseHtml && !detailHtml && !storeHtml && !nrHtml && !pmsHtml && !hpmsHtml && !lpHtml && !trdarHtml && !schHtml && !trdHtml && !subHtml && !lvpHtml && !rgHtml && !shtHtml && !mtnHtml && !engyHtml && !reserveHtml && !mgmtHtml) return '';
       return `<div style="font-size:13px;margin-top:6px;border-top:1px solid var(--c-border);padding-top:5px;">`
         + (rows.length ? `<b>토지·건물 정보</b>${badge}<br>${rows.join('<br>')}` : '')
-        + shtHtml + pmsHtml + hpmsHtml + subHtml + schHtml + trdarHtml + lvpHtml + trdHtml + lpHtml + mtnHtml + engyHtml + reserveHtml + mgmtHtml + luHtml + storeHtml + nrHtml + houseHtml + detailHtml + '</div>';
+        + shtHtml + pmsHtml + hpmsHtml + subHtml + schHtml + trdarHtml + lvpHtml + trdHtml + lpHtml + rgHtml + mtnHtml + engyHtml + reserveHtml + mgmtHtml + luHtml + storeHtml + nrHtml + houseHtml + detailHtml + '</div>';
     }
 
     
@@ -9159,7 +9232,7 @@
     function fillLandInfo(popupEl, getPopup, lat, lng, onInfo, noDetail, jibun) {
       const slot = popupEl && popupEl.querySelector('.bld-info');
       if (!slot) return;
-      const st = { zone: '', parcel: null, br: null, bld: null, house: null, detail: null, addrPnu: null, trdar: null, sch: null, trd: null, sub: null, lvp: null };
+      const st = { zone: '', parcel: null, br: null, bld: null, house: null, detail: null, addrPnu: null, trdar: null, sch: null, trd: null, sub: null, lvp: null, rg: null, rgSeoul: null };
       const render = () => {
         slot.innerHTML = landInfoHtml(st, noDetail);
         
@@ -9277,6 +9350,23 @@
         if (wantInfo.hpms) loadHsPms(pnu, (arr) => {
           if (arr && arr.length) { st.hpms = arr; render(); }
         });
+        
+        
+        
+        if (wantInfo.rg) {
+          const gcd = String(pnu || '').slice(0, 5);
+          if (gcd) {
+            loadRoneGu().then((j) => {
+              if (!j || !j.regions) return;
+              const hit = j.regions[gcd + '000'];
+              
+              if (!hit) return;
+              st.rg = hit;
+              st.rgSeoul = j.regions['11000000'] || null;
+              render();
+            });
+          }
+        }
         
         if (wantInfo.sub) {
           loadSubway().then(() => {
