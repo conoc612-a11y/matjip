@@ -3355,43 +3355,90 @@
       
       
       
-      let _auctionDetailPromise = null, _auctionDetailData = null;
       let _auctionIdx = null;   
-      function loadAuctionDetail() {
-        if (!_auctionDetailPromise) {
-          _auctionDetailPromise = fetch('auction_detail.json').then((r) => r.json()).catch(() => ({}))
-            .then((det) => { _auctionDetailData = det; aucApplyDetail(); return det; });
-        }
-        return _auctionDetailPromise;
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      const AUC_DETAIL_EP = SUPABASE_URL + '/functions/v1/auction-detail';
+      const _aucDetailCache = new Map();   
+      const _aucDetailInflight = new Map();
+      let _aucDetailAuthWarned = false;
+      
+      function aucDetailFromSession(cn) {
+        try { const v = sessionStorage.getItem('aucdtl:' + cn); return v ? JSON.parse(v) : undefined; }
+        catch (e) { return undefined; }
+      }
+      function aucDetailToSession(cn, body) {
+        try { sessionStorage.setItem('aucdtl:' + cn, JSON.stringify(body)); } catch (e) {  }
+      }
+      async function fetchAucDetail(cn) {
+        if (_aucDetailCache.has(cn)) return _aucDetailCache.get(cn);
+        const cached = aucDetailFromSession(cn);
+        if (cached !== undefined) { _aucDetailCache.set(cn, cached); return cached; }
+        if (_aucDetailInflight.has(cn)) return _aucDetailInflight.get(cn);
+        const pr = (async () => {
+          let token = '';
+          try {
+            
+            
+            
+            const sb = typeof ensureSb === 'function' ? await ensureSb() : null;
+            if (sb && sb.auth) {
+              const r = await sb.auth.getSession();
+              token = (r && r.data && r.data.session && r.data.session.access_token) || '';
+            }
+          } catch (e) {  }
+          if (!token) {
+            if (!_aucDetailAuthWarned) {
+              _aucDetailAuthWarned = true;
+              try { toast('물건 상세는 로그인 후 볼 수 있어요.'); } catch (e) {  }
+            }
+            return null;
+          }
+          try {
+            const r = await fetch(AUC_DETAIL_EP + '?cn=' + encodeURIComponent(cn),
+              { headers: { Authorization: 'Bearer ' + token } });
+            if (r.status === 429) { try { toast('요청이 많아요. 잠시 후 다시 열어 주세요.'); } catch (e) {} return null; }
+            if (r.status === 401) {
+              if (!_aucDetailAuthWarned) { _aucDetailAuthWarned = true; try { toast('로그인이 만료됐어요. 다시 로그인해 주세요.'); } catch (e) {} }
+              return null;
+            }
+            if (!r.ok) return null;
+            const j = await r.json();
+            const body = j && j.body ? j.body : null;
+            
+            
+            _aucDetailCache.set(cn, body);
+            aucDetailToSession(cn, body);
+            return body;
+          } catch (e) { console.error('경매 상세 조회 실패:', e); return null; }
+        })();
+        _aucDetailInflight.set(cn, pr);
+        try { return await pr; } finally { _aucDetailInflight.delete(cn); }
       }
       
       
-      function aucApplyDetail() {
-        if (!_auctionDetailData || !auctionRows) return;
-        auctionRows.forEach((d) => { d.detail = _auctionDetailData[d.cn] || null; });
-        
-        try {
-          if (apdD) auctionOpenDetail(apdD);        
-          else if (typeof auctionRenderList === 'function') auctionRenderList();
-        } catch (e) {  }
-      }
-      
-      
-      
-      
-      let _aucIdleQueued = false;
-      function aucIdlePrefetch() {
-        if (_aucIdleQueued || _auctionDetailPromise) return;
-        _aucIdleQueued = true;
-        const go = () => loadAuctionDetail();
-        if (typeof requestIdleCallback === 'function') requestIdleCallback(go, { timeout: 8000 });
-        else setTimeout(go, 3000);
+      function ensureAucDetail(d) {
+        if (!d || !d.cn || d.detail) return Promise.resolve(d && d.detail);
+        return fetchAucDetail(d.cn).then((body) => {
+          if (!body) return null;
+          d.detail = body;
+          try {
+            if (apdD && apdD.cn === d.cn) auctionOpenDetail(apdD);
+            else if (typeof auctionRenderList === 'function') auctionRenderList();
+          } catch (e) {  }
+          return body;
+        });
       }
       function loadAuction() {
         if (!_auctionPromise) {
-          
-          
-          
           
           
           
@@ -3415,7 +3462,6 @@
             }),
           ]).then(([j, ph, idxData]) => {
             _auctionIdx = idxData;
-            const det = _auctionDetailData || {};   
             const F = {};
             j.fields.forEach((f, i) => { F[f] = i; });
             const getPhotos = (cn) => (ph[cn] && ph[cn].length ? ph[cn].filter((p) => p && p.file) : []);
@@ -3423,11 +3469,11 @@
               court: j.courts[r[F.court]], cn: r[F.cn], no: r[F.no], addr: r[F.addr], note: r[F.note],
               appr: r[F.appr], dept: r[F.dept], sale: r[F.sale], use: r[F.use], low: r[F.low],
               status: r[F.status], lat: r[F.lat], lng: r[F.lng],
-              photos: getPhotos(r[F.cn]), detail: det[r[F.cn]] || null,
+              photos: getPhotos(r[F.cn]),
+              
+              detail: null,
               idx: (idxData && idxData[r[F.cn]]) || null, _i: i,
             }));
-            aucApplyDetail();   
-            aucIdlePrefetch();  
             return auctionRows;
           }).catch(() => null);
         }
@@ -3556,7 +3602,14 @@
       
       function aucPopGoClick(d, label, btn) {
         
-        if (!_auctionDetailData) { loadAuctionDetail().then(() => aucPopGoClick(d, label, btn)); return; }
+        
+        
+        
+        if (!d.detail && !d._dtlTried) {
+          d._dtlTried = true;
+          ensureAucDetail(d).then(() => aucPopGoClick(d, label, btn));
+          return;
+        }
         if (aucLocalData(d, label)) {
           auctionOpenDetail(d);
           requestAnimationFrame(() => apdGoClick(label));
@@ -4137,10 +4190,8 @@
         
         
         
-        
-        
-        if (!_auctionDetailData) {
-          loadAuctionDetail().then(() => { if (apdD === d) auctionRenderDetail(); });
+        if (!d.detail) {
+          ensureAucDetail(d).then(() => { if (apdD === d) auctionRenderDetail(); });
         }
         
         const m = (() => { let out = null; auctionCluster.eachLayer((l) => { if (!out && l._idx === d._i) out = l; }); return out; })();
@@ -4220,7 +4271,7 @@
         
         
         
-        if (!_auctionDetailData) { loadAuctionDetail().then(() => apdGoClick(l)); return; }
+        if (!d.detail && !d._dtlTried) { d._dtlTried = true; ensureAucDetail(d).then(() => apdGoClick(l)); return; }
         const secEl = d.detail ? apdLocalSection(l) : null;
         if (secEl) { secEl.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
         const cs = apdGsNo(d);
