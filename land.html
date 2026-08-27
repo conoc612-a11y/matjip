@@ -351,9 +351,21 @@
 
 
 
-    .apd-lb-cap { flex-shrink:0; padding:7px 12px; text-align:center; color:#fff; font-size:13px;
+    
+
+
+    .apd-lb-cap { flex-shrink:0; padding:9px 13px 12px; text-align:left; color:rgba(255,255,255,.62); font-size:12px;
       background:rgba(0,0,0,.35); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-      line-height:1.45; min-height:calc(1.45em + 14px); box-sizing:border-box; }
+      line-height:1.45; min-height:calc(1.45em + 21px); box-sizing:border-box; }
+    
+
+
+
+
+    .apd-lb-head { flex:none; display:flex; align-items:center; justify-content:space-between;
+      padding:11px 13px; padding-right:48px; border-bottom:1px solid rgba(255,255,255,.14);
+      font-weight:700; font-size:14px; color:#fff; }
+    .apd-lb-head span { min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .apd-lb-close { position:absolute; top:8px; right:8px; z-index:2; width:32px; height:32px; border:none; border-radius:50%; background:rgba(255,255,255,.15); color:#fff; font-size:16px; cursor:pointer; }
     .apd-lb-close:hover { background:rgba(255,255,255,.3); }
     
@@ -390,7 +402,10 @@
     .apd-lb-prev { left:8px; } .apd-lb-next { right:8px; }
     
 
-    .apd-lb-zoom { position:absolute; right:6px; bottom:36px; z-index:2; display:flex; gap:4px; }
+
+
+
+    .apd-lb-zoom { position:absolute; right:6px; bottom:44px; z-index:2; display:flex; gap:4px; }
     .apd-lb-zoom button { width:28px; height:28px; border:none; border-radius:7px; background:rgba(255,255,255,.15); color:#fff; font-size:15px; line-height:1; cursor:pointer; }
     .apd-lb-zoom button:hover { background:rgba(255,255,255,.3); }
     
@@ -904,6 +919,7 @@
     
     <div id="apd-lightbox" hidden>
       <div id="apd-lb-frame">
+        <div class="apd-lb-head"><span id="apd-lb-title"></span></div>
         <button type="button" class="apd-lb-close" id="apd-lb-close" aria-label="닫기">✕</button>
         <div class="apd-lb-zoom">
           <button type="button" id="apd-lb-zoom-out" aria-label="축소" title="축소">−</button>
@@ -3107,12 +3123,12 @@
       
       const TRDAR_SE_COLOR = { 골목상권: '#1971c2', 발달상권: '#e8590c', 전통시장: '#7048e8', 관광특구: '#0ca678' };
       const trdarCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 50 });
-      let trdarRows = null, _trdarPromise = null, trdarQ = null;
+      let trdarRows = null, _trdarPromise = null, trdarQ = null, trdarGuIx = null;
       function loadTrdar() {
         if (!_trdarPromise) {
           _trdarPromise = fetch('trdar.json')
             .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
-            .then((j) => { trdarRows = j.rows || []; trdarQ = j.q || null; return trdarRows; })
+            .then((j) => { trdarRows = j.rows || []; trdarQ = j.q || null; trdarGuIx = j.guIx || null; return trdarRows; })
             .catch((e) => { console.error('상권 로드 실패:', e); return null; });
         }
         return _trdarPromise;
@@ -3157,10 +3173,91 @@
                 + Math.round(d.wk[1] / (d.wk[0] + d.wk[1]) * 100) + '%' : '')
             + '</div>');
         }
+        
+        
+        
+        const nf = (v) => Number(v || 0).toLocaleString('ko-KR');
+
+        
+        if (d.rep && d.rep.tot) {
+          const R = d.rep;
+          const fPct = R.tot ? Math.round(R.f / R.tot * 100) : 0;
+          const AGE = ['10대', '20대', '30대', '40대', '50대', '60대+'];
+          const amx = Math.max.apply(null, (R.age || [0]).concat([1]));
+          const apk = (R.age || []).indexOf(amx);
+          rows.push('<div style="margin-top:5px;font-size:12px;">상주인구 <b>' + nf(R.tot) + '</b>명'
+            + ' <span style="color:var(--c-muted);">(여 ' + fPct + '%)</span>'
+            + (R.hh ? ' · 가구 ' + nf(R.hh) : '') + '</div>');
+          if (R.age && R.age.some((v) => v > 0)) {
+            rows.push('<div style="margin-top:2px;height:18px;line-height:0;">'
+              + R.age.map((v, i) => '<span title="' + AGE[i] + ' ' + nf(v) + '명" style="display:inline-block;'
+                + 'width:15.5%;height:' + Math.max(3, Math.round(v / amx * 100)) + '%;background:'
+                + (i === apk ? '#1971c2' : '#ced4da') + ';vertical-align:bottom;margin-right:1%;"></span>').join('')
+              + '</div><div style="font-size:11px;color:var(--c-muted);">연령 최다 ' + AGE[apk] + '</div>');
+          }
+        }
+
+        
+        if (d.stor && d.stor.tot) {
+          const S = d.stor;
+          rows.push('<div style="margin-top:5px;font-size:12px;">점포 <b>' + nf(S.tot) + '</b>곳'
+            + (S.frc ? ' <span style="color:var(--c-muted);">(프랜차이즈 ' + nf(S.frc) + ')</span>' : '')
+            + ' · 개업 ' + S.opr + '% / 폐업 <b style="color:'
+            + (S.clr >= S.opr ? 'var(--c-danger)' : 'inherit') + ';">' + S.clr + '%</b></div>');
+          if (S.clTop && S.clTop.length) {
+            rows.push('<div style="margin-top:1px;font-size:11px;color:var(--c-muted);">폐업 많은 업종 '
+              + S.clTop.map((x) => esc(x[0]) + ' ' + x[1]).join(' · ')
+              + ' <span title="점포 5곳 이상인 업종만 — 1~2곳짜리는 비율이 튄다">ⓘ</span></div>');
+          }
+        }
+
+        
+        if (d.fclt && d.fclt.tot) {
+          const F = d.fclt;
+          const LBL = { gov: '관공서', bank: '은행', ghsp: '종합병원', hsp: '병원', phar: '약국',
+            kg: '유치원', el: '초', ms: '중', hs: '고', uni: '대학', dept: '백화점', smk: '슈퍼',
+            thea: '극장', stay: '숙박', arpt: '공항', rail: '철도역', bterm: '버스터미널',
+            subw: '지하철역', bus: '버스정거장' };
+          const parts = Object.keys(LBL).filter((k) => F[k]).sort((a, b) => F[b] - F[a])
+            .slice(0, 6).map((k) => LBL[k] + ' ' + F[k]);
+          rows.push('<div style="margin-top:5px;font-size:12px;">집객시설 <b>' + nf(F.tot) + '</b>'
+            + (parts.length ? ' <span style="color:var(--c-muted);">' + esc(parts.join(' · ')) + '</span>' : '') + '</div>');
+        }
+
+        
+        if (d.apt && (d.apt.cx || d.apt.hh)) {
+          const A = d.apt;
+          rows.push('<div style="margin-top:5px;font-size:12px;">아파트 <b>' + nf(A.cx) + '</b>단지 · '
+            + nf(A.hh) + '세대'
+            + (A.ar ? ' <span style="color:var(--c-muted);">평균 ' + A.ar + '㎡</span>' : '')
+            + (A.mkt ? ' · 평균시가 ' + manwonEok(A.mkt) + '원' : '') + '</div>');
+          if (A.pc && A.pc.some((v) => v > 0)) {
+            const PL = ['1억↓', '1억', '2억', '3억', '4억', '5억', '6억↑'];
+            const pmx = Math.max.apply(null, A.pc);
+            const ppk = A.pc.indexOf(pmx);
+            rows.push('<div style="margin-top:2px;height:16px;line-height:0;">'
+              + A.pc.map((v, i) => '<span title="' + PL[i] + ' ' + nf(v) + '세대" style="display:inline-block;'
+                + 'width:13.2%;height:' + Math.max(3, Math.round(v / pmx * 100)) + '%;background:'
+                + (i === ppk ? '#7048e8' : '#ced4da') + ';vertical-align:bottom;margin-right:1%;"></span>').join('')
+              + '</div><div style="font-size:11px;color:var(--c-muted);">가격대 최다 ' + PL[ppk] + '</div>');
+          }
+        }
+
+        
+        const gi = trdarGuIx && d.gu ? trdarGuIx[d.gu] : null;
+        if (gi) {
+          rows.push('<div style="margin-top:5px;font-size:12px;">' + esc(d.gu) + ' 상권변화 <b>'
+            + esc(gi.ix || '-') + '</b>'
+            + (gi.opr ? ' <span style="color:var(--c-muted);">평균 영업 ' + gi.opr + '개월'
+              + (gi.suOpr ? ' (서울 ' + gi.suOpr + ')' : '') + '</span>' : '') + '</div>');
+        }
+
         const q = trdarQ || {};
         rows.push('<div style="margin-top:5px;font-size:11px;color:var(--c-muted);">서울 상권분석서비스'
           + (q.sel ? ' · 매출 ' + qLabel(q.sel) : '')
-          + (q.wrc && q.wrc !== q.sel ? ' · 직장인구 ' + qLabel(q.wrc) : '') + '</div>');
+          + (q.wrc && q.wrc !== q.sel ? ' · 직장인구 ' + qLabel(q.wrc) : '')
+          + (q.stor && q.stor !== q.sel ? ' · 점포 ' + qLabel(q.stor) : '')
+          + '<br>개업률·폐업률은 제공된 점포 수로 계산(개업점포수 ÷ 전체점포수)</div>');
         return rows.join('');
       }
       function trdarPopupHtml(d) {
@@ -4667,7 +4764,11 @@
         if (!photos.length) return;
         const p = photos[Math.min(lbIdx, photos.length - 1)];
         lbImg.src = photoUrl(p);
-        $('apd-lb-cap').textContent = `${esc(p.name)} ${lbIdx + 1} / ${photos.length}`;
+        
+        
+        
+        $('apd-lb-title').textContent = lbD.addr || '경매 사진';
+        $('apd-lb-cap').textContent = `${p.name} · ${lbIdx + 1} / ${photos.length}`;
         lbSetZoom(1);   
       }
       
@@ -8118,6 +8219,11 @@
     
     
     
+    
+    
+    
+    
+    
     const LVP_CODE_MAP = {
       
       '11305595': { cd: '11305590', was: null },   
@@ -9531,6 +9637,8 @@
                   const alt = LVP_CODE_MAP[d.adong.cd];
                   if (alt) { v = m.get(alt.cd); was = alt.was; }
                 }
+                
+                
                 
                 if (v) { st.lvp = v; st.lvpWas = was; render(); }
               });
