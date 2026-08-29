@@ -6554,9 +6554,10 @@
       const infoRg = L.layerGroup();
       const infoEngy = L.layerGroup();
       const infoFund = L.layerGroup();
-      const wantInfo = { sht: true, mtn: true, pms: true, hpms: true, engy: true, fund: true, lp: true, trdar: true, sch: true, trd: true, sub: true, lvp: true, rg: true };
+      const infoBid = L.layerGroup();
+      const wantInfo = { sht: true, mtn: true, pms: true, hpms: true, engy: true, fund: true, bid: true, lp: true, trdar: true, sch: true, trd: true, sub: true, lvp: true, rg: true };
       const _infoMap = [[infoSht, 'sht'], [infoMtn, 'mtn'], [infoPms, 'pms'], [infoHpms, 'hpms'], [infoLp, 'lp'], [infoTrdar, 'trdar'], [infoSch, 'sch'], [infoTrd, 'trd'], [infoSub, 'sub'], [infoLvp, 'lvp'], [infoRg, 'rg'],
-        [infoEngy, 'engy'], [infoFund, 'fund']];
+        [infoEngy, 'engy'], [infoFund, 'fund'], [infoBid, 'bid']];
       map.on('overlayadd', (e) => {
         const hit = _infoMap.find((x) => x[0] === e.layer);
         if (hit) wantInfo[hit[1]] = true;
@@ -6566,7 +6567,7 @@
         if (hit) wantInfo[hit[1]] = false;
       });
       infoSht.addTo(map); infoMtn.addTo(map); infoPms.addTo(map); infoHpms.addTo(map); infoLp.addTo(map); infoTrdar.addTo(map); infoSch.addTo(map); infoTrd.addTo(map); infoSub.addTo(map); infoLvp.addTo(map); infoRg.addTo(map);
-      infoEngy.addTo(map); infoFund.addTo(map);
+      infoEngy.addTo(map); infoFund.addTo(map); infoBid.addTo(map);
 
       const LAYER_TREE = [
         
@@ -6609,6 +6610,9 @@
           { name: '에너지 사용량 (전기·가스)', layer: infoEngy },
           
           { name: '장기수선충당금 (아파트)', layer: infoFund },
+          
+          
+          { name: '입찰 · 수의계약 (아파트)', layer: infoBid },
         ]],
         ['법원경매', [
           { name: '진행 물건(서울/경기)', layer: auctionCluster },
@@ -7182,19 +7186,16 @@
           '청약 당첨자 정보(청약홈)', '파산금융회사 매물현황']],
         
         
-        ['공동주택 관리', ['하자담보책임기간',
-          '입찰공고', '입찰결과공지', '수의계약 공지']],
+        ['공동주택 관리', ['하자담보책임기간']],
         ['공공주택·임대', ['LH 임대주택단지(마이홈이 상위호환)', 'LH 분양임대공고 상세',
           'LH 분양임대공고문', '예비입주자 대기현황']],
+        
+        
+        
         ['생활 인프라', ['착한가격업소 현황',
           '생필품 가격 정보', '공중화장실 정보', '공공도서관 소장도서',
           '서울교통공사 최단경로', '도시고속도로 방음벽', '기상특보 조회', 'CCTV 도로날씨',
           '노후 공공시설물(안전관리원)', '명산 등산로', '공항 출국장 혼잡도']],
-        
-        
-        
-        ['서울 상권 보강 (즉시 가능)', ['상권 집객시설', '상권 아파트', '상권 상주인구',
-          '자치구 변화지표']],
         ['사업자·기업·금융', ['국민연금 사업장 내역', '국민연금 가입현황', '국민연금 탈퇴사업장',
           '주식시세정보(금융위)', '기업 재무정보(금융위)', '기업지배구조 공시(금융위)',
           '지배구조정보(금융위)', '금융회사 공시(금융위)', '크라우드펀딩 업자(금융위)',
@@ -7248,9 +7249,11 @@
         },
         '건축HUB 폐쇄말소대장정보': { d: '철거된 건물 이력 → 재개발 진행 확인.' },
         '건축HUB 유지점검정보': { d: '안전점검 이력·하자 리스크.' },
-        '녹색건축 인증현황': { d: '인증 여부.' },
-        '청약 당첨자 정보(청약홈)': { d: '청약 경쟁 실적.' },
-        '파산금융회사 매물현황': { d: '특수 매물.' },
+        
+        
+        '녹색건축 인증현황': { d: '⛔ <b>연결 부적합</b> — 좌표가 없어 지도에 붙일 수 없습니다.' },
+        '청약 당첨자 정보(청약홈)': { d: '⛔ <b>연결 부적합</b> — 파일데이터로 좌표가 없습니다.' },
+        '파산금융회사 매물현황': { d: '⛔ <b>연결 부적합</b> — 파일데이터만 제공되고 좌표가 GPS 뿐이라 지도에 붙일 수 없습니다.' },
         '주식시세정보(금융위)': { d: '헤더에 환율처럼 띄울 예정.' },
         '기업 재무정보(금융위)': { d: '법인 재무.' },
         '국민연금 가입현황': { d: '사업자 연결 보조 경로 후보.' },
@@ -8167,6 +8170,72 @@
           });
         });
       });
+    }
+
+    
+    
+    
+    
+    
+    
+    
+    const _bidCache = new Map();   
+    function loadBidInfo(pnu, bldNm, cb) {
+      const s = String(pnu || '');
+      if (!/^\d{19}$/.test(s)) { cb(null); return; }
+      if (_bidCache.has(s)) { cb(_bidCache.get(s)); return; }
+      findKaptCode(s, bldNm, (one, netFail) => {
+        if (netFail) { cb(null); return; }
+        if (!one) { _bidCache.set(s, { name: '', ann: [], prv: [] }); cb(_bidCache.get(s)); return; }
+        const yrs = [];
+        const now = new Date().getFullYear();
+        for (let y = now; y >= now - 3; y--) yrs.push(String(y));
+        const ask = (svc, op, kv) => fetch(`${MOLIT_PROXY}?svc=${svc}&op=${op}&${kv}&numOfRows=100&pageNo=1`)
+          .then((r) => (r.ok ? r.json() : Promise.reject(new Error('http'))))
+          .then((j) => {
+            const b = j && j.response && j.response.body;
+            const it = b && b.items;
+            return !it ? [] : (Array.isArray(it) ? it : (Array.isArray(it.item) ? it.item : (it.item ? [it.item] : [])));
+          })
+          .catch(() => null);
+        const scan = (svc, op, kv, acc, i, done) => {
+          if (i >= yrs.length) { done(acc); return; }
+          ask(svc, op, kv + '&searchYear=' + yrs[i]).then((rows) => {
+            if (rows === null) { done(null); return; }   
+            if (rows.length) acc.push({ year: yrs[i], items: rows });
+            scan(svc, op, kv, acc, i + 1, done);
+          });
+        };
+        
+        let ann = [], prv = [], fail = false;
+        scan('ApHusBidPblAncInfoOfferServiceV3', 'getHsmpNmSearchV3', 'bidKaptname=' + encodeURIComponent(one.name), ann, 0, (r) => { ann = r; if (r === null) fail = true; finish(); });
+        scan('ApHusPrvCntrNoticeInfoOfferServiceV3', 'getHsmpNmSearchV3', 'kaptName=' + encodeURIComponent(one.name), prv, 0, (r) => { prv = r; if (r === null) fail = true; finish(); });
+        let both = 2;
+        function finish() {
+          if (--both > 0) return;
+          if (fail) { cb(null); return; }   
+          const out = { name: one.name, ann, prv };
+          _bidCache.set(s, out);
+          cb(out);
+        }
+      });
+    }
+    
+    const _bidResCache = new Map();
+    function loadBidResult(bidNum, cb) {
+      const s = String(bidNum || '');
+      if (!/^\d{6,25}$/.test(s)) { cb(null); return; }
+      if (_bidResCache.has(s)) { cb(_bidResCache.get(s)); return; }
+      fetch(`${MOLIT_PROXY}?svc=ApHusBidResultNoticeInfoOfferServiceV3&op=getBidEntrpsInfoSearchV3&bidNum=${s}&numOfRows=100&pageNo=1`)
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error('http'))))
+        .then((j) => {
+          const b = j && j.response && j.response.body;
+          const it = b && b.items;
+          const arr = !it ? [] : (Array.isArray(it) ? it : (Array.isArray(it.item) ? it.item : (it.item ? [it.item] : [])));
+          _bidResCache.set(s, arr);
+          cb(arr);
+        })
+        .catch(() => cb(null));
     }
 
     function loadStores(pnu, cb) {
@@ -9230,6 +9299,46 @@
       
       
       
+      let bidHtml = '';
+      if (wantInfo.bid) {
+        if (st.bid === 'loading') {
+          bidHtml = '<div class="ls-sec" style="font-size:12px;color:var(--c-muted);">입찰정보 불러오는 중…</div>';
+        } else if (st.bid && (st.bid.ann.length || st.bid.prv.length)) {
+          const d = (t) => esc(String(t || ''));
+          const annRows = st.bid.ann.map((g) => g.items.map((x) => {
+            const title = x.bidTitle || '입찰공고';
+            const deadline = x.bidDeadline ? '· 마감 ' + d(x.bidDeadline) : '';
+            const state = x.bidState ? '· 상태 ' + d(x.bidState) : '';
+            return '<div style="font-size:12px;margin-top:3px;">'
+              + '<button type="button" class="ld-res bid-row btn-mini" data-bidnum="' + d(x.bidNum) + '" title="' + d(x.bidContent || '') + '">'
+              + d(title) + '</button>'
+              + '<div style="color:var(--c-muted);font-size:11px;">' + g.year + '년' + deadline + state + '</div></div>';
+          })).flat().join('');
+          const prvRows = st.bid.prv.map((g) => g.items.map((x) => {
+            const amt = x.pcAmount ? '· ' + Number(x.pcAmount).toLocaleString() + '원/월' : '';
+            return '<div style="font-size:12px;margin-top:3px;">· ' + d(x.pcTitle || '수의계약')
+              + ' <b>' + d(x.companyName || '') + '</b>' + amt
+              + '<span style="color:var(--c-muted);font-size:11px;"> ' + g.year + '년</span></div>';
+          })).flat().join('');
+          bidHtml = '<div class="ls-sec">'
+            + '<b>입찰 · 수의계약</b>'
+            + (st.bid.name ? ` <span style="font-size:12px;color:var(--c-muted);">${esc(st.bid.name)}</span>` : '')
+            + (annRows ? '<div style="margin-top:3px;"><span style="font-size:11.5px;color:var(--c-muted);">입찰공고</span>' + annRows + '</div>' : '')
+            + (prvRows ? '<div style="margin-top:6px;"><span style="font-size:11.5px;color:var(--c-muted);">수의계약</span>' + prvRows + '</div>' : '')
+            + '<div style="font-size:11.5px;color:var(--c-muted);margin-top:3px;">K-apt 사업자 선정 공고 — 최근 4년만 표시합니다. '
+            + '제목을 누르면 참가업체·낙찰여부를 봅니다.</div>'
+            + '</div>';
+        } else if (st.bid && !st.bid.ann.length && !st.bid.prv.length) {
+          bidHtml = '<div class="ls-sec" style="font-size:12px;color:var(--c-muted);">최근 4년 입찰·수의계약 공고가 없습니다.</div>';
+        } else {
+          bidHtml = '<div class="ls-sec">'
+            + '<button type="button" class="ld-bid btn-mini">입찰 · 수의계약 보기</button>'
+            + '<span style="font-size:11.5px;color:var(--c-muted);margin-left:6px;">최근 4년 — 누를 때만 조회합니다</span></div>';
+        }
+      }
+      
+      
+      
       let luHtml = '';
       const _luArea = (st.addrPnu || (st.bld && st.bld.pnu) || (st.parcel && st.parcel.pnu) || '').slice(0, 5);
       if (st.zoneCode && _luArea) {
@@ -9260,10 +9369,10 @@
             + '이 땅에 무엇을 지을 수 있나 — 호출 ' + LANDUSE_ACTS.length + '회, 누를 때만 조회합니다.</span>');
         }
       }
-      if (!rows.length && !houseHtml && !detailHtml && !storeHtml && !nrHtml && !pmsHtml && !hpmsHtml && !lpHtml && !trdarHtml && !schHtml && !trdHtml && !subHtml && !lvpHtml && !rgHtml && !shtHtml && !mtnHtml && !engyHtml && !reserveHtml && !mgmtHtml) return '';
+      if (!rows.length && !houseHtml && !detailHtml && !storeHtml && !nrHtml && !pmsHtml && !hpmsHtml && !lpHtml && !trdarHtml && !schHtml && !trdHtml && !subHtml && !lvpHtml && !rgHtml && !shtHtml && !mtnHtml && !engyHtml && !reserveHtml && !mgmtHtml && !bidHtml) return '';
       return `<div class="ls-sec" style="font-size:13px;">`
         + (rows.length ? `<b>토지·건물 정보</b>${badge}<br>${rows.join('<br>')}` : '')
-        + shtHtml + pmsHtml + hpmsHtml + subHtml + schHtml + trdarHtml + lvpHtml + trdHtml + lpHtml + rgHtml + mtnHtml + engyHtml + reserveHtml + mgmtHtml + luHtml + storeHtml + nrHtml + houseHtml + detailHtml + '</div>';
+        + shtHtml + pmsHtml + hpmsHtml + subHtml + schHtml + trdarHtml + lvpHtml + trdHtml + lpHtml + rgHtml + mtnHtml + engyHtml + reserveHtml + mgmtHtml + bidHtml + luHtml + storeHtml + nrHtml + houseHtml + detailHtml + '</div>';
     }
 
     
@@ -9493,6 +9602,43 @@
             render();
           });
         };
+        
+        const bb = slot.querySelector('.ld-bid');
+        if (bb) bb.onclick = (ev) => {
+          stop(ev);
+          st.bid = 'loading';
+          render();
+          const _pnu = st.addrPnu || (st.bld && st.bld.pnu) || (st.parcel && st.parcel.pnu) || '';
+          loadBidInfo(_pnu, (st.br && st.br.bldNm) || '', (r) => {
+            st.bid = r || null;
+            if (!r) toast('입찰정보를 불러오지 못했습니다. 다시 시도해 주세요.');
+            render();
+          });
+        };
+        
+        slot.querySelectorAll('.ld-res').forEach((bn) => {
+          bn.onclick = (ev) => {
+            stop(ev);
+            const d = bn.nextElementSibling && bn.nextElementSibling.classList && bn.nextElementSibling.classList.contains('ld-res-box')
+              ? bn.nextElementSibling : null;
+            if (d) { d.remove(); return; }   
+            const bidNum = bn.getAttribute('data-bidnum') || '';
+            const box = document.createElement('div');
+            box.className = 'ld-res-box';
+            box.style.cssText = 'font-size:11.5px;color:var(--c-muted);margin:2px 0 4px;';
+            box.textContent = '불러오는 중…';
+            bn.after(box);
+            loadBidResult(bidNum, (arr) => {
+              if (arr === null) { box.textContent = '결과를 불러오지 못했습니다.'; return; }
+              if (!arr || !arr.length) { box.textContent = '등록된 결과가 없습니다.'; return; }
+              box.innerHTML = arr.map((x) => {
+                const win = x.bidSuccessfulYn === 'Y' ? ' <b style="color:#166534;">낙찰</b>' : '';
+                return '<div>· ' + esc(x.companyName || '') + win
+                  + (x.competentName ? ' (' + esc(x.competentName) + ')' : '') + '</div>';
+              }).join('');
+            });
+          };
+        });
         
       const lb = slot.querySelector('.ld-landuse');
       if (lb) lb.onclick = (ev) => {
