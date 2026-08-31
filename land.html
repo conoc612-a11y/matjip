@@ -1372,6 +1372,40 @@
     L.Popup.mergeOptions({ maxWidth: 340, minWidth: 220, autoPanPadding: [16, 24] });
 
     const map = L.map('map', { wheelPxPerZoomLevel: 120, preferCanvas: true }).setView([37.5665, 126.9780], 12);
+    
+    
+    
+    let wantInfo = { sht: true, mtn: true, pms: true, hpms: true, engy: true, fund: true, bid: true, lp: true, trdar: true, sch: true, trd: true, sub: true, lvp: true, rg: true };
+    
+    
+    
+    const SUB_LINE_COLOR = {
+      '1호선': '#0052A4', '2호선': '#00A84D', '3호선': '#EF7C1C', '4호선': '#00A5DE',
+      '5호선': '#996CAC', '6호선': '#CD7C2F', '7호선': '#747F00', '8호선': '#E6186C',
+      '9호선': '#BDB092', '경의중앙선': '#77C4A3', '분당선': '#FABE00', '신분당선': '#D31145',
+      '경춘선': '#0C8E72', '수인선': '#FABE00', '공항철도 1호선': '#0090D2', '우이신설선': '#B0CE18',
+      '경강선': '#003DA5', '서해선': '#8FC31F', '김포골드라인': '#A17E46', '신림선': '#6789CA',
+    };
+    const SCH_RADIUS = 800;   
+    const SUB_NEAR = 800;     
+    
+    
+    let subMeta = null;
+    
+    
+    let lpData = null, _lpPromise = null;
+    
+    const SCHOOL_COLOR = { '고': '#f59f00', '중': '#1971c2', '초': '#c2255c' };
+    
+    
+    const SCHOOL_CAT = [
+      [/특수/, '특수', '#7048e8'],
+      [/외국인/, '외국인', '#0ca678'],
+      [/평생/, '평생', '#f76707'],
+      [/방송통신/, '방송통신', '#1098ad'],
+      [/각종/, '각종', '#495057'],
+    ];
+    const schCatOf = (d) => SCHOOL_CAT.find((x) => x[0].test(d.knd || '')) || null;
 
     
     
@@ -2841,7 +2875,8 @@
       
       
       
-      let lpData = null, _lpPromise = null;
+      
+      
       function loadLandPrice() {
         if (!_lpPromise) {
           _lpPromise = fetch('landprice.json')
@@ -3025,7 +3060,7 @@
       
       
       const subCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 40 });
-      let subRows = null, subMeta = null, _subPromise = null;
+      let subRows = null, _subPromise = null;   
       function loadSubway() {
         if (!_subPromise) {
           _subPromise = fetch('transit_subway.json')
@@ -3036,13 +3071,7 @@
         return _subPromise;
       }
       
-      const SUB_LINE_COLOR = {
-        '1호선': '#0052A4', '2호선': '#00A84D', '3호선': '#EF7C1C', '4호선': '#00A5DE',
-        '5호선': '#996CAC', '6호선': '#CD7C2F', '7호선': '#747F00', '8호선': '#E6186C',
-        '9호선': '#BDB092', '경의중앙선': '#77C4A3', '분당선': '#FABE00', '신분당선': '#D31145',
-        '경춘선': '#0C8E72', '수인선': '#FABE00', '공항철도 1호선': '#0090D2', '우이신설선': '#B0CE18',
-        '경강선': '#003DA5', '서해선': '#8FC31F', '김포골드라인': '#A17E46', '신림선': '#6789CA',
-      };
+      
       const subColor = (d) => (d.ln && d.ln.length ? (SUB_LINE_COLOR[d.ln[0]] || '#495057') : '#495057');
       function subPopupHtml(d) {
         const tot = (d.on || 0) + (d.off || 0);
@@ -3101,7 +3130,7 @@
         }));
       }
       
-      const SUB_NEAR = 800;
+      
       function subwayNear(lat, lng) {
         if (!subRows) return null;
         const R = 6371000, rad = Math.PI / 180;
@@ -3305,21 +3334,16 @@
       
       
       
-      const SCHOOL_COLOR = { 초: '#f59f00', 중: '#1971c2', 고: '#c2255c' };
       
       
       
       
       
       
-      const SCHOOL_CAT = [
-        [/특수/, '특수', '#7048e8'],
-        [/외국인/, '외국인', '#0ca678'],
-        [/평생/, '평생', '#f76707'],
-        [/방송통신/, '방송통신', '#1098ad'],
-        [/각종/, '각종', '#495057'],
-      ];
-      const schCatOf = (d) => SCHOOL_CAT.find((x) => x[0].test(d.knd || '')) || null;
+      
+      
+      
+      
       
       
       
@@ -3334,7 +3358,7 @@
         if (!m.getPopup() && m._pop) m.bindPopup(m._pop());
         m.openPopup();
       }));
-      const SCH_RADIUS = 800;   
+      
       
       function schoolsNear(lat, lng, radius) {
         if (!schoolRows) return null;
@@ -6555,7 +6579,8 @@
       const infoEngy = L.layerGroup();
       const infoFund = L.layerGroup();
       const infoBid = L.layerGroup();
-      const wantInfo = { sht: true, mtn: true, pms: true, hpms: true, engy: true, fund: true, bid: true, lp: true, trdar: true, sch: true, trd: true, sub: true, lvp: true, rg: true };
+      
+      
       const _infoMap = [[infoSht, 'sht'], [infoMtn, 'mtn'], [infoPms, 'pms'], [infoHpms, 'hpms'], [infoLp, 'lp'], [infoTrdar, 'trdar'], [infoSch, 'sch'], [infoTrd, 'trd'], [infoSub, 'sub'], [infoLvp, 'lvp'], [infoRg, 'rg'],
         [infoEngy, 'engy'], [infoFund, 'fund'], [infoBid, 'bid']];
       map.on('overlayadd', (e) => {
