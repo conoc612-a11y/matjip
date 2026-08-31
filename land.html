@@ -3620,6 +3620,66 @@
       
       
       
+      const agedCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 60 });
+      agedCluster.on('click', (e) => {
+        const m = e.layer;
+        if (!m || !m._pop) return;
+        if (!m.getPopup() && m._pop) m.bindPopup(m._pop());
+        m.openPopup();
+      });
+      let agedRows = null, _agedPromise = null;
+      function loadAgedFclty() {
+        if (!_agedPromise) {
+          _agedPromise = fetch('aged_facility.json').then((r) => r.json()).then((j) => {
+            const F = {};
+            j.fields.forEach((f, i) => { F[f] = i; });
+            agedRows = j.rows.map((r) => ({
+              name: r[F.name], gbn: r[F.gbn], addr: r[F.addr], cplYmd: r[F.cplYmd],
+              grade: r[F.grade], mngMby: r[F.mngMby], chckYmd: r[F.chckYmd],
+              chckContent: r[F.chckContent], lat: r[F.lat], lng: r[F.lng],
+            }));
+            return agedRows;
+          }).catch(() => null);
+        }
+        return _agedPromise;
+      }
+      const AGED_GRADE_COLOR = { A: '#2f9e44', B: '#74b816', C: '#f59f00', D: '#f76707', E: '#e03131' };
+      function agedPopupHtml(d) {
+        const color = AGED_GRADE_COLOR[d.grade] || '#868e96';
+        const grade = d.grade
+          ? `<span style="margin-left:4px;background:${color};color:#fff;font-size:12px;padding:1px 8px;border-radius:999px;">${esc(d.grade)}등급</span>`
+          : '';
+        const built = d.cplYmd ? `준공 <b>${d.cplYmd.slice(0, 4)}</b>년 · ` : '';
+        const chck = d.chckYmd ? `<div style="margin-top:3px;font-size:12px;color:var(--c-muted);">최근 점검 ${d.chckYmd}</div>` : '';
+        const content = d.chckContent
+          ? `<div style="margin-top:4px;font-size:12px;color:var(--c-muted);white-space:pre-line;">${esc(d.chckContent)}</div>`
+          : '';
+        return `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${color};flex-shrink:0;"></span><span class="rp-name">${esc(d.name)}</span><span style="font-size:12px;background:${color};color:#fff;padding:1px 8px;border-radius:999px;">노후시설</span></div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.addr)}</div><div class="pc-price">${esc(d.gbn)} · ${built}${d.mngMby ? esc(d.mngMby) : ''}</div>${grade}${chck}${content}</div></div>`;
+      }
+      function agedBuild() {
+        if (!agedRows) return;
+        agedCluster.clearLayers();
+        const agedIcon = L.divIcon({
+          className: '',
+          html: '<div style="width:26px;height:26px;background:#e03131;border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;">노</div>',
+          iconSize: [26, 26], iconAnchor: [13, 13],
+        });
+        agedCluster.addLayers(agedRows.map((d) => {
+          const m = L.marker([d.lat, d.lng], { icon: agedIcon });
+          m._pop = (() => agedPopupHtml(d));
+          m.bindTooltip(esc(d.name), { direction: 'top' });
+          return m;
+        }));
+      }
+      map.on('overlayadd', (e) => {
+        if (e.layer !== agedCluster) return;
+        loadAgedFclty().then(() => agedBuild());
+      });
+
+      
+      
+      
+      
       
       
       
@@ -6610,6 +6670,8 @@
           { name: '주차장 (실제 시설 · 무료/유료)', layer: parkingCluster },
           { name: '전기차 충전소', layer: evCluster },
           
+          { name: '노후 공공시설물 (안전등급)', layer: agedCluster },
+          
           { name: '지하철역 (역세권 강도)', layer: subCluster },
           { name: '따릉이 대여소', layer: bikeCluster },
           { name: '상권 (매출·유동인구)', layer: trdarCluster },
@@ -7224,7 +7286,7 @@
         ['생활 인프라', ['착한가격업소 현황',
           '생필품 가격 정보', '공중화장실 정보', '공공도서관 소장도서',
           '서울교통공사 최단경로', '도시고속도로 방음벽', '기상특보 조회', 'CCTV 도로날씨',
-          '노후 공공시설물(안전관리원)', '명산 등산로', '공항 출국장 혼잡도']],
+          '명산 등산로', '공항 출국장 혼잡도']],
         ['사업자·기업·금융', ['국민연금 사업장 내역', '국민연금 가입현황', '국민연금 탈퇴사업장',
           '주식시세정보(금융위)', '기업 재무정보(금융위)', '기업지배구조 공시(금융위)',
           '지배구조정보(금융위)', '금융회사 공시(금융위)', '크라우드펀딩 업자(금융위)',
