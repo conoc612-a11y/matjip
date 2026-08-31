@@ -3025,6 +3025,18 @@
       
       
       const bikeCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 55 });
+      
+      
+      
+      
+      
+      
+      bikeCluster.on('click', (e) => {
+        const m = e.layer;
+        if (!m || !m._pop) return;
+        if (!m.getPopup() && m._pop) m.bindPopup(m._pop());
+        m.openPopup();
+      });
       let bikeRows = null, _bikePromise = null;
       function loadBike() {
         if (!_bikePromise) {
@@ -3067,6 +3079,13 @@
       
       
       const subCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 40 });
+      
+      subCluster.on('click', (e) => {
+        const m = e.layer;
+        if (!m || !m._pop) return;
+        if (!m.getPopup() && m._pop) m.bindPopup(m._pop());
+        m.openPopup();
+      });
       let subRows = null, _subPromise = null;   
       function loadSubway() {
         if (!_subPromise) {
@@ -3080,7 +3099,12 @@
       
       
       const subColor = (d) => (d.ln && d.ln.length ? (SUB_LINE_COLOR[d.ln[0]] || '#495057') : '#495057');
-      function subPopupHtml(d) {
+      
+      
+      
+      
+      
+      function subwayPopupHtml(d) {
         const tot = (d.on || 0) + (d.off || 0);
         const h = d.h || [];
         const hours = (subMeta && subMeta.hours) || [];
@@ -3131,7 +3155,7 @@
             radius: rr, color: '#000', weight: 1.4,
             fillColor: subColor(d), fillOpacity: 0.85,
           });
-          mk._pop = (() => subPopupHtml(d));
+          mk._pop = (() => subwayPopupHtml(d));
           mk.bindTooltip(esc(d.nm), { direction: 'top' });
           return mk;
         }));
@@ -3159,6 +3183,13 @@
       
       const TRDAR_SE_COLOR = { 골목상권: '#1971c2', 발달상권: '#e8590c', 전통시장: '#7048e8', 관광특구: '#0ca678' };
       const trdarCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 50 });
+      
+      trdarCluster.on('click', (e) => {
+        const m = e.layer;
+        if (!m || !m._pop) return;
+        if (!m.getPopup() && m._pop) m.bindPopup(m._pop());
+        m.openPopup();
+      });
       let trdarRows = null, _trdarPromise = null, trdarQ = null, trdarGuIx = null;
       function loadTrdar() {
         if (!_trdarPromise) {
@@ -3357,6 +3388,13 @@
       const schLabel = (d) => d.lv || (schCatOf(d) ? schCatOf(d)[1] : (d.knd || ''));
       const schColor = (d) => SCHOOL_COLOR[d.lv] || (schCatOf(d) ? schCatOf(d)[2] : '#868e96');
       const schoolCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 50 });
+      
+      schoolCluster.on('click', (e) => {
+        const m = e.layer;
+        if (!m || !m._pop) return;
+        if (!m.getPopup() && m._pop) m.bindPopup(m._pop());
+        m.openPopup();
+      });
       const hospCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 55 });
       const emrgCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 45 });
       [hospCluster, emrgCluster].forEach((cl) => cl.on('click', (e) => {
@@ -4129,6 +4167,10 @@
         const q = new URLSearchParams({
           svc: 'OnbidRlstDtlSrvc2', op: 'getRlstDtlInf2',
           cltrMngNo: mng, pbctCdtnNo: String(cdtn || ''),
+          
+          
+          
+          pageNo: '1', numOfRows: '10', resultType: 'json',
         });
         fetch(onbidProxy() + '?' + q)
           .then((r) => (r.ok ? r.json() : null))
@@ -4293,6 +4335,13 @@
       
       
       const auctionSchedCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 60 });
+      
+      auctionSchedCluster.on('click', (e) => {
+        const m = e.layer;
+        if (!m || !m._pop) return;
+        if (!m.getPopup() && m._pop) m.bindPopup(m._pop());
+        m.openPopup();
+      });
       let auctionSchedRows = null, _auctionSchedPromise = null;
       
       const AUC_SCHED_COLOR = '#7048e8';
