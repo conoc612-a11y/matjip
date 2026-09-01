@@ -7355,7 +7355,14 @@
         
         
         
-        ['부동산·건축', ['공동주택 기본정보', '아파트 매매 실거래가(기본판)', '녹색건축 인증현황',
+        
+        
+        
+        
+        
+        
+        
+        ['부동산·건축', ['공동주택 기본정보', '아파트 매매 실거래가(기본판)',
           '청약 당첨자 정보(청약홈)', '파산금융회사 매물현황']],
         
         
@@ -7434,28 +7441,6 @@
         '건축HUB 유지점검정보': { d: '안전점검 이력·하자 리스크.' },
         
         
-        '녹색건축 인증현황': { d: 'API 연동 완료 — <code>ADDR</code>(주소) 필드 제공. 좌표는 지오코딩 변환 필요. 총 3,965건(서울 기준). 경로: <code>GET /api/GreenBuildCertifySvc/v1/getGreenBuildCertify</code> 파라미터: <code>cond[REGION_NM::LIKE]=서울</code> <code>cond[CERTIFY_GUBUN::EQ] 본인증</code> 등. 실측: data.go.kr에서 API 키 신청 후 호출.' },
-        '청약 당첨자 정보(청약홈)': { d: '연결 부적합 항목 재검토 — 제공된 가이드는 <code>청약홈 분양정보</code> API(getAPTLttotPblancDetail 등)이며, <code>당첨자 정보</code>와는 별도 API입니다. 분양정보 API는 <code>HSSPLY_ADRES</code>(공급위치/주소) 및 호수, 면적 등 제공. 당첨자 정보 연동은 별도 확인이 필요합니다. 실측: data.go.kr API 키 신청 후 실제 당첨자 조회 API 확인 요망.' },
-        '파산금융회사 매물현황': { d: '⛔ <b>연결 부적합</b> — HWP 가이드 파일 미추출로 실측 보류. 원본 판정: "파일데이터만 제공되고 좌표가 GPS 뿐이라 지도에 붙일 수 없습니다." (2026-08-29). HWP에서 API 엔드포인트 및 좌표필드 추출 시 재검토.' },
-        '주식시세정보(금융위)': { d: '헤더에 환율처럼 띄울 예정.' },
-        '기업 재무정보(금융위)': { d: '법인 재무.' },
-        '국민연금 가입현황': { d: '사업자 연결 보조 경로 후보.' },
-        '국민연금 탈퇴사업장': { d: '폐업 사업장 이력(2026-08-23 승인).' },
-        '가맹본부 일반정보(공정위)': { d: '상권의 프랜차이즈 비중·본부 건전성.' },
-        '가맹본부 재무정보(공정위)': { d: '상권의 프랜차이즈 비중·본부 건전성.' },
-        '브랜드 가맹점·직영점(공정위)': { d: '상권의 프랜차이즈 비중·본부 건전성.' },
-        '지자체 부채규모(지역정보원)': { d: '지자체 재정.' },
-        '지자체 경영성과(지역정보원)': { d: '지자체 재정.' },
-        '전세자금보증 상품(주금공)': { d: '전세 대출.' },
-        '공중화장실 정보': { d: 'CSV 11,219건 기반 — <code>위도</code>/<code>경도</code> 좌표 제공. 지도에 직접 표시 가능. 경로: 데이터표준(제공표준) CSV 파싱. 주요 열: <code>화장실명</code>, <code>소재지도로명주소</code>, <code>위도</code>, <code>경도</code>, <code>관리기관명</code>, <code>CCTV</code>, <code>비상벨</code>. 실측: CSV CP949 디코딩 후 좌표 활용.' },
-        
-        
-        
-        
-        
-        '하자담보책임기간': {
-          d: '⛔ <b>연결 보류</b> — 응답은 정상이지만 제공되는 데이터가 없어 화면에 붙이면 빈 칸만 생깁니다.',
-        },
         '유지관리 이력': {
           d: '⛔ <b>연결 보류</b> — 데이터를 제공하는 단지가 매우 적어(대단지 일부) 보류했습니다.',
         },
@@ -8297,6 +8282,34 @@
         })
         .catch(() => { _restroomIdx = new Map(); });
       _restroomLoading.then(() => cb(_restroomIdx));
+    }
+
+    
+    
+    
+    
+    
+    
+    
+    
+    let _greenIdx = null, _greenLoading = null;
+    function loadGreen(cb) {
+      if (_greenIdx) { cb(_greenIdx); return; }
+      if (_greenLoading) { _greenLoading.then(() => cb(_greenIdx)); return; }
+      _greenLoading = fetch('greenbuild.json')
+        .then((r) => (r.ok ? r.json() : []))
+        .then((arr) => {
+          const idx = new Map();
+          for (const x of arr) {
+            const k = _dongKey(x.addr);
+            if (!k) continue;
+            if (!idx.has(k)) idx.set(k, []);
+            idx.get(k).push(x);
+          }
+          _greenIdx = idx;
+        })
+        .catch(() => { _greenIdx = new Map(); });
+      _greenLoading.then(() => cb(_greenIdx));
     }
 
     
@@ -9669,6 +9682,24 @@
           + `비상벨 ${bell}곳 · 기저귀교환대 ${diaper}곳 · 행안부 표준데이터(좌표 미제공이라 동 단위 집계)</div>`
           + '</div>';
       }
+      
+      
+      let grnHtml = '';
+      if (st.grn && st.grn.length) {
+        
+        const rank = (g) => (/최우수/.test(g) ? 0 : /우수/.test(g) ? 1 : /우량/.test(g) ? 2 : 3);
+        const list = st.grn.slice().sort((a, b) => rank(a.grade) - rank(b.grade)
+          || String(b.date).localeCompare(String(a.date)));
+        const rows2 = list.slice(0, 3).map((x) => `<div style="font-size:11px;margin-top:2px;">`
+          + `${esc(x.nm || '(이름없음)')} <span style="color:var(--c-muted);">${esc(x.grade)}`
+          + `${x.gubun ? ' · ' + esc(x.gubun) : ''}${x.date ? ' · ' + esc(String(x.date).slice(0, 7)) : ''}</span></div>`).join('');
+        grnHtml = '<div class="ls-sec">'
+          + `<b>녹색건축 인증</b> <span style="font-size:12px;">이 동 <b>${st.grn.length}건</b></span>`
+          + rows2
+          + '<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">'
+          + '한국부동산원 G-SEED · 예비인증은 사업 진행 중이라는 뜻이다 (좌표 미제공이라 동 단위 집계)</div>'
+          + '</div>';
+      }
       let pmsHtml = '';
       if (st.pms && st.pms.length) {
         const tr = (v) => String(v == null ? '' : v).trim();
@@ -10038,7 +10069,7 @@
       if (!rows.length && !houseHtml && !detailHtml && !storeHtml && !nrHtml && !pmsHtml && !hpmsHtml && !lpHtml && !trdarHtml && !schHtml && !trdHtml && !subHtml && !lvpHtml && !rgHtml && !shtHtml && !mtnHtml && !engyHtml && !reserveHtml && !mgmtHtml && !bidHtml) return '';
       return `<div class="ls-sec" style="font-size:13px;">`
         + (rows.length ? `<b>토지·건물 정보</b>${badge}<br>${rows.join('<br>')}` : '')
-        + shtHtml + pmsHtml + hpmsHtml + subHtml + schHtml + trdarHtml + lvpHtml + trdHtml + lpHtml + jnseHtml + npsHtml + rstHtml + rgHtml + mtnHtml + engyHtml + reserveHtml + mgmtHtml + bidHtml + luHtml + storeHtml + nrHtml + houseHtml + detailHtml + '</div>';
+        + shtHtml + pmsHtml + hpmsHtml + subHtml + schHtml + trdarHtml + lvpHtml + trdHtml + lpHtml + jnseHtml + npsHtml + rstHtml + grnHtml + rgHtml + mtnHtml + engyHtml + reserveHtml + mgmtHtml + bidHtml + luHtml + storeHtml + nrHtml + houseHtml + detailHtml + '</div>';
     }
 
     
@@ -10554,6 +10585,11 @@
           loadRestroom((idx) => {
             const hit = idx && idx.get(_k);
             if (hit && hit.length) { st.rst = hit; render(); }
+          });
+          
+          loadGreen((idx) => {
+            const hit = idx && idx.get(_k);
+            if (hit && hit.length) { st.grn = hit; render(); }
           });
         }
         afterBase();
