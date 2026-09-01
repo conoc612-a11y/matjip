@@ -7365,17 +7365,27 @@
         
         
         
+        
+        
+        
         ['생활 인프라', ['착한가격업소 현황',
-          '생필품 가격 정보', '공중화장실 정보', '공공도서관 소장도서',
+          '생필품 가격 정보', '공공도서관 소장도서',
           '서울교통공사 최단경로', '도시고속도로 방음벽', '기상특보 조회', 'CCTV 도로날씨',
           '명산 등산로', '공항 출국장 혼잡도']],
-        ['사업자·기업·금융', ['국민연금 사업장 내역', '국민연금 가입현황', '국민연금 탈퇴사업장',
+        
+        
+        
+        
+        
+        
+        
+        
+        ['사업자·기업·금융', ['국민연금 가입현황', '국민연금 탈퇴사업장',
           '주식시세정보(금융위)', '기업 재무정보(금융위)', '기업지배구조 공시(금융위)',
           '지배구조정보(금융위)', '금융회사 공시(금융위)', '크라우드펀딩 업자(금융위)',
           '주식정보 서비스(예탁결제원)', '기업정보 서비스(예탁결제원)', '가맹본부 일반정보(공정위)',
           '가맹본부 재무정보(공정위)', '브랜드 가맹점·직영점(공정위)', '기업집단 내부지분(공정위)',
-          '대기업집단 주주현황(공정위)', '지자체 부채규모(지역정보원)', '지자체 경영성과(지역정보원)',
-          '전세자금보증 상품(주금공)']],
+          '대기업집단 주주현황(공정위)', '지자체 부채규모(지역정보원)', '지자체 경영성과(지역정보원)']],
         ['그 외', ['습득물 정보(경찰청)', '분실물 정보(경찰청)', '핸드폰 찾기(경찰청)',
           '포털기관 습득물(경찰청)', '마을변호사 현황(법무부)', '포락지 관리정보(해수부)',
           '바다갈라짐 체험지수', '바다여행지수', '나라장터 발주계획(조달청)', '데이터 제공표준(행안부)']],
@@ -8213,6 +8223,80 @@
           cb(hit);
         })
         .catch(() => cb(null));
+    }
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    const _npsCache = new Map();
+    function loadNpsBplc(pnu, cb) {
+      const s = String(pnu || '');
+      if (!/^\d{19}$/.test(s)) { cb(null); return; }
+      const bjd = s.slice(0, 8);
+      if (_npsCache.has(bjd)) { cb(_npsCache.get(bjd)); return; }
+      fetch(`${MOLIT_PROXY}?svc=NpsBplcInfoInqireServiceV2&op=getBassInfoSearchV2`
+        + `&ldongAddrMgplDgCd=${s.slice(0, 2)}&ldongAddrMgplSgguCd=${s.slice(2, 5)}`
+        + `&ldongAddrMgplSgguEmdCd=${s.slice(5, 8)}&numOfRows=5&pageNo=1`)
+        .then((r) => (r.ok ? r.text() : null))
+        .then((t) => {
+          if (!t) { cb(null); return; }
+          const doc = new DOMParser().parseFromString(t, 'application/xml');
+          const txt = (el, tag) => { const n = el.getElementsByTagName(tag)[0]; return n ? n.textContent.trim() : ''; };
+          const total = Number(txt(doc.documentElement, 'totalCount')) || 0;
+          const items = [...doc.getElementsByTagName('item')].map((it) => ({
+            nm: txt(it, 'wkplNm'),
+            addr: txt(it, 'wkplRoadNmDtlAddr'),
+          })).filter((x) => x.nm);
+          const out = total ? { total, items } : null;
+          _npsCache.set(bjd, out);   
+          cb(out);
+        })
+        .catch(() => cb(null));
+    }
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    function _dongKey(addr) {
+      const t = String(addr || '').trim().split(/\s+/);
+      const i = t.findIndex((x) => /구$/.test(x));
+      if (i < 0 || !t[i + 1]) return null;
+      const d = t[i + 1];
+      if (/^\d/.test(d) || d === '산') return null;   
+      return t[i] + ' ' + d;
+    }
+    let _restroomIdx = null, _restroomLoading = null;
+    function loadRestroom(cb) {
+      if (_restroomIdx) { cb(_restroomIdx); return; }
+      if (_restroomLoading) { _restroomLoading.then(() => cb(_restroomIdx)); return; }
+      _restroomLoading = fetch('restroom.json')
+        .then((r) => (r.ok ? r.json() : []))
+        .then((arr) => {
+          const idx = new Map();
+          for (const x of arr) {
+            const k = _dongKey(x.lot);
+            if (!k) continue;
+            if (!idx.has(k)) idx.set(k, []);
+            idx.get(k).push(x);
+          }
+          _restroomIdx = idx;
+        })
+        .catch(() => { _restroomIdx = new Map(); });
+      _restroomLoading.then(() => cb(_restroomIdx));
     }
 
     
@@ -9558,6 +9642,33 @@
           + '주택금융공사 일반전세자금보증(2D) · 이 법정동 기준 · 특례상품(청년·다자녀 등)은 한도가 다르다</div>'
           + '</div>';
       }
+      
+      
+      let npsHtml = '';
+      if (st.nps && st.nps.total > 0) {
+        const names = (st.nps.items || []).slice(0, 3).map((x) => esc(x.nm)).join(' · ');
+        npsHtml = '<div class="ls-sec">'
+          + `<b>법인 사업장</b> <span style="font-size:12px;">이 법정동 <b>${st.nps.total.toLocaleString('ko-KR')}곳</b></span>`
+          + (names ? `<div style="font-size:11px;margin-top:3px;">${names}</div>` : '')
+          + '<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">'
+          + '국민연금 가입 사업장 · <b>3인 이상 법인만</b> 집계된다(개인사업자·소규모는 빠진다)</div>'
+          + '</div>';
+      }
+      
+      
+      let rstHtml = '';
+      if (st.rst && st.rst.length) {
+        const n = st.rst.length;
+        const bell = st.rst.filter((x) => x.bell).length;
+        const diaper = st.rst.filter((x) => x.diaper).length;
+        const near = st.rst.slice(0, 3).map((x) => esc(x.nm)).filter(Boolean).join(' · ');
+        rstHtml = '<div class="ls-sec">'
+          + `<b>공중화장실</b> <span style="font-size:12px;">이 동 <b>${n}곳</b></span>`
+          + (near ? `<div style="font-size:11px;margin-top:3px;">${near}</div>` : '')
+          + '<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">'
+          + `비상벨 ${bell}곳 · 기저귀교환대 ${diaper}곳 · 행안부 표준데이터(좌표 미제공이라 동 단위 집계)</div>`
+          + '</div>';
+      }
       let pmsHtml = '';
       if (st.pms && st.pms.length) {
         const tr = (v) => String(v == null ? '' : v).trim();
@@ -9927,7 +10038,7 @@
       if (!rows.length && !houseHtml && !detailHtml && !storeHtml && !nrHtml && !pmsHtml && !hpmsHtml && !lpHtml && !trdarHtml && !schHtml && !trdHtml && !subHtml && !lvpHtml && !rgHtml && !shtHtml && !mtnHtml && !engyHtml && !reserveHtml && !mgmtHtml && !bidHtml) return '';
       return `<div class="ls-sec" style="font-size:13px;">`
         + (rows.length ? `<b>토지·건물 정보</b>${badge}<br>${rows.join('<br>')}` : '')
-        + shtHtml + pmsHtml + hpmsHtml + subHtml + schHtml + trdarHtml + lvpHtml + trdHtml + lpHtml + jnseHtml + rgHtml + mtnHtml + engyHtml + reserveHtml + mgmtHtml + bidHtml + luHtml + storeHtml + nrHtml + houseHtml + detailHtml + '</div>';
+        + shtHtml + pmsHtml + hpmsHtml + subHtml + schHtml + trdarHtml + lvpHtml + trdHtml + lpHtml + jnseHtml + npsHtml + rstHtml + rgHtml + mtnHtml + engyHtml + reserveHtml + mgmtHtml + bidHtml + luHtml + storeHtml + nrHtml + houseHtml + detailHtml + '</div>';
     }
 
     
@@ -10374,6 +10485,11 @@
         });
         
         
+        if (wantInfo.lp) loadNpsBplc(pnu, (d) => {
+          if (d) { st.nps = d; render(); }
+        });
+        
+        
         
         if (wantInfo.sht) loadShtPrice(pnu, (arr) => {
           if (arr && arr.length) { st.shtPrc = arr; render(); }
@@ -10429,6 +10545,17 @@
       });
       vworldFeature('LP_PA_CBND_BUBUN', lat, lng, (ps) => {
         st.parcel = (ps || [])[0] || null;
+        
+        
+        
+        
+        const _k = _dongKey(jibun || (st.parcel && (st.parcel.addr || st.parcel.jibun)));
+        if (_k) {
+          loadRestroom((idx) => {
+            const hit = idx && idx.get(_k);
+            if (hit && hit.length) { st.rst = hit; render(); }
+          });
+        }
         afterBase();
       });
       
