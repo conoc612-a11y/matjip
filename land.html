@@ -4104,6 +4104,70 @@
         }
         return _obIconCache[color];
       }
+      
+      
+      
+      
+      
+      const bankruptCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 60 });
+      let bankruptRows = null, _bkPromise = null;
+      const _bkIconCache = {};
+      function bkIcon(color) {
+        if (!_bkIconCache[color]) {
+          _bkIconCache[color] = L.divIcon({
+            className: '',
+            html: `<div style="width:26px;height:26px;background:${color};border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;font:700 12px/1 system-ui;color:#fff;">파</div>`,
+            iconSize: [26, 26], iconAnchor: [13, 13],
+          });
+        }
+        return _bkIconCache[color];
+      }
+      function loadBankrupt() {
+        if (!_bkPromise) {
+          _bkPromise = fetch('bankrupt.json')
+            .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+            .then((rows) => { bankruptRows = rows.filter((x) => x.lat && x.lng); })
+            .catch((e) => {
+              
+              bankruptRows = [];
+              toast('파산금융 매물을 불러오지 못했습니다 (bankrupt.json — 수집기 실행 필요)');
+              console.warn('파산금융 로드 실패:', e);
+            });
+        }
+        return _bkPromise;
+      }
+      function bkPopupHtml(d) {
+        const won = (v) => (v ? Math.round(v).toLocaleString('ko-KR') + '원' : '미공개');
+        const color = d.stat === '매각진행' ? 'var(--c-primary)' : 'var(--c-muted)';
+        return '<div class="bld-info" style="min-width:230px;">'
+          + `<div style="font-weight:700;margin-bottom:3px;">${esc(d.gu)} ${esc(d.addr)}</div>`
+          + `<div style="font-size:12px;margin-bottom:4px;">${esc(d.purp || '')} `
+          + `<span style="color:${color};font-weight:700;">${esc(d.stat)}</span></div>`
+          + `<div style="font-size:12px;">감정가 <b>${won(d.aprs)}</b> · 최저 <b>${won(d.lowest)}</b></div>`
+          + `<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">${esc(d.mth || '')}`
+          + `${d.inst ? ' · ' + esc(d.inst) : ''}${d.tel ? ' · ' + esc(d.tel) : ''}</div>`
+          + `<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">관리번호 ${esc(d.no)}`
+          + `${d.pban ? ' · 공고 ' + esc(d.pban.slice(0, 4) + '.' + d.pban.slice(4, 6) + '.' + d.pban.slice(6, 8)) : ''}</div>`
+          + '<div style="font-size:11px;color:var(--c-muted);margin-top:4px;">'
+          + '예금보험공사 파산금융회사 매물 · <b>0원은 미공개</b>이지 공짜가 아니다</div>'
+          + '</div>';
+      }
+      function drawBankrupt() {
+        bankruptCluster.clearLayers();
+        for (const d of (bankruptRows || [])) {
+          
+          const color = d.stat === '매각진행' ? '#c2410c' : (d.stat === '매각검토' ? '#a16207' : '#6b7280');
+          const m = L.marker([d.lat, d.lng], { icon: bkIcon(color) });
+          m._pop = () => bkPopupHtml(d);
+          bankruptCluster.addLayer(m);
+        }
+      }
+      
+      bankruptCluster.on('click', (e) => {
+        const f = e.layer && e.layer._pop;
+        if (f) L.popup({ maxWidth: 320 }).setLatLng(e.latlng).setContent(f()).openOn(map);
+      });
+
       function loadOnbid() {
         if (!_onbidPromise) {
           _onbidPromise = fetch('onbid.json')
@@ -6739,6 +6803,8 @@
         [infoEngy, 'engy'], [infoFund, 'fund'], [infoBid, 'bid'],
         [infoNps, 'nps'], [infoRst, 'rst'], [infoGrn, 'grn'], [infoKcr, 'kcr'], [infoDgk, 'dgk']];
       map.on('overlayadd', (e) => {
+        
+        if (e.layer === bankruptCluster) loadBankrupt().then(drawBankrupt);
         const hit = _infoMap.find((x) => x[0] === e.layer);
         if (hit) wantInfo[hit[1]] = true;
       });
@@ -6813,6 +6879,8 @@
           { name: '재매각·허가취소 물건', layer: auctionResaleCluster },
           
           { name: '공매 (온비드 · 압류재산)', layer: onbidCluster },
+          
+          { name: '파산금융 매물 (예금보험공사)', layer: bankruptCluster },
         ]],
         
         
@@ -8616,6 +8684,50 @@
     
     
     
+    function loadNpsScsn(pnu, cb) {
+      const s = String(pnu || '');
+      if (!/^\d{19}$/.test(s)) { cb(null); return; }
+      dgkFetch('NpsScsnBplcInfoInqireServiceV2', 'getBassInfoSearchV2', {
+        ldongAddrMgplDgCd: s.slice(0, 2), ldongAddrMgplSgguCd: s.slice(2, 5),
+        ldongAddrMgplSgguEmdCd: s.slice(5, 8), numOfRows: 3, pageNo: 1,
+      }, (doc) => {
+        if (!doc) { cb(null); return; }
+        const total = Number(_xt(doc.documentElement, 'totalCount')) || 0;
+        const items = [...doc.getElementsByTagName('item')].map((it) => ({
+          nm: _xt(it, 'wkplNm'), ym: _xt(it, 'dataCrtYm'),
+        })).filter((x) => x.nm);
+        cb(total ? { total, items } : null);
+      }, true);
+    }
+
+    
+    
+    
+    
+    function loadShortPath(fromStn, toStn, cb) {
+      if (!fromStn || !toStn) { cb(null); return; }
+      const d = new Date();
+      const p2 = (n) => String(n).padStart(2, '0');
+      const dt = `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())} `
+        + `${p2(d.getHours())}:${p2(d.getMinutes())}:00`;
+      dgkFetch('path2', 'getShtrmPath2', {
+        dptreStn: fromStn, arvlStn: toStn, searchDt: dt, dataType: 'JSON',
+      }, (j) => {
+        const b = j && j.body;
+        cb(b && b.totalReqHr ? {
+          from: fromStn, to: toStn,
+          min: Math.round(Number(b.totalReqHr) / 60),
+          km: Math.round(Number(b.totalDstc) / 100) / 10,
+          fare: Number(b.totalCardCrg) || 0,
+          trs: Number(b.trsitNmtm) || 0,
+          via: (b.trfstnNms || []).map((x) => x.stnNm).filter(Boolean),
+        } : null);
+      });
+    }
+
+    
+    
+    
     
     
     
@@ -10175,6 +10287,11 @@
           rows2.push(`<div style="font-size:11px;margin-top:3px;">마을변호사 ${names.length}명`
             + (names.length ? ` — ${esc(names.slice(0, 3).join(' · '))}${names.length > 3 ? ' 외' : ''}` : '') + '</div>');
         }
+        if (st.npsScsn && st.npsScsn.total) {
+          const names = (st.npsScsn.items || []).map((x) => x.nm).slice(0, 2);
+          rows2.push(`<div style="font-size:11px;margin-top:3px;">폐업 사업장(이 법정동) <b>${st.npsScsn.total.toLocaleString('ko-KR')}곳</b>`
+            + (names.length ? ` <span style="color:var(--c-muted);">${esc(names.join(' · '))}</span>` : '') + '</div>');
+        }
         if (st.goodPrice && st.goodPrice.length) {
           const g = st.goodPrice;
           const kinds = [...new Set(g.map((x) => x.kind).filter(Boolean))].slice(0, 3);
@@ -10189,10 +10306,32 @@
           rows2.push(`<div style="font-size:11px;margin-top:3px;color:var(--c-warn,#c47f00);">`
             + `⚠ ${esc(String(st.wthrWrn[0]).slice(0, 60))}</div>`);
         }
+        
+        
+        
+        if (st.sub && st.sub.length && st.sub[0] && st.sub[0].nm) {
+          const from = st.sub[0].nm;
+          const dests = ['강남', '여의도', '시청', '잠실', '가산디지털단지'].filter((x) => x !== from);
+          const r = st.shortPath;
+          rows2.push('<div style="font-size:11px;margin-top:5px;border-top:1px solid var(--line);padding-top:4px;">'
+            + `<b>${esc(from)}</b>에서 지하철로`
+            + '<div class="sp-btns" style="display:flex;flex-wrap:wrap;gap:3px;margin-top:3px;">'
+            + dests.map((d) => `<button type="button" class="sp-go" data-from="${esc(from)}" data-to="${esc(d)}" `
+              + 'style="font:inherit;font-size:11px;padding:2px 7px;border:1px solid var(--line);border-radius:999px;'
+              + `background:${r && r.to === d ? 'var(--c-primary)' : 'var(--card)'};`
+              + `color:${r && r.to === d ? '#fff' : 'var(--text)'};cursor:pointer;">${esc(d)}</button>`).join('')
+            + '</div>'
+            + (r && r.min === '…' ? `<div style="margin-top:3px;color:var(--c-muted);">→ <b>${esc(r.to)}</b> 조회 중…</div>`
+              : r ? `<div style="margin-top:3px;">→ <b>${esc(r.to)}</b> ${r.min}분 · ${r.km}km · `
+                + `${r.fare.toLocaleString('ko-KR')}원 · 환승 ${r.trs}회`
+                + (r.via.length ? ` <span style="color:var(--c-muted);">(${esc(r.via.join(', '))})</span>` : '') + '</div>'
+              : '<div style="margin-top:2px;color:var(--c-muted);">역 이름을 누르면 소요시간·요금을 조회합니다</div>')
+            + '</div>');
+        }
         if (rows2.length) {
           dgkHtml = '<div class="ls-sec"><b>공공데이터 더보기</b>' + rows2.join('')
             + '<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">'
-            + '공동주택 기본정보 · 하자담보책임기간 · 국민연금 가입현황 · 마을변호사 · 기상특보 · 착한가격업소</div></div>';
+            + '공동주택 기본정보 · 하자담보책임기간 · 국민연금 가입현황 · 마을변호사 · 기상특보 · 착한가격업소 · 폐업 사업장 · 지하철 최단경로</div></div>';
         }
       }
       let pmsHtml = '';
@@ -10780,6 +10919,21 @@
         const btn = slot.querySelector('.ld-more');
         if (btn) btn.onclick = (ev) => { stop(ev); loadLedgerDetail(st, render); };
         
+        
+        slot.querySelectorAll('.sp-go').forEach((b) => {
+          b.onclick = (ev) => {
+            stop(ev);
+            const from = b.dataset.from, to = b.dataset.to;
+            st.shortPath = { to, min: '…', km: '', fare: 0, trs: 0, via: [] };
+            render();
+            loadShortPath(from, to, (r) => {
+              if (r) st.shortPath = r;
+              else { st.shortPath = null; toast('최단경로를 불러오지 못했습니다. 다시 시도해 주세요.'); }
+              render();
+            });
+          };
+        });
+        
         const mb = slot.querySelector('.ld-mgmt');
         if (mb) mb.onclick = (ev) => {
           stop(ev);
@@ -11028,6 +11182,7 @@
             loadWrantPd(one.code, (d) => { if (d) { st.wrantPd = d; render(); } });
           });
           loadNpsAge(pnu, (d) => { if (d) { st.npsAge = d; render(); } });
+          loadNpsScsn(pnu, (d) => { if (d) { st.npsScsn = d; render(); } });
           loadWthrWrn((d) => { if (d && d.length) { st.wthrWrn = d; render(); } });
         }
         
