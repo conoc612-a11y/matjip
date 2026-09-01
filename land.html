@@ -1377,7 +1377,7 @@
     
     let wantInfo = { sht: true, mtn: true, pms: true, hpms: true, engy: true, fund: true, bid: true, lp: true, trdar: true, sch: true, trd: true, sub: true, lvp: true, rg: true,
       
-      nps: true, rst: true, grn: true, kcr: true };
+      nps: true, rst: true, grn: true, kcr: true, dgk: true };
     
     
     
@@ -6732,11 +6732,12 @@
       const infoRst = L.layerGroup();    
       const infoGrn = L.layerGroup();    
       const infoKcr = L.layerGroup();    
+      const infoDgk = L.layerGroup();    
       
       
       const _infoMap = [[infoSht, 'sht'], [infoMtn, 'mtn'], [infoPms, 'pms'], [infoHpms, 'hpms'], [infoLp, 'lp'], [infoTrdar, 'trdar'], [infoSch, 'sch'], [infoTrd, 'trd'], [infoSub, 'sub'], [infoLvp, 'lvp'], [infoRg, 'rg'],
         [infoEngy, 'engy'], [infoFund, 'fund'], [infoBid, 'bid'],
-        [infoNps, 'nps'], [infoRst, 'rst'], [infoGrn, 'grn'], [infoKcr, 'kcr']];
+        [infoNps, 'nps'], [infoRst, 'rst'], [infoGrn, 'grn'], [infoKcr, 'kcr'], [infoDgk, 'dgk']];
       map.on('overlayadd', (e) => {
         const hit = _infoMap.find((x) => x[0] === e.layer);
         if (hit) wantInfo[hit[1]] = true;
@@ -6748,6 +6749,7 @@
       infoSht.addTo(map); infoMtn.addTo(map); infoPms.addTo(map); infoHpms.addTo(map); infoLp.addTo(map); infoTrdar.addTo(map); infoSch.addTo(map); infoTrd.addTo(map); infoSub.addTo(map); infoLvp.addTo(map); infoRg.addTo(map);
       infoEngy.addTo(map); infoFund.addTo(map); infoBid.addTo(map);
       infoNps.addTo(map); infoRst.addTo(map); infoGrn.addTo(map); infoKcr.addTo(map);
+      infoDgk.addTo(map);
 
       const LAYER_TREE = [
         
@@ -6800,6 +6802,8 @@
           { name: '공중화장실 (동 단위)', layer: infoRst },
           { name: '녹색건축 인증 (동 단위)', layer: infoGrn },
           { name: '인허가 호별개요 (서울시)', layer: infoKcr },
+          
+          { name: '공공데이터 더보기', layer: infoDgk },
         ]],
         ['법원경매', [
           { name: '진행 물건(서울/경기)', layer: auctionCluster },
@@ -8507,6 +8511,135 @@
     
     
     
+    const DGK_PROXY = SUPABASE_URL + '/functions/v1/dgk-proxy';
+    const _dgkCache = new Map();
+    function dgkFetch(svc, op, params, cb, asXml) {
+      const q = Object.entries(params || {})
+        .filter(([, v]) => v !== undefined && v !== null && v !== '')
+        .map(([k, v]) => k + '=' + encodeURIComponent(v)).join('&');
+      const url = `${DGK_PROXY}?svc=${svc}&op=${op}${q ? '&' + q : ''}`;
+      if (_dgkCache.has(url)) { cb(_dgkCache.get(url)); return; }
+      fetch(url)
+        .then((r) => (r.ok ? r.text() : null))
+        .then((txt) => {
+          let out = null;
+          if (txt) {
+            try {
+              out = asXml ? new DOMParser().parseFromString(txt, 'application/xml') : JSON.parse(txt);
+            } catch (_e) { out = null; }
+          }
+          _dgkCache.set(url, out);   
+          cb(out);
+        })
+        .catch(() => cb(null));
+    }
+    const _xt = (el, tag) => { if (!el) return ''; const n = el.getElementsByTagName(tag)[0]; return n ? n.textContent.trim() : ''; };
+
+    
+    
+    
+    function loadAptBasis(kaptCode, cb) {
+      if (!kaptCode) { cb(null); return; }
+      dgkFetch('AptBasisInfoServiceV5', 'getAphusBassInfoV5', { kaptCode, type: 'json' }, (j) => {
+        const it = j && j.response && j.response.body && j.response.body.item;
+        cb(it && it.kaptName ? it : null);
+      });
+    }
+    
+    
+    function loadWrantPd(kaptCode, cb) {
+      if (!kaptCode) { cb(null); return; }
+      fetch(`${MOLIT_PROXY}?svc=HsmpWrantRspnsblPdService&op=getWrantRspnsblPdNtcnInfoSearchV2`
+        + `&kaptCode=${encodeURIComponent(kaptCode)}&numOfRows=5&pageNo=1`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => {
+          const b = j && (j.response ? j.response.body : j.body);
+          const it = b && b.items && (b.items.item || b.items);
+          const arr = Array.isArray(it) ? it : (it ? [it] : []);
+          cb(arr.length ? arr : null);
+        })
+        .catch(() => cb(null));
+    }
+    
+    
+    function loadNpsAge(pnu, cb) {
+      const s = String(pnu || '');
+      if (!/^\d{19}$/.test(s)) { cb(null); return; }
+      const base = { ldongAddrMgplDgCd: s.slice(0, 2), ldongAddrMgplSgguCd: s.slice(2, 5),
+        ldongAddrMgplSgguEmdCd: s.slice(5, 8), numOfRows: 1, pageNo: 1 };
+      const ages = [30, 40, 50];
+      const got = [];
+      let left = ages.length;
+      ages.forEach((age) => {
+        dgkFetch('NpsSbscrbInfoProvdServiceV2', 'getSbscrbSttusInfoSearchV2',
+          Object.assign({ jnngpAge: age }, base), (doc) => {
+            const n = Number(_xt(doc && doc.documentElement, 'totalCount')) || 0;
+            if (n) got.push({ age, n });
+            if (--left === 0) cb(got.length ? got.sort((a, b) => a.age - b.age) : null);
+          }, true);
+      });
+    }
+    
+    
+    
+    let _bkrtLoading = null, _bkrtRows = null;
+    function loadBankruptcy(cb) {
+      if (_bkrtRows) { cb(_bkrtRows); return; }
+      if (_bkrtLoading) { _bkrtLoading.then(() => cb(_bkrtRows)); return; }
+      _bkrtLoading = new Promise((done) => {
+        dgkFetch('GetBankruptcyEstatesGoodsService202606', 'getRealEstateList202606',
+          { numOfRows: 200, pageNo: 1, resultType: 'json' }, (j) => {
+            const box = j && j.getRealEstateList202606;
+            const it = box && (box.item || box.items);
+            const arr = Array.isArray(it) ? it : (it ? [it] : []);
+            _bkrtRows = arr.filter((x) => Number(x.lttdVal) && Number(x.lgtdVal));
+            done();
+          });
+      });
+      _bkrtLoading.then(() => cb(_bkrtRows));
+    }
+    
+    let _wrnLoading = null, _wrnText = null;
+    function loadWthrWrn(cb) {
+      if (_wrnText !== null) { cb(_wrnText); return; }
+      if (_wrnLoading) { _wrnLoading.then(() => cb(_wrnText)); return; }
+      _wrnLoading = new Promise((done) => {
+        dgkFetch('WthrWrnInfoService', 'getWthrWrnList', { stnId: 108, numOfRows: 3, pageNo: 1 }, (doc) => {
+          const items = doc ? [...doc.getElementsByTagName('item')] : [];
+          const titles = items.map((x) => _xt(x, 'title')).filter(Boolean);
+          _wrnText = titles.length ? titles : [];
+          done();
+        }, true);
+      });
+      _wrnLoading.then(() => cb(_wrnText));
+    }
+    
+    let _mabyunLoading = null, _mabyunIdx = null;
+    function loadMabyun(cb) {
+      if (_mabyunIdx) { cb(_mabyunIdx); return; }
+      if (_mabyunLoading) { _mabyunLoading.then(() => cb(_mabyunIdx)); return; }
+      _mabyunLoading = new Promise((done) => {
+        dgkFetch('mojmabyun', 'mabyun', { numOfRows: 400, pageNo: 1 }, (doc) => {
+          const idx = new Map();
+          if (doc) {
+            for (const x of doc.getElementsByTagName('item')) {
+              const gu = (_xt(x, 'SIGUNGU') || _xt(x, 'sigungu') || '').trim();
+              if (!gu) continue;
+              if (!idx.has(gu)) idx.set(gu, []);
+              idx.get(gu).push({ nm: _xt(x, 'NAME') || _xt(x, 'name'), tel: _xt(x, 'TEL') || _xt(x, 'tel') });
+            }
+          }
+          _mabyunIdx = idx;
+          done();
+        }, true);
+      });
+      _mabyunLoading.then(() => cb(_mabyunIdx));
+    }
+
+    
+    
+    
+    
     
     
     
@@ -10016,6 +10149,44 @@
             + '</div>';
         }
       }
+      
+      
+      let dgkHtml = '';
+      {
+        const rows2 = [];
+        const A = st.aptBasis;
+        if (A) {
+          const bits = [A.codeSaleNm, A.codeHeatNm,
+            A.kaptDongCnt ? A.kaptDongCnt + '개동' : '',
+            A.kaptdaCnt ? Number(A.kaptdaCnt).toLocaleString() + '세대' : '',
+            A.kaptUsedate ? String(A.kaptUsedate).slice(0, 4) + '년 준공' : ''].filter(Boolean);
+          rows2.push(`<div style="font-size:12px;margin-top:2px;"><b>${esc(A.kaptName || '')}</b></div>`
+            + (bits.length ? `<div style="font-size:11px;color:var(--c-muted);">${esc(bits.join(' · '))}</div>` : '')
+            + (A.kaptBcompany ? `<div style="font-size:11px;color:var(--c-muted);">시공 ${esc(String(A.kaptBcompany).slice(0, 40))}</div>` : ''));
+        }
+        if (st.wrantPd && st.wrantPd.length) {
+          const w = st.wrantPd[0];
+          const pd = [w.wrantRspnsblPdSeCdNm, w.wrantRspnsblPdBeginDe, w.wrantRspnsblPdEndDe].filter(Boolean).join(' ');
+          rows2.push(`<div style="font-size:11px;margin-top:3px;">하자담보책임 ${esc(pd || (st.wrantPd.length + '건'))}</div>`);
+        }
+        if (st.npsAge && st.npsAge.length) {
+          rows2.push('<div style="font-size:11px;margin-top:3px;">연금 가입자 '
+            + st.npsAge.map((x) => `${x.age}대 ${x.n.toLocaleString()}`).join(' · ') + '</div>');
+        }
+        if (st.mabyun && st.mabyun.length) {
+          rows2.push(`<div style="font-size:11px;margin-top:3px;">마을변호사 ${st.mabyun.length}명`
+            + (st.mabyun[0] && st.mabyun[0].nm ? ` (${esc(st.mabyun[0].nm)} 등)` : '') + '</div>');
+        }
+        if (st.wthrWrn && st.wthrWrn.length) {
+          rows2.push(`<div style="font-size:11px;margin-top:3px;color:var(--c-warn,#c47f00);">`
+            + `⚠ ${esc(String(st.wthrWrn[0]).slice(0, 60))}</div>`);
+        }
+        if (rows2.length) {
+          dgkHtml = '<div class="ls-sec"><b>공공데이터 더보기</b>' + rows2.join('')
+            + '<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">'
+            + '공동주택 기본정보 · 하자담보책임기간 · 국민연금 가입현황 · 마을변호사 · 기상특보</div></div>';
+        }
+      }
       let pmsHtml = '';
       if (st.pms && st.pms.length) {
         const tr = (v) => String(v == null ? '' : v).trim();
@@ -10385,7 +10556,7 @@
       if (!rows.length && !houseHtml && !detailHtml && !storeHtml && !nrHtml && !pmsHtml && !hpmsHtml && !lpHtml && !trdarHtml && !schHtml && !trdHtml && !subHtml && !lvpHtml && !rgHtml && !shtHtml && !mtnHtml && !engyHtml && !reserveHtml && !mgmtHtml && !bidHtml) return '';
       return `<div class="ls-sec" style="font-size:13px;">`
         + (rows.length ? `<b>토지·건물 정보</b>${badge}<br>${rows.join('<br>')}` : '')
-        + shtHtml + pmsHtml + hpmsHtml + subHtml + schHtml + trdarHtml + lvpHtml + trdHtml + lpHtml + jnseHtml + npsHtml + rstHtml + grnHtml + kcrHtml + rgHtml + mtnHtml + engyHtml + reserveHtml + mgmtHtml + bidHtml + luHtml + storeHtml + nrHtml + houseHtml + detailHtml + '</div>';
+        + shtHtml + pmsHtml + hpmsHtml + subHtml + schHtml + trdarHtml + lvpHtml + trdHtml + lpHtml + jnseHtml + npsHtml + rstHtml + grnHtml + kcrHtml + dgkHtml + rgHtml + mtnHtml + engyHtml + reserveHtml + mgmtHtml + bidHtml + luHtml + storeHtml + nrHtml + houseHtml + detailHtml + '</div>';
     }
 
     
@@ -10837,6 +11008,22 @@
         });
         
         
+        if (wantInfo.dgk) {
+          
+          
+          
+          
+          const _bn = (st.br && (st.br.bldNm || st.br.bldNm2)) || (st.bld && st.bld.nm) || '';
+          findKaptCode(pnu, _bn, (one, netFail) => {
+            if (netFail || !one || !one.code) return;
+            loadAptBasis(one.code, (d) => { if (d) { st.aptBasis = d; render(); } });
+            loadWrantPd(one.code, (d) => { if (d) { st.wrantPd = d; render(); } });
+          });
+          loadNpsAge(pnu, (d) => { if (d) { st.npsAge = d; render(); } });
+          loadWthrWrn((d) => { if (d && d.length) { st.wthrWrn = d; render(); } });
+        }
+        
+        
         
         if (wantInfo.sht) loadShtPrice(pnu, (arr) => {
           if (arr && arr.length) { st.shtPrc = arr; render(); }
@@ -10906,6 +11093,12 @@
           if (wantInfo.grn) loadGreen((idx) => {
             const hit = idx && idx.get(_k);
             if (hit && hit.length) { st.grn = hit; render(); }
+          });
+          
+          if (wantInfo.dgk) loadMabyun((idx) => {
+            const gu = _k.split(' ')[0];
+            const hit = idx && idx.get(gu);
+            if (hit && hit.length) { st.mabyun = hit; render(); }
           });
         }
         
