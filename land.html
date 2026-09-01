@@ -10624,7 +10624,8 @@
               const frTag = fr
                 ? ` <span style="color:var(--c-primary);font-size:11px;" title="${esc(fr.nm)} · ${esc(fr.corp)}">`
                   + `가맹 ${fr.cnt.toLocaleString('ko-KR')}점`
-                  + (fr.sls ? ` · 평균 ${Math.round(fr.sls / 1000).toLocaleString('ko-KR')}백만` : '')
+                  
+                  + (Math.round(fr.sls / 1000) >= 1 ? ` · 평균 ${Math.round(fr.sls / 1000).toLocaleString('ko-KR')}백만` : '')
                   + '</span>'
                 : '';
               return `${tag}${f}${nm} <span style="color:var(--c-muted);font-size:12px;">${esc(x.inds)}</span>${frTag}`;
