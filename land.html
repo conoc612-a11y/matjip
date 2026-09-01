@@ -7365,7 +7365,7 @@
       const UA_CONNECTED = [
         ['부동산·건축', ['청약 당첨자 정보(청약홈)', '공동주택 기본정보', '아파트 매매 실거래가(기본판)', '파산금융회사 매물현황', '하자담보책임기간']],
         ['공공주택·임대', ['LH 분양임대공고 상세', 'LH 분양임대공고문', 'LH 임대주택단지']],
-        ['생활 인프라', ['공공도서관 소장도서', '착한가격업소 현황', 'CCTV 도로날씨', '공항 출국장 혼잡도', '기상특보 조회', '데이터 제공표준(행안부)', '마을변호사 현황(법무부)', '명산 등산로', '생필품 가격 정보']],
+        ['생활 인프라', ['서울교통공사 최단경로', '공공도서관 소장도서', '착한가격업소 현황', 'CCTV 도로날씨', '공항 출국장 혼잡도', '기상특보 조회', '데이터 제공표준(행안부)', '마을변호사 현황(법무부)', '명산 등산로', '생필품 가격 정보']],
         ['사업자·기업·금융', ['브랜드 가맹점·직영점(공정위)', '브랜드별 가맹점 현황(공정위)', '브랜드 가맹점 단위면적당 평균매출(공정위)', '가맹본부 일반정보(공정위)', '가맹본부 재무정보(공정위)', '국민연금 가입현황', '국민연금 탈퇴사업장', '금융회사 공시(금융위)', '기업 재무정보(금융위)', '기업정보 서비스(예탁결제원)', '기업지배구조 공시(금융위)', '기업집단 내부지분(공정위)', '대기업집단 주주현황(공정위)', '주식시세정보(금융위)', '주식정보 서비스(예탁결제원)', '지배구조정보(금융위)']],
         ['그 외', ['나라장터 발주계획(조달청)', '바다갈라짐 체험지수', '바다여행지수', '분실물 정보(경찰청)', '습득물 정보(경찰청)', '포락지 관리정보(해수부)', '포털기관 습득물(경찰청)', '핸드폰 찾기(경찰청)']],
       ];
@@ -7381,10 +7381,6 @@
       
       
       
-      const UA_CATALOG = [
-        ['생활 인프라', ['서울교통공사 최단경로', '도시고속도로 방음벽']],
-        ['사업자·기업·금융', ['지자체 부채규모(지역정보원)']],
-      ];
       
       
       
@@ -7575,14 +7571,6 @@
           o: ['getMoblphonAcctoKindAreaPeriodInfo', 'getMoblphonDetailInfo'],
           p: '프록시 <code>svc=SearchMoblphonInfoInqireService</code> · 포털 pk <a href="https://www.data.go.kr/data/15000442/openapi.do" target="_blank" rel="noopener">15000442</a>',
         },
-        '지자체 부채규모(지역정보원)': {
-          d: '행정안전부_지방재정365_복식부기재무현황(부채). pk 는 확인했으나 명세 본문을 못 받았다 — 포털 상세페이지에서 확인할 것.',
-          p: '포털 pk <a href="https://www.data.go.kr/data/15057560/openapi.do" target="_blank" rel="noopener">15057560</a>',
-        },
-        '도시고속도로 방음벽': {
-          d: '서울시설공단_도시고속도로 방음벽 정보. 🔴 <b>data.go.kr 이 아니라 서울시설공단 자체 서버</b>다 (<code>data.sisul.or.kr</code>). 우리 DGK 키로 부르면 <b>등록되지 않은 서비스키(99)</b> 가 온다 — <b>그쪽 별도 인증키가 필요하다</b>(2026-09-01 실측). 서비스 ID <code>NoiseBarrier</code>, op <code>getNoiseBarrierQry</code>, 파라미터 roadlinename(옵션).',
-          p: '포털 pk <a href="https://www.data.go.kr/data/15002794/openapi.do" target="_blank" rel="noopener">15002794</a> · 서비스 URL <code>http://data.sisul.or.kr/AutoAPI/service/OpenDB/NoiseBarrier/getNoiseBarrierQry</code>',
-        },
         '공공도서관 소장도서': {
           d: '프록시 연결 — 화면 연결은 아직. 정식명 <b>서울특별시교육청 도서관 소장도서 정보</b>. 🔴 미활용 목록엔 &quot;국립중앙도서관&quot; 으로 적혀 있었지만 <b>활용가이드 폴더에 있던 것은 서울시교육청 것</b>이고 그쪽이 열린다. ⚠️ 응답이 <b>22.7초</b> 걸린다(실측) — 팝업에서 동기로 기다리게 만들지 마라.',
           o: ['getList'],
@@ -7649,7 +7637,6 @@
         },
       };
       const UA_DEFAULT_DETAIL = '제공 항목 상세는 아직 미측정 — 연동 시 data.go.kr 상세페이지의 상세기능을 확인할 것(경로 추측 금지 규칙).';
-      const UA_COUNT = UA_CATALOG.reduce((n, [, items]) => n + items.length, 0);
       const UA_CONN_COUNT = UA_CONNECTED.reduce((n, [, items]) => n + items.length, 0);
       
       function uaItemHtml(it) {
@@ -7668,19 +7655,16 @@
       const unusedApiPanel = L.control({ position: 'topright' });
       unusedApiPanel.onAdd = () => {
         const div = L.DomUtil.create('div', 'lp ua');
-        div.innerHTML = '<button type="button" class="lp-toggle" title="미활용 API" aria-label="미활용 API">'
+        div.innerHTML = '<button type="button" class="lp-toggle" title="연결된 공공데이터 API" aria-label="연결된 공공데이터 API">'
           + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
           + '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>'
           + '<path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></button>'
           + '<div class="lp-body ui-scroll">'
           
-          + '<div class="ua-note">✅ <b>연결됨</b> <b>' + UA_CONN_COUNT + '종</b>'
-          + ' — 프록시까지 붙어 지금 부를 수 있다. 이름을 누르면 End Point·op 가 나온다.</div>'
+          + '<div class="ua-note">✅ <b>연결된 공공데이터 API ' + UA_CONN_COUNT + '종</b>'
+          + ' — 전부 프록시까지 붙어 지금 부를 수 있다. 이름을 누르면 End Point·op 가 나온다.'
+          + '<br>2026-09-01 기준 <b>미활용은 0종</b>이다(그래서 미활용 목록을 없앴다).</div>'
           + UA_CONNECTED.map(([sec, items]) => '<div class="ua-sec"><b>' + sec + ' (' + items.length + ')</b>'
-            + items.map(uaItemHtml).join('') + '</div>').join('')
-          + '<div class="ua-note">승인만 받고 <b>미활용</b>인 공공데이터포털 API <b>'
-          + UA_COUNT + '종</b>. 체크 = 붙일 후보 선택 · 이름 클릭 = 제공 정보 펼침</div>'
-          + UA_CATALOG.map(([sec, items]) => '<div class="ua-sec"><b>' + sec + ' (' + items.length + ')</b>'
             + items.map(uaItemHtml).join('') + '</div>').join('')
           + '</div>';
         const toggle = div.querySelector('.lp-toggle');
