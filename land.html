@@ -8562,19 +8562,25 @@
     }
     
     
+    
+    
+    
+    
+    
     function loadNpsAge(pnu, cb) {
       const s = String(pnu || '');
       if (!/^\d{19}$/.test(s)) { cb(null); return; }
-      const base = { ldongAddrMgplDgCd: s.slice(0, 2), ldongAddrMgplSgguCd: s.slice(2, 5),
-        ldongAddrMgplSgguEmdCd: s.slice(5, 8), numOfRows: 1, pageNo: 1 };
+      const sido = s.slice(0, 2);
       const ages = [30, 40, 50];
       const got = [];
       let left = ages.length;
       ages.forEach((age) => {
         dgkFetch('NpsSbscrbInfoProvdServiceV2', 'getSbscrbSttusInfoSearchV2',
-          Object.assign({ jnngpAge: age }, base), (doc) => {
-            const n = Number(_xt(doc && doc.documentElement, 'totalCount')) || 0;
-            if (n) got.push({ age, n });
+          { ldongAddrMgplDgCd: sido, jnngpAge: age, numOfRows: 1, pageNo: 1 }, (doc) => {
+            const it = doc && doc.getElementsByTagName('item')[0];
+            const cnt = Number(_xt(it, 'jnngBrkdSgmntPrsnCnt')) || 0;
+            const amt = Number(_xt(it, 'avgAntcPnsAmt')) || 0;
+            if (cnt) got.push({ age, n: cnt, amt });
             if (--left === 0) cb(got.length ? got.sort((a, b) => a.age - b.age) : null);
           }, true);
       });
@@ -8619,14 +8625,17 @@
       if (_mabyunIdx) { cb(_mabyunIdx); return; }
       if (_mabyunLoading) { _mabyunLoading.then(() => cb(_mabyunIdx)); return; }
       _mabyunLoading = new Promise((done) => {
-        dgkFetch('mojmabyun', 'mabyun', { numOfRows: 400, pageNo: 1 }, (doc) => {
+        dgkFetch('mojmabyun', 'mabyun', { numOfRows: 999, pageNo: 1 }, (doc) => {
           const idx = new Map();
           if (doc) {
             for (const x of doc.getElementsByTagName('item')) {
-              const gu = (_xt(x, 'SIGUNGU') || _xt(x, 'sigungu') || '').trim();
+              
+              
+              
+              const gu = _xt(x, 'City').trim();
               if (!gu) continue;
               if (!idx.has(gu)) idx.set(gu, []);
-              idx.get(gu).push({ nm: _xt(x, 'NAME') || _xt(x, 'name'), tel: _xt(x, 'TEL') || _xt(x, 'tel') });
+              idx.get(gu).push({ nm: _xt(x, 'Attorney'), vil: _xt(x, 'Village') });
             }
           }
           _mabyunIdx = idx;
@@ -10170,12 +10179,15 @@
           rows2.push(`<div style="font-size:11px;margin-top:3px;">하자담보책임 ${esc(pd || (st.wrantPd.length + '건'))}</div>`);
         }
         if (st.npsAge && st.npsAge.length) {
-          rows2.push('<div style="font-size:11px;margin-top:3px;">연금 가입자 '
-            + st.npsAge.map((x) => `${x.age}대 ${x.n.toLocaleString()}`).join(' · ') + '</div>');
+          rows2.push('<div style="font-size:11px;margin-top:3px;">연금 가입자(서울) '
+            + st.npsAge.map((x) => `${x.age}대 ${x.n.toLocaleString()}명`).join(' · ') + '</div>'
+            + '<div style="font-size:11px;color:var(--c-muted);">평균 예상연금 '
+            + st.npsAge.map((x) => `${x.age}대 ${Math.round(x.amt / 10000)}만원`).join(' · ') + '</div>');
         }
         if (st.mabyun && st.mabyun.length) {
-          rows2.push(`<div style="font-size:11px;margin-top:3px;">마을변호사 ${st.mabyun.length}명`
-            + (st.mabyun[0] && st.mabyun[0].nm ? ` (${esc(st.mabyun[0].nm)} 등)` : '') + '</div>');
+          const names = [...new Set(st.mabyun.map((x) => x.nm).filter(Boolean))];
+          rows2.push(`<div style="font-size:11px;margin-top:3px;">마을변호사 ${names.length}명`
+            + (names.length ? ` — ${esc(names.slice(0, 3).join(' · '))}${names.length > 3 ? ' 외' : ''}` : '') + '</div>');
         }
         if (st.wthrWrn && st.wthrWrn.length) {
           rows2.push(`<div style="font-size:11px;margin-top:3px;color:var(--c-warn,#c47f00);">`
