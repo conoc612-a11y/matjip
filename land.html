@@ -7565,7 +7565,6 @@
           o: ['getMoblphonAcctoKindAreaPeriodInfo', 'getMoblphonDetailInfo'],
           p: '프록시 <code>svc=SearchMoblphonInfoInqireService</code> · 포털 pk <a href="https://www.data.go.kr/data/15000442/openapi.do" target="_blank" rel="noopener">15000442</a>',
         },
-
         '지자체 부채규모(지역정보원)': {
           d: '행정안전부_지방재정365_복식부기재무현황(부채). pk 는 확인했으나 명세 본문을 못 받았다 — 포털 상세페이지에서 확인할 것.',
           p: '포털 pk <a href="https://www.data.go.kr/data/15057560/openapi.do" target="_blank" rel="noopener">15057560</a>',
@@ -7582,180 +7581,27 @@
           d: '🔴 <b>전국 통합 API 가 없다</b>(검색어 4종으로 확인). 부산광역시·계룡시·거제시·전주시처럼 <b>지자체별로 따로</b> 제공한다. 서울분은 서울 열린데이터광장 쪽을 봐야 한다.',
           p: '포털 검색으로는 전국판을 찾지 못했다',
         },
-        '데이터 제공표준(행안부)': {
-          d: '제공기관 명세 확인(2026-09-01). 정식명 <b>행정안전부_공공데이터 제공표준 조회 서비스</b>.',
-          o: ['retrievePrvdStdInfo', 'retrievePrvdStdList'],
-          p: 'End Point <code>https://apis.data.go.kr/1741000/prvdstd20</code> · 포털 pk <a href="https://www.data.go.kr/data/15156266/openapi.do" target="_blank" rel="noopener">15156266</a>',
-        },
-        '나라장터 발주계획(조달청)': {
-          d: '제공기관 명세 확인(2026-09-01). 정식명 <b>조달청_나라장터 발주계획현황서비스</b>.',
-          o: ['getOrderPlanSttusListThng', 'getOrderPlanSttusListCnstwk', 'getOrderPlanSttusListServc', 'getOrderPlanSttusListFrgcpt', 'getOrderPlanSttusListThngPPSSrch', 'getOrderPlanSttusListCnstwkPPSSrch'],
-          p: 'End Point <code>https://apis.data.go.kr/1230000/ao/OrderPlanSttusService</code> · 포털 pk <a href="https://www.data.go.kr/data/15129462/openapi.do" target="_blank" rel="noopener">15129462</a>',
-        },
-        '바다여행지수': {
-          d: '제공기관 명세 확인(2026-09-01). 정식명 <b>해양수산부 국립해양조사원_바다여행지수 조회</b>.',
-          o: ['GetFcstSeaTripApiServicev2'],
-          p: 'End Point <code>https://apis.data.go.kr/1192136/fcstSeaTripv2</code> · 포털 pk <a href="https://www.data.go.kr/data/15142491/openapi.do" target="_blank" rel="noopener">15142491</a>',
-        },
-        '바다갈라짐 체험지수': {
-          d: '제공기관 명세 확인(2026-09-01). 정식명 <b>해양수산부 국립해양조사원_바다갈라짐 체험지수 조회</b>.',
-          o: ['GetFcstSeaSplitApiServicev2'],
-          p: 'End Point <code>https://apis.data.go.kr/1192136/fcstSeaSplitv2</code> · 포털 pk <a href="https://www.data.go.kr/data/15142485/openapi.do" target="_blank" rel="noopener">15142485</a>',
-        },
-        '포락지 관리정보(해수부)': {
-          d: '제공기관 명세 확인(2026-09-01). 정식명 <b>해양수산부_포락지관리정보</b>.',
-          o: ['getSubmergedLandsList2.0', 'getSubmergedLandsAreaList2.0', 'getSubmergedLandsAreaExtentList2.0', 'getSubmergedLandsExaminationAreaExtentList2.0', 'getSubmergedLandsManagementNumberList2.0', 'getSubmergedLandsLotNumberList2.0'],
-          p: 'End Point <code>https://apis.data.go.kr/1192000/submergedLandsInfoService2.0</code> · 포털 pk <a href="https://www.data.go.kr/data/3056339/openapi.do" target="_blank" rel="noopener">3056339</a>',
-        },
-        '마을변호사 현황(법무부)': {
-          d: '제공기관 명세 확인(2026-09-01). 정식명 <b>법무부_마을변호사 지역별 현황</b>.',
-          o: ['mabyun'],
-          p: 'End Point <code>https://apis.data.go.kr/1270000/mojmabyun</code> · 포털 pk <a href="https://www.data.go.kr/data/15121954/openapi.do" target="_blank" rel="noopener">15121954</a>',
-        },
-        '포털기관 습득물(경찰청)': {
-          d: '제공기관 명세 확인(2026-09-01). 정식명 <b>경찰청_포털기관 습득물정보 조회 서비스</b>.',
-          p: 'End Point <code>https://apis.data.go.kr/1320000/LosPtfundInfoInqireService</code> · 포털 pk <a href="https://www.data.go.kr/data/15057670/openapi.do" target="_blank" rel="noopener">15057670</a> · op 목록은 포털 상세페이지에서 확인',
-        },
-        '핸드폰 찾기(경찰청)': {
-          d: '제공기관 명세 확인(2026-09-01). 정식명 <b>경찰청_핸드폰 찾기 정보 조회 서비스</b>.',
-          p: 'End Point <code>https://apis.data.go.kr/1320000/SearchMoblphonInfoInqireService</code> · 포털 pk <a href="https://www.data.go.kr/data/15000442/openapi.do" target="_blank" rel="noopener">15000442</a> · op 목록은 포털 상세페이지에서 확인',
-        },
-        '분실물 정보(경찰청)': {
-          d: '제공기관 명세 확인(2026-09-01). 정식명 <b>경찰청_분실물정보 조회 서비스</b>.',
-          p: 'End Point <code>https://apis.data.go.kr/1320000/LostGoodsInfoInqireService</code> · 포털 pk <a href="https://www.data.go.kr/data/15000799/openapi.do" target="_blank" rel="noopener">15000799</a> · op 목록은 포털 상세페이지에서 확인',
-        },
-        '습득물 정보(경찰청)': {
-          d: '제공기관 명세 확인(2026-09-01). 정식명 <b>경찰청_습득물정보 조회 서비스</b>.',
-          p: 'End Point <code>https://apis.data.go.kr/1320000/LosfundInfoInqireService</code> · 포털 pk <a href="https://www.data.go.kr/data/15058696/openapi.do" target="_blank" rel="noopener">15058696</a> · op 목록은 포털 상세페이지에서 확인',
-        },
         '지자체 경영성과(지역정보원)': {
           d: '한국지역정보개발원_경영정보 조회 서비스. 실호출 결과 <b>미신청(30)</b> — 활용신청이 필요하다.',
           p: '포털 pk <a href="https://www.data.go.kr/data/15056798/openapi.do" target="_blank" rel="noopener">15056798</a>',
-        },
-        '대기업집단 주주현황(공정위)': {
-          d: '제공기관 명세 확인(2026-09-01). 정식명 <b>공정거래위원회_기업집단포털_대규모기업집단 소속회사 주주현황 정보 조회 서비스</b>.',
-          o: ['stockholderCompSttusListApi'],
-          p: 'End Point <code>https://apis.data.go.kr/1130000/stockholderCompSttusList</code> · 포털 pk <a href="https://www.data.go.kr/data/15091900/openapi.do" target="_blank" rel="noopener">15091900</a>',
-        },
-        '기업집단 내부지분(공정위)': {
-          d: '제공기관 명세 확인(2026-09-01). 정식명 <b>공정거래위원회_기업집단포털_특수관계인 내부지분 현황 정보 조회</b>.',
-          p: 'End Point <code>https://apis.data.go.kr/1130000/sllInnerQotaList</code> · 포털 pk <a href="https://www.data.go.kr/data/15093663/openapi.do" target="_blank" rel="noopener">15093663</a> · op 목록은 포털 상세페이지에서 확인',
         },
         '브랜드 가맹점·직영점(공정위)': {
           d: '공정거래위원회_가맹정보_브랜드별·업종별 직영점 및 가맹점 분포 현황. 실호출 결과 <b>미신청(30)</b> — 활용신청이 필요하다.',
           p: '포털 pk <a href="https://www.data.go.kr/data/15110284/openapi.do" target="_blank" rel="noopener">15110284</a>',
         },
-        '가맹본부 재무정보(공정위)': {
-          d: '제공기관 명세 확인(2026-09-01). 정식명 <b>공정거래위원회_가맹정보_가맹본부 재무정보 제공 서비스</b>.',
-          o: ['getjnghdqrtrsFnlttinfo2'],
-          p: 'End Point <code>https://apis.data.go.kr/1130000/FftcjnghdqrtrsFnnrInfo3_Service</code> · 포털 pk <a href="https://www.data.go.kr/data/15125456/openapi.do" target="_blank" rel="noopener">15125456</a>',
-        },
-        '가맹본부 일반정보(공정위)': {
-          d: '제공기관 명세 확인(2026-09-01). 정식명 <b>공정거래위원회_가맹정보_가맹본부 일반 정보 상세 제공 서비스</b>.',
-          o: ['getjnghdqrtrsGnlinfo2'],
-          p: 'End Point <code>https://apis.data.go.kr/1130000/FftcJnghdqrtrsGnrlDtl3_Service</code> · 포털 pk <a href="https://www.data.go.kr/data/15125450/openapi.do" target="_blank" rel="noopener">15125450</a>',
-        },
-        '기업정보 서비스(예탁결제원)': {
-          d: '제공기관 명세 확인(2026-09-01). 정식명 <b>한국예탁결제원_기업정보서비스_GW</b>.',
-          o: ['getStkDistributionRegionStatus', 'getBuyreqSkeduInfoSvc', 'getStkDistributionOwnQtyStatus', 'getIssucoBasicInfo', 'getCorpActionDtList', 'getIssucoPotentialStkQty'],
-          p: 'End Point <code>https://apis.data.go.kr/B552481/CorpSvc</code> · 포털 pk <a href="https://www.data.go.kr/data/15157348/openapi.do" target="_blank" rel="noopener">15157348</a>',
-        },
-        '주식정보 서비스(예탁결제원)': {
-          d: '제공기관 명세 확인(2026-09-01). 정식명 <b>한국예탁결제원_주식정보서비스_GW</b>.',
-          o: ['getKDRSecnInfo', 'getVctfDivRankInfo', 'getTotIssuStkQty', 'getKDRIssuLmtDetailsN1', 'getSecSetlCostStatN1', 'getStkIsinByNmN1'],
-          p: 'End Point <code>https://apis.data.go.kr/B552481/StockSvc</code> · 포털 pk <a href="https://www.data.go.kr/data/15157413/openapi.do" target="_blank" rel="noopener">15157413</a>',
-        },
         '크라우드펀딩 업자(금융위)': {
           d: '금융위원회_크라우드펀딩정보. 실호출 결과 <b>SERVICE_KEY_IS_NOT_REGISTERED_ERROR(30)</b> — <b>활용신청이 필요하다</b>(2026-09-01 실측).',
           p: '포털 pk <a href="https://www.data.go.kr/data/15059613/openapi.do" target="_blank" rel="noopener">15059613</a>',
-        },
-        '금융회사 공시(금융위)': {
-          d: '제공기관 명세 확인(2026-09-01). 정식명 <b>금융위원회_금융회사공시정보</b>.',
-          o: ['getFnCoConvBondRighDiscInfo_V2', 'getFnCoOffsSecuMarkListDiscInfo_V2', 'getFnCoLitiEtcDiscInfo_V2', 'getFnCoProcByCredBankDiscInfo_V2', 'getFnCoReduOfCapiDiscInfo_V2', 'getFinaCompDissReasDiscInfo_V2'],
-          p: 'End Point <code>https://apis.data.go.kr/1160100/service/GetFnCoDiscInfoService_V2</code> · 포털 pk <a href="https://www.data.go.kr/data/15059651/openapi.do" target="_blank" rel="noopener">15059651</a>',
-        },
-        '지배구조정보(금융위)': {
-          d: '제공기관 명세 확인(2026-09-01). 정식명 <b>금융위원회_지배구조정보</b>.',
-          p: 'End Point <code>https://apis.data.go.kr/1160100/service/GetCorpGoveInfoService</code> · 포털 pk <a href="https://www.data.go.kr/data/15059597/openapi.do" target="_blank" rel="noopener">15059597</a> · op 목록은 포털 상세페이지에서 확인',
-        },
-        '기업지배구조 공시(금융위)': {
-          d: '제공기관 명세 확인(2026-09-01). 정식명 <b>금융위원회_기업지배구조 공시정보</b>.',
-          o: ['getCGIdvpnPayInfo', 'getCGSmamInfo', 'getCGUnregExutInfo'],
-          p: 'End Point <code>https://apis.data.go.kr/1160100/GetCGDiscInfoService</code> · 포털 pk <a href="https://www.data.go.kr/data/15151165/openapi.do" target="_blank" rel="noopener">15151165</a>',
-        },
-        '기업 재무정보(금융위)': {
-          d: '제공기관 명세 확인(2026-09-01). 정식명 <b>금융위원회_기업 재무정보</b>.',
-          o: ['getIncoStat_V2', 'getBs_V2', 'getSummFinaStat_V2'],
-          p: 'End Point <code>https://apis.data.go.kr/1160100/service/GetFinaStatInfoService_V2</code> · 포털 pk <a href="https://www.data.go.kr/data/15043459/openapi.do" target="_blank" rel="noopener">15043459</a>',
-        },
-        '주식시세정보(금융위)': {
-          d: '제공기관 명세 확인(2026-09-01). 정식명 <b>금융위원회_주식시세정보</b>.',
-          o: ['getStockPriceInfo', 'getPreemptiveRightCertificatePriceInfo', 'getSecuritiesPriceInfo', 'getPreemptiveRightSecuritiesPriceInfo'],
-          p: 'End Point <code>https://apis.data.go.kr/1160100/service/GetStockSecuritiesInfoService</code> · 포털 pk <a href="https://www.data.go.kr/data/15094808/openapi.do" target="_blank" rel="noopener">15094808</a>',
-        },
-        '국민연금 탈퇴사업장': {
-          d: '제공기관 명세 확인(2026-09-01). 정식명 <b>국민연금공단_탈퇴사업장 정보</b>.',
-          o: ['getDetailInfoSearchV2', 'getBassInfoSearchV2'],
-          p: 'End Point <code>https://apis.data.go.kr/B552015/NpsScsnBplcInfoInqireServiceV2</code> · 포털 pk <a href="https://www.data.go.kr/data/15020284/openapi.do" target="_blank" rel="noopener">15020284</a>',
-        },
-        '국민연금 가입현황': {
-          d: '제공기관 명세 확인(2026-09-01). 정식명 <b>국민연금공단_국민연금 가입현황</b>.',
-          o: ['getSbscrbSttusInfoSearchV2', 'getSbscrbMaxValueInfoSearchV2', 'getSbscrbAgeInfoSearchV2'],
-          p: 'End Point <code>https://apis.data.go.kr/B552015/NpsSbscrbInfoProvdServiceV2</code> · 포털 pk <a href="https://www.data.go.kr/data/15005710/openapi.do" target="_blank" rel="noopener">15005710</a>',
-        },
-        '공항 출국장 혼잡도': {
-          d: '제공기관 명세 확인(2026-09-01). 정식명 <b>인천국제공항공사_출국장 혼잡도 조회</b>.',
-          o: ['getDepartureCongestion'],
-          p: 'End Point <code>https://apis.data.go.kr/B551177/statusOfDepartureCongestion</code> · 포털 pk <a href="https://www.data.go.kr/data/15148225/openapi.do" target="_blank" rel="noopener">15148225</a>',
-        },
-        '명산 등산로': {
-          d: '제공기관 명세 확인(2026-09-01). 정식명 <b>산림청_명산등산로_GW</b>.',
-          o: ['gdTrailInfoImgOpenAPI', 'gdTrailInfoOpenAPI'],
-          p: 'End Point <code>https://apis.data.go.kr/1400000/cultureInfoService</code> · 포털 pk <a href="https://www.data.go.kr/data/15158915/openapi.do" target="_blank" rel="noopener">15158915</a>',
-        },
-        'CCTV 도로날씨': {
-          d: '제공기관 명세 확인(2026-09-01). 정식명 <b>기상청_CCTV 기반 도로날씨정보 조회서비스</b>.',
-          p: 'End Point <code>https://apis.data.go.kr/1360000/RoadWthrInfoService</code> · 포털 pk <a href="https://www.data.go.kr/data/15057966/openapi.do" target="_blank" rel="noopener">15057966</a> · op 목록은 포털 상세페이지에서 확인',
-        },
-        '기상특보 조회': {
-          d: '제공기관 명세 확인(2026-09-01). 정식명 <b>기상청_기상특보 조회서비스</b>.',
-          p: 'End Point <code>https://apis.data.go.kr/1360000/WthrWrnInfoService</code> · 포털 pk <a href="https://www.data.go.kr/data/15000415/openapi.do" target="_blank" rel="noopener">15000415</a> · op 목록은 포털 상세페이지에서 확인',
         },
         '서울교통공사 최단경로': {
           d: '서울교통공사_최단경로이동정보. 실호출에서 <b>일시 오류(HTTP_ERROR)</b> 가 났다 — 재시도해서 판정할 것. 미신청이 아니다.',
           p: '포털 pk <a href="https://www.data.go.kr/data/15143842/openapi.do" target="_blank" rel="noopener">15143842</a>',
         },
-        '생필품 가격 정보': {
-          d: '제공기관 명세 확인(2026-09-01). 정식명 <b>한국소비자원_생필품 가격 정보_GW</b>.',
-          o: ['getProductPriceInfoSvc', 'getStandardInfoSvc.do', 'getStoreInfoSvc.do', 'getProductInfoSvc.do'],
-          p: 'End Point <code>https://apis.data.go.kr/B551919/ProductPriceInfoService</code> · 포털 pk <a href="https://www.data.go.kr/data/15158701/openapi.do" target="_blank" rel="noopener">15158701</a>',
-        },
-        'LH 분양임대공고문': {
-          d: '제공기관 명세 확인(2026-09-01). 정식명 <b>한국토지주택공사_분양임대공고문 조회 서비스</b>.',
-          p: 'End Point <code>https://apis.data.go.kr/B552555/lhLeaseNoticeInfo1</code> · 포털 pk <a href="https://www.data.go.kr/data/15058530/openapi.do" target="_blank" rel="noopener">15058530</a> · op 목록은 포털 상세페이지에서 확인',
-        },
-        'LH 분양임대공고 상세': {
-          d: '제공기관 명세 확인(2026-09-01). 정식명 <b>한국토지주택공사_분양임대공고별 상세정보 조회 서비스</b>.',
-          p: 'End Point <code>https://apis.data.go.kr/B552555/lhLeaseNoticeDtlInfo1</code> · 포털 pk <a href="https://www.data.go.kr/data/15057999/openapi.do" target="_blank" rel="noopener">15057999</a> · op 목록은 포털 상세페이지에서 확인',
-        },
-        '하자담보책임기간': {
-          d: '제공기관 명세 확인(2026-09-01). 정식명 <b>국토교통부_공동주택하자담보책임기간정보제공서비스</b>.',
-          o: ['getWrantRspnsblPdNtcnInfoSearchV2', 'getWrantRspnsblPdInfoSearchV2'],
-          p: 'End Point <code>https://apis.data.go.kr/1613000/</code> · 포털 pk <a href="https://www.data.go.kr/data/15057231/openapi.do" target="_blank" rel="noopener">15057231</a>',
-        },
-        '파산금융회사 매물현황': {
-          d: '제공기관 명세 확인(2026-09-01). 정식명 <b>예금보험공사 파산금융회사 매물현황(정보)</b>.',
-          p: 'End Point <code>https://apis.data.go.kr/B190017/service/GetBankruptcyEstatesGoodsService2020081</code> · 포털 pk <a href="https://www.data.go.kr/data/3035683/openapi.do" target="_blank" rel="noopener">3035683</a> · op 목록은 포털 상세페이지에서 확인',
-        },
         '청약 당첨자 정보(청약홈)': {
           d: '한국부동산원_청약홈 청약 신청·당첨자 정보 조회 서비스. op 6개는 확인했으나 <b>포털 명세에 End Point 가 표기돼 있지 않다</b> — 상세페이지에서 직접 확인해야 한다.',
           p: '포털 pk <a href="https://www.data.go.kr/data/15110812/openapi.do" target="_blank" rel="noopener">15110812</a>',
         },
-        '공동주택 기본정보': {
-          d: '제공기관 명세 확인(2026-09-01). 정식명 <b>국토교통부_공동주택 기본 정보제공 서비스</b>.',
-          o: ['getAphusDtlInfoV5', 'getAphusBassInfoV5'],
-          p: 'End Point <code>https://apis.data.go.kr/1613000/AptBasisInfoServiceV5</code> · 포털 pk <a href="https://www.data.go.kr/data/15058453/openapi.do" target="_blank" rel="noopener">15058453</a>',
-        },        '건축HUB 건축인허가정보': {
+        '건축HUB 건축인허가정보': {
           d: '착공 전 단계까지 보인다 — "옆 필지에 뭐가 허가났나" 확인용.',
           o: ['getApBasisOulnInfo — 개요', 'getApDongOulnInfo — 동별 개요', 'getApFlrOulnInfo — 층별 개요'],
           p: '필수: sigunguCd · bjdongCd · platGbCd · bun · ji (건축물대장과 동일 분해)'
@@ -7767,19 +7613,7 @@
         },
         '온비드 공매 물건목록': { d: '공매 물건 열거.', o: ['getRlstCltrList2'] },
         '온비드 공매 입찰정보': { d: '입찰 방식·제한 정보(공동입찰·대리입찰·차순위 가능 여부, 대금 납부 조건). 실호출로 확인한 결과 <b>직전 회차 결과·최저가 필드는 비어 있었고</b>(유찰 10회 물건에서도 null), 감정가·최저가·유찰은 이미 물건목록에 있습니다. 판단의 핵심 숫자가 아니라 보조 정보라 연결 순위를 뒤로 뒀습니다.', p: 'cltrMngNo + pbctCdtnNo' },
-        'LH 임대주택단지': {
-          d: '제공기관 명세 확인(2026-09-01). 정식명 <b>한국토지주택공사_임대주택단지 조회 서비스</b>.',
-          p: 'End Point <code>https://apis.data.go.kr/B552555/lhLeaseInfo1</code> · 포털 pk <a href="https://www.data.go.kr/data/15059475/openapi.do" target="_blank" rel="noopener">15059475</a> · op 목록은 포털 상세페이지에서 확인',
-        },
-        '아파트 매매 실거래가(기본판)': {
-          d: '제공기관 명세 확인(2026-09-01). 정식명 <b>국토교통부_아파트 매매 실거래가 자료</b>.',
-          o: ['getRTMSDataSvcAptTrade'],
-          p: 'End Point <code>https://apis.data.go.kr/1613000/RTMSDataSvcAptTrade</code> · 포털 pk <a href="https://www.data.go.kr/data/15126469/openapi.do" target="_blank" rel="noopener">15126469</a>',
-        },
-        
-        
-        
-        
+
         '토지이용규제정보': {
           d: '행위제한 원문. 프록시 연동 완료 — <code>DTsearchLunCd</code>(행위명→코드)는 동작 확인. '
             + '단 본 조회 <code>DTarLandUseInfo</code> 는 <code>ucodeList</code>(UQA### 지역지구코드)가 필요한데 '
