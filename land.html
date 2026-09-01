@@ -4228,6 +4228,62 @@
         if (f) L.popup({ maxWidth: 300 }).setLatLng(e.latlng).setContent(f()).openOn(map);
       });
 
+      
+      
+      
+      
+      
+      
+      const greenCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 50 });
+      let grnMapRows = null, _grnMapPromise = null;
+      const _grnIcon = L.divIcon({
+        className: '',
+        html: '<div style="width:24px;height:24px;background:#2f9e44;border:2px solid #fff;border-radius:50%;'
+          + 'box-shadow:0 1px 4px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;'
+          + 'font:700 11px/1 system-ui;color:#fff;">녹</div>',
+        iconSize: [24, 24], iconAnchor: [12, 12],
+      });
+      function loadGreenMap() {
+        if (!_grnMapPromise) {
+          _grnMapPromise = fetch('greenbuild.json')
+            .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+            .then((rows) => { grnMapRows = rows; })
+            .catch((e) => {
+              grnMapRows = [];
+              toast('녹색건축 인증을 불러오지 못했습니다 (greenbuild.json)');
+              console.warn('녹색건축 로드 실패:', e);
+            });
+        }
+        return _grnMapPromise;
+      }
+      function drawGreenMap() {
+        greenCluster.clearLayers();
+        const geo = (grnMapRows || []).filter((d) => d.lat && d.lng);
+        for (const d of geo) {
+          const m = L.marker([d.lat, d.lng], { icon: _grnIcon });
+          m._pop = () => '<div class="bld-info" style="min-width:210px;">'
+            + `<div style="font-weight:700;">${esc(d.nm || '녹색건축 인증')}</div>`
+            + `<div style="font-size:12px;color:var(--c-muted);">${esc(d.grp || '')}</div>`
+            + (d.grade ? `<div style="font-size:12px;margin-top:3px;">등급 <b>${esc(d.grade)}</b>`
+              + (d.gubun ? ` · ${esc(d.gubun)}` : '') + (d.date ? ` · ${esc(d.date)}` : '') + '</div>' : '')
+            + (d.area ? `<div style="font-size:12px;">연면적 ${Number(d.area).toLocaleString('ko-KR')}㎡`
+              + (d.gf ? ` · 지상 ${d.gf}층` : '') + (d.bf ? ` · 지하 ${d.bf}층` : '') + '</div>' : '')
+            + `<div style="font-size:12px;margin-top:3px;">${esc(d.addr || '')}</div>`
+            + '<div style="font-size:11px;color:var(--c-muted);margin-top:4px;">한국부동산원 G-SEED · '
+            + '예비인증은 사업 진행 중이라는 뜻이다</div>'
+            + '</div>';
+          greenCluster.addLayer(m);
+        }
+        
+        const miss = (grnMapRows || []).length - geo.length;
+        if (miss > 0) toast(`녹색건축 ${geo.length}건 표시 · ${miss}건은 좌표가 없어 팝업(동 단위)에만 나옵니다`);
+      }
+      
+      greenCluster.on('click', (e) => {
+        const f = e.layer && e.layer._pop;
+        if (f) L.popup({ maxWidth: 300 }).setLatLng(e.latlng).setContent(f()).openOn(map);
+      });
+
       function loadOnbid() {
         if (!_onbidPromise) {
           _onbidPromise = fetch('onbid.json')
@@ -6999,6 +7055,7 @@
         
         if (e.layer === bankruptCluster) loadBankrupt().then(drawBankrupt);
         if (e.layer === lifeCluster) loadLifePrice().then(drawLifePrice);
+        if (e.layer === greenCluster) loadGreenMap().then(drawGreenMap);
         const hit = _infoMap.find((x) => x[0] === e.layer);
         if (hit) wantInfo[hit[1]] = true;
       });
@@ -7024,6 +7081,8 @@
           { name: '전기차 충전소', layer: evCluster },
           
           { name: '생필품 판매점 (마트·백화점)', layer: lifeCluster },
+          
+          { name: '녹색건축 인증 (G-SEED)', layer: greenCluster },
           
           { name: '노후 공공시설물 (안전등급)', layer: agedCluster },
           
