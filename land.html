@@ -4290,23 +4290,63 @@
       
       
       
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
       const _obRsltCache = new Map();
-      function loadOnbidResult(mng, cdtn, cb) {
+      function loadOnbidResult(mng, cb) {
         if (!mng) { cb(null); return; }
         if (_obRsltCache.has(mng)) { cb(_obRsltCache.get(mng)); return; }
         const q = new URLSearchParams({
           svc: 'OnbidCltrBidRsltDtlSrvc2', op: 'getCltrBidRsltDtl2',
-          cltrMngNo: mng, pbctCdtnNo: String(cdtn || ''),
-          pageNo: '1', numOfRows: '10', resultType: 'json',
+          cltrMngNo: mng, pageNo: '1', numOfRows: '10', resultType: 'json',
         });
         fetch(onbidProxy() + '?' + q)
           .then((r) => (r.ok ? r.json() : null))
           .then((o) => {
             
             const root = (o && o.response) || o || {};
+            
+            const rows = root.body ? [].concat(root.body.items && root.body.items.item || []) : null;
+            if (rows) {
+              
+              rows.sort((a, b) => Number(b.pbctNsq || 0) - Number(a.pbctNsq || 0));
+              _obRsltCache.set(mng, rows);
+            } else if (o && o.result) {
+              _obRsltCache.set(mng, []);   
+            }
+            cb(rows || []);
+          })
+          .catch(() => cb(null));
+      }
+
+      
+      
+      
+      
+      
+      const _obPbancCache = new Map();
+      function loadOnbidPbanc(no, cb) {
+        if (!no) { cb(null); return; }
+        if (_obPbancCache.has(no)) { cb(_obPbancCache.get(no)); return; }
+        const q = new URLSearchParams({
+          svc: 'OnbidPbancDtlnfSrvc2', op: 'getPbancDtlInf2',
+          pbancMngNo: no, pageNo: '1', numOfRows: '1', resultType: 'json',
+        });
+        fetch(onbidProxy() + '?' + q)
+          .then((r) => (r.ok ? r.json() : null))
+          .then((o) => {
+            const root = (o && o.response) || o || {};
             const it = root.body && root.body.items && root.body.items.item;
             const d = Array.isArray(it) ? it[0] : it;
-            if (root.body) _obRsltCache.set(mng, d || null);
+            if (root.body || (o && o.result)) _obPbancCache.set(no, d || null);
             cb(d || null);
           })
           .catch(() => cb(null));
@@ -4382,6 +4422,89 @@
           + '<div style="margin-top:5px;font-size:11px;color:var(--c-muted);">'
           + '온비드 물건상세 · 순위·인수 여부는 등기 전부와 배당요구를 함께 봐야 합니다</div>');
       }
+      
+      
+      
+      const _obEnt = {
+        '&quot;': '"', '&amp;': '&', '&lt;': '<', '&gt;': '>', '&#39;': "'",
+        '&nbsp;': ' ', '&ldquo;': '“', '&rdquo;': '”', '&lsquo;': '‘', '&rsquo;': '’', '&middot;': '·',
+      };
+      const obPlain = (h) => String(h || '')
+        .replace(/<(br|\/p|\/div|\/li|\/tr)[^>]*>/gi, '\n')
+        .replace(/<[^>]*>/g, '')
+        .replace(/&[a-z#0-9]+;/gi, (m) => (_obEnt[m.toLowerCase()] !== undefined ? _obEnt[m.toLowerCase()] : ' '))
+        .replace(/[ \t ]+/g, ' ')
+        .replace(/\n{2,}/g, '\n')
+        .trim();
+
+      
+      
+      
+      function onbidResultHtml(rows, pb) {
+        if (!rows || !rows.length) return '';
+        const box = (t) => '<div style="margin-top:6px;padding-top:5px;border-top:1px solid var(--c-border);">' + t + '</div>';
+        const out = [];
+        const won = (v) => (v == null || v === '' ? null : Number(String(v).replace(/[^\d]/g, '')));
+        const hit = rows.find((r) => r.pbctStatNm === '낙찰');
+        if (hit) {
+          
+          out.push('<b>낙찰</b> <b style="color:#e8590c;">' + esc(obEok(won(hit.scfbAmt))) + '</b>'
+            + (hit.apslPrcCtrsScfbPrcRto ? ' <span style="font-size:12px;">감정가의 ' + esc(hit.apslPrcCtrsScfbPrcRto) + '%</span>' : '')
+            + (hit.vldBddrNope ? ' <span style="font-size:12px;color:var(--c-muted);">유효입찰 ' + esc(hit.vldBddrNope) + '명</span>' : '')
+            + (hit.afsbRtrcnRsnCont ? '<br><span style="font-size:12px;color:#fa5252;">낙찰후취소 · ' + esc(hit.afsbRtrcnRsnCont) + '</span>' : ''));
+        }
+        
+        const lines = rows.slice(0, 10).map((r) => {
+          const lw = won(r.lowstBidPrcIndctCont);
+          const rto = r.apslPrcCtrsLowstBidRto;
+          const col = r.pbctStatNm === '낙찰' ? '#e8590c' : (r.pbctStatNm === '취소' ? 'var(--c-muted)' : '#fa5252');
+          return '<span style="font-size:12px;">'
+            + '<span style="color:var(--c-muted);">' + esc(r.pbctNsq || '') + '회차</span> '
+            + '<span style="color:' + col + ';">' + esc(r.pbctStatNm || '') + '</span> '
+            
+            + (lw ? '<b>' + esc(obEok(lw)) + '</b>' : esc(r.lowstBidPrcIndctCont || '—'))
+            + (rto != null ? ' <span style="color:var(--c-muted);">감정가 ' + esc(rto) + '%</span>' : '')
+            + (r.cltrOpbdDt ? ' <span style="color:var(--c-muted);">' + esc(obDt(r.cltrOpbdDt)) + '</span>' : '')
+            + '</span>';
+        });
+        
+        
+        
+        
+        
+        const usbd = rows.filter((r) => r.pbctStatNm === '유찰').length;
+        out.push('<b>회차 이력</b>'
+          + (usbd ? ' <span style="font-size:11px;color:#fa5252;">유찰 ' + usbd + '회 확인</span>' : '')
+          + ' <span style="font-size:11px;color:var(--c-muted);">최근 ' + rows.length + '회차</span><br>'
+          + lines.join('<br>'));
+        const last = rows[0];
+        if (last && last.rtrcnRsnCont) {
+          out.push('<span style="font-size:12px;color:var(--c-muted);">직전 사유 · ' + esc(last.rtrcnRsnCont) + '</span>');
+        }
+        if (pb) {
+          const txt = obPlain(pb.anncmAlCont);
+          out.push('<b>공고</b><br><span style="font-size:12px;">' + esc(pb.onbidPbancNm || '')
+            + (pb.pbancYmd ? ' · ' + esc(obYmd(pb.pbancYmd)) : '')
+            + (pb.pbancKindNm ? ' · ' + esc(pb.pbancKindNm) : '') + '</span>'
+            + (pb.pbancOrgNm ? '<br><span style="font-size:12px;color:var(--c-muted);">' + esc(pb.pbancOrgNm)
+              + (pb.cptnMthodNm ? ' · ' + esc(pb.cptnMthodNm) : '')
+              + (pb.ptctCmsn ? ' · 참가수수료 ' + Number(pb.ptctCmsn).toLocaleString('ko-KR') + '원' : '') + '</span>' : '')
+            + (pb.pbancRtrcnRsnCont ? '<br><span style="font-size:12px;color:#fa5252;">취소 · ' + esc(pb.pbancRtrcnRsnCont) + '</span>' : '')
+            + (pb.pbancPtctQlfcCont ? '<br><span style="font-size:12px;">참가자격 ' + esc(pb.pbancPtctQlfcCont) + '</span>' : '')
+            + (txt ? '<details style="margin-top:4px;"><summary style="font-size:12px;cursor:pointer;color:var(--c-primary);">공고문 전문 ('
+              + txt.length.toLocaleString('ko-KR') + '자)</summary>'
+              + '<div style="font-size:11px;line-height:1.6;max-height:220px;overflow:auto;white-space:pre-wrap;'
+              + 'margin-top:4px;padding:5px;background:var(--c-bg-alt,#f6f7f9);border-radius:5px;">' + esc(txt) + '</div></details>' : '')
+            + ([].concat(pb.atchFileList || []).length
+              ? '<br>' + [].concat(pb.atchFileList).map((f) => '<a href="' + safeUrl(f.urlAdr) + '" target="_blank" rel="noopener" style="font-size:12px;">'
+                + esc(f.btbdAtchFileNm || '첨부') + ' ↗</a>').join(' · ')
+              : ''));
+        }
+        return box(out.join('<div style="height:5px;"></div>')
+          + '<div style="margin-top:5px;font-size:11px;color:var(--c-muted);">'
+          + '온비드 입찰결과상세' + (pb ? ' · 공고상세' : '') + ' · 최저가는 회차마다 낮아진다</div>');
+      }
+
       function onbidPopupHtml(d) {
         const rate = d.appr && d.low ? Math.round(d.low * 100 / d.appr) : null;
         return '<div class="pc" style="min-width:250px;">'
@@ -4397,10 +4520,12 @@
           + (d.img ? `<div style="margin-top:6px;"><img src="${esc(d.img)}" alt="" style="max-width:100%;border-radius:6px;" loading="lazy" onerror="this.style.display='none'"></div>` : '')
           
           + (d._obDtl === 'loading'
-            ? '<div style="margin-top:6px;font-size:12px;color:var(--c-muted);">권리·임대차 조회 중…</div>'
+            ? '<div style="margin-top:6px;font-size:12px;color:var(--c-muted);">권리·임대차·회차 이력 조회 중…</div>'
             : (d._obDtl !== undefined ? onbidDetailHtml(d._obDtl)
-              : '<div style="margin-top:6px;"><button type="button" class="ob-dtl btn-mini">권리·임대차 보기</button>'
-                + '<span style="font-size:11px;color:var(--c-muted);margin-left:6px;">임차 보증금·확정일자·등기 권리</span></div>'))
+              : '<div style="margin-top:6px;"><button type="button" class="ob-dtl btn-mini">권리·임대차·회차 이력 보기</button>'
+                + '<span style="font-size:11px;color:var(--c-muted);margin-left:6px;">보증금·등기 권리·회차별 최저가</span></div>'))
+          
+          + (d._obRslt && d._obRslt.length ? onbidResultHtml(d._obRslt, d._obPbanc) : '')
           + `<div style="margin-top:8px;"><a href="https://www.onbid.co.kr/op/cta/cltrdtl/collateralRealEstateDetail.do?cltrNo=${encodeURIComponent(d.mng)}" target="_blank" rel="noopener">온비드에서 열기 ↗</a></div>`
           + '</div></div>';
       }
@@ -4425,10 +4550,18 @@
           });
           
           
-          loadOnbidResult(d.mng, d.cdtn, (r) => {
-            if (!r) return;
-            d._obRslt = r;
+          loadOnbidResult(d.mng, (rows) => {
+            if (!rows || !rows.length) return;
+            d._obRslt = rows;
             if (map.hasLayer(e.popup)) e.popup.setContent(onbidPopupHtml(d));
+            
+            const no = rows[0] && rows[0].pbancMngNo;
+            if (!no) return;
+            loadOnbidPbanc(no, (pb) => {
+              if (!pb) return;
+              d._obPbanc = pb;
+              if (map.hasLayer(e.popup)) e.popup.setContent(onbidPopupHtml(d));
+            });
           });
         };
       });
@@ -9312,6 +9445,22 @@
     
     
     
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     const _bidCache = new Map();   
     function loadBidInfo(pnu, bldNm, cb) {
       const s = String(pnu || '');
@@ -10779,31 +10928,66 @@
           bidHtml = '<div class="ls-sec" style="font-size:12px;color:var(--c-muted);">입찰정보 불러오는 중…</div>';
         } else if (st.bid && (st.bid.ann.length || st.bid.prv.length)) {
           const d = (t) => esc(String(t || ''));
+          
+          const BID_STATE = { 1: '신규공고', 2: '수정공고', 3: '재공고' };
+          const BID_WAY = { '00': '직접입찰', '01': '전자입찰' };
+          const BID_KIND = { '01': '일반경쟁', '02': '제한경쟁', '03': '지명경쟁' };
+          const BID_SUC = {
+            '01': '최저(고) 낙찰', '02': '적격심사', '03': '최저 낙찰',
+            '04': '최고 낙찰', '05': '적격심사(최저)', '06': '적격심사(최고)',
+          };
+          
+          const yrTag = (g, x) => {
+            const y = g.year === '전체' ? String(x.bidRegDate || x.pcDate || '').slice(0, 4) : g.year;
+            return y ? y + '년' : '';
+          };
+          const ymd = (v) => {
+            const t = String(v || '').replace(/[^\d]/g, '');
+            return t.length === 8 ? t.slice(0, 4) + '.' + t.slice(4, 6) + '.' + t.slice(6) : String(v || '');
+          };
           const annRows = st.bid.ann.map((g) => g.items.map((x) => {
-            const title = x.bidTitle || '입찰공고';
-            const deadline = x.bidDeadline ? '· 마감 ' + d(x.bidDeadline) : '';
-            const state = x.bidState ? '· 상태 ' + d(x.bidState) : '';
-            return '<div style="font-size:12px;margin-top:3px;">'
-              + '<button type="button" class="ld-res bid-row btn-mini" data-bidnum="' + d(x.bidNum) + '" title="' + d(x.bidContent || '') + '">'
-              + d(title) + '</button>'
-              + '<div style="color:var(--c-muted);font-size:11px;">' + g.year + '년' + deadline + state + '</div></div>';
+            const meta = [yrTag(g, x), x.bidDeadline ? '마감 ' + ymd(x.bidDeadline) : '',
+              BID_STATE[x.bidState] || '', BID_WAY[x.codeWay] || '',
+              BID_KIND[x.codeKind] || '', BID_SUC[x.codeSucWay] || ''].filter(Boolean).join(' · ');
+            
+            
+            
+            
+            const body = String(x.bidContent || '').trim();
+            return '<div style="font-size:12px;margin-top:4px;">'
+              + (body
+                ? '<details><summary style="cursor:pointer;">' + d(x.bidTitle || '입찰공고') + '</summary>'
+                  + '<div style="font-size:11px;line-height:1.6;max-height:200px;overflow:auto;white-space:pre-wrap;'
+                  + 'margin-top:3px;padding:5px;background:var(--c-bg-alt,#f6f7f9);border-radius:5px;">' + d(body) + '</div></details>'
+                : d(x.bidTitle || '입찰공고'))
+              + (meta ? '<div style="color:var(--c-muted);font-size:11px;">' + d(meta) + '</div>' : '')
+              + '</div>';
           })).flat().join('');
           const prvRows = st.bid.prv.map((g) => g.items.map((x) => {
-            const amt = x.pcAmount ? '· ' + Number(x.pcAmount).toLocaleString() + '원/월' : '';
+            
+            
+            const amt = Number(x.pcAmount) > 0 ? ' · <b>' + Number(x.pcAmount).toLocaleString('ko-KR') + '원</b>' : '';
+            const per = (x.pcStDate && x.pcEdDate) ? ' ' + ymd(x.pcStDate) + '~' + ymd(x.pcEdDate) : '';
             return '<div style="font-size:12px;margin-top:3px;">· ' + d(x.pcTitle || '수의계약')
               + ' <b>' + d(x.companyName || '') + '</b>' + amt
-              + '<span style="color:var(--c-muted);font-size:11px;"> ' + g.year + '년</span></div>';
+              + '<span style="color:var(--c-muted);font-size:11px;"> ' + d(yrTag(g, x)) + d(per) + '</span></div>';
           })).flat().join('');
+          
+          const whole = st.bid.ann.concat(st.bid.prv).some((g) => g.year === '전체');
           bidHtml = '<div class="ls-sec">'
             + '<b>입찰 · 수의계약</b>'
             + (st.bid.name ? ` <span style="font-size:12px;color:var(--c-muted);">${esc(st.bid.name)}</span>` : '')
             + (annRows ? '<div style="margin-top:3px;"><span style="font-size:11.5px;color:var(--c-muted);">입찰공고</span>' + annRows + '</div>' : '')
-            + (prvRows ? '<div style="margin-top:6px;"><span style="font-size:11.5px;color:var(--c-muted);">수의계약</span>' + prvRows + '</div>' : '')
-            + '<div style="font-size:11.5px;color:var(--c-muted);margin-top:3px;">K-apt 사업자 선정 공고 — 최근 4년만 표시합니다. '
-            + '제목을 누르면 참가업체·낙찰여부를 봅니다.</div>'
+            + (prvRows ? '<div style="margin-top:6px;"><span style="font-size:11.5px;color:var(--c-muted);">수의계약 <b>'
+              + st.bid.prv.reduce((n, g) => n + g.items.length, 0) + '건</b></span>' + prvRows + '</div>' : '')
+            + '<div style="font-size:11.5px;color:var(--c-muted);margin-top:4px;">K-apt 사업자 선정 — '
+            + (whole ? '단지코드로 전 기간 조회' : '단지명으로 최근 4년만 조회') + '. 관리 상태의 간접 지표입니다.</div>'
             + '</div>';
         } else if (st.bid && !st.bid.ann.length && !st.bid.prv.length) {
-          bidHtml = '<div class="ls-sec" style="font-size:12px;color:var(--c-muted);">최근 4년 입찰·수의계약 공고가 없습니다.</div>';
+          
+          
+          bidHtml = '<div class="ls-sec" style="font-size:12px;color:var(--c-muted);">'
+            + 'K-apt 입찰공고·수의계약 기록이 없습니다.</div>';
         } else {
           bidHtml = '<div class="ls-sec">'
             + '<button type="button" class="ld-bid btn-mini">입찰 · 수의계약 보기</button>'
