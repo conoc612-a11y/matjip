@@ -1375,7 +1375,9 @@
     
     
     
-    let wantInfo = { sht: true, mtn: true, pms: true, hpms: true, engy: true, fund: true, bid: true, lp: true, trdar: true, sch: true, trd: true, sub: true, lvp: true, rg: true };
+    let wantInfo = { sht: true, mtn: true, pms: true, hpms: true, engy: true, fund: true, bid: true, lp: true, trdar: true, sch: true, trd: true, sub: true, lvp: true, rg: true,
+      
+      nps: true, rst: true, grn: true, kcr: true };
     
     
     
@@ -6726,9 +6728,15 @@
       const infoFund = L.layerGroup();
       const infoBid = L.layerGroup();
       
+      const infoNps = L.layerGroup();    
+      const infoRst = L.layerGroup();    
+      const infoGrn = L.layerGroup();    
+      const infoKcr = L.layerGroup();    
+      
       
       const _infoMap = [[infoSht, 'sht'], [infoMtn, 'mtn'], [infoPms, 'pms'], [infoHpms, 'hpms'], [infoLp, 'lp'], [infoTrdar, 'trdar'], [infoSch, 'sch'], [infoTrd, 'trd'], [infoSub, 'sub'], [infoLvp, 'lvp'], [infoRg, 'rg'],
-        [infoEngy, 'engy'], [infoFund, 'fund'], [infoBid, 'bid']];
+        [infoEngy, 'engy'], [infoFund, 'fund'], [infoBid, 'bid'],
+        [infoNps, 'nps'], [infoRst, 'rst'], [infoGrn, 'grn'], [infoKcr, 'kcr']];
       map.on('overlayadd', (e) => {
         const hit = _infoMap.find((x) => x[0] === e.layer);
         if (hit) wantInfo[hit[1]] = true;
@@ -6739,6 +6747,7 @@
       });
       infoSht.addTo(map); infoMtn.addTo(map); infoPms.addTo(map); infoHpms.addTo(map); infoLp.addTo(map); infoTrdar.addTo(map); infoSch.addTo(map); infoTrd.addTo(map); infoSub.addTo(map); infoLvp.addTo(map); infoRg.addTo(map);
       infoEngy.addTo(map); infoFund.addTo(map); infoBid.addTo(map);
+      infoNps.addTo(map); infoRst.addTo(map); infoGrn.addTo(map); infoKcr.addTo(map);
 
       const LAYER_TREE = [
         
@@ -6786,6 +6795,11 @@
           
           
           { name: '입찰 · 수의계약 (아파트)', layer: infoBid },
+          
+          { name: '법인 사업장 (국민연금)', layer: infoNps },
+          { name: '공중화장실 (동 단위)', layer: infoRst },
+          { name: '녹색건축 인증 (동 단위)', layer: infoGrn },
+          { name: '인허가 호별개요 (서울시)', layer: infoKcr },
         ]],
         ['법원경매', [
           { name: '진행 물건(서울/경기)', layer: auctionCluster },
@@ -7367,8 +7381,13 @@
         
         
         ['공동주택 관리', ['하자담보책임기간']],
-        ['공공주택·임대', ['LH 임대주택단지(마이홈이 상위호환)', 'LH 분양임대공고 상세',
-          'LH 분양임대공고문', '예비입주자 대기현황']],
+        
+        
+        
+        
+        
+        ['공공주택·임대', ['LH 임대주택단지', 'LH 분양임대공고 상세',
+          'LH 분양임대공고문']],
         
         
         
@@ -7413,8 +7432,14 @@
         },
         '온비드 공매 물건목록': { d: '공매 물건 열거.', o: ['getRlstCltrList2'] },
         '온비드 공매 입찰정보': { d: '입찰 방식·제한 정보(공동입찰·대리입찰·차순위 가능 여부, 대금 납부 조건). 실호출로 확인한 결과 <b>직전 회차 결과·최저가 필드는 비어 있었고</b>(유찰 10회 물건에서도 null), 감정가·최저가·유찰은 이미 물건목록에 있습니다. 판단의 핵심 숫자가 아니라 보조 정보라 연결 순위를 뒤로 뒀습니다.', p: 'cltrMngNo + pbctCdtnNo' },
-        'LH 임대주택단지(마이홈이 상위호환)': {
-          d: '주소가 시·군까지만 제공돼 지도에 못 찍는다. 사용 중인 마이홈 공공임대(HWSPR04)가 상위 호환.'
+        'LH 임대주택단지': {
+          d: '한국토지주택공사(B552555). 실호출 확인(2026-09-01): 서울 <b>159행</b>, 위치는 '
+            + '<code>ARA_NM</code>("서울특별시 강남구")로 <b>구 단위</b>라 지도 마커로는 못 쓴다. '
+            + '대신 보증금·월임대료·전용면적·세대수·<b>최초입주년월</b>을 준다 — '
+            + '마이홈에 없는 값은 최초입주년월 하나이고, 마이홈 <code>built</code>는 841/7,072만 채워져 있어 '
+            + '단지명으로 붙여 보강할 여지가 있다.',
+          o: ['lhLeaseInfo1'],
+          p: 'ServiceKey · PG_SZ · PAGE (+옵션 CNP_CD 지역코드, SPL_TP_CD 공급유형코드)'
         },
         '아파트 매매 실거래가(기본판)': {
           d: '사용 중인 상세판(AptTradeDev)보다 필드가 적다 — 별개 데이터셋이라 목록에는 잡히지만 사실상 중복.'
@@ -7439,6 +7464,8 @@
         },
         '건축HUB 폐쇄말소대장정보': { d: '철거된 건물 이력 → 재개발 진행 확인.' },
         '건축HUB 유지점검정보': { d: '안전점검 이력·하자 리스크.' },
+        
+        
         
         
         '유지관리 이력': {
@@ -8311,6 +8338,62 @@
         .catch(() => { _greenIdx = new Map(); });
       _greenLoading.then(() => cb(_greenIdx));
     }
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    const _kcrCache = new Map();
+    
+    
+    
+    const KCR_SETS = {
+      ho:     { dir: 'assets/kcrho',        cols: ['n', 'gf', 'bf', 'ho'] },
+      
+      
+      bass:   { dir: 'assets/kcr/bass',     cols: ['n', 'si', 'bd', 'gfa', 'cvr', 'far', 'hh', 'pk', 'usg', 'se', 'day', 'apr'] },
+      dong:   { dir: 'assets/kcr/dong',     cols: ['n', 'bd', 'gfa', 'hh', 'elv', 'st', 'rf', 'usg'] },
+      flr:    { dir: 'assets/kcr/flr',      cols: ['n', 'gf', 'bf', 'area', 'usg'] },
+      expos:  { dir: 'assets/kcr/expos',    cols: ['n', 'ex', 'pb', 'usg'] },
+      hoexpos:{ dir: 'assets/kcr/hoexpos',  cols: ['n', 'ex', 'pb'] },
+      wclf:   { dir: 'assets/kcr/wclf',     cols: ['n', 'ps', 'rb', 'ty'] },
+    };
+    
+    function _kcrKey(addr) {
+      const a = String(addr || '').replace(/\s+/g, ' ').trim();
+      const m = a.match(/(\S+구)\s+(.+)$/);
+      if (!m) return null;
+      
+      const rest = m[2].replace(/번지.*$/, '').replace(/\s*외\s*\d+.*$/, '').trim();
+      return rest ? { gu: m[1], rest } : null;
+    }
+    function loadKcr(kind, addr, cb) {
+      const S = KCR_SETS[kind];
+      const k = _kcrKey(addr);
+      if (!S || !k) { cb(null); return; }
+      const ck = kind + '/' + k.gu;
+      const done = (map) => {
+        if (!map) { cb(null); return; }
+        const v = map[k.rest] || map[k.rest.replace(/-0$/, '')] || null;
+        if (!v) { cb(null); return; }
+        const o = {};
+        S.cols.forEach((c, i) => { o[c] = v[i]; });
+        cb(o);
+      };
+      if (_kcrCache.has(ck)) { done(_kcrCache.get(ck)); return; }
+      fetch(S.dir + '/' + encodeURIComponent(k.gu) + '.json')
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => { _kcrCache.set(ck, j); done(j); })
+        .catch(() => { _kcrCache.set(ck, null); cb(null); });
+    }
+    
+    function loadKcrHo(addr, cb) { loadKcr('ho', addr, cb); }
 
     
     
@@ -9700,6 +9783,47 @@
           + '한국부동산원 G-SEED · 예비인증은 사업 진행 중이라는 뜻이다 (좌표 미제공이라 동 단위 집계)</div>'
           + '</div>';
       }
+      
+      
+      
+      
+      
+      
+      
+      
+      let kcrHtml = '';
+      if (st.kcr || st.kcrBass || st.kcrDong || st.kcrFlr || st.kcrExpos || st.kcrWclf) {
+        const m2 = (v) => (v ? Number(v).toLocaleString('ko-KR', { maximumFractionDigits: 1 }) : '');
+        const rows2 = [];
+        const B = st.kcrBass;
+        if (B) {
+          const size = [B.si ? '대지 ' + m2(B.si) + '㎡' : '', B.gfa ? '연면적 ' + m2(B.gfa) + '㎡' : '',
+            B.cvr ? '건폐 ' + m2(B.cvr) + '%' : '', B.far ? '용적 ' + m2(B.far) + '%' : ''].filter(Boolean).join(' · ');
+          rows2.push(`<div style="font-size:12px;margin-top:2px;"><b>${esc(B.usg || '')}</b>`
+            + (B.se ? ` <span style="color:var(--c-muted);">${esc(B.se)}</span>` : '')
+            + (B.apr ? ' <span style="color:var(--c-ok,#2a9d5c);">사용승인</span>' : ' <span style="color:var(--c-warn,#c47f00);">준공 전</span>')
+            + '</div>' + (size ? `<div style="font-size:11px;color:var(--c-muted);">${esc(size)}</div>` : '')
+            + (B.day ? `<div style="font-size:11px;color:var(--c-muted);">허가일 ${esc(B.day)}</div>` : ''));
+        }
+        const D = st.kcrDong, F = st.kcrFlr, H = st.kcr, E = st.kcrExpos, W = st.kcrWclf;
+        const bits = [];
+        if (D) bits.push(`동 ${D.n}개` + (D.st ? ' · ' + esc(D.st.split(',')[0]) : '') + (D.elv ? ' · 승강기 ' + D.elv : ''));
+        if (F) bits.push('지상 ' + F.gf + '층' + (F.bf ? ' · 지하 ' + F.bf + '층' : ''));
+        if (H) bits.push(`${H.n}호` + (H.ho ? ' (' + esc(H.ho) + ')' : ''));
+        if (E && (E.ex || E.pb)) bits.push('전유 ' + m2(E.ex) + '㎡ · 공용 ' + m2(E.pb) + '㎡');
+        if (B && B.hh) bits.push(B.hh + '세대');
+        if (B && B.pk) bits.push('주차 ' + B.pk + '대');
+        if (W) bits.push('정화조 ' + (W.ps ? W.ps + '인용' : '') + (W.ty ? ' ' + esc(W.ty.split(',')[0]) : ''));
+        if (bits.length) rows2.push(`<div style="font-size:11px;margin-top:3px;">${bits.join(' · ')}</div>`);
+        if (rows2.length) {
+          kcrHtml = '<div class="ls-sec">'
+            + '<b>건축인허가 (서울시)</b>'
+            + rows2.join('')
+            + '<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">'
+            + '서울시 건축인허가대장 · <b>준공 전 인허가 단계</b>라 건축물대장에 없는 건도 나온다</div>'
+            + '</div>';
+        }
+      }
       let pmsHtml = '';
       if (st.pms && st.pms.length) {
         const tr = (v) => String(v == null ? '' : v).trim();
@@ -10069,7 +10193,7 @@
       if (!rows.length && !houseHtml && !detailHtml && !storeHtml && !nrHtml && !pmsHtml && !hpmsHtml && !lpHtml && !trdarHtml && !schHtml && !trdHtml && !subHtml && !lvpHtml && !rgHtml && !shtHtml && !mtnHtml && !engyHtml && !reserveHtml && !mgmtHtml && !bidHtml) return '';
       return `<div class="ls-sec" style="font-size:13px;">`
         + (rows.length ? `<b>토지·건물 정보</b>${badge}<br>${rows.join('<br>')}` : '')
-        + shtHtml + pmsHtml + hpmsHtml + subHtml + schHtml + trdarHtml + lvpHtml + trdHtml + lpHtml + jnseHtml + npsHtml + rstHtml + grnHtml + rgHtml + mtnHtml + engyHtml + reserveHtml + mgmtHtml + bidHtml + luHtml + storeHtml + nrHtml + houseHtml + detailHtml + '</div>';
+        + shtHtml + pmsHtml + hpmsHtml + subHtml + schHtml + trdarHtml + lvpHtml + trdHtml + lpHtml + jnseHtml + npsHtml + rstHtml + grnHtml + kcrHtml + rgHtml + mtnHtml + engyHtml + reserveHtml + mgmtHtml + bidHtml + luHtml + storeHtml + nrHtml + houseHtml + detailHtml + '</div>';
     }
 
     
@@ -10516,7 +10640,7 @@
         });
         
         
-        if (wantInfo.lp) loadNpsBplc(pnu, (d) => {
+        if (wantInfo.nps) loadNpsBplc(pnu, (d) => {
           if (d) { st.nps = d; render(); }
         });
         
@@ -10582,15 +10706,27 @@
         
         const _k = _dongKey(jibun || (st.parcel && (st.parcel.addr || st.parcel.jibun)));
         if (_k) {
-          loadRestroom((idx) => {
+          if (wantInfo.rst) loadRestroom((idx) => {
             const hit = idx && idx.get(_k);
             if (hit && hit.length) { st.rst = hit; render(); }
           });
           
-          loadGreen((idx) => {
+          if (wantInfo.grn) loadGreen((idx) => {
             const hit = idx && idx.get(_k);
             if (hit && hit.length) { st.grn = hit; render(); }
           });
+        }
+        
+        {
+          const _a = jibun || (st.parcel && (st.parcel.addr || st.parcel.jibun));
+          if (_a && wantInfo.kcr) {
+            
+            
+            for (const [kind, slot] of [['ho', 'kcr'], ['bass', 'kcrBass'], ['dong', 'kcrDong'],
+              ['flr', 'kcrFlr'], ['expos', 'kcrExpos'], ['wclf', 'kcrWclf']]) {
+              loadKcr(kind, _a, (d) => { if (d && d.n) { st[slot] = d; render(); } });
+            }
+          }
         }
         afterBase();
       });
