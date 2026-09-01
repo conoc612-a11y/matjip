@@ -7455,12 +7455,12 @@
       const UA_DETAILS = {
 
         '브랜드 가맹점 단위면적당 평균매출(공정위)': {
-          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b>공정거래위원회_가맹정보_브랜드 가맹점 단위면적당 평균 매출액정보 제공 서비스</b>. 🔑 <b>단위면적당 매출</b>은 상가 임대료 대비 수익성을 가늠하는 값이라 상권 분석에 직접 쓸 수 있다.',
+          d: '팝업 · 이 건물 업소(프랜차이즈 가맹 표시). 정식명 <b>공정거래위원회_가맹정보_브랜드 가맹점 단위면적당 평균 매출액정보 제공 서비스</b>. 🔑 <b>단위면적당 매출</b>은 상가 임대료 대비 수익성을 가늠하는 값이라 상권 분석에 직접 쓸 수 있다.',
           o: ['getbrandFrcsBzmnAvrgsls2'],
           p: '프록시 <code>svc=FftcBrandFrcsUnitAvrSalInfo3_Service</code> · 포털 pk <a href="https://www.data.go.kr/data/15125494/openapi.do" target="_blank" rel="noopener">15125494</a>',
         },
         '브랜드별 가맹점 현황(공정위)': {
-          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b>공정거래위원회_가맹정보_브랜드별 가맹점 현황 제공 서비스</b>. 2026-09-01 활용신청 완료(실호출 확인).',
+          d: '팝업 · 이 건물 업소(프랜차이즈 가맹 표시). 정식명 <b>공정거래위원회_가맹정보_브랜드별 가맹점 현황 제공 서비스</b>. 2026-09-01 활용신청 완료(실호출 확인).',
           o: ['getBrandFrcsStats'],
           p: '프록시 <code>svc=FftcBrandFrcsStatsService</code> · 포털 pk <a href="https://www.data.go.kr/data/15110241/openapi.do" target="_blank" rel="noopener">15110241</a>',
         },
@@ -7535,12 +7535,12 @@
           p: '프록시 <code>svc=ProductPriceInfoService</code> · 포털 pk <a href="https://www.data.go.kr/data/15158701/openapi.do" target="_blank" rel="noopener">15158701</a>',
         },
         '가맹본부 일반정보(공정위)': {
-          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b>공정거래위원회_가맹정보_가맹본부 일반 정보 상세 제공 서비스</b>.',
+          d: '팝업 · 이 건물 업소(프랜차이즈 가맹 표시). 정식명 <b>공정거래위원회_가맹정보_가맹본부 일반 정보 상세 제공 서비스</b>.',
           o: ['getjnghdqrtrsGnlinfo2'],
           p: '프록시 <code>svc=FftcJnghdqrtrsGnrlDtl3_Service</code> · 포털 pk <a href="https://www.data.go.kr/data/15125450/openapi.do" target="_blank" rel="noopener">15125450</a>',
         },
         '가맹본부 재무정보(공정위)': {
-          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b>공정거래위원회_가맹정보_가맹본부 재무정보 제공 서비스</b>.',
+          d: '팝업 · 이 건물 업소(프랜차이즈 가맹 표시). 정식명 <b>공정거래위원회_가맹정보_가맹본부 재무정보 제공 서비스</b>.',
           o: ['getjnghdqrtrsFnlttinfo2'],
           p: '프록시 <code>svc=FftcjnghdqrtrsFnnrInfo3_Service</code> · 포털 pk <a href="https://www.data.go.kr/data/15125456/openapi.do" target="_blank" rel="noopener">15125456</a>',
         },
@@ -7649,7 +7649,7 @@
           p: '수집기 <code>tools/collect_goodprice.js</code> → <code>goodprice.json</code> · 포털 pk <a href="https://www.data.go.kr/data/3045247/fileData.do" target="_blank" rel="noopener">3045247</a>',
         },
         '브랜드 가맹점·직영점(공정위)': {
-          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b>공정거래위원회_가맹정보_브랜드별,업종별 직영점 및 가맹점 분포 현황 제공 서비스</b>. 2026-09-01 활용신청 완료(그 전에는 미신청이었다).',
+          d: '팝업 · 이 건물 업소(프랜차이즈 가맹 표시). 정식명 <b>공정거래위원회_가맹정보_브랜드별,업종별 직영점 및 가맹점 분포 현황 제공 서비스</b>. 2026-09-01 활용신청 완료(그 전에는 미신청이었다).',
           o: ['getBrandIndutyFrcsStats', 'getBrandIndutyDropStats'],
           p: '프록시 <code>svc=FftcBrandIndutyDropFrcsStatsService</code> · 포털 pk <a href="https://www.data.go.kr/data/15110284/openapi.do" target="_blank" rel="noopener">15110284</a>',
         },
@@ -8723,6 +8723,41 @@
           via: (b.trfstnNms || []).map((x) => x.stnNm).filter(Boolean),
         } : null);
       });
+    }
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    let _frLoading = null, _frIdx = null;
+    const _frNorm = (x) => String(x || '').replace(/[\s()·.,'"-]/g, '').toLowerCase();
+    function loadFranchise(cb) {
+      if (_frIdx) { cb(_frIdx); return; }
+      if (_frLoading) { _frLoading.then(() => cb(_frIdx)); return; }
+      _frLoading = fetch('franchise.json')
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => { _frIdx = j || {}; _frKeys = Object.keys(_frIdx); })
+        .catch(() => { _frIdx = {}; _frKeys = []; });
+      _frLoading.then(() => cb(_frIdx));
+    }
+    let _frKeys = [];
+    
+    function frMatch(shopName) {
+      if (!_frIdx || !_frKeys.length) return null;
+      const n = _frNorm(shopName);
+      if (n.length < 2) return null;
+      let best = null;
+      for (const k of _frKeys) {
+        if (k.length >= 2 && n.includes(k) && (!best || k.length > best.length)) best = k;
+      }
+      if (!best) return null;
+      const v = _frIdx[best];
+      return { nm: v[0], corp: v[1], lcls: v[2], mcls: v[3], cnt: v[4], sls: v[5], unit: v[6], end: v[7] };
     }
 
     
@@ -10584,11 +10619,19 @@
               const tag = multi && x.bld
                 ? `<span style="color:var(--c-muted);font-size:11px;">[${String.fromCharCode(65 + order.indexOf(String(x.bld)))}] </span>`
                 : '';
-              return `${tag}${f}${nm} <span style="color:var(--c-muted);font-size:12px;">${esc(x.inds)}</span>`;
+              
+              const fr = st.franchise ? frMatch(x.name) : null;
+              const frTag = fr
+                ? ` <span style="color:var(--c-primary);font-size:11px;" title="${esc(fr.nm)} · ${esc(fr.corp)}">`
+                  + `가맹 ${fr.cnt.toLocaleString('ko-KR')}점`
+                  + (fr.sls ? ` · 평균 ${Math.round(fr.sls / 1000).toLocaleString('ko-KR')}백만` : '')
+                  + '</span>'
+                : '';
+              return `${tag}${f}${nm} <span style="color:var(--c-muted);font-size:12px;">${esc(x.inds)}</span>${frTag}`;
             }).join('<br>');
           })()
           
-          + `<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">소상공인시장진흥공단 상가정보(분기 갱신) · 폐업이 늦게 반영될 수 있다</div>`
+          + `<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">소상공인시장진흥공단 상가정보(분기 갱신) · 폐업이 늦게 반영될 수 있다${st.franchise ? ' · 가맹 표시는 공정위 가맹정보(2024) — <b>금액 0 은 미공시</b>' : ''}</div>`
           + '</div>';
       }
 
@@ -11297,7 +11340,9 @@
             if (hit && hit.length) { st.goodPrice = hit; render(); }
           });
           
-          if (wantInfo.dgk) loadOrderPlan((idx) => {
+          
+        if (wantInfo.dgk) loadFranchise(() => { st.franchise = 1; render(); });
+        if (wantInfo.dgk) loadOrderPlan((idx) => {
             const hit = idx && idx[_k.split(' ')[0]];
             if (hit && hit.length) { st.orderPlan = hit; render(); }
           });
