@@ -8770,6 +8770,35 @@
     
     
     
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    const _corpCache = new Map();
+    function loadCorpOutline(nm, cb) {
+      const s = String(nm || '').trim();
+      
+      if (!s || s.length < 2 || !/^[가-힣A-Za-z0-9()\s.,-]{2,80}$/.test(s)) { cb(null); return; }
+      if (_corpCache.has(s)) { cb(_corpCache.get(s)); return; }
+      dgkFetch('GetCorpBasicInfoService_V2', 'getCorpOutline_V2',
+        { corpNm: s, pageNo: 1, numOfRows: 3, resultType: 'json' }, (j) => {
+          const b = j && (j.response || j).body;
+          if (!b) { cb(null); return; }          
+          const it = b.items;
+          const arr = !it ? [] : (Array.isArray(it) ? it : (Array.isArray(it.item) ? it.item : (it.item ? [it.item] : [])));
+          const out = arr.length ? { total: Number(b.totalCount) || arr.length, top: arr[0] } : { total: 0, top: null };
+          _corpCache.set(s, out);
+          cb(out);
+        });
+    }
     function loadAptBasis(kaptCode, cb) {
       if (!kaptCode) { cb(null); return; }
       dgkFetch('AptBasisInfoServiceV5', 'getAphusBassInfoV5', { kaptCode, type: 'json' }, (j) => {
@@ -10443,6 +10472,34 @@
         npsHtml = '<div class="ls-sec">'
           + `<b>법인 사업장</b> <span style="font-size:12px;">이 법정동 <b>${st.nps.total.toLocaleString('ko-KR')}곳</b></span>`
           + (names ? `<div style="font-size:11px;margin-top:3px;">${names}</div>` : '')
+          
+          
+          
+          + (st.corp === 'loading'
+            ? '<div style="font-size:11px;color:var(--c-muted);margin-top:4px;">기업 정보 조회 중…</div>'
+            : (Array.isArray(st.corp)
+              ? (st.corp.some((c) => c.top)
+                ? '<div style="margin-top:5px;padding-top:4px;border-top:1px solid var(--c-border);">'
+                  + st.corp.filter((c) => c.top).map((c) => {
+                    const x = c.top;
+                    const ymd8 = (v) => (/^\d{8}$/.test(String(v || '')) ? String(v).slice(0, 4) + '.' + String(v).slice(4, 6) + '.' + String(v).slice(6) : '');
+                    const est = ymd8(x.enpEstbDt);
+                    return '<div style="font-size:12px;margin-top:3px;"><b>' + esc(x.corpNm || '') + '</b>'
+                      + (est ? ` <span style="color:var(--c-muted);">${est} 설립</span>` : '')
+                      + (x.enpRprFnm ? ` · 대표 ${esc(x.enpRprFnm)}` : '')
+                      
+                      + (c.total > 1 ? ` <span style="font-size:11px;color:var(--c-muted);">이름이 겹치는 법인 ${c.total}곳 중 첫 건</span>` : '')
+                      + (x.enpBsadr ? `<div style="font-size:11px;color:var(--c-muted);">${esc(x.enpBsadr)}${x.sicNm ? ' · ' + esc(x.sicNm) : ''}</div>` : '')
+                      + (x.corpRegMrktDcdNm ? `<div style="font-size:11px;color:var(--c-muted);">${esc(x.corpRegMrktDcdNm)}${x.enpXchgLstgDt ? ' 상장 ' + ymd8(x.enpXchgLstgDt) : ''}</div>` : '')
+                      + '</div>';
+                  }).join('')
+                  + '<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">금융위 기업기본정보 · '
+                  + '<b>등록된 법인만</b> 나온다 — 안 나오는 것은 없는 회사가 아니라 미등록이다</div>'
+                  + '</div>'
+                : '<div style="font-size:11px;color:var(--c-muted);margin-top:4px;">'
+                  + '이 법인들은 금융위 기업기본정보에 등록돼 있지 않습니다(소규모 법인은 빠집니다).</div>')
+              : '<div style="margin-top:4px;"><button type="button" class="ld-corp btn-mini">기업 정보 보기</button>'
+                + '<span style="font-size:11px;color:var(--c-muted);margin-left:6px;">설립·대표·업종·본사</span></div>'))
           + '<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">'
           + '국민연금 가입 사업장 · <b>3인 이상 법인만</b> 집계된다(개인사업자·소규모는 빠진다)</div>'
           + '</div>';
@@ -11274,6 +11331,40 @@
             if (!r) toast('관리비를 불러오지 못했습니다. 다시 시도해 주세요.');
             render();
           });
+        };
+        
+        
+        const cb2 = slot.querySelector('.ld-corp');
+        if (cb2) cb2.onclick = (ev) => {
+          stop(ev);
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          const nps = ((st.nps && st.nps.items) || []).map((x) => x.nm).filter(Boolean);
+          const frCorps = st.franchise
+            ? (st.stores || []).map((x) => { const f = frMatch(x.name); return f && f.corp; }).filter(Boolean)
+            : [];
+          const looksCorp = (s) => /주식회사|\(주\)|㈜|유한회사|주식회사$/.test(String(s || ''));
+          const names = [...new Set([...frCorps, ...nps.filter(looksCorp), ...nps])].slice(0, 3);
+          if (!names.length) return;
+          st.corp = 'loading';
+          render();
+          let left = names.length;
+          const out = [];
+          names.forEach((nm) => loadCorpOutline(nm, (r) => {
+            if (r) out.push(r);
+            if (--left > 0) return;
+            
+            if (!out.length) { st.corp = null; toast('기업 정보를 불러오지 못했습니다.'); }
+            else st.corp = out;
+            render();
+          }));
         };
         
         const bb = slot.querySelector('.ld-bid');
