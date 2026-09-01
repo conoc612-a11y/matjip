@@ -7475,7 +7475,7 @@
           p: '프록시 <code>svc=RTMSDataSvcAptTrade</code> · 포털 pk <a href="https://www.data.go.kr/data/15126469/openapi.do" target="_blank" rel="noopener">15126469</a>',
         },
         '파산금융회사 매물현황': {
-          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b>예금보험공사 파산금융회사 매물현황(정보)</b>.',
+          d: '지도 레이어 · 법원경매 절. 정식명 <b>예금보험공사 파산금융회사 매물현황(정보)</b>.',
           o: ['getRealEstateList202606', 'getRealEstateDetail202606', 'getSpecialRealEstateDetail202606'],
           p: '프록시 <code>svc=GetBankruptcyEstatesGoodsService202606</code> · 포털 pk <a href="https://www.data.go.kr/data/3035683/openapi.do" target="_blank" rel="noopener">3035683</a>',
         },
@@ -7550,7 +7550,7 @@
           p: '프록시 <code>svc=NpsSbscrbInfoProvdServiceV2</code> · 포털 pk <a href="https://www.data.go.kr/data/15005710/openapi.do" target="_blank" rel="noopener">15005710</a>',
         },
         '국민연금 탈퇴사업장': {
-          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b>국민연금공단_탈퇴사업장 정보</b>.',
+          d: '팝업 · 공공데이터 더보기. 정식명 <b>국민연금공단_탈퇴사업장 정보</b>.',
           o: ['getBassInfoSearchV2', 'getDetailInfoSearchV2'],
           p: '프록시 <code>svc=NpsScsnBplcInfoInqireServiceV2</code> · 포털 pk <a href="https://www.data.go.kr/data/15020284/openapi.do" target="_blank" rel="noopener">15020284</a>',
         },
@@ -7600,7 +7600,7 @@
           p: '프록시 <code>svc=GetCorpGoveInfoService</code> · 포털 pk <a href="https://www.data.go.kr/data/15059597/openapi.do" target="_blank" rel="noopener">15059597</a>',
         },
         '나라장터 발주계획(조달청)': {
-          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b>조달청_나라장터 발주계획현황서비스</b>.',
+          d: '팝업 · 공공데이터 더보기. 정식명 <b>조달청_나라장터 발주계획현황서비스</b>.',
           o: ['getOrderPlanSttusListThng', 'getOrderPlanSttusListCnstwk', 'getOrderPlanSttusListServc', 'getOrderPlanSttusListFrgcpt', 'getOrderPlanSttusListThngPPSSrch', 'getOrderPlanSttusListCnstwkPPSSrch'],
           p: '프록시 <code>svc=OrderPlanSttusService</code> · 포털 pk <a href="https://www.data.go.kr/data/15129462/openapi.do" target="_blank" rel="noopener">15129462</a>',
         },
@@ -8723,6 +8723,24 @@
           via: (b.trfstnNms || []).map((x) => x.stnNm).filter(Boolean),
         } : null);
       });
+    }
+
+    
+    
+    
+    
+    
+    
+    
+    let _opLoading = null, _opIdx = null;
+    function loadOrderPlan(cb) {
+      if (_opIdx) { cb(_opIdx); return; }
+      if (_opLoading) { _opLoading.then(() => cb(_opIdx)); return; }
+      _opLoading = fetch('orderplan.json')
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => { _opIdx = j || {}; })
+        .catch(() => { _opIdx = {}; });
+      _opLoading.then(() => cb(_opIdx));
     }
 
     
@@ -10292,6 +10310,16 @@
           rows2.push(`<div style="font-size:11px;margin-top:3px;">폐업 사업장(이 법정동) <b>${st.npsScsn.total.toLocaleString('ko-KR')}곳</b>`
             + (names.length ? ` <span style="color:var(--c-muted);">${esc(names.join(' · '))}</span>` : '') + '</div>');
         }
+        if (st.orderPlan && st.orderPlan.length) {
+          const op = st.orderPlan;
+          const eok = (v) => (v >= 1e8 ? (v / 1e8).toFixed(1).replace(/\.0$/, '') + '억'
+            : v >= 1e4 ? Math.round(v / 1e4).toLocaleString('ko-KR') + '만' : String(v));
+          const big = op.slice().sort((a, b) => b.amt - a.amt)[0];
+          rows2.push(`<div style="font-size:11px;margin-top:3px;">공공공사 발주계획 <b>${op.length}건</b>`
+            + (big && big.amt ? ` <span style="color:var(--c-muted);">최대 ${eok(big.amt)}원</span>` : '') + '</div>'
+            + (big && big.nm ? `<div style="font-size:11px;color:var(--c-muted);">${esc(big.nm.slice(0, 44))}`
+              + `${big.inst ? ' · ' + esc(big.inst.slice(0, 20)) : ''}</div>` : ''));
+        }
         if (st.goodPrice && st.goodPrice.length) {
           const g = st.goodPrice;
           const kinds = [...new Set(g.map((x) => x.kind).filter(Boolean))].slice(0, 3);
@@ -10331,7 +10359,7 @@
         if (rows2.length) {
           dgkHtml = '<div class="ls-sec"><b>공공데이터 더보기</b>' + rows2.join('')
             + '<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">'
-            + '공동주택 기본정보 · 하자담보책임기간 · 국민연금 가입현황 · 마을변호사 · 기상특보 · 착한가격업소 · 폐업 사업장 · 지하철 최단경로</div></div>';
+            + '공동주택 기본정보 · 하자담보책임기간 · 국민연금 가입현황 · 마을변호사 · 기상특보 · 착한가격업소 · 폐업 사업장 · 공공공사 발주계획 · 지하철 최단경로</div></div>';
         }
       }
       let pmsHtml = '';
@@ -11267,6 +11295,11 @@
           if (wantInfo.dgk) loadGoodPrice((idx) => {
             const hit = idx && idx[_k.split(' ')[0]];
             if (hit && hit.length) { st.goodPrice = hit; render(); }
+          });
+          
+          if (wantInfo.dgk) loadOrderPlan((idx) => {
+            const hit = idx && idx[_k.split(' ')[0]];
+            if (hit && hit.length) { st.orderPlan = hit; render(); }
           });
         }
         
