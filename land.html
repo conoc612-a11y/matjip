@@ -4176,7 +4176,9 @@
       
       const lifeCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 50 });
       let lifeRows = null, _lifePromise = null;
+      
       const LIFE_TY = { DP: '백화점', LM: '대형마트', SM: '기업형슈퍼', CS: '편의점' };
+      window.LIFE_TY = LIFE_TY;
       const _lifeIcon = L.divIcon({
         className: '',
         html: '<div style="width:24px;height:24px;background:#0f766e;border:2px solid #fff;border-radius:50%;'
@@ -4184,6 +4186,10 @@
           + 'font:700 11px/1 system-ui;color:#fff;">마</div>',
         iconSize: [24, 24], iconAnchor: [12, 12],
       });
+      
+      
+      
+      window.__lifeStores = (cb) => loadLifePrice().then(() => cb(lifeRows || []));
       function loadLifePrice() {
         if (!_lifePromise) {
           _lifePromise = fetch('lifeprice.json')
@@ -10415,7 +10421,7 @@
         if (st.lifeStore && st.lifeStore.length) {
           const ls = st.lifeStore;
           const kinds = {};
-          ls.forEach((x) => { const k = LIFE_TY[x.ty] || x.ty; kinds[k] = (kinds[k] || 0) + 1; });
+          ls.forEach((x) => { const k = (window.LIFE_TY || {})[x.ty] || x.ty; kinds[k] = (kinds[k] || 0) + 1; });
           rows2.push(`<div style="font-size:11px;margin-top:3px;">마트·백화점 <b>${ls.length}곳</b>`
             + ` <span style="color:var(--c-muted);">${esc(Object.entries(kinds).map(([k, v]) => k + ' ' + v).join(' · '))}</span></div>`
             + `<div style="font-size:11px;color:var(--c-muted);">${esc(ls.slice(0, 3).map((x) => x.nm).join(' · '))}</div>`);
@@ -11413,9 +11419,9 @@
             if (hit && hit.length) { st.orderPlan = hit; render(); }
           });
           
-          if (wantInfo.dgk) loadLifePrice().then(() => {
+          if (wantInfo.dgk && window.__lifeStores) window.__lifeStores((rows) => {
             const gu = _k.split(' ')[0];
-            const hit = (lifeRows || []).filter((x) => (x.addr || '').includes(gu));
+            const hit = rows.filter((x) => (x.addr || '').includes(gu));
             if (hit.length) { st.lifeStore = hit; render(); }
           });
         }
