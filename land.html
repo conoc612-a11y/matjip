@@ -7365,7 +7365,7 @@
       const UA_CONNECTED = [
         ['부동산·건축', ['공동주택 기본정보', '아파트 매매 실거래가(기본판)', '파산금융회사 매물현황', '하자담보책임기간']],
         ['공공주택·임대', ['LH 분양임대공고 상세', 'LH 분양임대공고문', 'LH 임대주택단지']],
-        ['생활 인프라', ['CCTV 도로날씨', '공항 출국장 혼잡도', '기상특보 조회', '데이터 제공표준(행안부)', '마을변호사 현황(법무부)', '명산 등산로', '생필품 가격 정보']],
+        ['생활 인프라', ['착한가격업소 현황', 'CCTV 도로날씨', '공항 출국장 혼잡도', '기상특보 조회', '데이터 제공표준(행안부)', '마을변호사 현황(법무부)', '명산 등산로', '생필품 가격 정보']],
         ['사업자·기업·금융', ['브랜드 가맹점·직영점(공정위)', '브랜드별 가맹점 현황(공정위)', '브랜드 가맹점 단위면적당 평균매출(공정위)', '가맹본부 일반정보(공정위)', '가맹본부 재무정보(공정위)', '국민연금 가입현황', '국민연금 탈퇴사업장', '금융회사 공시(금융위)', '기업 재무정보(금융위)', '기업정보 서비스(예탁결제원)', '기업지배구조 공시(금융위)', '기업집단 내부지분(공정위)', '대기업집단 주주현황(공정위)', '주식시세정보(금융위)', '주식정보 서비스(예탁결제원)', '지배구조정보(금융위)']],
         ['그 외', ['나라장터 발주계획(조달청)', '바다갈라짐 체험지수', '바다여행지수', '분실물 정보(경찰청)', '습득물 정보(경찰청)', '포락지 관리정보(해수부)', '포털기관 습득물(경찰청)', '핸드폰 찾기(경찰청)']],
       ];
@@ -7383,7 +7383,7 @@
       
       const UA_CATALOG = [
         ['부동산·건축', ['청약 당첨자 정보(청약홈)']],
-        ['생활 인프라', ['착한가격업소 현황', '공공도서관 소장도서',
+        ['생활 인프라', ['공공도서관 소장도서',
           '서울교통공사 최단경로', '도시고속도로 방음벽']],
         ['사업자·기업·금융', ['지자체 부채규모(지역정보원)']],
       ];
@@ -7590,8 +7590,8 @@
           p: '포털 pk <a href="https://www.data.go.kr/data/3036346/openapi.do" target="_blank" rel="noopener">3036346</a>',
         },
         '착한가격업소 현황': {
-          d: '🔴 <b>전국 통합 API 가 없다</b>(검색어 4종으로 확인). 부산광역시·계룡시·거제시·전주시처럼 <b>지자체별로 따로</b> 제공한다. 서울분은 서울 열린데이터광장 쪽을 봐야 한다.',
-          p: '포털 검색으로는 전국판을 찾지 못했다',
+          d: '팝업 · 공공데이터 더보기. 정식명 <b>행정안전부_착한가격업소 현황</b>. 🔴 <b>API 가 아니라 파일데이터</b>(fileData)라 오픈API 검색으로는 전국판이 안 잡혔다 — 지자체별 API 만 나왔다. 파일로는 전국분이 통째로 있다. 서울 <b>2,082곳</b>(2026-06-30 기준).',
+          p: '수집기 <code>tools/collect_goodprice.js</code> → <code>goodprice.json</code> · 포털 pk <a href="https://www.data.go.kr/data/3045247/fileData.do" target="_blank" rel="noopener">3045247</a>',
         },
         '브랜드 가맹점·직영점(공정위)': {
           d: '프록시 연결 — 화면 연결은 아직. 정식명 <b>공정거래위원회_가맹정보_브랜드별,업종별 직영점 및 가맹점 분포 현황 제공 서비스</b>. 2026-09-01 활용신청 완료(그 전에는 미신청이었다).',
@@ -8627,6 +8627,24 @@
         }, true);
       });
       _mabyunLoading.then(() => cb(_mabyunIdx));
+    }
+
+    
+    
+    
+    
+    
+    
+    
+    let _gpLoading = null, _gpIdx = null;
+    function loadGoodPrice(cb) {
+      if (_gpIdx) { cb(_gpIdx); return; }
+      if (_gpLoading) { _gpLoading.then(() => cb(_gpIdx)); return; }
+      _gpLoading = fetch('goodprice.json')
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => { _gpIdx = j || {}; })
+        .catch(() => { _gpIdx = {}; });
+      _gpLoading.then(() => cb(_gpIdx));
     }
 
     
@@ -10173,6 +10191,16 @@
           rows2.push(`<div style="font-size:11px;margin-top:3px;">마을변호사 ${names.length}명`
             + (names.length ? ` — ${esc(names.slice(0, 3).join(' · '))}${names.length > 3 ? ' 외' : ''}` : '') + '</div>');
         }
+        if (st.goodPrice && st.goodPrice.length) {
+          const g = st.goodPrice;
+          const kinds = [...new Set(g.map((x) => x.kind).filter(Boolean))].slice(0, 3);
+          const cheap = g.filter((x) => x.menu && x.menu.length)
+            .sort((a, b) => a.menu[0][1] - b.menu[0][1])[0];
+          rows2.push(`<div style="font-size:11px;margin-top:3px;">착한가격업소 <b>${g.length}곳</b>`
+            + (kinds.length ? ` <span style="color:var(--c-muted);">${esc(kinds.join(' · '))}</span>` : '') + '</div>'
+            + (cheap ? `<div style="font-size:11px;color:var(--c-muted);">최저가 ${esc(cheap.nm)} `
+              + `${esc(cheap.menu[0][0])} ${cheap.menu[0][1].toLocaleString()}원</div>` : ''));
+        }
         if (st.wthrWrn && st.wthrWrn.length) {
           rows2.push(`<div style="font-size:11px;margin-top:3px;color:var(--c-warn,#c47f00);">`
             + `⚠ ${esc(String(st.wthrWrn[0]).slice(0, 60))}</div>`);
@@ -10180,7 +10208,7 @@
         if (rows2.length) {
           dgkHtml = '<div class="ls-sec"><b>공공데이터 더보기</b>' + rows2.join('')
             + '<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">'
-            + '공동주택 기본정보 · 하자담보책임기간 · 국민연금 가입현황 · 마을변호사 · 기상특보</div></div>';
+            + '공동주택 기본정보 · 하자담보책임기간 · 국민연금 가입현황 · 마을변호사 · 기상특보 · 착한가격업소</div></div>';
         }
       }
       let pmsHtml = '';
@@ -11095,6 +11123,11 @@
             const gu = _k.split(' ')[0];
             const hit = idx && idx.get(gu);
             if (hit && hit.length) { st.mabyun = hit; render(); }
+          });
+          
+          if (wantInfo.dgk) loadGoodPrice((idx) => {
+            const hit = idx && idx[_k.split(' ')[0]];
+            if (hit && hit.length) { st.goodPrice = hit; render(); }
           });
         }
         
