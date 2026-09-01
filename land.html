@@ -4160,6 +4160,32 @@
       
       
       const onbidProxy = () => MOLIT_PROXY;
+      
+      
+      
+      
+      const _obRsltCache = new Map();
+      function loadOnbidResult(mng, cdtn, cb) {
+        if (!mng) { cb(null); return; }
+        if (_obRsltCache.has(mng)) { cb(_obRsltCache.get(mng)); return; }
+        const q = new URLSearchParams({
+          svc: 'OnbidCltrBidRsltDtlSrvc2', op: 'getCltrBidRsltDtl2',
+          cltrMngNo: mng, pbctCdtnNo: String(cdtn || ''),
+          pageNo: '1', numOfRows: '10', resultType: 'json',
+        });
+        fetch(onbidProxy() + '?' + q)
+          .then((r) => (r.ok ? r.json() : null))
+          .then((o) => {
+            
+            const root = (o && o.response) || o || {};
+            const it = root.body && root.body.items && root.body.items.item;
+            const d = Array.isArray(it) ? it[0] : it;
+            if (root.body) _obRsltCache.set(mng, d || null);
+            cb(d || null);
+          })
+          .catch(() => cb(null));
+      }
+
       const _obDtlCache = new Map();
       function loadOnbidDetail(mng, cdtn, cb) {
         if (!mng) { cb(null); return; }
@@ -4269,6 +4295,13 @@
             
             if (x) d._obDtl = x;
             else { delete d._obDtl; toast('권리·임대차를 불러오지 못했습니다.'); }
+            if (map.hasLayer(e.popup)) e.popup.setContent(onbidPopupHtml(d));
+          });
+          
+          
+          loadOnbidResult(d.mng, d.cdtn, (r) => {
+            if (!r) return;
+            d._obRslt = r;
             if (map.hasLayer(e.popup)) e.popup.setContent(onbidPopupHtml(d));
           });
         };
@@ -7960,6 +7993,109 @@
         .catch(() => cb(null));
     }
 
+    
+    
+    
+    
+    
+    
+    
+    const _hstpCache = new Map();
+    function loadHouseType(pnu, cb) {
+      const pp = pnuParts(pnu);
+      if (!pp) { cb(null); return; }
+      if (_hstpCache.has(pnu)) { cb(_hstpCache.get(pnu)); return; }
+      const q = `svc=ArchPmsHubService&op=getApHsTpInfo&sigunguCd=${pp.sigunguCd}`
+        + `&bjdongCd=${pp.bjdongCd}&platGbCd=${pp.platGbCd}&bun=${pp.bun}&ji=${pp.ji}`
+        + '&numOfRows=50&pageNo=1';
+      fetch(`${MOLIT_PROXY}?${q}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => {
+          const b = j && j.response && j.response.body;
+          const it = b && b.items && b.items.item;
+          const arr = Array.isArray(it) ? it : (it ? [it] : []);
+          if (b) _hstpCache.set(pnu, arr);   
+          cb(b ? arr : null);
+        })
+        .catch(() => cb(null));
+    }
+
+    
+    
+    
+    
+    
+    
+    const _pklotCache = new Map();
+    function loadParkingLot(pnu, cb) {
+      const pp = pnuParts(pnu);
+      if (!pp) { cb(null); return; }
+      if (_pklotCache.has(pnu)) { cb(_pklotCache.get(pnu)); return; }
+      const q = `svc=ArchPmsHubService&op=getApPklotInfo&sigunguCd=${pp.sigunguCd}`
+        + `&bjdongCd=${pp.bjdongCd}&platGbCd=${pp.platGbCd}&bun=${pp.bun}&ji=${pp.ji}`
+        + '&numOfRows=50&pageNo=1';
+      fetch(`${MOLIT_PROXY}?${q}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => {
+          const b = j && j.response && j.response.body;
+          const it = b && b.items && b.items.item;
+          const arr = Array.isArray(it) ? it : (it ? [it] : []);
+          if (b) _pklotCache.set(pnu, arr);
+          cb(b ? arr : null);
+        })
+        .catch(() => cb(null));
+    }
+
+    
+    
+    
+    
+    const _imprCache = new Map();
+    function loadRemodel(pnu, cb) {
+      const pp = pnuParts(pnu);
+      if (!pp) { cb(null); return; }
+      if (_imprCache.has(pnu)) { cb(_imprCache.get(pnu)); return; }
+      const q = `svc=ArchPmsHubService&op=getApImprprInfo&sigunguCd=${pp.sigunguCd}`
+        + `&bjdongCd=${pp.bjdongCd}&platGbCd=${pp.platGbCd}&bun=${pp.bun}&ji=${pp.ji}`
+        + '&numOfRows=50&pageNo=1';
+      fetch(`${MOLIT_PROXY}?${q}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => {
+          const b = j && j.response && j.response.body;
+          const it = b && b.items && b.items.item;
+          const arr = Array.isArray(it) ? it : (it ? [it] : []);
+          if (b) _imprCache.set(pnu, arr);
+          cb(b ? arr : null);
+        })
+        .catch(() => cb(null));
+    }
+
+    
+    
+    
+    
+    
+    
+    const _coopCache = new Map();
+    function loadHpComplex(pnu, cb) {
+      const pp = pnuParts(pnu);
+      if (!pp) { cb(null); return; }
+      if (_coopCache.has(pnu)) { cb(_coopCache.get(pnu)); return; }
+      const q = `svc=HsPmsHubService&op=getHpMgmCoopTpOulnInfo&sigunguCd=${pp.sigunguCd}`
+        + `&bjdongCd=${pp.bjdongCd}&platGbCd=${pp.platGbCd}&bun=${pp.bun}&ji=${pp.ji}`
+        + '&numOfRows=50&pageNo=1';
+      fetch(`${MOLIT_PROXY}?${q}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => {
+          const b = j && j.response && j.response.body;
+          const it = b && b.items && b.items.item;
+          const arr = Array.isArray(it) ? it : (it ? [it] : []);
+          if (b) _coopCache.set(pnu, arr);
+          cb(b ? arr : null);
+        })
+        .catch(() => cb(null));
+    }
+
     const _pmsCache = new Map();
     function loadArchPms(pnu, cb) {
       const pp = pnuParts(pnu);
@@ -8013,6 +8149,122 @@
           const arr = !it ? [] : (Array.isArray(it.item) ? it.item : (it.item ? [it.item] : []));
           
           if (b) _shtCache.set(pnu, arr);
+          cb(b ? arr : null);
+        })
+        .catch(() => cb(null));
+    }
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    const _shtPrcCache = new Map();
+    function loadShtPrice(pnu, cb) {
+      const pp = pnuParts(pnu);
+      if (!pp) { cb(null); return; }
+      if (_shtPrcCache.has(pnu)) { cb(_shtPrcCache.get(pnu)); return; }
+      const q = `svc=ShtRgstHubService&op=getSrHsprcInfo&sigunguCd=${pp.sigunguCd}`
+        + `&bjdongCd=${pp.bjdongCd}&platGbCd=${pp.platGbCd}&bun=${pp.bun}&ji=${pp.ji}`
+        + '&numOfRows=20&pageNo=1';
+      fetch(`${MOLIT_PROXY}?${q}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => {
+          const b = j && j.response && j.response.body;
+          const it = b && b.items;
+          const arr = !it ? [] : (Array.isArray(it.item) ? it.item : (it.item ? [it.item] : []));
+          
+          if (b) _shtPrcCache.set(pnu, arr);
+          cb(b ? arr : null);
+        })
+        .catch(() => cb(null));
+    }
+
+    
+    
+    
+    
+    
+    
+    
+    const _jnseCache = new Map();
+    function loadJnseMax(pnu, cb) {
+      const s2 = String(pnu || '');
+      if (!/^\d{19}$/.test(s2)) { cb(null); return; }
+      const bjd = s2.slice(0, 10);
+      if (_jnseCache.has(bjd)) { cb(_jnseCache.get(bjd)); return; }
+      
+      fetch(`${MOLIT_PROXY}?svc=jnse-rcmd-info-v2&op=jnse-max-rent-amt-list-v2`
+        + `&grntDvcd=2D&pageNo=1&numOfRows=1000&dataType=JSON`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => {
+          const b = (j && (j.response ? j.response.body : j.body)) || null;
+          if (!b) { cb(null); return; }
+          const it = b.items && (b.items.item || b.items);
+          const arr = Array.isArray(it) ? it : (it ? [it] : []);
+          const hit = arr.find((x) => String(x.trgtLwdgCd || '') === bjd) || null;
+          _jnseCache.set(bjd, hit);   
+          cb(hit);
+        })
+        .catch(() => cb(null));
+    }
+
+    
+    
+    
+    
+    
+    
+    
+    
+    const _shtRecapCache = new Map();
+    function loadShtRecap(pnu, cb) {
+      const pp = pnuParts(pnu);
+      if (!pp) { cb(null); return; }
+      if (_shtRecapCache.has(pnu)) { cb(_shtRecapCache.get(pnu)); return; }
+      const q = `svc=ShtRgstHubService&op=getSrRecapTitleInfo&sigunguCd=${pp.sigunguCd}`
+        + `&bjdongCd=${pp.bjdongCd}&platGbCd=${pp.platGbCd}&bun=${pp.bun}&ji=${pp.ji}`
+        + '&numOfRows=20&pageNo=1';
+      fetch(`${MOLIT_PROXY}?${q}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => {
+          const b = j && j.response && j.response.body;
+          const it = b && b.items && b.items.item;
+          const arr = Array.isArray(it) ? it : (it ? [it] : []);
+          if (b) _shtRecapCache.set(pnu, arr);
+          cb(b ? arr : null);
+        })
+        .catch(() => cb(null));
+    }
+
+    
+    
+    
+    
+    
+    
+    
+    const _shtJjCache = new Map();
+    function loadShtJijigu(pnu, cb) {
+      const pp = pnuParts(pnu);
+      if (!pp) { cb(null); return; }
+      if (_shtJjCache.has(pnu)) { cb(_shtJjCache.get(pnu)); return; }
+      const q = `svc=ShtRgstHubService&op=getSrJijiguInfo&sigunguCd=${pp.sigunguCd}`
+        + `&bjdongCd=${pp.bjdongCd}&platGbCd=${pp.platGbCd}&bun=${pp.bun}&ji=${pp.ji}`
+        + '&numOfRows=20&pageNo=1';
+      fetch(`${MOLIT_PROXY}?${q}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => {
+          const b = j && j.response && j.response.body;
+          const it = b && b.items;
+          const arr = !it ? [] : (Array.isArray(it.item) ? it.item : (it.item ? [it.item] : []));
+          if (b) _shtJjCache.set(pnu, arr);
           cb(b ? arr : null);
         })
         .catch(() => cb(null));
@@ -8172,7 +8424,7 @@
       const months = () => aptMonths(_reserveLatestYm);
       const scan = (code, list, i, done) => {
         if (i >= list.length) { done(null, null, false); return; }
-        fetch(`${MOLIT_PROXY}?svc=AptRepairsCostServiceV2&op=getHsmpReserveBalanceInfoV2&kaptCode=${code}&searchDate=${list[i]}`)
+        fetch(`${MOLIT_PROXY}?svc=AptRepairsCostServiceV3&op=getHsmpReserveBalanceInfoV3&kaptCode=${code}&searchDate=${list[i]}`)
           .then((r) => (r.ok ? r.json() : Promise.reject(new Error('http'))))
           .then((j) => {
             const it = j && j.response && j.response.body && j.response.body.item;
@@ -8195,6 +8447,18 @@
       });
     }
 
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
     
     
@@ -8260,18 +8524,18 @@
 
     const MGMT_OPS = [
       
-      ['공용', '인건비', 'AptCmnuseManageCostServiceV2', 'getHsmpLaborCostInfoV2',
+      ['공용', '인건비', 'AptCmnuseManageCostServiceV3', 'getHsmpLaborCostInfoV3',
         ['pay', 'sundryCost', 'bonus', 'pension', 'accidentPremium', 'employPremium', 'nationalPension', 'healthPremium', 'welfareBenefit']],
-      ['공용', '청소비', 'AptCmnuseManageCostServiceV2', 'getHsmpCleaningCostInfoV2', ['cleanCost']],
-      ['공용', '경비비', 'AptCmnuseManageCostServiceV2', 'getHsmpGuardCostInfoV2', ['guardCost']],
-      ['공용', '승강기유지', 'AptCmnuseManageCostServiceV2', 'getHsmpElevatorMntncCostInfoV2', ['elevCost']],
-      ['공용', '위탁수수료', 'AptCmnuseManageCostServiceV2', 'getHsmpConsignManageFeeInfoV2', ['manageCost']],
-      ['공용', '수선비', 'AptCmnuseManageCostServiceV2', 'getHsmpRepairsCostInfoV2', ['lrefCost1']],
-      ['개별', '난방비', 'AptIndvdlzManageCostServiceV2', 'getHsmpHeatCostInfoV2', ['heatC', 'heatP']],
-      ['개별', '급탕비', 'AptIndvdlzManageCostServiceV2', 'getHsmpHotWaterCostInfoV2', ['waterHotC', 'waterHotP']],
-      ['개별', '전기료', 'AptIndvdlzManageCostServiceV2', 'getHsmpElectricityCostInfoV2', ['electC', 'electP']],
-      ['개별', '수도료', 'AptIndvdlzManageCostServiceV2', 'getHsmpWaterCostInfoV2', ['waterCoolC', 'waterCoolP']],
-      ['개별', '가스', 'AptIndvdlzManageCostServiceV2', 'getHsmpGasRentalFeeInfoV2', ['gasC', 'gasP']],
+      ['공용', '청소비', 'AptCmnuseManageCostServiceV3', 'getHsmpCleaningCostInfoV3', ['cleanCost']],
+      ['공용', '경비비', 'AptCmnuseManageCostServiceV3', 'getHsmpGuardCostInfoV3', ['guardCost']],
+      ['공용', '승강기유지', 'AptCmnuseManageCostServiceV3', 'getHsmpElevatorMntncCostInfoV3', ['elevCost']],
+      ['공용', '위탁수수료', 'AptCmnuseManageCostServiceV3', 'getHsmpConsignManageFeeInfoV3', ['manageCost']],
+      ['공용', '수선비', 'AptCmnuseManageCostServiceV3', 'getHsmpRepairsCostInfoV3', ['lrefCost1']],
+      ['개별', '난방비', 'AptIndvdlzManageCostServiceV3', 'getHsmpHeatCostInfoV3', ['heatC', 'heatP']],
+      ['개별', '급탕비', 'AptIndvdlzManageCostServiceV3', 'getHsmpHotWaterCostInfoV3', ['waterHotC', 'waterHotP']],
+      ['개별', '전기료', 'AptIndvdlzManageCostServiceV3', 'getHsmpElectricityCostInfoV3', ['electC', 'electP']],
+      ['개별', '수도료', 'AptIndvdlzManageCostServiceV3', 'getHsmpWaterCostInfoV3', ['waterCoolC', 'waterCoolP']],
+      ['개별', '가스', 'AptIndvdlzManageCostServiceV3', 'getHsmpGasRentalFeeInfoV3', ['gasC', 'gasP']],
     ];
     const _mgmtCache = new Map();   
     let _mgmtLatestYm = null;
@@ -8289,7 +8553,7 @@
         
         const findYm = (list, i, done) => {
           if (i >= list.length) { done(null); return; }
-          ask('AptIndvdlzManageCostServiceV2', 'getHsmpElectricityCostInfoV2', list[i]).then((it) => {
+          ask('AptIndvdlzManageCostServiceV3', 'getHsmpElectricityCostInfoV3', list[i]).then((it) => {
             const v = it && (Number(it.electC) || Number(it.electP));
             if (v) { done(list[i]); return; }
             findYm(list, i + 1, done);
@@ -8348,9 +8612,25 @@
           });
         };
         
+        
+        
+        
+        
+        
         let ann = [], prv = [], fail = false;
-        scan('ApHusBidPblAncInfoOfferServiceV3', 'getHsmpNmSearchV3', 'bidKaptname=' + encodeURIComponent(one.name), ann, 0, (r) => { ann = r; if (r === null) fail = true; finish(); });
-        scan('ApHusPrvCntrNoticeInfoOfferServiceV3', 'getHsmpNmSearchV3', 'kaptName=' + encodeURIComponent(one.name), prv, 0, (r) => { prv = r; if (r === null) fail = true; finish(); });
+        const byCode = (svc, done) => {
+          ask(svc, 'getHsmpCdSearchV3', 'kaptCode=' + encodeURIComponent(one.code))
+            .then((rows) => done(rows && rows.length ? [{ year: '전체', items: rows }] : null))
+            .catch(() => done(null));
+        };
+        byCode('ApHusBidPblAncInfoOfferServiceV3', (byC) => {
+          if (byC) { ann = byC; finish(); return; }
+          scan('ApHusBidPblAncInfoOfferServiceV3', 'getHsmpNmSearchV3', 'bidKaptname=' + encodeURIComponent(one.name), ann, 0, (r) => { ann = r; if (r === null) fail = true; finish(); });
+        });
+        byCode('ApHusPrvCntrNoticeInfoOfferServiceV3', (byC) => {
+          if (byC) { prv = byC; finish(); return; }
+          scan('ApHusPrvCntrNoticeInfoOfferServiceV3', 'getHsmpNmSearchV3', 'kaptName=' + encodeURIComponent(one.name), prv, 0, (r) => { prv = r; if (r === null) fail = true; finish(); });
+        });
         let both = 2;
         function finish() {
           if (--both > 0) return;
@@ -8965,6 +9245,19 @@
           + (list.length > 3 ? `<div style="font-size:11.5px;color:var(--c-muted);margin-top:2px;">외 ${list.length - 3}건</div>` : '')
           
           + '<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">건축HUB 주택인허가 · 같은 필지 기준</div>'
+          + (() => {
+            
+            const cs = (st.hpcoop || []).filter((x) => String(x.cmplxNm || '').trim());
+            if (!cs.length) return '';
+            const c = cs[0];
+            const ymd = (v) => (/^\d{8}$/.test(String(v || '')) ? String(v).slice(0,4)+'.'+String(v).slice(4,6)+'.'+String(v).slice(6,8) : '');
+            const bits = [esc(String(c.bizBodyNm || '').trim())].filter(Boolean);
+            if (ymd(c.bizApprvDay)) bits.push('사업승인 ' + esc(ymd(c.bizApprvDay)));
+            if (ymd(c.useInsptDay)) bits.push('사용검사 ' + esc(ymd(c.useInsptDay)));
+            return `<div style="font-size:12px;margin-top:4px;">단지 <b>${esc(String(c.cmplxNm).trim())}</b>`
+              + (bits.length ? ` <span style="color:var(--c-muted);">${bits.join(' · ')}</span>` : '')
+              + '</div>';
+          })()
           + '</div>';
       }
       
@@ -9251,6 +9544,20 @@
           + (A.isDong ? '법정동' : '자치구') + ' 단위</div>'
           + '</div>';
       }
+
+      
+      
+      let jnseHtml = '';
+      if (st.jnse && Number(st.jnse.maxRentGrntAmt) > 0) {
+        const won = Number(st.jnse.maxRentGrntAmt);
+        const amt = won >= 1e8 ? (won / 1e8).toFixed(2).replace(/\.?0+$/, '') + '억'
+          : Math.round(won / 1e4).toLocaleString('ko-KR') + '만';
+        jnseHtml = '<div class="ls-sec">'
+          + `<b>전세보증 한도</b> <span style="font-size:12px;">최대 <b>${esc(amt)}원</b></span>`
+          + '<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">'
+          + '주택금융공사 일반전세자금보증(2D) · 이 법정동 기준 · 특례상품(청년·다자녀 등)은 한도가 다르다</div>'
+          + '</div>';
+      }
       let pmsHtml = '';
       if (st.pms && st.pms.length) {
         const tr = (v) => String(v == null ? '' : v).trim();
@@ -9277,6 +9584,51 @@
         pmsHtml = '<div class="ls-sec">'
           + `<b>건축 인허가</b> <span style="font-size:12px;color:var(--c-muted);">이 필지 ${list.length}건</span>${more}<br>`
           + rows2.join('<br>')
+          
+          
+          + (() => {
+            const hs = (st.hstp || []).filter((x) => String(x.hstpGbCdNm || '').trim());
+            if (!hs.length) return '';
+            const seen = new Map();
+            hs.forEach((x) => {
+              const k = String(x.hstpGbCdNm).trim();
+              const cnt = Number(x.silHoHhldCnt) || 0;
+              seen.set(k, (seen.get(k) || 0) + cnt);
+            });
+            const bits = [...seen.entries()].slice(0, 3)
+              .map(([k, n]) => esc(k) + (n ? ` <span style="color:var(--c-muted);">${n.toLocaleString('ko-KR')}세대</span>` : ''));
+            return `<div style="font-size:12px;margin-top:4px;">주택유형 <b>${bits.join(' · ')}</b></div>`;
+          })()
+          
+          
+          + (() => {
+            const ps = st.pklot || [];
+            if (!ps.length) return '';
+            const sum = (k) => ps.reduce((a, x) => a + (Number(x[k]) || 0), 0);
+            const inA = sum('indrAutoUtcnt'), ouA = sum('oudrAutoUtcnt');
+            const inM = sum('indrMechUtcnt'), ouM = sum('oudrMechUtcnt');
+            const nei = sum('neigAutoUtcnt') + sum('neigMechUtcnt');
+            const tot = inA + ouA + inM + ouM + nei;
+            if (!tot) return '';
+            const bits = [];
+            if (inA + inM) bits.push(`옥내 ${(inA + inM).toLocaleString('ko-KR')}`);
+            if (ouA + ouM) bits.push(`옥외 ${(ouA + ouM).toLocaleString('ko-KR')}`);
+            if (inM + ouM) bits.push(`기계식 ${(inM + ouM).toLocaleString('ko-KR')}`);
+            if (nei) bits.push(`인근 ${nei.toLocaleString('ko-KR')}`);
+            return '<div style="font-size:12px;margin-top:3px;">주차 '
+              + `<b>${tot.toLocaleString('ko-KR')}대</b>`
+              + (bits.length ? ` <span style="color:var(--c-muted);">${esc(bits.join(' · '))}</span>` : '')
+              + '</div>';
+          })()
+          
+          + (() => {
+            const rs = (st.impr || []).map((x) => String(x.imprprGbCdNm || '').trim()).filter(Boolean);
+            if (!rs.length) return '';
+            const uniq = [...new Set(rs)];
+            return '<div style="font-size:12px;margin-top:3px;">대수선 '
+              + `<b>${rs.length}건</b> <span style="color:var(--c-muted);">${esc(uniq.slice(0, 3).join(' · '))}</span>`
+              + '</div>';
+          })()
           + '</div>';
       }
 
@@ -9304,6 +9656,54 @@
         shtHtml = '<div style="margin-top:6px;border:1px solid #e03131;border-radius:6px;padding:6px 8px;background:rgba(224,49,49,.06);">'
           + `<b style="color:#e03131;">철거·말소 이력</b> <span style="font-size:12px;color:var(--c-muted);">이 필지 ${list.length}건</span>${more}<br>`
           + rows2.join('<br>')
+          
+          
+          + (() => {
+            const ps = (st.shtPrc || []).filter((x) => Number(x.hsprc) > 0)
+              .sort((a, b) => String(b.crtnDay || '').localeCompare(String(a.crtnDay || '')));
+            if (!ps.length) return '';
+            const p = ps[0];
+            const won = Number(p.hsprc);
+            const amt = won >= 1e8 ? (won / 1e8).toFixed(2).replace(/\.?0+$/, '') + '억'
+              : Math.round(won / 1e4).toLocaleString('ko-KR') + '만';
+            return '<div style="font-size:12px;margin-top:4px;">철거 전 주택가격 '
+              + `<b>${esc(amt)}원</b>`
+              + (ymd(p.crtnDay) ? ` <span style="color:var(--c-muted);">(${esc(ymd(p.crtnDay))} 기준)</span>` : '')
+              + (ps.length > 1 ? ` <span style="color:var(--c-muted);">· 이력 ${ps.length}건</span>` : '')
+              + '</div>';
+          })()
+          
+          
+          
+          + (() => {
+            const js = (st.shtJj || []).filter((x) => String(x.jijiguCdNm || '').trim());
+            if (!js.length) return '';
+            const uniq = [...new Set(js.map((x) => String(x.jijiguCdNm).trim()))];
+            const day = ymd(js[0].crtnDay);
+            return '<div style="font-size:12px;margin-top:3px;">철거 당시 용도지역 '
+              + `<b>${esc(uniq.slice(0, 3).join(' · '))}</b>`
+              + (uniq.length > 3 ? ` <span style="color:var(--c-muted);">외 ${uniq.length - 3}</span>` : '')
+              + (day ? ` <span style="color:var(--c-muted);">(${esc(day)} 기준)</span>` : '')
+              + '</div>';
+          })()
+          
+          + (() => {
+            const rc = (st.shtRecap || []).filter((x) => Number(x.totArea) > 0 || Number(x.platArea) > 0);
+            if (!rc.length) return '';
+            const x = rc[0];
+            const n = (v) => (Number(v) > 0 ? Number(v).toLocaleString('ko-KR', { maximumFractionDigits: 0 }) : '');
+            const bits = [];
+            if (n(x.platArea)) bits.push(`대지 ${n(x.platArea)}㎡`);
+            if (n(x.totArea)) bits.push(`연면적 ${n(x.totArea)}㎡`);
+            if (Number(x.hhldCnt) > 0) bits.push(`${Number(x.hhldCnt).toLocaleString('ko-KR')}세대`);
+            if (Number(x.totPkngCnt) > 0) bits.push(`주차 ${Number(x.totPkngCnt).toLocaleString('ko-KR')}대`);
+            if (!bits.length) return '';
+            const use = String(x.mainPurpsCdNm || '').trim();
+            return '<div style="font-size:12px;margin-top:3px;">철거 건물 규모 '
+              + `<b>${esc(bits.join(' · '))}</b>`
+              + (use ? ` <span style="color:var(--c-muted);">${esc(use)}</span>` : '')
+              + '</div>';
+          })()
           + '<div style="font-size:11.5px;color:var(--c-muted);margin-top:4px;">등기상 건물이 남아 있어도 <b>현황은 다를 수 있습니다.</b> 입찰 전 현장과 등기부로 직접 확인하십시오.</div>'
           + '</div>';
       }
@@ -9362,13 +9762,27 @@
           const fb = b.flr == null ? 999 : Number(b.flr) || 999;
           return fa - fb;
         });
+        
+        
+        
+        
+        const bldSet = new Set(ss.map((x) => String(x.bld || '')).filter(Boolean));
+        const multi = bldSet.size > 1;
         storeHtml = `<div class="ls-sec">`
-          + `<b>이 건물 업소</b> <span style="color:var(--c-muted);font-size:12px;">${ss.length}곳</span><br>`
-          + ss.map((x) => {
-            const f = x.flr == null ? '' : `<span style="color:var(--c-primary);">${esc(String(x.flr))}층</span> `;
-            const nm = esc(x.name) + (x.branch ? ' ' + esc(x.branch) : '');
-            return `${f}${nm} <span style="color:var(--c-muted);font-size:12px;">${esc(x.inds)}</span>`;
-          }).join('<br>')
+          + `<b>이 건물 업소</b> <span style="color:var(--c-muted);font-size:12px;">${ss.length}곳`
+          + (multi ? ` · 이 필지에 건물 ${bldSet.size}동` : '') + `</span><br>`
+          + (() => {
+            
+            const order = [...bldSet].sort();
+            return ss.map((x) => {
+              const f = x.flr == null ? '' : `<span style="color:var(--c-primary);">${esc(String(x.flr))}층</span> `;
+              const nm = esc(x.name) + (x.branch ? ' ' + esc(x.branch) : '');
+              const tag = multi && x.bld
+                ? `<span style="color:var(--c-muted);font-size:11px;">[${String.fromCharCode(65 + order.indexOf(String(x.bld)))}] </span>`
+                : '';
+              return `${tag}${f}${nm} <span style="color:var(--c-muted);font-size:12px;">${esc(x.inds)}</span>`;
+            }).join('<br>');
+          })()
           
           + `<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">소상공인시장진흥공단 상가정보(분기 갱신) · 폐업이 늦게 반영될 수 있다</div>`
           + '</div>';
@@ -9513,7 +9927,7 @@
       if (!rows.length && !houseHtml && !detailHtml && !storeHtml && !nrHtml && !pmsHtml && !hpmsHtml && !lpHtml && !trdarHtml && !schHtml && !trdHtml && !subHtml && !lvpHtml && !rgHtml && !shtHtml && !mtnHtml && !engyHtml && !reserveHtml && !mgmtHtml && !bidHtml) return '';
       return `<div class="ls-sec" style="font-size:13px;">`
         + (rows.length ? `<b>토지·건물 정보</b>${badge}<br>${rows.join('<br>')}` : '')
-        + shtHtml + pmsHtml + hpmsHtml + subHtml + schHtml + trdarHtml + lvpHtml + trdHtml + lpHtml + rgHtml + mtnHtml + engyHtml + reserveHtml + mgmtHtml + bidHtml + luHtml + storeHtml + nrHtml + houseHtml + detailHtml + '</div>';
+        + shtHtml + pmsHtml + hpmsHtml + subHtml + schHtml + trdarHtml + lvpHtml + trdHtml + lpHtml + jnseHtml + rgHtml + mtnHtml + engyHtml + reserveHtml + mgmtHtml + bidHtml + luHtml + storeHtml + nrHtml + houseHtml + detailHtml + '</div>';
     }
 
     
@@ -9863,6 +10277,16 @@
         });
         
         
+        
+        if (wantInfo.pms) loadHouseType(pnu, (arr) => {
+          if (arr && arr.length) { st.hstp = arr; render(); }
+        });
+        if (wantInfo.pms) loadParkingLot(pnu, (arr) => {
+          if (arr && arr.length) { st.pklot = arr; render(); }
+        });
+        if (wantInfo.pms) loadRemodel(pnu, (arr) => {
+          if (arr && arr.length) { st.impr = arr; render(); }
+        });
         if (wantInfo.pms) loadArchPms(pnu, (arr) => {
           if (arr && arr.length) { st.pms = arr; render(); }
         });
@@ -9870,6 +10294,10 @@
         
         if (wantInfo.hpms) loadHsPms(pnu, (arr) => {
           if (arr && arr.length) { st.hpms = arr; render(); }
+        });
+        
+        if (wantInfo.hpms) loadHpComplex(pnu, (arr) => {
+          if (arr && arr.length) { st.hpcoop = arr; render(); }
         });
         
         
@@ -9941,6 +10369,21 @@
           });
         }
         
+        if (wantInfo.lp) loadJnseMax(pnu, (hit) => {
+          if (hit) { st.jnse = hit; render(); }
+        });
+        
+        
+        
+        if (wantInfo.sht) loadShtPrice(pnu, (arr) => {
+          if (arr && arr.length) { st.shtPrc = arr; render(); }
+        });
+        if (wantInfo.sht) loadShtJijigu(pnu, (arr) => {
+          if (arr && arr.length) { st.shtJj = arr; render(); }
+        });
+        if (wantInfo.sht) loadShtRecap(pnu, (arr) => {
+          if (arr && arr.length) { st.shtRecap = arr; render(); }
+        });
         if (wantInfo.sht) loadSht(pnu, (arr) => {
           if (arr && arr.length) { st.sht = arr; render(); }
         });
