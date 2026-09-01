@@ -7360,65 +7360,14 @@
       
       
       
+      
+      
       const UA_CATALOG = [
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        ['부동산·건축', ['공동주택 기본정보', '아파트 매매 실거래가(기본판)',
-          '청약 당첨자 정보(청약홈)', '파산금융회사 매물현황']],
-        
-        
-        ['공동주택 관리', ['하자담보책임기간']],
-        
-        
-        
-        
-        
-        ['공공주택·임대', ['LH 임대주택단지', 'LH 분양임대공고 상세',
-          'LH 분양임대공고문']],
-        
-        
-        
-        
-        
-        
-        ['생활 인프라', ['착한가격업소 현황',
-          '생필품 가격 정보', '공공도서관 소장도서',
-          '서울교통공사 최단경로', '도시고속도로 방음벽', '기상특보 조회', 'CCTV 도로날씨',
-          '명산 등산로', '공항 출국장 혼잡도']],
-        
-        
-        
-        
-        
-        
-        
-        
-        ['사업자·기업·금융', ['국민연금 가입현황', '국민연금 탈퇴사업장',
-          '주식시세정보(금융위)', '기업 재무정보(금융위)', '기업지배구조 공시(금융위)',
-          '지배구조정보(금융위)', '금융회사 공시(금융위)', '크라우드펀딩 업자(금융위)',
-          '주식정보 서비스(예탁결제원)', '기업정보 서비스(예탁결제원)', '가맹본부 일반정보(공정위)',
-          '가맹본부 재무정보(공정위)', '브랜드 가맹점·직영점(공정위)', '기업집단 내부지분(공정위)',
-          '대기업집단 주주현황(공정위)', '지자체 부채규모(지역정보원)', '지자체 경영성과(지역정보원)']],
-        ['그 외', ['습득물 정보(경찰청)', '분실물 정보(경찰청)', '핸드폰 찾기(경찰청)',
-          '포털기관 습득물(경찰청)', '마을변호사 현황(법무부)', '포락지 관리정보(해수부)',
-          '바다갈라짐 체험지수', '바다여행지수', '나라장터 발주계획(조달청)', '데이터 제공표준(행안부)']],
+        ['부동산·건축', ['청약 당첨자 정보(청약홈)']],
+        ['생활 인프라', ['착한가격업소 현황', '공공도서관 소장도서',
+          '서울교통공사 최단경로', '도시고속도로 방음벽']],
+        ['사업자·기업·금융', ['크라우드펀딩 업자(금융위)', '브랜드 가맹점·직영점(공정위)',
+          '지자체 부채규모(지역정보원)', '지자체 경영성과(지역정보원)']],
       ];
       
       
@@ -7426,20 +7375,20 @@
       const UA_DETAILS = {
 
         '지자체 부채규모(지역정보원)': {
-          d: '정식명 <b>행정안전부_지방재정365_복식부기재무현황(부채)</b>. 포털 pk 는 확인했으나 명세 본문을 못 받았다 — 포털 상세페이지에서 직접 볼 것.',
+          d: '행정안전부_지방재정365_복식부기재무현황(부채). pk 는 확인했으나 명세 본문을 못 받았다 — 포털 상세페이지에서 확인할 것.',
           p: '포털 pk <a href="https://www.data.go.kr/data/15057560/openapi.do" target="_blank" rel="noopener">15057560</a>',
         },
         '도시고속도로 방음벽': {
-          d: '정식명 <b>서울시설공단_도시고속도로 방음벽 정보</b>. 엔드포인트가 명세에 표기돼 있지 않다 — 포털 상세페이지에서 직접 볼 것.',
+          d: '서울시설공단_도시고속도로 방음벽 정보. 포털 명세에 <b>End Point 표기가 없다</b> — 상세페이지에서 직접 확인해야 한다.',
           p: '포털 pk <a href="https://www.data.go.kr/data/15002794/openapi.do" target="_blank" rel="noopener">15002794</a>',
         },
         '공공도서관 소장도서': {
-          d: '정식명 <b>문화체육관광부_국립중앙도서관_국가자료종합목록</b>. 포털 pk 는 확인했으나 명세 본문을 못 받았다 — 포털 상세페이지에서 직접 볼 것.',
+          d: '문화체육관광부_국립중앙도서관_국가자료종합목록. pk 는 확인했으나 포털에서 명세 본문을 못 받았다 — 상세페이지에서 직접 확인할 것.',
           p: '포털 pk <a href="https://www.data.go.kr/data/3036346/openapi.do" target="_blank" rel="noopener">3036346</a>',
         },
         '착한가격업소 현황': {
-          d: '포털 검색 결과 <b>전국 통합 API 가 없다</b>(2026-09-01 실측). 부산광역시·계룡시·거제시·전주시처럼 <b>지자체별로 따로</b> 제공한다. 서울분은 서울 열린데이터광장 쪽을 확인해야 한다.',
-          p: '검색어 4종("착한가격업소"·"착한가격"·"착한가격업소 지정 현황"·"물가안정 착한가격")으로 확인',
+          d: '🔴 <b>전국 통합 API 가 없다</b>(검색어 4종으로 확인). 부산광역시·계룡시·거제시·전주시처럼 <b>지자체별로 따로</b> 제공한다. 서울분은 서울 열린데이터광장 쪽을 봐야 한다.',
+          p: '포털 검색으로는 전국판을 찾지 못했다',
         },
         '데이터 제공표준(행안부)': {
           d: '제공기관 명세 확인(2026-09-01). 정식명 <b>행정안전부_공공데이터 제공표준 조회 서비스</b>.',
@@ -7488,9 +7437,8 @@
           p: 'End Point <code>https://apis.data.go.kr/1320000/LosfundInfoInqireService</code> · 포털 pk <a href="https://www.data.go.kr/data/15058696/openapi.do" target="_blank" rel="noopener">15058696</a> · op 목록은 포털 상세페이지에서 확인',
         },
         '지자체 경영성과(지역정보원)': {
-          d: '제공기관 명세 확인(2026-09-01). 정식명 <b>한국지역정보개발원_경영정보 조회 서비스</b>.',
-          o: ['openXmlMngInfo2'],
-          p: 'End Point <code>https://apis.data.go.kr/B551982/openApiMngInfo3</code> · 포털 pk <a href="https://www.data.go.kr/data/15056798/openapi.do" target="_blank" rel="noopener">15056798</a>',
+          d: '한국지역정보개발원_경영정보 조회 서비스. 실호출 결과 <b>미신청(30)</b> — 활용신청이 필요하다.',
+          p: '포털 pk <a href="https://www.data.go.kr/data/15056798/openapi.do" target="_blank" rel="noopener">15056798</a>',
         },
         '대기업집단 주주현황(공정위)': {
           d: '제공기관 명세 확인(2026-09-01). 정식명 <b>공정거래위원회_기업집단포털_대규모기업집단 소속회사 주주현황 정보 조회 서비스</b>.',
@@ -7502,9 +7450,8 @@
           p: 'End Point <code>https://apis.data.go.kr/1130000/sllInnerQotaList</code> · 포털 pk <a href="https://www.data.go.kr/data/15093663/openapi.do" target="_blank" rel="noopener">15093663</a> · op 목록은 포털 상세페이지에서 확인',
         },
         '브랜드 가맹점·직영점(공정위)': {
-          d: '제공기관 명세 확인(2026-09-01). 정식명 <b>공정거래위원회_가맹정보_브랜드별,업종별 직영점 및 가맹점 분포 현황 제공 서비스</b>.',
-          o: ['getBrandIndutyFrcsStats', 'getBrandIndutyDropStats'],
-          p: 'End Point <code>https://apis.data.go.kr/1130000/FftcBrandIndutyDropFrcsStatsService</code> · 포털 pk <a href="https://www.data.go.kr/data/15110284/openapi.do" target="_blank" rel="noopener">15110284</a>',
+          d: '공정거래위원회_가맹정보_브랜드별·업종별 직영점 및 가맹점 분포 현황. 실호출 결과 <b>미신청(30)</b> — 활용신청이 필요하다.',
+          p: '포털 pk <a href="https://www.data.go.kr/data/15110284/openapi.do" target="_blank" rel="noopener">15110284</a>',
         },
         '가맹본부 재무정보(공정위)': {
           d: '제공기관 명세 확인(2026-09-01). 정식명 <b>공정거래위원회_가맹정보_가맹본부 재무정보 제공 서비스</b>.',
@@ -7527,9 +7474,8 @@
           p: 'End Point <code>https://apis.data.go.kr/B552481/StockSvc</code> · 포털 pk <a href="https://www.data.go.kr/data/15157413/openapi.do" target="_blank" rel="noopener">15157413</a>',
         },
         '크라우드펀딩 업자(금융위)': {
-          d: '제공기관 명세 확인(2026-09-01). 정식명 <b>금융위원회_크라우드펀딩정보</b>.',
-          o: ['getFundIssuCompInfo_V2'],
-          p: 'End Point <code>https://apis.data.go.kr/1160100/GetFundInfoService_V2</code> · 포털 pk <a href="https://www.data.go.kr/data/15059613/openapi.do" target="_blank" rel="noopener">15059613</a>',
+          d: '금융위원회_크라우드펀딩정보. 실호출 결과 <b>SERVICE_KEY_IS_NOT_REGISTERED_ERROR(30)</b> — <b>활용신청이 필요하다</b>(2026-09-01 실측).',
+          p: '포털 pk <a href="https://www.data.go.kr/data/15059613/openapi.do" target="_blank" rel="noopener">15059613</a>',
         },
         '금융회사 공시(금융위)': {
           d: '제공기관 명세 확인(2026-09-01). 정식명 <b>금융위원회_금융회사공시정보</b>.',
@@ -7584,9 +7530,8 @@
           p: 'End Point <code>https://apis.data.go.kr/1360000/WthrWrnInfoService</code> · 포털 pk <a href="https://www.data.go.kr/data/15000415/openapi.do" target="_blank" rel="noopener">15000415</a> · op 목록은 포털 상세페이지에서 확인',
         },
         '서울교통공사 최단경로': {
-          d: '제공기관 명세 확인(2026-09-01). 정식명 <b>서울교통공사_최단경로이동정보</b>.',
-          o: ['getShtrmPath2'],
-          p: 'End Point <code>https://apis.data.go.kr/B553766/path2</code> · 포털 pk <a href="https://www.data.go.kr/data/15143842/openapi.do" target="_blank" rel="noopener">15143842</a>',
+          d: '서울교통공사_최단경로이동정보. 실호출에서 <b>일시 오류(HTTP_ERROR)</b> 가 났다 — 재시도해서 판정할 것. 미신청이 아니다.',
+          p: '포털 pk <a href="https://www.data.go.kr/data/15143842/openapi.do" target="_blank" rel="noopener">15143842</a>',
         },
         '생필품 가격 정보': {
           d: '제공기관 명세 확인(2026-09-01). 정식명 <b>한국소비자원_생필품 가격 정보_GW</b>.',
@@ -7611,8 +7556,7 @@
           p: 'End Point <code>https://apis.data.go.kr/B190017/service/GetBankruptcyEstatesGoodsService2020081</code> · 포털 pk <a href="https://www.data.go.kr/data/3035683/openapi.do" target="_blank" rel="noopener">3035683</a> · op 목록은 포털 상세페이지에서 확인',
         },
         '청약 당첨자 정보(청약홈)': {
-          d: '제공기관 명세 확인(2026-09-01). 정식명 <b>한국부동산원_청약홈 청약 신청·당첨자 정보 조회 서비스</b>.',
-          o: ['ApplyhomeStatSvc/v1/getAPTReqstAreaStat', 'ApplyhomeStatSvc/v1/getAPTReqstAgeStat', 'ApplyhomeStatSvc/v1/getAPTPrzwnerAreaStat', 'ApplyhomeStatSvc/v1/getAPTPrzwnerAgeStat', 'ApplyhomeStatSvc/v1/getAPTCmpetrtAreaStat', 'ApplyhomeStatSvc/v1/getAPTApsPrzwnerStat'],
+          d: '한국부동산원_청약홈 청약 신청·당첨자 정보 조회 서비스. op 6개는 확인했으나 <b>포털 명세에 End Point 가 표기돼 있지 않다</b> — 상세페이지에서 직접 확인해야 한다.',
           p: '포털 pk <a href="https://www.data.go.kr/data/15110812/openapi.do" target="_blank" rel="noopener">15110812</a>',
         },
         '공동주택 기본정보': {
