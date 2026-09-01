@@ -7362,6 +7362,22 @@
       
       
       
+      const UA_CONNECTED = [
+        ['부동산·건축', ['공동주택 기본정보', '아파트 매매 실거래가(기본판)', '파산금융회사 매물현황', '하자담보책임기간']],
+        ['공공주택·임대', ['LH 분양임대공고 상세', 'LH 분양임대공고문', 'LH 임대주택단지']],
+        ['생활 인프라', ['CCTV 도로날씨', '공항 출국장 혼잡도', '기상특보 조회', '데이터 제공표준(행안부)', '마을변호사 현황(법무부)', '명산 등산로', '생필품 가격 정보']],
+        ['사업자·기업·금융', ['가맹본부 일반정보(공정위)', '가맹본부 재무정보(공정위)', '국민연금 가입현황', '국민연금 탈퇴사업장', '금융회사 공시(금융위)', '기업 재무정보(금융위)', '기업정보 서비스(예탁결제원)', '기업지배구조 공시(금융위)', '기업집단 내부지분(공정위)', '대기업집단 주주현황(공정위)', '주식시세정보(금융위)', '주식정보 서비스(예탁결제원)', '지배구조정보(금융위)']],
+        ['그 외', ['나라장터 발주계획(조달청)', '바다갈라짐 체험지수', '바다여행지수', '분실물 정보(경찰청)', '습득물 정보(경찰청)', '포락지 관리정보(해수부)', '포털기관 습득물(경찰청)', '핸드폰 찾기(경찰청)']],
+      ];
+
+      
+      
+      
+      
+      
+      
+      
+      
       const UA_CATALOG = [
         ['부동산·건축', ['청약 당첨자 정보(청약홈)']],
         ['생활 인프라', ['착한가격업소 현황', '공공도서관 소장도서',
@@ -7373,6 +7389,181 @@
       
       
       const UA_DETAILS = {
+        '공동주택 기본정보': {
+          d: '팝업 · 공공데이터 더보기. 정식명 <b></b>.',
+          o: ['getAphusDtlInfoV5', 'getAphusBassInfoV5'],
+          p: '프록시 <code>svc=AptBasisInfoServiceV5</code>',
+        },
+        '아파트 매매 실거래가(기본판)': {
+          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b></b>.',
+          o: ['getRTMSDataSvcAptTrade'],
+          p: '프록시 <code>svc=RTMSDataSvcAptTrade</code>',
+        },
+        '파산금융회사 매물현황': {
+          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b></b>.',
+          o: ['getRealEstateList202606', 'getRealEstateDetail202606', 'getSpecialRealEstateDetail202606'],
+          p: '프록시 <code>svc=GetBankruptcyEstatesGoodsService202606</code>',
+        },
+        '하자담보책임기간': {
+          d: '팝업 · 공공데이터 더보기. 정식명 <b></b>.',
+          o: ['getWrantRspnsblPdNtcnInfoSearchV2', 'getWrantRspnsblPdInfoSearchV2'],
+          p: '프록시 <code>svc=HsmpWrantRspnsblPdService</code>',
+        },
+        'LH 분양임대공고 상세': {
+          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b></b>.',
+          o: ['lhLeaseNoticeDtlInfo1', 'getLeaseNoticeDtlInfo1', 'dsAhflInfo'],
+          p: '프록시 <code>svc=lhLeaseNoticeDtlInfo1</code>',
+        },
+        'LH 분양임대공고문': {
+          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b></b>.',
+          o: ['lhLeaseNoticeInfo1', 'selectWrtancInfo'],
+          p: '프록시 <code>svc=lhLeaseNoticeInfo1</code>',
+        },
+        'LH 임대주택단지': {
+          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b></b>.',
+          o: ['lhLeaseInfo1'],
+          p: '프록시 <code>svc=lhLeaseInfo1</code>',
+        },
+        'CCTV 도로날씨': {
+          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b></b>.',
+          o: ['getCctvStnRoadWthr', 'getStdNodeLinkRoadWw'],
+          p: '프록시 <code>svc=RoadWthrInfoService</code>',
+        },
+        '공항 출국장 혼잡도': {
+          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b></b>.',
+          o: ['getDepartureCongestion'],
+          p: '프록시 <code>svc=statusOfDepartureCongestion</code>',
+        },
+        '기상특보 조회': {
+          d: '팝업 · 공공데이터 더보기. 정식명 <b></b>.',
+          o: ['getWthrWrnList'],
+          p: '프록시 <code>svc=WthrWrnInfoService</code>',
+        },
+        '데이터 제공표준(행안부)': {
+          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b></b>.',
+          o: ['retrievePrvdStdInfo', 'retrievePrvdStdList'],
+          p: '프록시 <code>svc=prvdstd20</code>',
+        },
+        '마을변호사 현황(법무부)': {
+          d: '팝업 · 공공데이터 더보기. 정식명 <b></b>.',
+          o: ['mabyun'],
+          p: '프록시 <code>svc=mojmabyun</code>',
+        },
+        '명산 등산로': {
+          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b></b>.',
+          o: ['gdTrailInfoImgOpenAPI', 'gdTrailInfoOpenAPI'],
+          p: '프록시 <code>svc=cultureInfoService</code>',
+        },
+        '생필품 가격 정보': {
+          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b></b>.',
+          o: ['getProductPriceInfoSvc', 'getStandardInfoSvc.do', 'getStoreInfoSvc.do', 'getProductInfoSvc.do'],
+          p: '프록시 <code>svc=ProductPriceInfoService</code>',
+        },
+        '가맹본부 일반정보(공정위)': {
+          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b></b>.',
+          o: ['getjnghdqrtrsGnlinfo2'],
+          p: '프록시 <code>svc=FftcJnghdqrtrsGnrlDtl3_Service</code>',
+        },
+        '가맹본부 재무정보(공정위)': {
+          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b></b>.',
+          o: ['getjnghdqrtrsFnlttinfo2'],
+          p: '프록시 <code>svc=FftcjnghdqrtrsFnnrInfo3_Service</code>',
+        },
+        '국민연금 가입현황': {
+          d: '팝업 · 공공데이터 더보기. 정식명 <b></b>.',
+          o: ['getSbscrbSttusInfoSearchV2', 'getSbscrbMaxValueInfoSearchV2', 'getSbscrbAgeInfoSearchV2'],
+          p: '프록시 <code>svc=NpsSbscrbInfoProvdServiceV2</code>',
+        },
+        '국민연금 탈퇴사업장': {
+          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b></b>.',
+          o: ['getBassInfoSearchV2', 'getDetailInfoSearchV2'],
+          p: '프록시 <code>svc=NpsScsnBplcInfoInqireServiceV2</code>',
+        },
+        '금융회사 공시(금융위)': {
+          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b></b>.',
+          o: ['getFnCoDiviDiscInfo_V2', 'getFnCoCapiIncrWithConsDiscInfo_V2', 'getFnCoBonuIssuDiscInfo_V2', 'getFnCoGeneMeetPublNotiDiscInfo_V2', 'getFnCoStocOptiRepoDiscInfo_V2', 'getFnCoOutsDireAffaRepoDiscInfo_V2'],
+          p: '프록시 <code>svc=GetFnCoDiscInfoService_V2</code>',
+        },
+        '기업 재무정보(금융위)': {
+          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b></b>.',
+          o: ['getSummFinaStat_V2', 'getBs_V2', 'getIncoStat_V2'],
+          p: '프록시 <code>svc=GetFinaStatInfoService_V2</code>',
+        },
+        '기업정보 서비스(예탁결제원)': {
+          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b></b>.',
+          o: ['getCorpActionDtList', 'getIssucoStkQtyChgList', 'getStkDistributionRegionStatus', 'getBuyreqSkeduInfoSvc', 'getStkDistributionOwnQtyStatus', 'getIssucoBasicInfo'],
+          p: '프록시 <code>svc=CorpSvc</code>',
+        },
+        '기업지배구조 공시(금융위)': {
+          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b></b>.',
+          o: ['getCGSmamInfo', 'getCGIdvpnPayInfo', 'getCGUnregExutInfo'],
+          p: '프록시 <code>svc=GetCGDiscInfoService</code>',
+        },
+        '기업집단 내부지분(공정위)': {
+          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b></b>.',
+          o: ['innerQotaEqltrmCmprList', 'innerQotaEqltrmCmprUnityListApi', 'innerQotaEqltrmCmprAssetsListApi', 'appnGroupSttusList', 'innerQotaEqltrmCmprUnityList', 'publicYmList'],
+          p: '프록시 <code>svc=innerQotaEqltrmCmprList</code>',
+        },
+        '대기업집단 주주현황(공정위)': {
+          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b></b>.',
+          o: ['stockholderCompSttusListApi'],
+          p: '프록시 <code>svc=stockholderCompSttusList</code>',
+        },
+        '주식시세정보(금융위)': {
+          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b></b>.',
+          o: ['getStockPriceInfo', 'getPreemptiveRightCertificatePriceInfo', 'getSecuritiesPriceInfo', 'getPreemptiveRightSecuritiesPriceInfo', 'getStockSecuritiesInfoService'],
+          p: '프록시 <code>svc=GetStockSecuritiesInfoService</code>',
+        },
+        '주식정보 서비스(예탁결제원)': {
+          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b></b>.',
+          o: ['getKDRSecnInfo', 'getVctfDivRankInfo', 'getTotIssuStkQty', 'getKDRIssuLmtDetailsN1', 'getSecSetlCostStatN1', 'getStkIsinByNmN1'],
+          p: '프록시 <code>svc=StockSvc</code>',
+        },
+        '지배구조정보(금융위)': {
+          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b></b>.',
+          o: ['getStockholderInfo', 'getReprDireInfo', 'getExecRemuStat', 'getExecutivesInfo'],
+          p: '프록시 <code>svc=GetCorpGoveInfoService</code>',
+        },
+        '나라장터 발주계획(조달청)': {
+          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b></b>.',
+          o: ['getOrderPlanSttusListThng', 'getOrderPlanSttusListCnstwk', 'getOrderPlanSttusListServc', 'getOrderPlanSttusListFrgcpt', 'getOrderPlanSttusListThngPPSSrch', 'getOrderPlanSttusListCnstwkPPSSrch'],
+          p: '프록시 <code>svc=OrderPlanSttusService</code>',
+        },
+        '바다갈라짐 체험지수': {
+          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b></b>.',
+          o: ['getFcstSeaSplitApi'],
+          p: '프록시 <code>svc=GetFcstSeaSplitApiServicev2</code>',
+        },
+        '바다여행지수': {
+          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b></b>.',
+          o: ['getFcstSeaTripApi'],
+          p: '프록시 <code>svc=GetFcstSeaTripApiServicev2</code>',
+        },
+        '분실물 정보(경찰청)': {
+          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b></b>.',
+          o: ['getLostGoodsInfoAccToClAreaPd', 'getLostGoodsInfoAccTpNmCstdyPlace', 'getLostGoodsDetailInfo'],
+          p: '프록시 <code>svc=LostGoodsInfoInqireService</code>',
+        },
+        '습득물 정보(경찰청)': {
+          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b></b>.',
+          o: ['getLosfundInfoAccToClAreaPd', 'getLosfundInfoAccTpNmCstdyPlace', 'getLosfundDetailInfo'],
+          p: '프록시 <code>svc=LosfundInfoInqireService</code>',
+        },
+        '포락지 관리정보(해수부)': {
+          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b></b>.',
+          o: ['getSubmergedLandsList2.0', 'getSubmergedLandsAreaList2.0', 'getSubmergedLandsAreaExtentList2.0', 'getSubmergedLandsExaminationAreaExtentList2.0', 'getSubmergedLandsManagementNumberList2.0', 'getSubmergedLandsLotNumberList2.0'],
+          p: '프록시 <code>svc=submergedLandsInfoService2.0</code>',
+        },
+        '포털기관 습득물(경찰청)': {
+          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b></b>.',
+          o: ['getPtLosfundInfoAccToClAreaPd', 'getPtLosfundInfoAccTpNmCstdyPlace', 'getPtLosfundDetailInfo', 'getPtLosfundInfoAccToLc'],
+          p: '프록시 <code>svc=LosPtfundInfoInqireService</code>',
+        },
+        '핸드폰 찾기(경찰청)': {
+          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b></b>.',
+          o: ['getMoblphonAcctoKindAreaPeriodInfo', 'getMoblphonDetailInfo'],
+          p: '프록시 <code>svc=SearchMoblphonInfoInqireService</code>',
+        },
 
         '지자체 부채규모(지역정보원)': {
           d: '행정안전부_지방재정365_복식부기재무현황(부채). pk 는 확인했으나 명세 본문을 못 받았다 — 포털 상세페이지에서 확인할 것.',
@@ -7619,6 +7810,21 @@
       };
       const UA_DEFAULT_DETAIL = '제공 항목 상세는 아직 미측정 — 연동 시 data.go.kr 상세페이지의 상세기능을 확인할 것(경로 추측 금지 규칙).';
       const UA_COUNT = UA_CATALOG.reduce((n, [, items]) => n + items.length, 0);
+      const UA_CONN_COUNT = UA_CONNECTED.reduce((n, [, items]) => n + items.length, 0);
+      
+      function uaItemHtml(it) {
+        const dt = UA_DETAILS[it];
+        let det = dt ? '' : UA_DEFAULT_DETAIL;
+        if (dt) {
+          det = dt.d || '';
+          if (dt.o && dt.o.length) det += '<div style="margin-top:3px">' + dt.o.map((op) => '<code>' + op + '</code>').join(' ') + '</div>';
+          if (dt.p) det += '<div style="margin-top:3px">' + dt.p + '</div>';
+        }
+        return '<div class="ua-wrap"><label class="ua-item">'
+          + '<input type="checkbox" class="lp-cb ua-cb" data-n="' + it + '">'
+          + '<span class="ua-nm">' + it + '</span></label>'
+          + '<div class="ua-detail">' + det + '</div></div>';
+      }
       const unusedApiPanel = L.control({ position: 'topright' });
       unusedApiPanel.onAdd = () => {
         const div = L.DomUtil.create('div', 'lp ua');
@@ -7626,22 +7832,16 @@
           + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
           + '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>'
           + '<path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></button>'
-          + '<div class="lp-body ui-scroll"><div class="ua-note">승인만 받고 <b>미활용</b>인 공공데이터포털 API <b>'
+          + '<div class="lp-body ui-scroll">'
+          
+          + '<div class="ua-note">✅ <b>연결됨</b> <b>' + UA_CONN_COUNT + '종</b>'
+          + ' — 프록시까지 붙어 지금 부를 수 있다. 이름을 누르면 End Point·op 가 나온다.</div>'
+          + UA_CONNECTED.map(([sec, items]) => '<div class="ua-sec"><b>' + sec + ' (' + items.length + ')</b>'
+            + items.map(uaItemHtml).join('') + '</div>').join('')
+          + '<div class="ua-note">승인만 받고 <b>미활용</b>인 공공데이터포털 API <b>'
           + UA_COUNT + '종</b>. 체크 = 붙일 후보 선택 · 이름 클릭 = 제공 정보 펼침</div>'
           + UA_CATALOG.map(([sec, items]) => '<div class="ua-sec"><b>' + sec + ' (' + items.length + ')</b>'
-            + items.map((it) => {
-              const dt = UA_DETAILS[it];
-              let det = dt ? '' : UA_DEFAULT_DETAIL;
-              if (dt) {
-                det = dt.d || '';
-                if (dt.o && dt.o.length) det += '<div style="margin-top:3px">' + dt.o.map((op) => '<code>' + op + '</code>').join(' ') + '</div>';
-                if (dt.p) det += '<div style="margin-top:3px">' + dt.p + '</div>';
-              }
-              return '<div class="ua-wrap"><label class="ua-item">'
-                + '<input type="checkbox" class="lp-cb ua-cb" data-n="' + it + '">'
-                + '<span class="ua-nm">' + it + '</span></label>'
-                + '<div class="ua-detail">' + det + '</div></div>';
-            }).join('') + '</div>').join('')
+            + items.map(uaItemHtml).join('') + '</div>').join('')
           + '</div>';
         const toggle = div.querySelector('.lp-toggle');
         toggle.onclick = () => div.classList.toggle('open');
