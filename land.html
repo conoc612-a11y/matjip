@@ -8016,7 +8016,8 @@
                     
                     
                     if (window.__mjPopup) {
-                      window.__mjPopup.clearAndRender(cb2.checked ? [] : (UA_STATE_FIELDS[wk] || []));
+                      if (cb2.checked) window.__mjPopup.reload();
+                      else window.__mjPopup.clearAndRender(UA_STATE_FIELDS[wk] || []);
                     }
                   };
                 }
@@ -12783,6 +12784,13 @@
         clearAndRender(fields) {
           (fields || []).forEach((f) => { st[f] = null; });
           try { render(); } catch (_e) {  }
+        },
+        
+        
+        
+        
+        reload() {
+          try { afterBase(); } catch (_e) {  }
         },
       };
       let left = jibun ? 4 : 3;
