@@ -1533,6 +1533,78 @@
                 }
                 done();
               });
+
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              left++;
+              {
+                const YR = String(new Date().getFullYear() - 1);
+                const scan = (pageNo, cb2) => {
+                  dgkFetch('stockholderCompSttusList', 'stockholderCompSttusListApi',
+                    { presentnYear: YR, numOfRows: 500, pageNo }, (doc) => {
+                      const rows = doc ? [...doc.getElementsByTagName('stockholderCompSttus')] : [];
+                      const found = rows.find((r) => _xt(r, 'bizrno') === digits);
+                      if (found) { cb2(found); return; }
+                      
+                      if (rows.length < 500 || pageNo >= 20) { cb2(null); return; }
+                      scan(pageNo + 1, cb2);
+                    }, true);
+                };
+                scan(1, (hit) => {
+                  if (!hit) {
+                    
+                    parts.push(sec('대기업집단 (공정위)',
+                      '<span style="color:var(--muted);">공정위 대기업집단 소속회사 명단에 없습니다.</span>'));
+                    done();
+                    return;
+                  }
+                  const grp = _xt(hit, 'unityGrupNm');
+                  const ent = _xt(hit, 'entrprsNm');
+                  let h4 = '기업집단 <b>' + esc(grp) + '</b>'
+                    + (ent ? ' <span style="color:var(--muted);">' + esc(ent) + '</span>' : '');
+                  const rate = _xt(hit, 'allQotaRate');
+                  if (rate) h4 += '<div style="margin-top:3px;">보유 지분 <b>' + esc(rate) + '%</b>'
+                    + (_xt(hit, 'shrholdrNm') ? ' <span style="color:var(--muted);">'
+                      + esc(_xt(hit, 'shrholdrNm')) + '</span>' : '') + '</div>';
+                  
+                  
+                  
+                  const now2 = new Date();
+                  const ym2 = String(now2.getFullYear() - (now2.getMonth() < 5 ? 1 : 0)) + '05';
+                  dgkFetch('innerQotaEqltrmCmprList', 'innerQotaEqltrmCmprAssetsListApi',
+                    { presentnYm: ym2, numOfRows: 200, pageNo: 1 }, (d2) => {
+                      const as = d2 ? [...d2.getElementsByTagName('innerQotaEqltrmCmprAssets')] : [];
+                      const g2 = as.find((r) => _xt(r, 'unityGrupNm') === grp);
+                      if (g2) {
+                        
+                        const num = (v) => Number(String(v || '').replace(/[^\d]/g, '')) || 0;
+                        const eok4 = (v) => (v ? Math.round(num(v) / 100).toLocaleString('ko-KR') + '억' : '—');
+                        const pv = num(_xt(g2, 'prvYearCaplAmount'));
+                        const cv = num(_xt(g2, 'curYearCaplAmount'));
+                        const d = pv ? Math.round(((cv - pv) / pv) * 1000) / 10 : 0;
+                        h4 += '<div style="margin-top:3px;">집단 자본금 <b>' + eok4(_xt(g2, 'curYearCaplAmount')) + '</b>'
+                          + (d ? ' <span style="color:' + (d > 0 ? '#e8590c' : '#1971c2') + ';">'
+                            + (d > 0 ? '+' : '') + d + '%</span>' : '')
+                          + ' <span style="color:var(--muted);">전년 ' + eok4(_xt(g2, 'prvYearCaplAmount')) + '</span></div>';
+                        if (_xt(g2, 'smerNm')) {
+                          h4 += '<div style="color:var(--muted);font-size:12px;">총수 ' + esc(_xt(g2, 'smerNm'))
+                            + (_xt(g2, 'appnGrupSeCode') ? ' · ' + esc(_xt(g2, 'appnGrupSeCode')) : '') + '</div>';
+                        }
+                      }
+                      h4 += '<div style="color:var(--muted);font-size:12px;margin-top:3px;">출처 공정거래위원회 기업집단포털</div>';
+                      parts.push(sec('대기업집단 (공정위)', h4));
+                      done();
+                    }, true);
+                });
+              }
             }
           }
           _bizHistAdd({ bno: digits, name, bname, startDt, badge: badgeTxt, ts: Date.now() });
