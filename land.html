@@ -1374,7 +1374,14 @@
             const sec = (t, html) => '<div style="margin-bottom:10px;">'
               + '<div style="font-weight:700;font-size:13px;margin-bottom:4px;">' + t + '</div>'
               + '<div style="font-size:13px;">' + html + '</div></div>';
-            const nokey = (s) => String(s || '').replace(/\s+/g, '');
+            
+            
+            
+            const nokey = (s) => String(s || '')
+              .replace(/[（）()\[\]{}]/g, '')
+              .replace(/주식회사|유한회사|합자회사|합명회사|재단법인|사단법인/g, '')
+              .replace(/[\s.,'"·\-]/g, '')
+              .toLowerCase();
             const won = (v) => {
               const n = Number(v);
               if (!Number.isFinite(n) || !n) return '';
@@ -1422,7 +1429,7 @@
             } else {
               
               dgkFetch('GetCorpBasicInfoService_V2', 'getCorpOutline_V2',
-                { corpNm: bname, numOfRows: 5, pageNo: 1 }, (j) => {
+                { corpNm: bname, numOfRows: 5, pageNo: 1, resultType: 'json' }, (j) => {
                   const b = j && j.response && j.response.body;
                   const it = b && b.items && (b.items.item || b.items);
                   const a = Array.isArray(it) ? it : (it ? [it] : []);
@@ -1431,7 +1438,7 @@
                   const mk = String(c.corpRegMrktDcdNm || '');
                   const listed = /^(유가|코스닥|코넥스)/.test(mk);
                   dgkFetch('GetFinaStatInfoService_V2', 'getSummFinaStat_V2',
-                    { crno: c.crno, numOfRows: 3, pageNo: 1 }, (j2) => {
+                    { crno: c.crno, numOfRows: 3, pageNo: 1, resultType: 'json' }, (j2) => {
                       const b2 = j2 && j2.response && j2.response.body;
                       const i2 = b2 && b2.items && (b2.items.item || b2.items);
                       const f = (Array.isArray(i2) ? i2 : (i2 ? [i2] : []))[0];
@@ -1448,7 +1455,7 @@
                       
                       
                       dgkFetch('GetCorpGoveInfoService', 'getCorpOutline',
-                        { crno: c.crno, numOfRows: 3, pageNo: 1 }, (j3) => {
+                        { crno: c.crno, numOfRows: 3, pageNo: 1, resultType: 'json' }, (j3) => {
                           const b3 = j3 && j3.response && j3.response.body;
                           const i3 = b3 && b3.items && (b3.items.item || b3.items);
                           const g = (Array.isArray(i3) ? i3 : (i3 ? [i3] : []))[0];
