@@ -7872,6 +7872,9 @@
             
             
             
+            
+            
+            const UA_STATE_FIELDS = {"sht": ["sht", "demol", "shtJj", "shtPrc", "shtRecap"], "mtn": ["mtn"], "engy": ["engy"], "grn": ["grn"], "rst": ["rst"], "nps": ["nps", "npsAge", "npsScsn"], "sch": ["sch"], "sub": ["sub"], "trd": ["trd"], "rg": ["rg", "rgSeoul"], "lp": ["lp", "jnse"], "trdar": ["trdar", "lvp", "lvpWas"], "pms": ["pms", "impr", "tmpb", "hdcr", "pklot", "hstp"], "hpms": ["hpms", "hpcoop", "hpwlf"], "fund": ["reserve", "mgmt", "mgmtFull"], "bid": ["bid"], "kcr": ["kcr"], "dgk": ["aptBasis", "busVol", "franchise", "goodPrice", "lifeStore", "mabyun", "orderPlan", "wrantPd", "wthrWrn"]};
             const UA_POPUP_KEY = {
               '15000415': 'dgk',   
               '15000442': 'dgk',   
@@ -8011,9 +8014,9 @@
                     }
                     wantInfo[wk] = cb2.checked;
                     
-                    const op = map._popup;
-                    if (op && op._source && op._source._pop) {
-                      try { op.setContent(op._source._pop()); } catch (_e) {  }
+                    
+                    if (window.__mjPopup) {
+                      window.__mjPopup.clearAndRender(cb2.checked ? [] : (UA_STATE_FIELDS[wk] || []));
                     }
                   };
                 }
@@ -12770,6 +12773,17 @@
         
         
         repanPopup(getPopup(), true);
+      };
+
+      
+      
+      
+      
+      window.__mjPopup = {
+        clearAndRender(fields) {
+          (fields || []).forEach((f) => { st[f] = null; });
+          try { render(); } catch (_e) {  }
+        },
       };
       let left = jibun ? 4 : 3;
       const afterBase = () => {
