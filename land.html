@@ -7736,7 +7736,10 @@
             const m = /data\.go\.kr\/data\/(\d+)\//.exec(UA_DETAILS[k].p || '');
             if (m) detailByPk[m[1]] = UA_DETAILS[k];
           });
-          const shortTitle = (t) => String(t).replace(/^([^_]+)_/, '$1 · ');
+          
+          
+          
+          const shortTitle = (t) => String(t);
           UA_SERVICES.forEach(([cat, items]) => {
             const ch = L.DomUtil.create('div', '', kids);
             ch.style.cssText = 'padding:5px 8px 3px 14px;font-size:11px;font-weight:700;color:var(--muted);';
@@ -7926,17 +7929,17 @@
         ]],
         ['공공주택·임대', [
           {"t": "한국주택금융공사_전세자금보증상품 추천서비스", "pk": "15119396", "u": 4, "n": 4, "o": ["jnse-max-rent-amt-list-v2", "jnse-rcmd-list-v2", "jnse-grtd-loan-rat-list-v2", "jnse-prod-dtl-info-v2"]},
-          {"t": "한국토지주택공사_분양임대공고문 조회 서비스", "pk": "15058530", "u": 2, "n": 2, "o": ["lhLeaseNoticeInfo1", "lhLeaseNoticeInfo1"]},
+          {"t": "한국토지주택공사_분양임대공고문 조회 서비스", "pk": "15058530", "u": 1, "n": 1, "o": ["lhLeaseNoticeInfo1"]},
           {"t": "한국토지주택공사_분양임대공고별 상세정보 조회 서비스", "pk": "15057999", "u": 2, "n": 2, "o": ["lhLeaseNoticeDtlInfo1", "getLeaseNoticeDtlInfo1"]},
-          {"t": "한국토지주택공사_임대주택단지 조회 서비스", "pk": "15059475", "u": 2, "n": 2, "o": ["lhLeaseInfo1", "lhLeaseInfo1"]},
+          {"t": "한국토지주택공사_임대주택단지 조회 서비스", "pk": "15059475", "u": 1, "n": 1, "o": ["lhLeaseInfo1"]},
         ]],
         ['생활 인프라', [
           {"t": "건강보험심사평가원_병원정보서비스", "pk": "15001698", "u": 1, "n": 1, "o": ["getHospBasisList"]},
-          {"t": "경찰청_분실물정보 조회 서비스", "pk": "15000799", "u": 4, "n": 4, "o": ["LostGoodsInfoInqireService", "getLostGoodsInfoAccToClAreaPd", "LostGoodsInfoInqireService", "getLostGoodsInfoAccToClAreaPd"]},
-          {"t": "경찰청_습득물정보 조회 서비스", "pk": "15058696", "u": 4, "n": 4, "o": ["LosfundInfoInqireService", "getLosfundInfoAccToClAreaPd", "LosfundInfoInqireService", "getLosfundInfoAccToClAreaPd"]},
+          {"t": "경찰청_분실물정보 조회 서비스", "pk": "15000799", "u": 2, "n": 2, "o": ["LostGoodsInfoInqireService", "getLostGoodsInfoAccToClAreaPd"]},
+          {"t": "경찰청_습득물정보 조회 서비스", "pk": "15058696", "u": 2, "n": 2, "o": ["LosfundInfoInqireService", "getLosfundInfoAccToClAreaPd"]},
           {"t": "경찰청_포털기관 습득물정보 조회 서비스", "pk": "15057670", "u": 2, "n": 2, "o": ["LosPtfundInfoInqireService", "getPtLosfundInfoAccToClAreaPd"]},
           {"t": "경찰청_핸드폰 찾기 정보 조회 서비스", "pk": "15000442", "u": 2, "n": 2, "o": ["SearchMoblphonInfoInqireService", "getMoblphonAcctoKindAreaPeriodInfo"]},
-          {"t": "기상청_CCTV 기반 도로날씨정보 조회서비스", "pk": "15057966", "u": 4, "n": 4, "o": ["RoadWthrInfoService", "getCctvStnRoadWthr", "RoadWthrInfoService", "getCctvStnRoadWthr"]},
+          {"t": "기상청_CCTV 기반 도로날씨정보 조회서비스", "pk": "15057966", "u": 2, "n": 2, "o": ["RoadWthrInfoService", "getCctvStnRoadWthr"]},
           {"t": "기상청_기상특보 조회서비스", "pk": "15000415", "u": 2, "n": 2, "o": ["WthrWrnInfoService", "getWthrWrnList"]},
           {"t": "산림청_명산등산로_GW", "pk": "15158915", "u": 2, "n": 2, "o": ["gdTrailInfoImgOpenAPI", "gdTrailInfoOpenAPI"]},
           {"t": "서울교통공사_최단경로이동정보", "pk": "15143842", "u": 1, "n": 1, "o": ["getShtrmPath2"]},
@@ -7954,7 +7957,7 @@
           {"t": "국민연금공단_탈퇴사업장 정보", "pk": "15020284", "u": 2, "n": 2, "o": ["getDetailInfoSearchV2", "getBassInfoSearchV2"]},
           {"t": "국세청_사업자등록정보 진위확인 및 상태조회 서비스", "pk": "15081808", "u": 2, "n": 2, "o": ["validate", "status"]},
           {"t": "금융위원회_금융회사공시정보", "pk": "15059651", "u": 30, "n": 30, "o": ["getFnCoConvBondRighDiscInfo_V2", "getFnCoOffsSecuMarkListDiscInfo_V2", "getFnCoLitiEtcDiscInfo_V2", "getFnCoProcByCredBankDiscInfo_V2"]},
-          {"t": "금융위원회_기업 재무정보", "pk": "15043459", "u": 6, "n": 6, "o": ["getIncoStat_V2", "getBs_V2", "getSummFinaStat_V2", "getIncoStat_V2"]},
+          {"t": "금융위원회_기업 재무정보", "pk": "15043459", "u": 3, "n": 3, "o": ["getIncoStat_V2", "getBs_V2", "getSummFinaStat_V2"]},
           {"t": "금융위원회_기업지배구조 공시정보", "pk": "15151165", "u": 3, "n": 3, "o": ["getCGIdvpnPayInfo", "getCGSmamInfo", "getCGUnregExutInfo"]},
           {"t": "금융위원회_주식시세정보", "pk": "15094808", "u": 4, "n": 4, "o": ["getStockPriceInfo", "getPreemptiveRightCertificatePriceInfo", "getSecuritiesPriceInfo", "getPreemptiveRightSecuritiesPriceInfo"]},
           {"t": "금융위원회_지배구조정보", "pk": "15059597", "u": 2, "n": 2, "o": ["GetCorpGoveInfoService", "getStockholderInfo"]},
@@ -7986,8 +7989,6 @@
         ['그 외', ['나라장터 발주계획(조달청)', '바다갈라짐 체험지수', '바다여행지수', '분실물 정보(경찰청)', '습득물 정보(경찰청)', '포락지 관리정보(해수부)', '포털기관 습득물(경찰청)', '핸드폰 찾기(경찰청)']],
       ];
 
-      
-      
       
       
       
