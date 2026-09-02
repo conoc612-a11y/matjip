@@ -8005,9 +8005,36 @@
             });
           });
           
+          
+          
+          
+          
+          const SECTION_ORDER = [
+            
+            '실거래', '법원경매', '청약',
+            
+            '건물 상세 정보 (팝업)', '지적·행정경계',
+            
+            '용도지역·지구·구역', '지구단위계획구역', '도시계획시설', '규제구역',
+            
+            '도시계획사업', '현장 확인', '주제도',
+            
+            '기업·금융 (공공데이터)', '그 외 공공데이터', '지도 기반 · 외부 서비스',
+          ];
           {
+            const byName = {};
+            body.querySelectorAll('.lp-sec').forEach((s) => {
+              const n = s.querySelector('.lp-head .lp-name');
+              if (n) byName[n.textContent.trim()] = s;
+            });
+            
             let ref = roleBar.nextSibling;
-            newSecs.forEach((s2) => { body.insertBefore(s2, ref); ref = s2.nextSibling; });
+            SECTION_ORDER.forEach((nm) => {
+              const s = byName[nm];
+              if (!s) return;
+              body.insertBefore(s, ref);
+              ref = s.nextSibling;
+            });
           }
           
           Object.values(secByName).forEach((sec) => {
