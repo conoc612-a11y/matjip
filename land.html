@@ -1437,40 +1437,46 @@
                   if (!c || !c.crno) { done(); return; }
                   const mk = String(c.corpRegMrktDcdNm || '');
                   const listed = /^(유가|코스닥|코넥스)/.test(mk);
-                  dgkFetch('GetFinaStatInfoService_V2', 'getSummFinaStat_V2',
-                    { crno: c.crno, numOfRows: 3, pageNo: 1, resultType: 'json' }, (j2) => {
+                  
+                  
+                  
+                  fetch(MOLIT_PROXY + '?svc=GetFinaStatInfoService_V2&op=getSummFinaStat_V2'
+                    + '&crno=' + encodeURIComponent(c.crno) + '&pageNo=1&numOfRows=20&resultType=json')
+                    .then((r) => (r.ok ? r.json() : null))
+                    .then((j2) => {
                       const b2 = j2 && j2.response && j2.response.body;
                       const i2 = b2 && b2.items && (b2.items.item || b2.items);
-                      const f = (Array.isArray(i2) ? i2 : (i2 ? [i2] : []))[0];
-                      let html = '법인등록번호 <b>' + esc(c.crno) + '</b>'
-                        + (mk ? ' · ' + esc(mk) + (listed ? ' 상장' : '') : '');
-                      if (c.enpBsadr) {
-                        html += '<div style="color:var(--muted);font-size:12px;">' + esc(c.enpBsadr) + '</div>';
-                      }
+                      const arr = Array.isArray(i2) ? i2 : (i2 ? [i2] : []);
+                      
+                      const f = arr.slice().sort((x, y) =>
+                        String(y.bizYear || '').localeCompare(String(x.bizYear || '')))[0];
                       if (f) {
-                        html += '<div style="margin-top:3px;">매출 <b>' + (won(f.enpSaleAmt) || '—') + '</b>'
+                        html += '<div style="margin-top:3px;">'
+                          + (f.bizYear ? esc(f.bizYear) + '년 ' : '')
+                          + '매출 <b>' + (won(f.enpSaleAmt) || '—') + '</b>'
                           + ' · 자산 <b>' + (won(f.enpTastAmt) || '—') + '</b>'
-                          + ' · 부채 <b>' + (won(f.enpTdbtAmt) || '—') + '</b></div>';
+                          + ' · 부채 <b>' + (won(f.enpTdbtAmt) || '—') + '</b>'
+                          + '</div>';
                       }
                       
-                      
-                      dgkFetch('GetCorpGoveInfoService', 'getCorpOutline',
+                      dgkFetch('GetCorpGoveInfoService', 'getReprDireInfo',
                         { crno: c.crno, numOfRows: 3, pageNo: 1, resultType: 'json' }, (j3) => {
                           const b3 = j3 && j3.response && j3.response.body;
                           const i3 = b3 && b3.items && (b3.items.item || b3.items);
                           const g = (Array.isArray(i3) ? i3 : (i3 ? [i3] : []))[0];
-                          if (g) {
-                            const bits = [
-                              g.rprsvNm ? '대표 ' + esc(g.rprsvNm) : '',
-                              g.enpEstbDt ? '설립 ' + esc(String(g.enpEstbDt).slice(0, 4)) : '',
-                              g.enpEmpeCnt ? '임직원 ' + Number(g.enpEmpeCnt).toLocaleString('ko-KR') + '명' : '',
-                            ].filter(Boolean).join(' · ');
-                            if (bits) html += '<div style="margin-top:3px;">' + bits + '</div>';
+                          if (g && (g.reprDireNm || g.reprNm)) {
+                            html += '<div style="margin-top:3px;">대표이사 <b>'
+                              + esc(String(g.reprDireNm || g.reprNm)) + '</b></div>';
                           }
                           html += '<div style="color:var(--muted);font-size:12px;margin-top:3px;">출처 금융위원회</div>';
                           parts.push(sec('법인 정보 (금융위)', html));
                           done();
                         });
+                    })
+                    .catch(() => {
+                      html += '<div style="color:var(--muted);font-size:12px;margin-top:3px;">출처 금융위원회</div>';
+                      parts.push(sec('법인 정보 (금융위)', html));
+                      done();
                     });
                 });
 
