@@ -8878,8 +8878,14 @@
         .map(([k, v]) => k + '=' + encodeURIComponent(v)).join('&');
       const url = `${DGK_PROXY}?svc=${svc}&op=${op}${q ? '&' + q : ''}`;
       if (_dgkCache.has(url)) { cb(_dgkCache.get(url)); return; }
+      
+      
+      
+      
+      
       fetch(url)
-        .then((r) => (r.ok ? r.text() : null))
+        .then((r) => (r.ok ? r.arrayBuffer() : null))
+        .then((buf) => (buf ? new TextDecoder('utf-8').decode(buf) : null))
         .then((txt) => {
           let out = null;
           if (txt) {
@@ -8977,6 +8983,39 @@
           _corpGovCache.set(crno, out);
           cb(out);
         });
+    }
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    const _corpGroupCache = new Map();
+    function loadCorpGroup(crno, cb) {
+      if (!crno) { cb(null); return; }
+      if (_corpGroupCache.has(crno)) { cb(_corpGroupCache.get(crno)); return; }
+      const yr = new Date().getFullYear();
+      dgkFetch('stockholderCompSttusList', 'stockholderCompSttusListApi',
+        { jurirno: crno, presentnYear: yr, pageNo: 1, numOfRows: 10 }, (doc) => {
+          if (!doc) { cb(null); return; }
+          const rows = [...doc.getElementsByTagName('stockholderCompSttus')].map((el) => ({
+            grp: _xt(el, 'unityGrupNm'),
+            se: _xt(el, 'shrholdrSe'),
+            nm: _xt(el, 'shrholdrNm'),
+            rate: Number(_xt(el, 'allQotaRate')) || 0,
+          }));
+          if (!rows.length) { _corpGroupCache.set(crno, null); cb(null); return; }
+          
+          
+          rows.sort((a, b2) => (a.se === '소속회사' ? -1 : 1) - (b2.se === '소속회사' ? -1 : 1) || b2.rate - a.rate);
+          const out = { grp: rows[0].grp, top: rows[0] };
+          _corpGroupCache.set(crno, out);
+          cb(out);
+        }, true);
     }
 
     function loadAptBasis(kaptCode, cb) {
@@ -10683,6 +10722,13 @@
                           + (c.gov.top.length > 1 ? ` <span style="color:var(--c-muted);">외 ${c.gov.top.length - 1}인</span>` : '')
                           + '</div>'
                         : '')
+                      
+                      
+                      + (c.grp && c.grp.grp
+                        ? `<div style="font-size:12px;margin-top:2px;">대기업집단 <b>${esc(c.grp.grp)}</b> 계열`
+                          + (c.grp.top && c.grp.top.nm ? ` <span style="color:var(--c-muted);">(${esc(c.grp.top.nm)} ${esc(String(c.grp.top.rate))}%)</span>` : '')
+                          + '</div>'
+                        : '')
                       + '</div>';
                   }).join('')
                   + '<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">금융위 기업기본정보 · '
@@ -11568,6 +11614,7 @@
             withCrno.forEach((c) => {
               loadCorpFinance(c.top.crno, (fin) => { c.fin = fin; render(); });
               loadCorpGovern(c.top.crno, (gov) => { c.gov = gov; render(); });
+              loadCorpGroup(c.top.crno, (grp) => { c.grp = grp; render(); });
             });
           }));
         };
