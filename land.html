@@ -1438,6 +1438,12 @@
                   const mk = String(c.corpRegMrktDcdNm || '');
                   const listed = /^(유가|코스닥|코넥스)/.test(mk);
                   
+                  let html = '법인등록번호 <b>' + esc(c.crno) + '</b>'
+                    + (mk ? ' · ' + esc(mk) + (listed ? ' 상장' : '') : '');
+                  if (c.enpBsadr) {
+                    html += '<div style="color:var(--muted);font-size:12px;">' + esc(c.enpBsadr) + '</div>';
+                  }
+                  
                   
                   
                   fetch(MOLIT_PROXY + '?svc=GetFinaStatInfoService_V2&op=getSummFinaStat_V2'
