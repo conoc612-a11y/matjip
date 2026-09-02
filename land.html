@@ -7706,7 +7706,13 @@
         
         
         
-        {
+        
+        
+        
+        
+        
+        
+        setTimeout(() => {
           const total = UA_CONNECTED.reduce((a, [, ns]) => a + ns.length, 0);
           const sec = L.DomUtil.create('div', 'lp-sec closed', body);
           const head = L.DomUtil.create('div', 'lp-head', sec);
@@ -7750,7 +7756,7 @@
               };
             });
           });
-        }
+        }, 0);
 
         
         
