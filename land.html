@@ -7754,10 +7754,10 @@
       
       
       const UA_CONNECTED = [
-        ['부동산·건축', ['청약 당첨자 정보(청약홈)', '공동주택 기본정보', '아파트 매매 실거래가(기본판)', '파산금융회사 매물현황', '하자담보책임기간', '온비드 부동산 물건목록', '온비드 부동산 물건상세', '온비드 공고상세', '온비드 입찰결과상세']],
+        ['부동산·건축', ['청약 당첨자 정보(청약홈)', '공동주택 기본정보', '아파트 매매 실거래가(기본판)', '파산금융회사 매물현황', '하자담보책임기간', '온비드 부동산 물건목록', '온비드 부동산 물건상세', '온비드 공고상세', '온비드 입찰결과상세', '토지이용규제(행위제한)', '건물에너지(전기·가스)', '장기수선충당금', '공동주택 입찰결과공지']],
         ['공공주택·임대', ['LH 분양임대공고 상세', 'LH 분양임대공고문', 'LH 임대주택단지']],
         ['생활 인프라', ['서울교통공사 최단경로', '공공도서관 소장도서', '착한가격업소 현황', 'CCTV 도로날씨', '공항 출국장 혼잡도', '기상특보 조회', '데이터 제공표준(행안부)', '마을변호사 현황(법무부)', '명산 등산로', '생필품 가격 정보', '공중화장실(행안부)', '녹색건축 인증(한국부동산원)']],
-        ['사업자·기업·금융', ['브랜드 가맹점·직영점(공정위)', '브랜드별 가맹점 현황(공정위)', '브랜드 가맹점 단위면적당 평균매출(공정위)', '가맹본부 일반정보(공정위)', '가맹본부 재무정보(공정위)', '국민연금 가입현황', '국민연금 탈퇴사업장', '기업기본정보(금융위)', '금융회사 공시(금융위)', '기업 재무정보(금융위)', '기업정보 서비스(예탁결제원)', '기업지배구조 공시(금융위)', '기업집단 내부지분(공정위)', '대기업집단 주주현황(공정위)', '주식시세정보(금융위)', '주식정보 서비스(예탁결제원)', '지배구조정보(금융위)']],
+        ['사업자·기업·금융', ['브랜드 가맹점·직영점(공정위)', '브랜드별 가맹점 현황(공정위)', '브랜드 가맹점 단위면적당 평균매출(공정위)', '가맹본부 일반정보(공정위)', '가맹본부 재무정보(공정위)', '국민연금 가입현황', '국민연금 탈퇴사업장', '국민연금 가입 사업장 내역', '전세자금보증(주금공)', '기업기본정보(금융위)', '금융회사 공시(금융위)', '기업 재무정보(금융위)', '기업정보 서비스(예탁결제원)', '기업지배구조 공시(금융위)', '기업집단 내부지분(공정위)', '대기업집단 주주현황(공정위)', '주식시세정보(금융위)', '주식정보 서비스(예탁결제원)', '지배구조정보(금융위)']],
         ['그 외', ['나라장터 발주계획(조달청)', '바다갈라짐 체험지수', '바다여행지수', '분실물 정보(경찰청)', '습득물 정보(경찰청)', '포락지 관리정보(해수부)', '포털기관 습득물(경찰청)', '핸드폰 찾기(경찰청)']],
       ];
 
@@ -7778,6 +7778,38 @@
       const UA_DETAILS = {
 
         
+        
+        '토지이용규제(행위제한)': {
+          d: '팝업 · 행위제한 보기 버튼("이 땅에 무엇을 지을 수 있나"). 정식명 <b>국토교통부_토지 이용 규제 정보서비스</b>. ⚠️ op 접두사가 <code>DT</code> 다(get 이 아니다). 응답이 <b>EUC-KR XML</b> 이라 <code>_type=json</code> 을 무시한다.',
+          o: ['DTarLandUseInfo', 'DTsearchLunCd'],
+          p: '프록시 <code>svc=arLandUseInfoService</code> · 포털 pk <a href="https://www.data.go.kr/data/15058410/openapi.do" target="_blank" rel="noopener">15058410</a>',
+        },
+        '건물에너지(전기·가스)': {
+          d: '팝업 · 에너지 사용량 + 레이어 토글. 정식명 <b>국토교통부_건축HUB_건물에너지정보 서비스</b>. 클릭당 호출이 2회(최신 월이 비면 최대 6회) 늘어난다.',
+          o: ['getBeElctyUsgInfo', 'getBeGasUsgInfo'],
+          p: '프록시 <code>svc=BldEngyHubService</code> · 포털 pk <a href="https://www.data.go.kr/data/15135963/openapi.do" target="_blank" rel="noopener">15135963</a>',
+        },
+        '장기수선충당금': {
+          d: '팝업 · 아파트 보유비용 + 레이어 토글. 정식명 <b>국토교통부_공동주택관리비(장기수선충당금)정보서비스</b>. 🔑 <code>kaptCode</code> 가 필요해 <b>공동주택 단지 목록</b>(PNU→kaptCode 브리지)을 먼저 부른다.',
+          o: ['getHsmpReserveBalanceInfoV3'],
+          p: '프록시 <code>svc=AptRepairsCostServiceV3</code> · 포털 pk <a href="https://www.data.go.kr/data/15059160/openapi.do" target="_blank" rel="noopener">15059160</a>',
+        },
+        '공동주택 입찰결과공지': {
+          d: '팝업 · 입찰 · 수의계약(입찰공고의 결과보기). 정식명 <b>국토교통부_공동주택 입찰결과공지 정보제공 서비스</b>. ⚠️ 승인은 됐지만 <b>데이터가 통째로 비어 있다</b> — 4개 경로·2013~2026 전 연도 0건(실측). → <code>api/SPEC_ERRATA.md</code> §14.',
+          o: ['getBidEntrpsInfoSearchV3'],
+          p: '프록시 <code>svc=ApHusBidResultNoticeInfoOfferServiceV3</code> · 포털 pk <a href="https://www.data.go.kr/data/15059177/openapi.do" target="_blank" rel="noopener">15059177</a>',
+        },
+        '국민연금 가입 사업장 내역': {
+          d: '팝업 · 법인 사업장(이 법정동 사업장 수·상위 이름). 정식명 <b>국민연금공단_국민연금 가입 사업장 내역</b>. ⚠️ <b>3인 이상 법인만</b> 집계된다(개인사업자·소규모는 빠진다).',
+          o: ['getBassInfoSearchV2'],
+          p: '프록시 <code>svc=NpsBplcInfoInqireServiceV2</code> · 포털 pk <a href="https://www.data.go.kr/data/3046071/openapi.do" target="_blank" rel="noopener">3046071</a>',
+        },
+        '전세자금보증(주금공)': {
+          d: '팝업 · 전월세 물건("이 지역에서 전세보증을 얼마까지 받을 수 있나"). 정식명 <b>한국주택금융공사_전세자금보증상품 추천서비스</b>. ⚠️ 기관코드가 <b>B551408</b> 이고 op 이름에 <b>하이픈</b>이 들어간다.',
+          o: ['jnse-max-rent-amt-list-v2', 'jnse-prod-dtl-info-v2', 'jnse-grtd-loan-rat-list-v2', 'jnse-rcmd-list-v2'],
+          p: '프록시 <code>svc=jnse-rcmd-info-v2</code> · 포털 pk <a href="https://www.data.go.kr/data/15119396/openapi.do" target="_blank" rel="noopener">15119396</a>',
+        },
+
         
         
         '온비드 부동산 물건목록': {
@@ -8016,8 +8048,9 @@
           p: '프록시 <code>svc=FftcBrandIndutyDropFrcsStatsService</code> · 포털 pk <a href="https://www.data.go.kr/data/15110284/openapi.do" target="_blank" rel="noopener">15110284</a>',
         },
         '서울교통공사 최단경로': {
-          d: '서울교통공사_최단경로이동정보. 실호출에서 <b>일시 오류(HTTP_ERROR)</b> 가 났다 — 재시도해서 판정할 것. 미신청이 아니다.',
-          p: '포털 pk <a href="https://www.data.go.kr/data/15143842/openapi.do" target="_blank" rel="noopener">15143842</a>',
+          d: '팝업 · 공공데이터 더보기(가까운 역 → 주요 역 소요시간·요금). 정식명 <b>서울교통공사_최단경로이동정보</b>. ⚠️ 옛 <b>HTTP_ERROR(04)</b> 는 장애가 아니라 <b>필수 파라미터 누락</b>이었다(<code>dptreStn·arvlStn·searchDt</code>). 실측: 서울역→강남 15,074m·1,770초·1,650원.',
+          o: ['getShtrmPath2'],
+          p: '프록시 <code>svc=path2</code> · 포털 pk <a href="https://www.data.go.kr/data/15143842/openapi.do" target="_blank" rel="noopener">15143842</a>',
         },
         '청약 당첨자 정보(청약홈)': {
           d: '프록시 연결 — 화면 연결은 아직. 정식명 <b>한국부동산원_청약홈 청약 신청·당첨자 정보 조회 서비스</b>. 🔴 베이스가 <b>api.odcloud.kr</b> 다 — apis.data.go.kr 로 부르면 NO_OPENAPI_SERVICE_ERROR 다(실측). 페이징도 <code>page/perPage</code> 다. 실측: 서울 연령대별 당첨자 통계 matchCount 868.',
