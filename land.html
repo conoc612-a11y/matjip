@@ -7995,10 +7995,26 @@
                   cb2.checked = !!wantInfo[wk];
                   cb2.onclick = (e) => { e.stopPropagation(); };
                   cb2.onchange = () => {
-                    wantInfo[wk] = cb2.checked;
+                    
+                    
+                    
                     
                     const pair = _infoMap.find((x) => x[1] === wk);
-                    if (pair) { if (cb2.checked) map.addLayer(pair[0]); else map.removeLayer(pair[0]); }
+                    if (pair) {
+                      if (cb2.checked) {
+                        map.addLayer(pair[0]);
+                        map.fire('overlayadd', { layer: pair[0] });
+                      } else {
+                        map.removeLayer(pair[0]);
+                        map.fire('overlayremove', { layer: pair[0] });
+                      }
+                    }
+                    wantInfo[wk] = cb2.checked;
+                    
+                    const op = map._popup;
+                    if (op && op._source && op._source._pop) {
+                      try { op.setContent(op._source._pop()); } catch (_e) {  }
+                    }
                   };
                 }
                 let built2 = false;
