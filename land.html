@@ -7895,6 +7895,20 @@
             }
           }
 
+          
+          
+          
+          
+          {
+            const first = body.firstChild;
+            const secs = [...body.querySelectorAll('.lp-sec')].filter((s) => {
+              const n = s.querySelector('.lp-head .lp-name');
+              return n && (n.textContent.trim() === '연결된 공공데이터'
+                        || n.textContent.trim() === '필지 팝업 데이터');
+            });
+            secs.forEach((s) => body.insertBefore(s, first));
+          }
+
         }, 0);
 
         
