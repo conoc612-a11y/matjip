@@ -10331,20 +10331,30 @@
     
     
     
+    
+    
+    
+    
     function loadAptIdInfo(pnu, addr, cb) {
       const p = String(pnu || '');
       const a = String(addr || '').trim();
       if (!/^\d{19}$/.test(p) || a.length < 4) { cb(null); return; }
+      const m = a.match(/([가-힣]+구)\s+([가-힣0-9]+동)\s*(\d+)?/);
+      if (!m) { cb(null); return; }
+      const wide = `${m[1]} ${m[2]}`;
       
-      const m = a.match(/([가-힣]+구)\s+([가-힣0-9]+동)/);
-      const q = m ? `${m[1]} ${m[2]}` : a.split(/\s+/).slice(1, 3).join(' ');
-      if (!q) { cb(null); return; }
-      dgkFetch('AptIdInfoSvc', 'getAptInfo',
-        { page: 1, perPage: 100, 'cond[ADRES::LIKE]': q }, (j) => {
-          const rows = (j && j.data) || [];
-          const hit = rows.find((x) => String(x.PNU || '') === p);
-          cb(hit || null);
-        });
+      const tryQ = (q, next) => {
+        dgkFetch('AptIdInfoSvc', 'getAptInfo',
+          { page: 1, perPage: 100, 'cond[ADRES::LIKE]': q }, (j) => {
+            const rows = (j && j.data) || [];
+            const hit = rows.find((x) => String(x.PNU || '') === p);
+            if (hit) { cb(hit); return; }
+            if (next) { next(); return; }
+            cb(null);
+          });
+      };
+      if (m[3]) tryQ(`${wide} ${m[3]}`, () => tryQ(wide, null));
+      else tryQ(wide, null);
     }
 
     
