@@ -7900,20 +7900,9 @@
               '3056339': 'dgk',   
             };
             
-          const total = UA_SERVICES_N;
-          const sec = L.DomUtil.create('div', 'lp-sec closed', body);
-          const head = L.DomUtil.create('div', 'lp-head', sec);
-          head.innerHTML = '<span style="width:13px;"></span><span class="lp-name">연결된 공공데이터</span>'
-            + `<span style="font-weight:400;font-size:11px;color:var(--muted);">${total}종</span>`
-            + '<span class="lp-arrow">▾</span>';
-          const kids = L.DomUtil.create('div', 'lp-kids', sec);
-          const toggle = (e) => { if (e) e.stopPropagation(); sec.classList.toggle('closed'); };
-          head.onclick = toggle;
-          const note = L.DomUtil.create('div', '', kids);
-          note.style.cssText = 'padding:2px 10px 6px 14px;font-size:11px;color:var(--muted);line-height:1.5;';
-          note.textContent = '이 앱이 쓰는 데이터 출처 전부입니다 — 공공데이터포털 + 기관 자체 서비스 + 민간 API.'
-            + ' 지도 레이어로 안 보이는 것도 있습니다(팝업 안에서 쓰이거나 수집기가 미리 받아 둔 것).'
-            + ' 이름을 누르면 무엇을 주는지 펼쳐집니다.';
+          
+          
+          
           
           
           const detailByPk = {};
@@ -7921,51 +7910,51 @@
             const m = /data\.go\.kr\/data\/(\d+)\//.exec(UA_DETAILS[k].p || '');
             if (m) detailByPk[m[1]] = UA_DETAILS[k];
           });
-          
-          
-          
-          const shortTitle = (t) => String(t);
+          const uaSecs = [];
           UA_SERVICES.forEach(([cat, items]) => {
-            const ch = L.DomUtil.create('div', '', kids);
-            ch.style.cssText = 'padding:5px 8px 3px 14px;font-size:11px;font-weight:700;color:var(--muted);';
-            ch.textContent = `${cat} (${items.length})`;
+            const sec = L.DomUtil.create('div', 'lp-sec closed', body);
+            uaSecs.push(sec);
+            const head = L.DomUtil.create('div', 'lp-head', sec);
+            head.innerHTML = '<span style="width:13px;"></span>'
+              + '<span class="lp-name">공공데이터 · ' + esc(cat) + '</span>'
+              + `<span style="font-weight:400;font-size:11px;color:var(--muted);">${items.length}종</span>`
+            head.innerHTML += '<span class="lp-arrow">▾</span>';
+            const kids = L.DomUtil.create('div', 'lp-kids', sec);
+            head.onclick = () => { sec.classList.toggle('closed'); };
             items.forEach((it) => {
               const row = L.DomUtil.create('div', '', kids);
               const btn = L.DomUtil.create('div', '', row);
-              
-              
-              
               const wLayerName = it.w ? it.w.split(' · ')[0] : '';
               const wLayer = LAYER_BY_NAME[wLayerName] || null;
               const wKey = (!wLayer && it.pk) ? (UA_POPUP_KEY[it.pk] || '') : '';
               const canToggle = !!(wLayer || wKey);
               btn.style.cssText = 'padding:3px 8px 3px 14px;font-size:12px;cursor:pointer;'
                 + 'border-radius:6px;display:flex;align-items:flex-start;gap:6px;';
-              const wTxt = it.w ? wLayerName : (it.pk ? '필지 팝업' : '지도 기반 — 끌 수 없음');
+              const wTxt = wLayerName || (it.pk ? '필지 팝업' : '지도 기반 — 끌 수 없음');
               btn.innerHTML = (canToggle ? '<input type="checkbox" class="lp-cb" style="margin-top:3px;">'
                                          : '<span style="width:13px;flex-shrink:0;"></span>')
-                + '<span style="flex:1;min-width:0;">' + esc(shortTitle(it.t))
+                + '<span style="flex:1;min-width:0;">' + esc(it.t)
                 + (it.n ? ` <span style="color:var(--muted);font-size:10.5px;">op ${it.u}/${it.n}</span>` : '')
-                + (wTxt ? `<div style="font-size:10.5px;color:var(--muted);">↳ ${esc(wTxt)}</div>` : '')
+                + `<div style="font-size:10.5px;color:var(--muted);">↳ ${esc(wTxt)}</div>`
                 + '</span>';
               const cb1 = btn.querySelector('.lp-cb');
               if (cb1) {
                 cb1.checked = wLayer ? map.hasLayer(wLayer) : !!wantInfo[wKey];
                 cb1.onclick = (e) => { e.stopPropagation(); };
                 cb1.onchange = () => {
+                  
                   if (wLayer) {
-                    
                     if (cb1.checked) { map.addLayer(wLayer); map.fire('overlayadd', { layer: wLayer }); }
                     else { map.removeLayer(wLayer); map.fire('overlayremove', { layer: wLayer }); }
                     return;
                   }
-                  
                   const pair = _infoMap.find((x) => x[1] === wKey);
                   if (pair) {
                     if (cb1.checked) { map.addLayer(pair[0]); map.fire('overlayadd', { layer: pair[0] }); }
                     else { map.removeLayer(pair[0]); map.fire('overlayremove', { layer: pair[0] }); }
                   }
                   wantInfo[wKey] = cb1.checked;
+                  
                   if (window.__mjPopup) {
                     if (cb1.checked) window.__mjPopup.reload();
                     else window.__mjPopup.clearAndRender(UA_STATE_FIELDS[wKey] || []);
@@ -7975,7 +7964,7 @@
               btn.onmouseenter = () => { btn.style.background = 'var(--c-hover)'; };
               btn.onmouseleave = () => { btn.style.background = ''; };
               const box = L.DomUtil.create('div', '', row);
-              box.style.cssText = 'display:none;padding:4px 10px 7px 22px;font-size:11.5px;'
+              box.style.cssText = 'display:none;padding:4px 10px 7px 33px;font-size:11.5px;'
                 + 'color:var(--muted);line-height:1.55;';
               let built = false;
               btn.onclick = (e) => {
@@ -7983,119 +7972,24 @@
                 if (!built) {
                   built = true;
                   const d = detailByPk[it.pk] || UA_DETAILS[it.t];
-                  
                   box.innerHTML = (d && d.d ? d.d + '<br>' : '')
-                    + `제공 op <b>${it.n}개</b> 중 <b>${it.u}개</b> 사용`
-                    + (it.o && it.o.length ? ` — <code>${esc(it.o.join('</code> · <code>'))}</code>` : '')
-                    + `<div style="margin-top:3px;">포털 pk <a href="https://www.data.go.kr/data/${esc(it.pk)}/openapi.do" target="_blank" rel="noopener">${esc(it.pk)}</a></div>`;
+                    + (it.pk
+                      ? (wLayer ? `<div>지도 레이어 — <b>${esc(wLayerName)}</b></div>`
+                                : '<div><b>필지를 클릭</b>하면 팝업 안에서 보입니다.</div>')
+                        + `<div style="margin-top:3px;">제공 op <b>${it.n}개</b> 중 <b>${it.u}개</b> 사용</div>`
+                        + `<div style="margin-top:3px;">포털 pk <a href="https://www.data.go.kr/data/${esc(it.pk)}/openapi.do" target="_blank" rel="noopener">${esc(it.pk)}</a></div>`
+                      : esc(it.d || '') + '<div style="margin-top:3px;">공공데이터포털을 거치지 않고 '
+                        + '<b>기관이 직접 운영</b>하는 서비스입니다.</div>');
                 }
                 box.style.display = box.style.display === 'none' ? 'block' : 'none';
               };
             });
           });
           
-          
-          
-          
-          
-          
-          {
-            
-            const pop = [];
-            UA_SERVICES.forEach(([, items]) => items.forEach((it) => {
-              if (it.pk && !it.w) pop.push(it);   
-            }));
-            if (pop.length) {
-              const sec2 = L.DomUtil.create('div', 'lp-sec closed', body);
-              const head2 = L.DomUtil.create('div', 'lp-head', sec2);
-              head2.innerHTML = '<span style="width:13px;"></span>'
-                + '<span class="lp-name">필지 팝업 데이터</span>'
-                + `<span style="font-weight:400;font-size:11px;color:var(--muted);">${pop.length}종</span>`
-                + '<span class="lp-arrow">▾</span>';
-              const kids2 = L.DomUtil.create('div', 'lp-kids', sec2);
-              head2.onclick = () => { sec2.classList.toggle('closed'); };
-              const note2 = L.DomUtil.create('div', '', kids2);
-              note2.style.cssText = 'padding:2px 10px 6px 14px;font-size:11px;color:var(--muted);line-height:1.5;';
-              note2.textContent = '지도에 레이어로 안 그려지는 데이터입니다. 지도에서 필지를 클릭하면'
-                + ' 그 필지의 팝업 안에서 보입니다. 이름을 누르면 무엇을 주는지 펼쳐집니다.';
-              pop.forEach((it) => {
-                const row = L.DomUtil.create('div', '', kids2);
-                const b2 = L.DomUtil.create('div', '', row);
-                
-                
-                
-                
-                const wk = UA_POPUP_KEY[it.pk] || '';
-                b2.style.cssText = 'padding:3px 8px 3px 14px;font-size:12px;cursor:pointer;'
-                  + 'border-radius:6px;display:flex;align-items:center;gap:6px;';
-                b2.innerHTML = (wk ? '<input type="checkbox" class="lp-cb">' : '<span style="width:13px;"></span>')
-                  + '<span style="flex:1;min-width:0;">' + esc(it.t)
-                  + ` <span style="color:var(--muted);font-size:10.5px;">op ${it.u}/${it.n}</span>` + '</span>';
-                b2.onmouseenter = () => { b2.style.background = 'var(--c-hover)'; };
-                b2.onmouseleave = () => { b2.style.background = ''; };
-                const bx = L.DomUtil.create('div', '', row);
-                bx.style.cssText = 'display:none;padding:4px 10px 7px 22px;font-size:11.5px;'
-                  + 'color:var(--muted);line-height:1.55;';
-                
-                const cb2 = b2.querySelector('.lp-cb');
-                if (cb2 && wk) {
-                  cb2.checked = !!wantInfo[wk];
-                  cb2.onclick = (e) => { e.stopPropagation(); };
-                  cb2.onchange = () => {
-                    
-                    
-                    
-                    
-                    const pair = _infoMap.find((x) => x[1] === wk);
-                    if (pair) {
-                      if (cb2.checked) {
-                        map.addLayer(pair[0]);
-                        map.fire('overlayadd', { layer: pair[0] });
-                      } else {
-                        map.removeLayer(pair[0]);
-                        map.fire('overlayremove', { layer: pair[0] });
-                      }
-                    }
-                    wantInfo[wk] = cb2.checked;
-                    
-                    
-                    if (window.__mjPopup) {
-                      if (cb2.checked) window.__mjPopup.reload();
-                      else window.__mjPopup.clearAndRender(UA_STATE_FIELDS[wk] || []);
-                    }
-                  };
-                }
-                let built2 = false;
-                b2.onclick = (e) => {
-                  e.stopPropagation();
-                  if (!built2) {
-                    built2 = true;
-                    const d = detailByPk[it.pk] || UA_DETAILS[it.t];
-                    bx.innerHTML = (d && d.d ? d.d + '<br>' : '')
-                      + '<b>필지를 클릭</b>하면 팝업 안에서 보입니다 (지도 레이어 없음).'
-                      + `<div style="margin-top:3px;">제공 op <b>${it.n}개</b> 중 <b>${it.u}개</b> 사용</div>`
-                      + `<div style="margin-top:3px;">포털 pk <a href="https://www.data.go.kr/data/${esc(it.pk)}/openapi.do" target="_blank" rel="noopener">${esc(it.pk)}</a></div>`;
-                  }
-                  bx.style.display = bx.style.display === 'none' ? 'block' : 'none';
-                };
-              });
-            }
-          }
-
-          
-          
-          
-          
           {
             const first = body.firstChild;
-            const secs = [...body.querySelectorAll('.lp-sec')].filter((s) => {
-              const n = s.querySelector('.lp-head .lp-name');
-              return n && (n.textContent.trim() === '연결된 공공데이터'
-                        || n.textContent.trim() === '필지 팝업 데이터');
-            });
-            secs.forEach((s) => body.insertBefore(s, first));
+            uaSecs.forEach((s) => body.insertBefore(s, first));
           }
-
         }, 0);
 
         
