@@ -7701,6 +7701,59 @@
 
         
         
+        
+        
+        
+        
+        
+        {
+          const total = UA_CONNECTED.reduce((a, [, ns]) => a + ns.length, 0);
+          const sec = L.DomUtil.create('div', 'lp-sec closed', body);
+          const head = L.DomUtil.create('div', 'lp-head', sec);
+          head.innerHTML = '<span style="width:13px;"></span><span class="lp-name">연결된 공공데이터</span>'
+            + `<span style="font-weight:400;font-size:11px;color:var(--muted);">${total}종</span>`
+            + '<span class="lp-arrow">▾</span>';
+          const kids = L.DomUtil.create('div', 'lp-kids', sec);
+          const toggle = (e) => { if (e) e.stopPropagation(); sec.classList.toggle('closed'); };
+          head.onclick = toggle;
+          const note = L.DomUtil.create('div', '', kids);
+          note.style.cssText = 'padding:2px 10px 6px 14px;font-size:11px;color:var(--muted);line-height:1.5;';
+          note.textContent = '지도 레이어로 안 보이는 것도 있습니다 — 필지·건물 팝업 안에서 쓰이거나,'
+            + ' 수집기가 미리 받아 둔 데이터입니다. 이름을 누르면 무엇을 주는지 펼쳐집니다.';
+          UA_CONNECTED.forEach(([cat, names]) => {
+            const ch = L.DomUtil.create('div', '', kids);
+            ch.style.cssText = 'padding:5px 8px 3px 14px;font-size:11px;font-weight:700;color:var(--muted);';
+            ch.textContent = `${cat} (${names.length})`;
+            names.slice().sort((a, b) => a.localeCompare(b, 'ko')).forEach((nm) => {
+              const row = L.DomUtil.create('div', '', kids);
+              const btn = L.DomUtil.create('div', '', row);
+              btn.style.cssText = 'padding:3px 8px 3px 22px;font-size:12px;cursor:pointer;border-radius:6px;';
+              btn.textContent = nm;
+              btn.onmouseenter = () => { btn.style.background = 'var(--c-hover)'; };
+              btn.onmouseleave = () => { btn.style.background = ''; };
+              const box = L.DomUtil.create('div', '', row);
+              box.style.cssText = 'display:none;padding:4px 10px 7px 22px;font-size:11.5px;'
+                + 'color:var(--muted);line-height:1.55;';
+              let built = false;
+              btn.onclick = (e) => {
+                e.stopPropagation();
+                if (!built) {
+                  built = true;
+                  const d = UA_DETAILS[nm];
+                  
+                  box.innerHTML = (d && d.d ? d.d : esc(UA_DEFAULT_DETAIL))
+                    + (d && d.o && d.o.length
+                      ? `<div style="margin-top:3px;">op — ${esc(d.o.join(' · '))}</div>` : '')
+                    + (d && d.p ? `<div style="margin-top:3px;">${d.p}</div>` : '');
+                }
+                box.style.display = box.style.display === 'none' ? 'block' : 'none';
+              };
+            });
+          });
+        }
+
+        
+        
         const LS_LAYERS = 'mj_layer_tree_v1';
         function saveLayerState() {
           try {
@@ -8164,6 +8217,12 @@
         },
       };
       const UA_DEFAULT_DETAIL = '제공 항목 상세는 아직 미측정 — 연동 시 data.go.kr 상세페이지의 상세기능을 확인할 것(경로 추측 금지 규칙).';
+      
+      
+      
+      
+      
+      
       
       
       
