@@ -10542,6 +10542,38 @@
     
     
     
+    let _itLoading = null, _itIdx = null, _itKeys = [];
+    function loadInterior(cb) {
+      if (_itIdx) { cb(_itIdx); return; }
+      if (_itLoading) { _itLoading.then(() => cb(_itIdx)); return; }
+      _itLoading = fetch('interior.json')
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => { _itIdx = j || {}; _itKeys = Object.keys(_itIdx); })
+        .catch(() => { _itIdx = {}; _itKeys = []; });
+      _itLoading.then(() => cb(_itIdx));
+    }
+    
+    function itMatch(shopName) {
+      if (!_itIdx || !_itKeys.length) return null;
+      const n = _frNorm(shopName);
+      if (n.length < 2) return null;
+      let best = null;
+      for (const k of _itKeys) {
+        if (k.length >= 2 && n.includes(k) && (!best || k.length > best.length)) best = k;
+      }
+      if (!best) return null;
+      const v = _itIdx[best];
+      
+      return { nm: v[0], lcls: v[1], mcls: v[2], unit: v[3], ar: v[4], amt: v[5], yr: v[6] };
+    }
+
+    
+    
+    
+    
+    
+    
+    
     let _opLoading = null, _opIdx = null;
     function loadOrderPlan(cb) {
       if (_opIdx) { cb(_opIdx); return; }
@@ -12757,7 +12789,15 @@
                   + (Math.round(fr.sls / 1000) >= 1 ? ` · 평균 ${Math.round(fr.sls / 1000).toLocaleString('ko-KR')}백만` : '')
                   + '</span>'
                 : '';
-              return `${tag}${f}${nm} <span style="color:var(--c-muted);font-size:12px;">${esc(x.inds)}</span>${frTag}`;
+              
+              
+              const it = st.interior ? itMatch(x.name) : null;
+              const itTag = (it && it.unit)
+                ? ` <span style="color:var(--c-muted);font-size:11px;" title="${esc(it.nm)} · ${esc(it.yr)}년 기준">`
+                  + `인테리어 3.3㎡당 ${esc(String(it.unit).replace(/(\d+)~(\d+)/, (m, a, b) => `${Math.round(a / 100) / 10}~${Math.round(b / 100) / 10}백만`))}`
+                  + '</span>'
+                : '';
+              return `${tag}${f}${nm} <span style="color:var(--c-muted);font-size:12px;">${esc(x.inds)}</span>${frTag}${itTag}`;
             }).join('<br>');
           })()
           
@@ -13680,6 +13720,8 @@
           
           
         if (wantInfo.dgk) loadFranchise(() => { st.franchise = 1; render(); });
+        
+        if (wantInfo.dgk) loadInterior(() => { st.interior = 1; render(); });
         if (wantInfo.dgk) loadOrderPlan((idx) => {
             const hit = idx && idx[_k.split(' ')[0]];
             if (hit && hit.length) { st.orderPlan = hit; render(); }
