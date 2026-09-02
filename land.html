@@ -7801,80 +7801,23 @@
           
           
           
-          const total = UA_SERVICES_N;
-          const sec = L.DomUtil.create('div', 'lp-sec closed', body);
-          const head = L.DomUtil.create('div', 'lp-head', sec);
-          head.innerHTML = '<span style="width:13px;"></span><span class="lp-name">연결된 공공데이터</span>'
-            + `<span style="font-weight:400;font-size:11px;color:var(--muted);">${total}종</span>`
-            + '<span class="lp-arrow">▾</span>';
-          const kids = L.DomUtil.create('div', 'lp-kids', sec);
-          const toggle = (e) => { if (e) e.stopPropagation(); sec.classList.toggle('closed'); };
-          head.onclick = toggle;
-          const note = L.DomUtil.create('div', '', kids);
-          note.style.cssText = 'padding:2px 10px 6px 14px;font-size:11px;color:var(--muted);line-height:1.5;';
-          note.textContent = '이 앱이 쓰는 데이터 출처 전부입니다 — 공공데이터포털 + 기관 자체 서비스 + 민간 API.'
-            + ' 지도 레이어로 안 보이는 것도 있습니다(팝업 안에서 쓰이거나 수집기가 미리 받아 둔 것).'
-            + ' 이름을 누르면 무엇을 주는지 펼쳐집니다.';
           
-          
-          const detailByPk = {};
-          Object.keys(UA_DETAILS).forEach((k) => {
-            const m = /data\.go\.kr\/data\/(\d+)\//.exec(UA_DETAILS[k].p || '');
-            if (m) detailByPk[m[1]] = UA_DETAILS[k];
-          });
-          
-          
-          
-          const shortTitle = (t) => String(t);
-          UA_SERVICES.forEach(([cat, items]) => {
-            const ch = L.DomUtil.create('div', '', kids);
-            ch.style.cssText = 'padding:5px 8px 3px 14px;font-size:11px;font-weight:700;color:var(--muted);';
-            ch.textContent = `${cat} (${items.length})`;
-            items.forEach((it) => {
-              const row = L.DomUtil.create('div', '', kids);
-              const btn = L.DomUtil.create('div', '', row);
-              btn.style.cssText = 'padding:3px 8px 3px 22px;font-size:12px;cursor:pointer;border-radius:6px;';
-              
-              
-              const wTxt = it.w ? it.w.split(' · ')[0] : (it.pk ? '필지 팝업' : '');
-              btn.innerHTML = esc(shortTitle(it.t))
-                + (it.n ? ` <span style="color:var(--muted);font-size:10.5px;">op ${it.u}/${it.n}</span>` : '')
-                + (wTxt ? `<div style="font-size:10.5px;color:var(--muted);">↳ ${esc(wTxt)}</div>` : '');
-              btn.onmouseenter = () => { btn.style.background = 'var(--c-hover)'; };
-              btn.onmouseleave = () => { btn.style.background = ''; };
-              const box = L.DomUtil.create('div', '', row);
-              box.style.cssText = 'display:none;padding:4px 10px 7px 22px;font-size:11.5px;'
-                + 'color:var(--muted);line-height:1.55;';
-              let built = false;
-              btn.onclick = (e) => {
-                e.stopPropagation();
-                if (!built) {
-                  built = true;
-                  const d = detailByPk[it.pk] || UA_DETAILS[it.t];
-                  
-                  box.innerHTML = (d && d.d ? d.d + '<br>' : '')
-                    + `제공 op <b>${it.n}개</b> 중 <b>${it.u}개</b> 사용`
-                    + (it.o && it.o.length ? ` — <code>${esc(it.o.join('</code> · <code>'))}</code>` : '')
-                    + `<div style="margin-top:3px;">포털 pk <a href="https://www.data.go.kr/data/${esc(it.pk)}/openapi.do" target="_blank" rel="noopener">${esc(it.pk)}</a></div>`;
-                }
-                box.style.display = box.style.display === 'none' ? 'block' : 'none';
-              };
-            });
-          });
+          const LAYER_BY_NAME = {};
+          LAYER_TREE.forEach(([, mids]) => mids.forEach((m) => {
+            if (m && m.name && m.layer) LAYER_BY_NAME[m.name] = m.layer;
+          }));
           
           
           
           
           
           
-          {
+          
+          const UA_STATE_FIELDS = {"sht": ["sht", "demol", "shtJj", "shtPrc", "shtRecap"], "mtn": ["mtn"], "engy": ["engy"], "grn": ["grn"], "rst": ["rst"], "nps": ["nps", "npsAge", "npsScsn"], "sch": ["sch"], "sub": ["sub"], "trd": ["trd"], "rg": ["rg", "rgSeoul"], "lp": ["lp", "jnse"], "trdar": ["trdar", "lvp", "lvpWas"], "pms": ["pms", "impr", "tmpb", "hdcr", "pklot", "hstp"], "hpms": ["hpms", "hpcoop", "hpwlf"], "fund": ["reserve", "mgmt", "mgmtFull"], "bid": ["bid"], "kcr": ["kcr"], "dgk": ["aptBasis", "busVol", "franchise", "goodPrice", "lifeStore", "mabyun", "orderPlan", "wrantPd", "wthrWrn"]};
             
             
             
             
-            
-            
-            const UA_STATE_FIELDS = {"sht": ["sht", "demol", "shtJj", "shtPrc", "shtRecap"], "mtn": ["mtn"], "engy": ["engy"], "grn": ["grn"], "rst": ["rst"], "nps": ["nps", "npsAge", "npsScsn"], "sch": ["sch"], "sub": ["sub"], "trd": ["trd"], "rg": ["rg", "rgSeoul"], "lp": ["lp", "jnse"], "trdar": ["trdar", "lvp", "lvpWas"], "pms": ["pms", "impr", "tmpb", "hdcr", "pklot", "hstp"], "hpms": ["hpms", "hpcoop", "hpwlf"], "fund": ["reserve", "mgmt", "mgmtFull"], "bid": ["bid"], "kcr": ["kcr"], "dgk": ["aptBasis", "busVol", "franchise", "goodPrice", "lifeStore", "mabyun", "orderPlan", "wrantPd", "wthrWrn"]};
             const UA_POPUP_KEY = {
               '15000415': 'dgk',   
               '15000442': 'dgk',   
@@ -7956,6 +7899,107 @@
               '3046071': 'nps',   
               '3056339': 'dgk',   
             };
+            
+          const total = UA_SERVICES_N;
+          const sec = L.DomUtil.create('div', 'lp-sec closed', body);
+          const head = L.DomUtil.create('div', 'lp-head', sec);
+          head.innerHTML = '<span style="width:13px;"></span><span class="lp-name">연결된 공공데이터</span>'
+            + `<span style="font-weight:400;font-size:11px;color:var(--muted);">${total}종</span>`
+            + '<span class="lp-arrow">▾</span>';
+          const kids = L.DomUtil.create('div', 'lp-kids', sec);
+          const toggle = (e) => { if (e) e.stopPropagation(); sec.classList.toggle('closed'); };
+          head.onclick = toggle;
+          const note = L.DomUtil.create('div', '', kids);
+          note.style.cssText = 'padding:2px 10px 6px 14px;font-size:11px;color:var(--muted);line-height:1.5;';
+          note.textContent = '이 앱이 쓰는 데이터 출처 전부입니다 — 공공데이터포털 + 기관 자체 서비스 + 민간 API.'
+            + ' 지도 레이어로 안 보이는 것도 있습니다(팝업 안에서 쓰이거나 수집기가 미리 받아 둔 것).'
+            + ' 이름을 누르면 무엇을 주는지 펼쳐집니다.';
+          
+          
+          const detailByPk = {};
+          Object.keys(UA_DETAILS).forEach((k) => {
+            const m = /data\.go\.kr\/data\/(\d+)\//.exec(UA_DETAILS[k].p || '');
+            if (m) detailByPk[m[1]] = UA_DETAILS[k];
+          });
+          
+          
+          
+          const shortTitle = (t) => String(t);
+          UA_SERVICES.forEach(([cat, items]) => {
+            const ch = L.DomUtil.create('div', '', kids);
+            ch.style.cssText = 'padding:5px 8px 3px 14px;font-size:11px;font-weight:700;color:var(--muted);';
+            ch.textContent = `${cat} (${items.length})`;
+            items.forEach((it) => {
+              const row = L.DomUtil.create('div', '', kids);
+              const btn = L.DomUtil.create('div', '', row);
+              
+              
+              
+              const wLayerName = it.w ? it.w.split(' · ')[0] : '';
+              const wLayer = LAYER_BY_NAME[wLayerName] || null;
+              const wKey = (!wLayer && it.pk) ? (UA_POPUP_KEY[it.pk] || '') : '';
+              const canToggle = !!(wLayer || wKey);
+              btn.style.cssText = 'padding:3px 8px 3px 14px;font-size:12px;cursor:pointer;'
+                + 'border-radius:6px;display:flex;align-items:flex-start;gap:6px;';
+              const wTxt = it.w ? wLayerName : (it.pk ? '필지 팝업' : '지도 기반 — 끌 수 없음');
+              btn.innerHTML = (canToggle ? '<input type="checkbox" class="lp-cb" style="margin-top:3px;">'
+                                         : '<span style="width:13px;flex-shrink:0;"></span>')
+                + '<span style="flex:1;min-width:0;">' + esc(shortTitle(it.t))
+                + (it.n ? ` <span style="color:var(--muted);font-size:10.5px;">op ${it.u}/${it.n}</span>` : '')
+                + (wTxt ? `<div style="font-size:10.5px;color:var(--muted);">↳ ${esc(wTxt)}</div>` : '')
+                + '</span>';
+              const cb1 = btn.querySelector('.lp-cb');
+              if (cb1) {
+                cb1.checked = wLayer ? map.hasLayer(wLayer) : !!wantInfo[wKey];
+                cb1.onclick = (e) => { e.stopPropagation(); };
+                cb1.onchange = () => {
+                  if (wLayer) {
+                    
+                    if (cb1.checked) { map.addLayer(wLayer); map.fire('overlayadd', { layer: wLayer }); }
+                    else { map.removeLayer(wLayer); map.fire('overlayremove', { layer: wLayer }); }
+                    return;
+                  }
+                  
+                  const pair = _infoMap.find((x) => x[1] === wKey);
+                  if (pair) {
+                    if (cb1.checked) { map.addLayer(pair[0]); map.fire('overlayadd', { layer: pair[0] }); }
+                    else { map.removeLayer(pair[0]); map.fire('overlayremove', { layer: pair[0] }); }
+                  }
+                  wantInfo[wKey] = cb1.checked;
+                  if (window.__mjPopup) {
+                    if (cb1.checked) window.__mjPopup.reload();
+                    else window.__mjPopup.clearAndRender(UA_STATE_FIELDS[wKey] || []);
+                  }
+                };
+              }
+              btn.onmouseenter = () => { btn.style.background = 'var(--c-hover)'; };
+              btn.onmouseleave = () => { btn.style.background = ''; };
+              const box = L.DomUtil.create('div', '', row);
+              box.style.cssText = 'display:none;padding:4px 10px 7px 22px;font-size:11.5px;'
+                + 'color:var(--muted);line-height:1.55;';
+              let built = false;
+              btn.onclick = (e) => {
+                e.stopPropagation();
+                if (!built) {
+                  built = true;
+                  const d = detailByPk[it.pk] || UA_DETAILS[it.t];
+                  
+                  box.innerHTML = (d && d.d ? d.d + '<br>' : '')
+                    + `제공 op <b>${it.n}개</b> 중 <b>${it.u}개</b> 사용`
+                    + (it.o && it.o.length ? ` — <code>${esc(it.o.join('</code> · <code>'))}</code>` : '')
+                    + `<div style="margin-top:3px;">포털 pk <a href="https://www.data.go.kr/data/${esc(it.pk)}/openapi.do" target="_blank" rel="noopener">${esc(it.pk)}</a></div>`;
+                }
+                box.style.display = box.style.display === 'none' ? 'block' : 'none';
+              };
+            });
+          });
+          
+          
+          
+          
+          
+          
+          {
             
             const pop = [];
             UA_SERVICES.forEach(([, items]) => items.forEach((it) => {
