@@ -471,6 +471,10 @@
 
 
     .leaflet-container { -webkit-user-select:none; user-select:none; }
+    
+
+
+    .lp-body, .lp-body * { -webkit-user-select:text; user-select:text; }
     .leaflet-popup-content, .leaflet-popup-content *,
     .rec, .rec *, .side, .side *, .ap-panel, .ap-panel * {
       -webkit-user-select:text; user-select:text;
@@ -7850,6 +7854,31 @@
           
           
           {
+            
+            
+            const UA_POPUP_KEY = {
+              '15134735': 'pms',   
+              '15136267': 'pms',   
+              '15136560': 'hpms',  
+              '15137093': 'sht',   
+              '15135987': 'mtn',   
+              '15135963': 'engy',  
+              '15057937': 'fund',  
+              '15059469': 'fund',  
+              '15059160': 'fund',  
+              '15057332': 'fund',  
+              '15058166': 'bid',   
+              '15059177': 'bid',   
+              '15057758': 'bid',   
+              '15005710': 'nps',   
+              '15020284': 'nps',   
+              '15083277': 'nps',   
+              '15155058': 'rst',   
+              '15037449': 'grn',   
+              '15058410': 'lp',    
+              '15012005': 'trdar', 
+              '15021148': 'sch',   
+            };
             const pop = [];
             UA_SERVICES.forEach(([, items]) => items.forEach((it) => {
               if (it.pk && !it.w) pop.push(it);   
@@ -7870,14 +7899,33 @@
               pop.forEach((it) => {
                 const row = L.DomUtil.create('div', '', kids2);
                 const b2 = L.DomUtil.create('div', '', row);
-                b2.style.cssText = 'padding:3px 8px 3px 22px;font-size:12px;cursor:pointer;border-radius:6px;';
-                b2.innerHTML = esc(it.t)
-                  + ` <span style="color:var(--muted);font-size:10.5px;">op ${it.u}/${it.n}</span>`;
+                
+                
+                
+                
+                const wk = UA_POPUP_KEY[it.pk] || '';
+                b2.style.cssText = 'padding:3px 8px 3px 14px;font-size:12px;cursor:pointer;'
+                  + 'border-radius:6px;display:flex;align-items:center;gap:6px;';
+                b2.innerHTML = (wk ? '<input type="checkbox" class="lp-cb">' : '<span style="width:13px;"></span>')
+                  + '<span style="flex:1;min-width:0;">' + esc(it.t)
+                  + ` <span style="color:var(--muted);font-size:10.5px;">op ${it.u}/${it.n}</span>` + '</span>';
                 b2.onmouseenter = () => { b2.style.background = 'var(--c-hover)'; };
                 b2.onmouseleave = () => { b2.style.background = ''; };
                 const bx = L.DomUtil.create('div', '', row);
                 bx.style.cssText = 'display:none;padding:4px 10px 7px 22px;font-size:11.5px;'
                   + 'color:var(--muted);line-height:1.55;';
+                
+                const cb2 = b2.querySelector('.lp-cb');
+                if (cb2 && wk) {
+                  cb2.checked = !!wantInfo[wk];
+                  cb2.onclick = (e) => { e.stopPropagation(); };
+                  cb2.onchange = () => {
+                    wantInfo[wk] = cb2.checked;
+                    
+                    const pair = _infoMap.find((x) => x[1] === wk);
+                    if (pair) { if (cb2.checked) map.addLayer(pair[0]); else map.removeLayer(pair[0]); }
+                  };
+                }
                 let built2 = false;
                 b2.onclick = (e) => {
                   e.stopPropagation();
