@@ -2685,6 +2685,72 @@
       
       
       const PARKING_COLOR = { free: '#2f9e44', paid: '#1c7ed6', unknown: '#868e96' };
+      
+      
+      
+      
+      
+      
+      
+      
+      const NATL_COLOR = { '임대(대부)': '#0ca678', 매각: '#e8590c' };
+      const natlCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 60 });
+      
+      natlCluster.on('click', (e) => {
+        const m = e.layer;
+        if (!m || !m._pop) return;
+        if (!m.getPopup() && m._pop) m.bindPopup(m._pop());
+        m.openPopup();
+      });
+      let natlRows = null, _natlPromise = null;
+      function loadNatlAsset() {
+        if (!_natlPromise) {
+          _natlPromise = fetch('natlasset.json').then((r) => r.json()).then((j) => {
+            natlRows = (j.rows || []).filter((r) => r.lat && r.lng);
+            return natlRows;
+          }).catch(() => null);
+        }
+        return _natlPromise;
+      }
+      function natlPopupHtml(d) {
+        const col = NATL_COLOR[d.way] || '#868e96';
+        const m2 = (v) => Number(v).toLocaleString('ko-KR') + '㎡';
+        const rows = [];
+        if (d.addr) rows.push(`<div style="margin-bottom:4px;">${esc(d.addr)}</div>`);
+        const bits = [d.cat, d.kind].filter(Boolean).join(' · ');
+        if (bits) rows.push(`<div style="font-size:12px;color:var(--c-muted);">${esc(bits)}</div>`);
+        const ar = [d.land ? '토지 ' + m2(d.land) : '', d.bld ? '건물 ' + m2(d.bld) : ''].filter(Boolean).join(' · ');
+        if (ar) rows.push(`<div class="pc-price">${esc(ar)}</div>`);
+        if (d.st) rows.push(`<div style="margin-top:3px;">물건상태 <b>${esc(d.st)}</b>`
+          + (d.fail ? ` <span style="color:var(--c-muted);">· 유찰 ${d.fail}회</span>` : '') + '</div>');
+        if (d.inst) rows.push(`<div style="font-size:12px;color:var(--c-muted);margin-top:2px;">위임 ${esc(d.inst)}</div>`);
+        if (/^\d{8}$/.test(d.basDt)) {
+          rows.push(`<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">기준일 ${esc(d.basDt.slice(0,4)+'.'+d.basDt.slice(4,6)+'.'+d.basDt.slice(6,8))}</div>`);
+        }
+        rows.push('<div style="margin-top:6px;font-size:11px;color:var(--c-muted);">'
+          + '금융위원회_국가자산정보 · 좌표는 지번주소 지오코딩값</div>');
+        return `<div class="pc"><div class="pc-head">`
+          + `<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${col};flex-shrink:0;"></span>`
+          + `<span class="rp-name">${esc(d.nm || d.addr || '(이름 없음)')}</span>`
+          + (d.way ? `<span style="font-size:12px;background:${col};color:#fff;padding:1px 8px;border-radius:999px;">${esc(d.way)}</span>` : '')
+          + `</div><div class="pc-body">${rows.join('')}</div></div>`;
+      }
+      function natlBuild() {
+        if (!natlRows) return;
+        natlCluster.clearLayers();
+        natlCluster.addLayers(natlRows.map((d) => {
+          const col = NATL_COLOR[d.way] || '#868e96';
+          const m = L.circleMarker([d.lat, d.lng], { radius: 8, color: '#000', weight: 1.6, fillColor: col, fillOpacity: 0.88 });
+          m._pop = (() => natlPopupHtml(d));
+          m.bindTooltip(esc(d.nm || d.addr || ''), { direction: 'top' });
+          return m;
+        }));
+      }
+      map.on('overlayadd', (e) => {
+        if (e.layer !== natlCluster) return;
+        loadNatlAsset().then(() => natlBuild());
+      });
+
       const parkingCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 60 });
       parkingCluster.on('click', (e) => {
         const m = e.layer;
@@ -7197,6 +7263,7 @@
           
           
           { name: '주차장 (실제 시설)', layer: parkingCluster },
+          { name: '국가자산 (매각·대부)', layer: natlCluster },
           { name: '전기차 충전소', layer: evCluster },
           
           { name: '생필품 판매점 (마트·백화점)', layer: lifeCluster },
@@ -7956,6 +8023,7 @@
           {"t": "국민연금공단_국민연금 가입현황", "pk": "15005710", "u": 3, "n": 3, "o": ["getSbscrbSttusInfoSearchV2", "getSbscrbMaxValueInfoSearchV2", "getSbscrbAgeInfoSearchV2"]},
           {"t": "국민연금공단_탈퇴사업장 정보", "pk": "15020284", "u": 2, "n": 2, "o": ["getDetailInfoSearchV2", "getBassInfoSearchV2"]},
           {"t": "국세청_사업자등록정보 진위확인 및 상태조회 서비스", "pk": "15081808", "u": 2, "n": 2, "o": ["validate", "status"]},
+          {"t": "금융위원회_국가자산정보", "pk": "15059614", "u": 2, "n": 2, "o": ["GetKoreAsseInfoService", "getLoanSellAsse"]},
           {"t": "금융위원회_금융회사공시정보", "pk": "15059651", "u": 30, "n": 30, "o": ["getFnCoConvBondRighDiscInfo_V2", "getFnCoOffsSecuMarkListDiscInfo_V2", "getFnCoLitiEtcDiscInfo_V2", "getFnCoProcByCredBankDiscInfo_V2"]},
           {"t": "금융위원회_기업 재무정보", "pk": "15043459", "u": 3, "n": 3, "o": ["getIncoStat_V2", "getBs_V2", "getSummFinaStat_V2"]},
           {"t": "금융위원회_기업지배구조 공시정보", "pk": "15151165", "u": 3, "n": 3, "o": ["getCGIdvpnPayInfo", "getCGSmamInfo", "getCGUnregExutInfo"]},
@@ -7976,7 +8044,7 @@
           {"t": "해양수산부_포락지관리정보", "pk": "3056339", "u": 8, "n": 8, "o": ["getSubmergedLandsList2.0", "getSubmergedLandsAreaList2.0", "getSubmergedLandsAreaExtentList2.0", "getSubmergedLandsExaminationAreaExtentList2.0"]},
         ]],
       ];
-      const UA_SERVICES_N = 78;   
+      const UA_SERVICES_N = 79;   
       
       
       
