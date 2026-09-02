@@ -1402,19 +1402,26 @@
                 
                 const key = nokey(bname);
                 const hit = key ? a.filter((x) => nokey(x.wkplNm).includes(key)) : [];
-                const list = (hit.length ? hit : a).slice(0, 5);
-                const note = hit.length ? ''
-                  : '<div style="color:var(--muted);font-size:12px;">상호로 좁히지 못해 '
-                    + '<b>앞 6자리가 같은 사업장</b>을 보여줍니다.</div>';
+                
+                
+                
+                if (!hit.length) {
+                  parts.push(sec('국민연금 가입 사업장',
+                    '<span style="color:var(--muted);">이 사업자로 특정하지 못했습니다. '
+                    + '사업자번호 <b>앞 6자리</b>만 공개돼 여러 사업자가 같은 값을 씁니다'
+                    + (key ? ' (입력한 상호와 일치하는 사업장이 없습니다).' : ' — 상호를 함께 입력해 주세요.')
+                    + '<br>같은 앞자리 사업장 ' + (b.totalCount || a.length) + '건 · 출처 국민연금공단</span>'));
+                  return;
+                }
+                const list = hit.slice(0, 5);
                 parts.push(sec('국민연금 가입 사업장',
-                  note
-                  + list.map((x) => '<div style="margin-top:2px;">'
+                  list.map((x) => '<div style="margin-top:2px;">'
                     + esc(String(x.wkplNm || '').slice(0, 60))
                     + (x.wkplRoadNmDtlAddr
                       ? '<span style="color:var(--muted);"> · ' + esc(x.wkplRoadNmDtlAddr) + '</span>' : '')
                     + '</div>').join('')
-                  + '<div style="color:var(--muted);font-size:12px;margin-top:3px;">전체 '
-                    + (b.totalCount || a.length) + '건 · 출처 국민연금공단</div>'));
+                  + '<div style="color:var(--muted);font-size:12px;margin-top:3px;">상호 일치 '
+                    + hit.length + '건 · 출처 국민연금공단</div>'));
               })
               .catch(() => {})
               .finally(done);
