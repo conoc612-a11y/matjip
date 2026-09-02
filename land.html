@@ -1352,6 +1352,123 @@
               </table>
               <div style="margin-top:10px;font-size:12px;color:var(--muted);">대표자·개업일을 함께 입력하면 진위 일치 여부를 확인할 수 있습니다.<br>출처: 국세청(공공데이터포털), 30분 주기로 동기화됩니다.</div>`;
           }
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          {
+            const extra = document.createElement('div');
+            extra.style.cssText = 'margin-top:14px;border-top:1px solid var(--line);padding-top:12px;';
+            extra.innerHTML = '<div style="font-size:13px;color:var(--muted);">공공데이터 확인 중…</div>';
+            box.appendChild(extra);
+            const parts = [];
+            const paint = () => {
+              extra.innerHTML = parts.length ? parts.join('')
+                : '<div style="font-size:12px;color:var(--muted);">추가로 확인된 공공데이터가 없습니다.</div>';
+            };
+            const sec = (t, html) => '<div style="margin-bottom:10px;">'
+              + '<div style="font-weight:700;font-size:13px;margin-bottom:4px;">' + t + '</div>'
+              + '<div style="font-size:13px;">' + html + '</div></div>';
+            const nokey = (s) => String(s || '').replace(/\s+/g, '');
+            const won = (v) => {
+              const n = Number(v);
+              if (!Number.isFinite(n) || !n) return '';
+              return n >= 1e8 ? (n / 1e8).toFixed(0) + '억' : Math.round(n / 1e4).toLocaleString('ko-KR') + '만';
+            };
+            let left = 3;
+            const done = () => { if (--left <= 0) paint(); };
+
+            
+            fetch(MOLIT_PROXY + '?svc=NpsBplcInfoInqireServiceV2&op=getBassInfoSearchV2'
+              + '&bzowrRgstNo=' + digits.slice(0, 6) + '&numOfRows=50&pageNo=1&dataType=JSON')
+              .then((r) => (r.ok ? r.json() : null))
+              .then((j) => {
+                const b = j && j.response && j.response.body;
+                const it = b && b.items && (b.items.item || b.items);
+                const a = Array.isArray(it) ? it : (it ? [it] : []);
+                if (!a.length) return;
+                
+                const key = nokey(bname);
+                const hit = key ? a.filter((x) => nokey(x.wkplNm).includes(key)) : [];
+                const list = (hit.length ? hit : a).slice(0, 5);
+                const note = hit.length ? ''
+                  : '<div style="color:var(--muted);font-size:12px;">상호로 좁히지 못해 '
+                    + '<b>앞 6자리가 같은 사업장</b>을 보여줍니다.</div>';
+                parts.push(sec('국민연금 가입 사업장',
+                  note
+                  + list.map((x) => '<div style="margin-top:2px;">'
+                    + esc(String(x.wkplNm || '').slice(0, 60))
+                    + (x.wkplRoadNmDtlAddr
+                      ? '<span style="color:var(--muted);"> · ' + esc(x.wkplRoadNmDtlAddr) + '</span>' : '')
+                    + '</div>').join('')
+                  + '<div style="color:var(--muted);font-size:12px;margin-top:3px;">전체 '
+                    + (b.totalCount || a.length) + '건 · 출처 국민연금공단</div>'));
+              })
+              .catch(() => {})
+              .finally(done);
+
+            if (!bname) {
+              
+              left -= 2;
+              parts.push(sec('법인 · 가맹본부 정보',
+                '<span style="color:var(--muted);">상호를 함께 입력하면 '
+                + '법인등록번호·재무·가맹본부 여부까지 확인합니다.</span>'));
+              if (left <= 0) paint();
+            } else {
+              
+              dgkFetch('GetCorpBasicInfoService_V2', 'getCorpOutline_V2',
+                { corpNm: bname, numOfRows: 5, pageNo: 1 }, (j) => {
+                  const b = j && j.response && j.response.body;
+                  const it = b && b.items && (b.items.item || b.items);
+                  const a = Array.isArray(it) ? it : (it ? [it] : []);
+                  const c = a[0];
+                  if (!c || !c.crno) { done(); return; }
+                  const mk = String(c.corpRegMrktDcdNm || '');
+                  const listed = /^(유가|코스닥|코넥스)/.test(mk);
+                  dgkFetch('GetFinaStatInfoService_V2', 'getSummFinaStat_V2',
+                    { crno: c.crno, numOfRows: 3, pageNo: 1 }, (j2) => {
+                      const b2 = j2 && j2.response && j2.response.body;
+                      const i2 = b2 && b2.items && (b2.items.item || b2.items);
+                      const f = (Array.isArray(i2) ? i2 : (i2 ? [i2] : []))[0];
+                      let html = '법인등록번호 <b>' + esc(c.crno) + '</b>'
+                        + (mk ? ' · ' + esc(mk) + (listed ? ' 상장' : '') : '');
+                      if (c.enpBsadr) {
+                        html += '<div style="color:var(--muted);font-size:12px;">' + esc(c.enpBsadr) + '</div>';
+                      }
+                      if (f) {
+                        html += '<div style="margin-top:3px;">매출 <b>' + (won(f.enpSaleAmt) || '—') + '</b>'
+                          + ' · 자산 <b>' + (won(f.enpTastAmt) || '—') + '</b>'
+                          + ' · 부채 <b>' + (won(f.enpTdbtAmt) || '—') + '</b></div>';
+                      }
+                      html += '<div style="color:var(--muted);font-size:12px;margin-top:3px;">출처 금융위원회</div>';
+                      parts.push(sec('법인 정보 (금융위)', html));
+                      done();
+                    });
+                });
+
+              
+              dgkFetch('FftcJnghdqrtrsGnrlDtl3_Service', 'getjnghdqrtrsGnlinfo2',
+                { jngBizCrtraYr: String(new Date().getFullYear() - 1), numOfRows: 100, pageNo: 1 }, (j) => {
+                  const arr = (j && (j.items
+                    || (j.response && j.response.body && j.response.body.items))) || [];
+                  const a = Array.isArray(arr) ? arr : [];
+                  const key = nokey(bname);
+                  const hit = a.find((x) => nokey(x.jnghdqrtrsNm).includes(key));
+                  if (hit) {
+                    parts.push(sec('가맹본부 (공정위)',
+                      esc(String(hit.jnghdqrtrsNm || ''))
+                      + '<div style="color:var(--muted);font-size:12px;">'
+                      + esc(String(hit.jngBizCrtraYr || '')) + '년 기준 · 출처 공정거래위원회</div>'));
+                  }
+                  done();
+                });
+            }
+          }
           _bizHistAdd({ bno: digits, name, bname, startDt, badge: badgeTxt, ts: Date.now() });
           renderBiznoHist();
         })
