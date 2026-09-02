@@ -4385,6 +4385,9 @@
       const obEok = (v) => (v ? (v / 1e8).toLocaleString('ko-KR', { maximumFractionDigits: 2 }) + '억원' : '-');
       
       
+      window.obEok = obEok;
+      
+      
       
       
       
@@ -8923,6 +8926,59 @@
           cb(out);
         });
     }
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    const _corpFinCache = new Map();
+    function loadCorpFinance(crno, cb) {
+      if (!crno) { cb(null); return; }
+      if (_corpFinCache.has(crno)) { cb(_corpFinCache.get(crno)); return; }
+      fetch(`${MOLIT_PROXY}?svc=GetFinaStatInfoService_V2&op=getSummFinaStat_V2&crno=${crno}&pageNo=1&numOfRows=20&resultType=json`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => {
+          const b = j && j.response && j.response.body;
+          if (!b) { cb(null); return; }   
+          const it = b.items;
+          const arr = !it ? [] : (Array.isArray(it) ? it : (Array.isArray(it.item) ? it.item : (it.item ? [it.item] : [])));
+          
+          arr.sort((a, b2) => Number(b2.bizYear || 0) - Number(a.bizYear || 0)
+            || (String(a.fnclDcdNm || '').includes('연결') ? -1 : 1));
+          _corpFinCache.set(crno, arr[0] || null);
+          cb(arr[0] || null);
+        })
+        .catch(() => cb(null));
+    }
+
+    
+    
+    
+    
+    const _corpGovCache = new Map();
+    function loadCorpGovern(crno, cb) {
+      if (!crno) { cb(null); return; }
+      if (_corpGovCache.has(crno)) { cb(_corpGovCache.get(crno)); return; }
+      dgkFetch('GetCorpGoveInfoService', 'getStockholderInfo',
+        { crno, pageNo: 1, numOfRows: 5, resultType: 'json' }, (j) => {
+          const b = j && (j.response || j).body;
+          if (!b) { cb(null); return; }
+          const it = b.items;
+          const arr = !it ? [] : (Array.isArray(it) ? it : (Array.isArray(it.item) ? it.item : (it.item ? [it.item] : [])));
+          
+          arr.sort((a, b2) => Number(b2.sthdEoteShrRatCtt || 0) - Number(a.sthdEoteShrRatCtt || 0));
+          const out = { total: Number(b.totalCount) || arr.length, top: arr.slice(0, 3) };
+          _corpGovCache.set(crno, out);
+          cb(out);
+        });
+    }
+
     function loadAptBasis(kaptCode, cb) {
       if (!kaptCode) { cb(null); return; }
       dgkFetch('AptBasisInfoServiceV5', 'getAphusBassInfoV5', { kaptCode, type: 'json' }, (j) => {
@@ -10615,6 +10671,18 @@
                       + (c.total > 1 ? ` <span style="font-size:11px;color:var(--c-muted);">이름이 겹치는 법인 ${c.total}곳 중 첫 건</span>` : '')
                       + (x.enpBsadr ? `<div style="font-size:11px;color:var(--c-muted);">${esc(x.enpBsadr)}${x.sicNm ? ' · ' + esc(x.sicNm) : ''}</div>` : '')
                       + (x.corpRegMrktDcdNm ? `<div style="font-size:11px;color:var(--c-muted);">${esc(x.corpRegMrktDcdNm)}${x.enpXchgLstgDt ? ' 상장 ' + ymd8(x.enpXchgLstgDt) : ''}</div>` : '')
+                      
+                      + (c.fin && window.obEok ? `<div style="font-size:12px;margin-top:2px;">매출 <b>${window.obEok(c.fin.enpSaleAmt)}</b>`
+                        + (c.fin.enpBzopPft != null ? ` · 영업이익 ${window.obEok(c.fin.enpBzopPft)}` : '')
+                        + ` <span style="color:var(--c-muted);">(${esc(c.fin.bizYear || '')}년${c.fin.fnclDcdNm ? ' · ' + esc(c.fin.fnclDcdNm) : ''})</span></div>`
+                        : '') 
+                      
+                      + (c.gov && c.gov.top && c.gov.top.length
+                        ? `<div style="font-size:12px;margin-top:2px;">최대주주 <b>${esc(c.gov.top[0].sthdFnm || '')}</b>`
+                          + (c.gov.top[0].sthdEoteShrRatCtt ? ` 지분 ${esc(c.gov.top[0].sthdEoteShrRatCtt)}%` : '')
+                          + (c.gov.top.length > 1 ? ` <span style="color:var(--c-muted);">외 ${c.gov.top.length - 1}인</span>` : '')
+                          + '</div>'
+                        : '')
                       + '</div>';
                   }).join('')
                   + '<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">금융위 기업기본정보 · '
@@ -11470,7 +11538,13 @@
           
           
           
-          const nps = ((st.nps && st.nps.items) || []).map((x) => x.nm).filter(Boolean);
+          
+          
+          
+          
+          
+          const npsCorpBase = (s) => String(s || '').split(/-\(일용\)|-\(상용\)|\/일용\/|\/상용\//)[0].trim();
+          const nps = ((st.nps && st.nps.items) || []).map((x) => npsCorpBase(x.nm)).filter(Boolean);
           const frCorps = st.franchise
             ? (st.stores || []).map((x) => { const f = frMatch(x.name); return f && f.corp; }).filter(Boolean)
             : [];
@@ -11485,9 +11559,16 @@
             if (r) out.push(r);
             if (--left > 0) return;
             
-            if (!out.length) { st.corp = null; toast('기업 정보를 불러오지 못했습니다.'); }
-            else st.corp = out;
+            if (!out.length) { st.corp = null; toast('기업 정보를 불러오지 못했습니다.'); render(); return; }
+            st.corp = out;
             render();
+            
+            
+            const withCrno = out.filter((c) => c.top && c.top.crno);
+            withCrno.forEach((c) => {
+              loadCorpFinance(c.top.crno, (fin) => { c.fin = fin; render(); });
+              loadCorpGovern(c.top.crno, (gov) => { c.gov = gov; render(); });
+            });
           }));
         };
         
