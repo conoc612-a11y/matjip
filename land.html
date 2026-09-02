@@ -7915,12 +7915,33 @@
             const sec = L.DomUtil.create('div', 'lp-sec closed', body);
             uaSecs.push(sec);
             const head = L.DomUtil.create('div', 'lp-head', sec);
-            head.innerHTML = '<span style="width:13px;"></span>'
+            head.innerHTML = '<input type="checkbox" class="lp-cb">'
               + '<span class="lp-name">공공데이터 · ' + esc(cat) + '</span>'
               + `<span style="font-weight:400;font-size:11px;color:var(--muted);">${items.length}종</span>`
             head.innerHTML += '<span class="lp-arrow">▾</span>';
             const kids = L.DomUtil.create('div', 'lp-kids', sec);
-            head.onclick = () => { sec.classList.toggle('closed'); };
+            
+            
+            const bigCb = head.querySelector('.lp-cb');
+            const syncBigUa = () => {
+              const cbs = [...kids.querySelectorAll('input.lp-cb')];
+              if (!cbs.length) { bigCb.disabled = true; return; }
+              const on = cbs.filter((c) => c.checked).length;
+              bigCb.checked = on > 0;
+              bigCb.indeterminate = on > 0 && on < cbs.length;
+            };
+            bigCb.onclick = (e) => { e.stopPropagation(); };
+            bigCb.onchange = () => {
+              const target = bigCb.checked;
+              bigCb.indeterminate = false;
+              kids.querySelectorAll('input.lp-cb').forEach((c) => {
+                if (c.checked !== target) { c.checked = target; if (c.onchange) c.onchange(); }
+              });
+            };
+            head.onclick = (e) => {
+              if (e.target.closest('.lp-cb')) return;
+              sec.classList.toggle('closed');
+            };
             items.forEach((it) => {
               const row = L.DomUtil.create('div', '', kids);
               const btn = L.DomUtil.create('div', '', row);
@@ -7959,6 +7980,7 @@
                     if (cb1.checked) window.__mjPopup.reload();
                     else window.__mjPopup.clearAndRender(UA_STATE_FIELDS[wKey] || []);
                   }
+                  syncBigUa();
                 };
               }
               btn.onmouseenter = () => { btn.style.background = 'var(--c-hover)'; };
@@ -7986,9 +8008,21 @@
             });
           });
           
+          
+          
           {
-            const first = body.firstChild;
-            uaSecs.forEach((s) => body.insertBefore(s, first));
+            let ref = roleBar.nextSibling;
+            uaSecs.forEach((s2) => { body.insertBefore(s2, ref); ref = s2.nextSibling; });
+            uaSecs.forEach((s2) => {
+              const cb = s2.querySelector('.lp-head .lp-cb');
+              const kk = s2.querySelector('.lp-kids');
+              if (!cb || !kk) return;
+              const cbs = [...kk.querySelectorAll('input.lp-cb')];
+              if (!cbs.length) { cb.disabled = true; return; }
+              const on = cbs.filter((c) => c.checked).length;
+              cb.checked = on > 0;
+              cb.indeterminate = on > 0 && on < cbs.length;
+            });
           }
         }, 0);
 
