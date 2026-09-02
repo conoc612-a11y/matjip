@@ -474,7 +474,21 @@
     
 
 
-    .lp-body, .lp-body * { -webkit-user-select:text; user-select:text; }
+    
+
+
+
+    .lp-body, .lp-body *,
+    .leaflet-popup, .leaflet-popup *,
+    .leaflet-popup-content, .leaflet-popup-content *,
+    #panel, #panel *,
+    .left-panels, .left-panels *,
+    .bld-info, .bld-info *,
+    .pc, .pc *,
+    .apd-lb-cap, .apd-lb-head,
+    .ctl-row, .ctl-row * {
+      -webkit-user-select:text; user-select:text;
+    }
     .leaflet-popup-content, .leaflet-popup-content *,
     .rec, .rec *, .side, .side *, .ap-panel, .ap-panel * {
       -webkit-user-select:text; user-select:text;
