@@ -2678,6 +2678,12 @@
       
       
       
+      
+      
+      
+      
+      
+      
       const PARKING_COLOR = { free: '#2f9e44', paid: '#1c7ed6', unknown: '#868e96' };
       const parkingCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 60 });
       parkingCluster.on('click', (e) => {
@@ -7190,7 +7196,7 @@
           { name: '시내 CCTV (서울 TOPIS)', layer: topisCluster },
           
           
-          { name: '주차장 (실제 시설 · 무료/유료)', layer: parkingCluster },
+          { name: '주차장 (실제 시설)', layer: parkingCluster },
           { name: '전기차 충전소', layer: evCluster },
           
           { name: '생필품 판매점 (마트·백화점)', layer: lifeCluster },
@@ -7805,7 +7811,7 @@
       const UA_CONNECTED = [
         ['부동산·건축', ['청약 당첨자 정보(청약홈)', '공동주택 기본정보', '아파트 매매 실거래가(기본판)', '파산금융회사 매물현황', '하자담보책임기간', '온비드 부동산 물건목록', '온비드 부동산 물건상세', '온비드 공고상세', '온비드 입찰결과상세', '토지이용규제(행위제한)', '건물에너지(전기·가스)', '장기수선충당금', '공동주택 입찰결과공지']],
         ['공공주택·임대', ['LH 분양임대공고 상세', 'LH 분양임대공고문', 'LH 임대주택단지']],
-        ['생활 인프라', ['서울교통공사 최단경로', '공공도서관 소장도서', '착한가격업소 현황', 'CCTV 도로날씨', '공항 출국장 혼잡도', '기상특보 조회', '데이터 제공표준(행안부)', '마을변호사 현황(법무부)', '명산 등산로', '생필품 가격 정보', '공중화장실(행안부)', '녹색건축 인증(한국부동산원)']],
+        ['생활 인프라', ['서울교통공사 최단경로', '공공도서관 소장도서', '착한가격업소 현황', 'CCTV 도로날씨', '공항 출국장 혼잡도', '기상특보 조회', '데이터 제공표준(행안부)', '마을변호사 현황(법무부)', '명산 등산로', '생필품 가격 정보', '공중화장실(행안부)', '녹색건축 인증(한국부동산원)', '주차정보(교통안전공단)']],
         ['사업자·기업·금융', ['브랜드 가맹점·직영점(공정위)', '브랜드별 가맹점 현황(공정위)', '브랜드 가맹점 단위면적당 평균매출(공정위)', '가맹본부 일반정보(공정위)', '가맹본부 재무정보(공정위)', '국민연금 가입현황', '국민연금 탈퇴사업장', '국민연금 가입 사업장 내역', '전세자금보증(주금공)', '기업기본정보(금융위)', '금융회사 공시(금융위)', '기업 재무정보(금융위)', '기업정보 서비스(예탁결제원)', '기업지배구조 공시(금융위)', '기업집단 내부지분(공정위)', '대기업집단 주주현황(공정위)', '주식시세정보(금융위)', '주식정보 서비스(예탁결제원)', '지배구조정보(금융위)']],
         ['그 외', ['나라장터 발주계획(조달청)', '바다갈라짐 체험지수', '바다여행지수', '분실물 정보(경찰청)', '습득물 정보(경찰청)', '포락지 관리정보(해수부)', '포털기관 습득물(경찰청)', '핸드폰 찾기(경찰청)']],
       ];
@@ -7825,6 +7831,15 @@
       
       
       const UA_DETAILS = {
+
+        '주차정보(교통안전공단)': {
+          d: '레이어 · <b>주차장 (실제 시설)</b>. 정식명 <b>한국교통안전공단_주차정보 제공 API</b>. '
+            + '🔴 2026-08-23 에 "제공기관 장애(-999)" 로 기록돼 있었으나 <b>2026-09-02 재호출에서 정상</b>이다 '
+            + '(<code>totalCount=1,767,934 · rc=0</code>). ⛔ 지역 필터가 없어 전국을 훑어 서울만 걸러낸다. '
+            + '⛔ <b>요금(무료/유료)은 이 API 가 주지 않는다</b> — 팝업이 "요금 정보 없음"으로 밝힌다.',
+          o: ['PrkSttusInfo'],
+          p: '수집기 <code>tools/collect_parking.js</code> → <code>parking.json</code> · 포털 pk <a href="https://www.data.go.kr/data/15099883/openapi.do" target="_blank" rel="noopener">15099883</a>',
+        },
 
         
         
@@ -8724,6 +8739,87 @@
     
     
     
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    const _tmpbCache = new Map();
+    const _hdcrCache = new Map();
+    
+    function loadApList(pnu, op, cache, cb) {
+      const pp = pnuParts(pnu);
+      if (!pp) { cb(null); return; }
+      if (cache.has(pnu)) { cb(cache.get(pnu)); return; }
+      const q = `svc=ArchPmsHubService&op=${op}&sigunguCd=${pp.sigunguCd}`
+        + `&bjdongCd=${pp.bjdongCd}&platGbCd=${pp.platGbCd}&bun=${pp.bun}&ji=${pp.ji}`
+        + '&numOfRows=30&pageNo=1';
+      fetch(`${MOLIT_PROXY}?${q}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => {
+          const b = j && j.response && j.response.body;
+          const it = b && b.items;
+          const arr = !it ? [] : (Array.isArray(it.item) ? it.item : (it.item ? [it.item] : []));
+          if (b) cache.set(pnu, arr);   
+          cb(b ? arr : null);
+        })
+        .catch(() => cb(null));
+    }
+    const loadTmpBld = (pnu, cb) => loadApList(pnu, 'getApTmpBldInfo', _tmpbCache, cb);
+    const loadHdcr = (pnu, cb) => loadApList(pnu, 'getApHdcrMgmRgstInfo', _hdcrCache, cb);
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    const _demolCache = new Map();
+    function loadDemol(pnu, cb) {
+      const pp = pnuParts(pnu);
+      if (!pp) { cb(null); return; }
+      if (_demolCache.has(pnu)) { cb(_demolCache.get(pnu)); return; }
+      const q = `svc=ArchPmsHubService&op=getApDemolExtngMgmRgstInfo&sigunguCd=${pp.sigunguCd}`
+        + `&bjdongCd=${pp.bjdongCd}&platGbCd=${pp.platGbCd}&bun=${pp.bun}&ji=${pp.ji}`
+        + '&numOfRows=30&pageNo=1';
+      fetch(`${MOLIT_PROXY}?${q}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => {
+          const b = j && j.response && j.response.body;
+          const it = b && b.items;
+          const arr = !it ? [] : (Array.isArray(it.item) ? it.item : (it.item ? [it.item] : []));
+          
+          if (b) _demolCache.set(pnu, arr);
+          cb(b ? arr : null);
+        })
+        .catch(() => cb(null));
+    }
+
+    
+    
+    
+    
+    
+    
     const _coopCache = new Map();
     function loadHpComplex(pnu, cb) {
       const pp = pnuParts(pnu);
@@ -8739,6 +8835,42 @@
           const it = b && b.items && b.items.item;
           const arr = Array.isArray(it) ? it : (it ? [it] : []);
           if (b) _coopCache.set(pnu, arr);
+          cb(b ? arr : null);
+        })
+        .catch(() => cb(null));
+    }
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    const _wlfarCache = new Map();
+    function loadHpWlfar(pnu, cb) {
+      const pp = pnuParts(pnu);
+      if (!pp) { cb(null); return; }
+      if (_wlfarCache.has(pnu)) { cb(_wlfarCache.get(pnu)); return; }
+      const q = `svc=HsPmsHubService&op=getHpMgmCoopSbsdWlfarFcInfo&sigunguCd=${pp.sigunguCd}`
+        + `&bjdongCd=${pp.bjdongCd}&platGbCd=${pp.platGbCd}&bun=${pp.bun}&ji=${pp.ji}`
+        + '&numOfRows=20&pageNo=1';
+      fetch(`${MOLIT_PROXY}?${q}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => {
+          const b = j && j.response && j.response.body;
+          const it = b && b.items;
+          const arr = !it ? [] : (Array.isArray(it.item) ? it.item : (it.item ? [it.item] : []));
+          if (b) _wlfarCache.set(pnu, arr);
           cb(b ? arr : null);
         })
         .catch(() => cb(null));
@@ -9449,8 +9581,12 @@
     
     
     
+    
+    
+    
+    
     let _busIdx = null, _busLoading = null;
-    function loadBusVolume(cb) {
+    function loadBusDongVolume(cb) {
       if (_busIdx) { cb(_busIdx); return; }
       if (_busLoading) { _busLoading.then(() => cb(_busIdx)); return; }
       _busLoading = fetch('busvolume.json')
@@ -9866,6 +10002,39 @@
       ['개별', '수도료', 'AptIndvdlzManageCostServiceV3', 'getHsmpWaterCostInfoV3', ['waterCoolC', 'waterCoolP']],
       ['개별', '가스', 'AptIndvdlzManageCostServiceV3', 'getHsmpGasRentalFeeInfoV3', ['gasC', 'gasP']],
     ];
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    const MGMT_OPS_REST = [
+      ['공용', '제세공과금', 'AptCmnuseManageCostServiceV3', 'getHsmpTaxdueInfoV3',
+        ['taxrestCost', 'electCost', 'telCost', 'postageCost']],
+      ['공용', '차량유지', 'AptCmnuseManageCostServiceV3', 'getHsmpVhcleMntncCostInfoV3',
+        ['carEtc', 'fuelCost', 'refairCost', 'carInsurance']],
+      ['공용', '기타부대', 'AptCmnuseManageCostServiceV3', 'getHsmpEtcCostInfoV3',
+        ['hiddenCost', 'careItemCost', 'accountingCost']],
+      ['공용', '제사무비', 'AptCmnuseManageCostServiceV3', 'getHsmpOfcrkCostInfoV3',
+        ['transportCost', 'officeSupply', 'bookSupply']],
+      ['공용', '피복비', 'AptCmnuseManageCostServiceV3', 'getHsmpClothingCostInfoV3', ['clothesCost']],
+      ['공용', '교육훈련', 'AptCmnuseManageCostServiceV3', 'getHsmpEduTraingCostInfoV3', ['eduCost']],
+      ['공용', '소독비', 'AptCmnuseManageCostServiceV3', 'getHsmpDisinfectionCostInfoV3', ['disinfCost']],
+      ['공용', '홈네트워크', 'AptCmnuseManageCostServiceV3', 'getHsmpHomeNetworkMntncCostInfoV3', ['hnetwCost']],
+      ['공용', '시설유지', 'AptCmnuseManageCostServiceV3', 'getHsmpFacilityMntncCostInfoV3', ['lrefCost2']],
+      ['공용', '안전점검', 'AptCmnuseManageCostServiceV3', 'getHsmpSafetyCheckUpCostInfoV3', ['lrefCost3']],
+      ['공용', '재해예방', 'AptCmnuseManageCostServiceV3', 'getHsmpDisasterPreventionCostInfoV3', ['lrefCost4']],
+      ['개별', '생활폐기물', 'AptIndvdlzManageCostServiceV3', 'getHsmpDomesticWasteFeeInfoV3', ['scrap']],
+      ['개별', '입대의 운영비', 'AptIndvdlzManageCostServiceV3', 'getHsmpMovingInRepresentationMtgInfoV3', ['preMeet']],
+      ['개별', '건물보험료', 'AptIndvdlzManageCostServiceV3', 'getHsmpBuildingInsuranceFeeInfoV3', ['buildInsu']],
+      ['개별', '선관위 운영비', 'AptIndvdlzManageCostServiceV3', 'getHsmpElectionOrpnsInfoV3', ['electionMng']],
+      ['개별', '정화조 수수료', 'AptIndvdlzManageCostServiceV3', 'getHsmpWaterPurifierTankFeeInfoV3', ['purifi']],
+    ];
     const _mgmtCache = new Map();   
     let _mgmtLatestYm = null;
     function loadMgmtCost(pnu, bldNm, cb) {
@@ -9898,12 +10067,38 @@
               return won > 0 ? { grp, label, won } : null;
             })
           )).then((arr) => {
-            const out = { ym, name: one.name, items: arr.filter(Boolean) };
+            
+            const out = { ym, name: one.name, code: one.code, items: arr.filter(Boolean) };
             _mgmtCache.set(s, out);
             cb(out);
           });
         });
       });
+    }
+
+    
+    
+    
+    function loadMgmtRest(code, ym, cb) {
+      if (!code || !ym) { cb(null); return; }
+      const out = [];
+      let failed = 0;
+      const step = (i) => {
+        if (i >= MGMT_OPS_REST.length) { cb({ items: out, partial: failed > 0, failed }); return; }
+        const [grp, label, svc, op, fields] = MGMT_OPS_REST[i];
+        fetch(`${MOLIT_PROXY}?svc=${svc}&op=${op}&kaptCode=${code}&searchDate=${ym}`)
+          .then((r) => (r.ok ? r.json() : Promise.reject(new Error('http'))))
+          .then((j) => (j && j.response && j.response.body && j.response.body.item) || null)
+          .catch(() => { failed++; return null; })
+          .then((it) => {
+            if (it) {
+              const won = fields.reduce((a, f) => a + (Number(it[f]) || 0), 0);
+              if (won > 0) out.push({ grp, label, won });
+            }
+            step(i + 1);
+          });
+      };
+      step(0);
     }
 
     
@@ -10603,6 +10798,36 @@
               + (bits.length ? ` <span style="color:var(--c-muted);">${bits.join(' · ')}</span>` : '')
               + '</div>';
           })()
+          
+          
+          
+          + (() => {
+            const w = (st.hpwlf || [])[0];
+            if (!w) return '';
+            const n = (v) => Number(v) || 0;
+            const gp = n(w.grndPklotUtcnt), up = n(w.ugrndPklotUtcnt);
+            const tp = n(w.totPklotUtcnt) || (gp + up);
+            const line = [];
+            if (tp) {
+              const rate = tp ? Math.round((up / tp) * 100) : 0;
+              line.push(`주차 <b>${tp.toLocaleString('ko-KR')}면</b>`
+                + `<span style="color:var(--c-muted);"> (지하 ${up.toLocaleString('ko-KR')} · 지상 ${gp.toLocaleString('ko-KR')}`
+                + (tp ? ` · 지하비율 ${rate}%` : '') + ')</span>');
+            }
+            const fac = [];
+            if (n(w.plgndCnt)) fac.push('놀이터 ' + n(w.plgndCnt));
+            if (n(w.jmExcsFcCnt)) fac.push('주민운동 ' + n(w.jmExcsFcCnt));
+            if (n(w.guardrmCnt)) fac.push('경비실 ' + n(w.guardrmCnt));
+            if (n(w.lndscArea)) fac.push('조경 ' + n(w.lndscArea).toLocaleString('ko-KR') + '㎡');
+            if (n(w.mgmOffcArea)) fac.push('관리사무소 ' + n(w.mgmOffcArea).toLocaleString('ko-KR') + '㎡');
+            if (n(w.kgtLotArea)) fac.push('유치원 ' + n(w.kgtLotArea).toLocaleString('ko-KR') + '㎡');
+            if (n(w.mediFcArea)) fac.push('의료 ' + n(w.mediFcArea).toLocaleString('ko-KR') + '㎡');
+            if (!line.length && !fac.length) return '';
+            return '<div style="font-size:12px;margin-top:3px;">'
+              + line.join('')
+              + (fac.length ? `<div style="color:var(--c-muted);margin-top:2px;">${esc(fac.join(' · '))}</div>` : '')
+              + '</div>';
+          })()
           + '</div>';
       }
       
@@ -11233,6 +11458,33 @@
               + `<b>${rs.length}건</b> <span style="color:var(--c-muted);">${esc(uniq.slice(0, 3).join(' · '))}</span>`
               + '</div>';
           })()
+          
+          + (() => {
+            const ts = st.tmpb || [];
+            if (!ts.length) return '';
+            const use = [...new Set(ts.map((x) => String(x.mainPurpsCdNm || '').trim()).filter(Boolean))];
+            const ar = ts.reduce((a, x) => a + (Number(x.totArea) || 0), 0);
+            return '<div style="font-size:12px;margin-top:3px;">가설건축물 '
+              + `<b>${ts.length}건</b>`
+              + (ar ? ` <span style="color:var(--c-muted);">연면적 ${Math.round(ar).toLocaleString('ko-KR')}㎡</span>` : '')
+              + (use.length ? ` <span style="color:var(--c-muted);">${esc(use.slice(0, 3).join(' · '))}</span>` : '')
+              + '</div>';
+          })()
+          
+          
+          + (() => {
+            const hs = st.hdcr || [];
+            if (!hs.length) return '';
+            const kinds = hs.map((x) => {
+              const k = String(x.hdcrKindCdNm || '').trim() || '공작물';
+              const h = Number(x.heit) || 0, l = Number(x.len) || 0;
+              const sz = h ? `높이 ${h}m` : (l ? `길이 ${l}m` : '');
+              return sz ? `${k}(${sz})` : k;
+            });
+            return '<div style="font-size:12px;margin-top:3px;">공작물 '
+              + `<b>${hs.length}건</b> <span style="color:var(--c-muted);">${esc(kinds.slice(0, 3).join(' · '))}</span>`
+              + '</div>';
+          })()
           + '</div>';
       }
 
@@ -11240,10 +11492,12 @@
       
       
       let shtHtml = '';
-      if (st.sht && st.sht.length) {
+      
+      
+      if ((st.sht && st.sht.length) || (st.demol && st.demol.length)) {
         const tr = (v) => String(v == null ? '' : v).trim();
         const ymd = (v) => (/^\d{8}$/.test(tr(v)) ? tr(v).slice(0, 4) + '.' + tr(v).slice(4, 6) + '.' + tr(v).slice(6, 8) : '');
-        const list = st.sht.slice().sort((a, b) => tr(b.shterDay).localeCompare(tr(a.shterDay)));
+        const list = (st.sht || []).slice().sort((a, b) => tr(b.shterDay).localeCompare(tr(a.shterDay)));
         const rows2 = list.slice(0, 3).map((x) => {
           const gb = tr(x.shterGbCdNm) || '말소';
           const nm = tr(x.bldNm);
@@ -11258,8 +11512,34 @@
         });
         const more = list.length > 3 ? ` <span style="font-size:12px;color:var(--c-muted);">외 ${list.length - 3}건</span>` : '';
         shtHtml = '<div style="margin-top:6px;border:1px solid #e03131;border-radius:6px;padding:6px 8px;background:rgba(224,49,49,.06);">'
-          + `<b style="color:#e03131;">철거·말소 이력</b> <span style="font-size:12px;color:var(--c-muted);">이 필지 ${list.length}건</span>${more}<br>`
-          + rows2.join('<br>')
+          + `<b style="color:#e03131;">철거·말소 이력</b>`
+          + (list.length ? ` <span style="font-size:12px;color:var(--c-muted);">이 필지 ${list.length}건</span>${more}` : '')
+          + '<br>'
+          + (rows2.length ? rows2.join('<br>') : '')
+          
+          
+          + (() => {
+            const ds = (st.demol || []).slice().sort((a, b) =>
+              tr(b.demolEndDay || b.demolExtngDay || b.demolStrtDay)
+                .localeCompare(tr(a.demolEndDay || a.demolExtngDay || a.demolStrtDay)));
+            if (!ds.length) return '';
+            const rows3 = ds.slice(0, 3).map((x) => {
+              const gb = tr(x.demolExtngGbCdNm) || '철거';
+              const st1 = ymd(x.demolStrtDay), en = ymd(x.demolEndDay) || ymd(x.demolExtngDay);
+              const term = st1 && en ? `${st1} ~ ${en}` : (en || st1 || '');
+              const ar = Number(x.totArea) || 0;
+              const bits = [tr(x.mainPurpsCdNm), tr(x.strctCdNm),
+                ar ? ar.toLocaleString() + '㎡' : '',
+                Number(x.bldCnt) ? '건물 ' + Number(x.bldCnt) + '동' : ''].filter(Boolean).join(' · ');
+              return `<span style="color:#e03131;font-weight:600;">${esc(term || '-')} ${esc(gb)}</span>`
+                + (bits ? `<br><span style="font-size:12px;color:var(--c-muted);">${esc(bits)}</span>` : '');
+            });
+            return `<div style="margin-top:${list.length ? 5 : 0}px;">`
+              + `<span style="font-size:12px;color:var(--c-muted);">철거대장 ${ds.length}건</span><br>`
+              + rows3.join('<br>')
+              + (ds.length > 3 ? ` <span style="font-size:12px;color:var(--c-muted);">외 ${ds.length - 3}건</span>` : '')
+              + '</div>';
+          })()
           
           
           + (() => {
@@ -11444,17 +11724,40 @@
             .sort((a, b) => b.won - a.won)
             .map((x) => `${esc(x.label)} ${per(x.won)}`).join(' · ');
           const cm = sum('공용'), iv = sum('개별');
+          
+          
+          
+          const full = st.mgmtFull && st.mgmtFull.items ? st.mgmtFull : null;
+          const isFull = !!(full && !full.partial);
+          const totWon = cm + iv + (full ? full.items.reduce((a, x) => a + x.won, 0) : 0);
           mgmtHtml = '<div class="ls-sec">'
             + '<b>관리비</b>'
             + (ymTxt ? ` <span style="font-size:12px;color:var(--c-muted);">${esc(ymTxt)} 기준</span>` : '')
             + (hh ? ` <span style="font-size:12px;color:var(--c-muted);">세대당 월액 · ${hh.toLocaleString()}세대</span>`
                   : ' <span style="font-size:12px;color:var(--c-muted);">단지 전체 월액(세대수 미확인)</span>')
-            + `<br>주요 항목 합 <b>${per(cm + iv)}</b>`
-            + ` <span style="font-size:12px;color:var(--c-muted);">공용 ${per(cm)} + 개별 ${per(iv)}</span>`
+            + `<br>${isFull ? '총 관리비' : '주요 항목 합'} <b>${per(totWon)}</b>`
+            + ` <span style="font-size:12px;color:var(--c-muted);">공용 ${per(cm)} + 개별 ${per(iv)}`
+            + (full ? ` + 나머지 ${per(totWon - cm - iv)}` : '') + '</span>'
             + (line('공용') ? `<div style="font-size:12px;color:var(--c-muted);margin-top:3px;">공용 — ${line('공용')}</div>` : '')
             + (line('개별') ? `<div style="font-size:12px;color:var(--c-muted);">개별 — ${line('개별')}</div>` : '')
-            + '<div style="font-size:11.5px;color:var(--c-muted);margin-top:3px;">주요 11개 항목만 합한 값입니다 —'
-            + ' 관리비 총액이 아닙니다. 300세대 이상 의무관리대상만 공개됩니다.</div>'
+            + (() => {
+              if (!full) return '';
+              const ls = full.items.slice().sort((a, b) => b.won - a.won)
+                .map((x) => `${esc(x.label)} ${per(x.won)}`).join(' · ');
+              return ls ? `<div style="font-size:12px;color:var(--c-muted);">나머지 — ${ls}</div>` : '';
+            })()
+            + (st.mgmtFull === 'loading'
+              ? '<div style="font-size:11.5px;color:var(--c-muted);margin-top:3px;">나머지 16개 항목 불러오는 중…</div>'
+              : isFull
+                ? '<div style="font-size:11.5px;color:var(--c-muted);margin-top:3px;">공용 17 + 개별 10 = <b>27개 항목 전부</b>를 합한 값입니다.'
+                  + ' 300세대 이상 의무관리대상만 공개됩니다.</div>'
+                : full
+                  ? `<div style="font-size:11.5px;color:var(--c-muted);margin-top:3px;">${full.failed}개 항목을 못 받아 총액이 아닙니다 —`
+                    + ' 다시 눌러 보세요. 300세대 이상 의무관리대상만 공개됩니다.</div>'
+                  : '<div style="font-size:11.5px;color:var(--c-muted);margin-top:3px;">주요 11개 항목만 합한 값입니다 —'
+                    + ' 관리비 총액이 아닙니다. 300세대 이상 의무관리대상만 공개됩니다.'
+                    + '<br><button type="button" class="ld-mgmt-all btn-mini" style="margin-top:4px;">나머지 16개 항목 (총액 보기)</button>'
+                    + ' <span style="margin-left:4px;">호출 16회 — 누를 때만 조회합니다</span></div>')
             + '</div>';
         } else if (st.mgmt && st.mgmt.items && !st.mgmt.items.length) {
           mgmtHtml = '<div class="ls-sec" style="font-size:12px;color:var(--c-muted);">관리비 공개 대상이 아닙니다 (300세대 미만 등)</div>';
@@ -11810,6 +12113,7 @@
         if (mb) mb.onclick = (ev) => {
           stop(ev);
           st.mgmt = 'loading';
+          st.mgmtFull = null;      
           render();
           
           const _pnu = st.addrPnu || (st.bld && st.bld.pnu) || (st.parcel && st.parcel.pnu) || '';
@@ -11817,6 +12121,21 @@
             
             st.mgmt = r || null;
             if (!r) toast('관리비를 불러오지 못했습니다. 다시 시도해 주세요.');
+            render();
+          });
+        };
+        
+        
+        const mba = slot.querySelector('.ld-mgmt-all');
+        if (mba) mba.onclick = (ev) => {
+          stop(ev);
+          const m = st.mgmt;
+          if (!m || !m.code || !m.ym) { toast('관리비를 먼저 조회해 주세요.'); return; }
+          st.mgmtFull = 'loading';
+          render();
+          loadMgmtRest(m.code, m.ym, (r) => {
+            st.mgmtFull = r || null;
+            if (!r) toast('나머지 항목을 불러오지 못했습니다. 다시 시도해 주세요.');
             render();
           });
         };
@@ -12015,6 +12334,13 @@
         if (wantInfo.pms) loadRemodel(pnu, (arr) => {
           if (arr && arr.length) { st.impr = arr; render(); }
         });
+        
+        if (wantInfo.pms) loadTmpBld(pnu, (arr) => {
+          if (arr && arr.length) { st.tmpb = arr; render(); }
+        });
+        if (wantInfo.pms) loadHdcr(pnu, (arr) => {
+          if (arr && arr.length) { st.hdcr = arr; render(); }
+        });
         if (wantInfo.pms) loadArchPms(pnu, (arr) => {
           if (arr && arr.length) { st.pms = arr; render(); }
         });
@@ -12024,6 +12350,10 @@
           if (arr && arr.length) { st.hpms = arr; render(); }
         });
         
+        
+        if (wantInfo.hpms) loadHpWlfar(pnu, (arr) => {
+          if (arr && arr.length) { st.hpwlf = arr; render(); }
+        });
         if (wantInfo.hpms) loadHpComplex(pnu, (arr) => {
           if (arr && arr.length) { st.hpcoop = arr; render(); }
         });
@@ -12138,6 +12468,11 @@
           if (arr && arr.length) { st.sht = arr; render(); }
         });
         
+        
+        if (wantInfo.sht) loadDemol(pnu, (arr) => {
+          if (arr && arr.length) { st.demol = arr; render(); }
+        });
+        
         if (wantInfo.mtn) loadMtnChk(pnu, (arr) => {
           if (arr && arr.length) { st.mtn = arr; render(); }
         });
@@ -12211,7 +12546,7 @@
           if (wantInfo.dgk) {
             const _pnu10 = (st.addrPnu || (st.bld && st.bld.pnu) || (st.parcel && st.parcel.pnu) || '').slice(0, 10);
             if (/^\d{10}$/.test(_pnu10)) {
-              loadBusVolume((j) => {
+              loadBusDongVolume((j) => {
                 const d = j && j.dong && j.dong[_pnu10];
                 if (d) { st.busVol = { ...d, ym: j.ym }; render(); }
               });
