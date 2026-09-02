@@ -4174,6 +4174,52 @@
       
       
       
+      
+      
+      
+      
+      
+      
+      const tzoneLayer = L.layerGroup();
+      let _tzRows = null, _tzPromise = null;
+      function loadTradeZone() {
+        if (!_tzPromise) {
+          _tzPromise = fetch('tradezone.json')
+            .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+            .then((rows) => { _tzRows = rows; })
+            .catch((e) => {
+              _tzRows = [];
+              toast('상권 영역을 불러오지 못했습니다 (tradezone.json)');
+              console.warn('상권 영역 로드 실패:', e);
+            });
+        }
+        return _tzPromise;
+      }
+      function drawTradeZone() {
+        tzoneLayer.clearLayers();
+        for (const z of (_tzRows || [])) {
+          const p = L.polygon(z.poly, {
+            color: '#e8590c', weight: 1.5, opacity: 0.85,
+            fillColor: '#e8590c', fillOpacity: 0.10,
+          });
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          p.bindTooltip(
+            `<b>${esc(z.nm)}</b><br><span style="font-size:11px;">${esc(z.gu)} · 지정상권`
+            + (z.area ? ` · ${Math.round(z.area / 3.3058).toLocaleString('ko-KR')}평` : '') + '</span>',
+            { direction: 'top', sticky: true },
+          );
+          tzoneLayer.addLayer(p);
+        }
+      }
+
       const lifeCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 50 });
       let lifeRows = null, _lifePromise = null;
       
@@ -7120,6 +7166,7 @@
         
         if (e.layer === bankruptCluster) loadBankrupt().then(drawBankrupt);
         if (e.layer === lifeCluster) loadLifePrice().then(drawLifePrice);
+        if (e.layer === tzoneLayer) loadTradeZone().then(drawTradeZone);
         if (e.layer === greenCluster) loadGreenMap().then(drawGreenMap);
         if (e.layer === rstCluster) loadRestroomMap().then(drawRestroomMap);
         const hit = _infoMap.find((x) => x[0] === e.layer);
@@ -7157,6 +7204,8 @@
           { name: '지하철역 (역세권 강도)', layer: subCluster },
           { name: '따릉이 대여소', layer: bikeCluster },
           { name: '상권 (매출·유동인구)', layer: trdarCluster },
+          
+          { name: '상권 영역 (지정상권 176곳)', layer: tzoneLayer },
           { name: '학교 (초·중·고)', layer: schoolCluster },
           { name: '병원·의원 (심평원)', layer: hospCluster },
           { name: '응급의료기관', layer: emrgCluster },
@@ -9400,6 +9449,23 @@
     
     
     
+    let _busIdx = null, _busLoading = null;
+    function loadBusVolume(cb) {
+      if (_busIdx) { cb(_busIdx); return; }
+      if (_busLoading) { _busLoading.then(() => cb(_busIdx)); return; }
+      _busLoading = fetch('busvolume.json')
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => { _busIdx = j || { dong: {} }; })
+        .catch(() => { _busIdx = { dong: {} }; });
+      _busLoading.then(() => cb(_busIdx));
+    }
+
+    
+    
+    
+    
+    
+    
     
     
     let _greenIdx = null, _greenLoading = null;
@@ -11047,6 +11113,13 @@
             + ` <span style="color:var(--c-muted);">${esc(Object.entries(kinds).map(([k, v]) => k + ' ' + v).join(' · '))}</span></div>`
             + `<div style="font-size:11px;color:var(--c-muted);">${esc(ls.slice(0, 3).map((x) => x.nm).join(' · '))}</div>`);
         }
+        
+        if (st.busVol) {
+          const b = st.busVol;
+          rows2.push(`<div style="font-size:11px;margin-top:3px;">버스 이용 <b>${(b.ride + b.goff).toLocaleString('ko-KR')}명</b>`
+            + ` <span style="color:var(--c-muted);">승차 ${b.ride.toLocaleString('ko-KR')} · 하차 ${b.goff.toLocaleString('ko-KR')}</span></div>`
+            + `<div style="font-size:11px;color:var(--c-muted);">${esc(b.nm)} · 정류장 ${b.stops}곳 · ${esc(b.ym.slice(0, 4))}.${esc(b.ym.slice(4))} 한 달</div>`);
+        }
         if (st.goodPrice && st.goodPrice.length) {
           const g = st.goodPrice;
           const kinds = [...new Set(g.map((x) => x.kind).filter(Boolean))].slice(0, 3);
@@ -11086,7 +11159,7 @@
         if (rows2.length) {
           dgkHtml = '<div class="ls-sec"><b>공공데이터 더보기</b>' + rows2.join('')
             + '<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">'
-            + '공동주택 기본정보 · 하자담보책임기간 · 국민연금 가입현황 · 마을변호사 · 기상특보 · 착한가격업소 · 폐업 사업장 · 공공공사 발주계획 · 마트·백화점 · 지하철 최단경로</div></div>';
+            + '공동주택 기본정보 · 하자담보책임기간 · 국민연금 가입현황 · 마을변호사 · 기상특보 · 착한가격업소 · 폐업 사업장 · 공공공사 발주계획 · 마트·백화점 · 버스 이용량 · 지하철 최단경로</div></div>';
         }
       }
       let pmsHtml = '';
@@ -12132,6 +12205,18 @@
             const hit = idx && idx[_k.split(' ')[0]];
             if (hit && hit.length) { st.goodPrice = hit; render(); }
           });
+          
+          
+          
+          if (wantInfo.dgk) {
+            const _pnu10 = (st.addrPnu || (st.bld && st.bld.pnu) || (st.parcel && st.parcel.pnu) || '').slice(0, 10);
+            if (/^\d{10}$/.test(_pnu10)) {
+              loadBusVolume((j) => {
+                const d = j && j.dong && j.dong[_pnu10];
+                if (d) { st.busVol = { ...d, ym: j.ym }; render(); }
+              });
+            }
+          }
           
           
         if (wantInfo.dgk) loadFranchise(() => { st.franchise = 1; render(); });
