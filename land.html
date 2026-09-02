@@ -1445,28 +1445,68 @@
                           + ' · 자산 <b>' + (won(f.enpTastAmt) || '—') + '</b>'
                           + ' · 부채 <b>' + (won(f.enpTdbtAmt) || '—') + '</b></div>';
                       }
-                      html += '<div style="color:var(--muted);font-size:12px;margin-top:3px;">출처 금융위원회</div>';
-                      parts.push(sec('법인 정보 (금융위)', html));
-                      done();
+                      
+                      
+                      dgkFetch('GetCorpGoveInfoService', 'getCorpOutline',
+                        { crno: c.crno, numOfRows: 3, pageNo: 1 }, (j3) => {
+                          const b3 = j3 && j3.response && j3.response.body;
+                          const i3 = b3 && b3.items && (b3.items.item || b3.items);
+                          const g = (Array.isArray(i3) ? i3 : (i3 ? [i3] : []))[0];
+                          if (g) {
+                            const bits = [
+                              g.rprsvNm ? '대표 ' + esc(g.rprsvNm) : '',
+                              g.enpEstbDt ? '설립 ' + esc(String(g.enpEstbDt).slice(0, 4)) : '',
+                              g.enpEmpeCnt ? '임직원 ' + Number(g.enpEmpeCnt).toLocaleString('ko-KR') + '명' : '',
+                            ].filter(Boolean).join(' · ');
+                            if (bits) html += '<div style="margin-top:3px;">' + bits + '</div>';
+                          }
+                          html += '<div style="color:var(--muted);font-size:12px;margin-top:3px;">출처 금융위원회</div>';
+                          parts.push(sec('법인 정보 (금융위)', html));
+                          done();
+                        });
                     });
                 });
 
               
-              dgkFetch('FftcJnghdqrtrsGnrlDtl3_Service', 'getjnghdqrtrsGnlinfo2',
-                { jngBizCrtraYr: String(new Date().getFullYear() - 1), numOfRows: 100, pageNo: 1 }, (j) => {
-                  const arr = (j && (j.items
-                    || (j.response && j.response.body && j.response.body.items))) || [];
-                  const a = Array.isArray(arr) ? arr : [];
-                  const key = nokey(bname);
-                  const hit = a.find((x) => nokey(x.jnghdqrtrsNm).includes(key));
-                  if (hit) {
-                    parts.push(sec('가맹본부 (공정위)',
-                      esc(String(hit.jnghdqrtrsNm || ''))
-                      + '<div style="color:var(--muted);font-size:12px;">'
-                      + esc(String(hit.jngBizCrtraYr || '')) + '년 기준 · 출처 공정거래위원회</div>'));
+              
+              
+              
+              
+              loadFranchise((F) => {
+                const key = nokey(bname);
+                let hit = null;
+                try {
+                  
+                  if (F) {
+                    for (const k2 of Object.keys(F)) {
+                      const v = F[k2];
+                      const brand = nokey(v && v[0]), corp = nokey(v && v[1]);
+                      if ((brand && (brand.includes(key) || key.includes(brand)))
+                          || (corp && (corp.includes(key) || key.includes(corp)))) { hit = v; break; }
+                    }
                   }
-                  done();
-                });
+                } catch (_e) {  }
+                if (hit) {
+                  const cnt = Number(hit[4]) || 0;
+                  const avg = Number(hit[5]) || 0;   
+                  parts.push(sec('가맹본부 (공정위)',
+                    '<b>' + esc(String(hit[0] || '')) + '</b>'
+                    + (hit[1] ? ' <span style="color:var(--muted);">' + esc(String(hit[1])) + '</span>' : '')
+                    + '<div style="margin-top:3px;">'
+                    + (cnt ? '가맹점 <b>' + cnt.toLocaleString('ko-KR') + '개</b>' : '')
+                    + (avg ? ' · 평균매출 <b>' + Math.round(avg / 10000).toLocaleString('ko-KR') + '억</b>' : '')
+                    + '</div>'
+                    + '<div style="color:var(--muted);font-size:12px;margin-top:3px;">'
+                    + [hit[2], hit[3]].filter(Boolean).map(esc).join(' · ')
+                    + ' · 출처 공정거래위원회 가맹정보</div>'));
+                } else {
+                  
+                  parts.push(sec('가맹본부 (공정위)',
+                    '<span style="color:var(--muted);">공정위 가맹본부 목록에 없습니다 '
+                    + '(프랜차이즈 본부가 아니거나 상호 표기가 다릅니다).</span>'));
+                }
+                done();
+              });
             }
           }
           _bizHistAdd({ bno: digits, name, bname, startDt, badge: badgeTxt, ts: Date.now() });
