@@ -8872,6 +8872,16 @@
     
     const DGK_PROXY = SUPABASE_URL + '/functions/v1/dgk-proxy';
     const _dgkCache = new Map();
+    
+      
+      
+      
+    function _dgkFetchRaw(url) {
+      return fetch(url).then((r) => {
+        if (r.status === 429) return null;   
+        return r.ok ? r.arrayBuffer() : Promise.reject(new Error('http ' + r.status));
+      });
+    }
     function dgkFetch(svc, op, params, cb, asXml) {
       const q = Object.entries(params || {})
         .filter(([, v]) => v !== undefined && v !== null && v !== '')
@@ -8883,8 +8893,12 @@
       
       
       
-      fetch(url)
-        .then((r) => (r.ok ? r.arrayBuffer() : null))
+      
+      
+      
+      const _retry = (n) => _dgkFetchRaw(url).then((buf) =>
+        (buf || n <= 0 ? buf : new Promise((res) => setTimeout(res, 700 * (4 - n))).then(() => _retry(n - 1))));
+      _retry(3)
         .then((buf) => (buf ? new TextDecoder('utf-8').decode(buf) : null))
         .then((txt) => {
           let out = null;
@@ -9016,6 +9030,124 @@
           _corpGroupCache.set(crno, out);
           cb(out);
         }, true);
+    }
+
+    
+    
+    
+    
+    
+    
+    const _corpUnregCache = new Map();
+    function loadCorpUnreg(crno, cb) {
+      if (!crno) { cb(null); return; }
+      if (_corpUnregCache.has(crno)) { cb(_corpUnregCache.get(crno)); return; }
+      dgkFetch('GetCGDiscInfoService', 'getCGUnregExutInfo',
+        { crno, pageNo: 1, numOfRows: 10, resultType: 'json' }, (j) => {
+          const b = j && (j.response || j).body;
+          if (!b) { cb(null); return; }
+          const it = b.items;
+          const arr = !it ? [] : (Array.isArray(it) ? it : (Array.isArray(it.item) ? it.item : (it.item ? [it.item] : [])));
+          if (!arr.length) { _corpUnregCache.set(crno, null); cb(null); return; }
+          
+          arr.sort((a, b2) => Number(b2.bizYear || 0) - Number(a.bizYear || 0));
+          _corpUnregCache.set(crno, arr[0]);
+          cb(arr[0]);
+        });
+    }
+
+    
+    
+    
+    
+    
+    
+    const _corpRiskCache = new Map();
+    function loadCorpRisk(crno, cb) {
+      if (!crno) { cb(null); return; }
+      if (_corpRiskCache.has(crno)) { cb(_corpRiskCache.get(crno)); return; }
+      const ops = [
+        ['getFnCoBusiSuspDiscInfo_V2', '영업정지'],
+        ['getFnCoReviProcDiscInfo_V2', '회생절차개시'],
+        ['getFinaCompDissReasDiscInfo_V2', '해산사유'],
+      ];
+      
+      
+      const hits = [];
+      (function seq(i) {
+        if (i >= ops.length) {
+          const out = hits.length ? hits : null;
+          _corpRiskCache.set(crno, out);
+          cb(out);
+          return;
+        }
+        const [op, label] = ops[i];
+        dgkFetch('GetFnCoDiscInfoService_V2', op, { crno, pageNo: 1, numOfRows: 3, resultType: 'json' }, (j) => {
+          const b = j && (j.response || j).body;
+          const it = b && b.items;
+          const arr = !it ? [] : (Array.isArray(it) ? it : (Array.isArray(it.item) ? it.item : (it.item ? [it.item] : [])));
+          if (arr.length) hits.push({ label, n: arr.length });
+          seq(i + 1);
+        });
+      })(0);
+    }
+
+    
+    
+    
+    
+    
+    
+    const _stockCache = new Map();
+    function loadStockPrice(nm, cb) {
+      const s = String(nm || '').trim();
+      if (!s) { cb(null); return; }
+      if (_stockCache.has(s)) { cb(_stockCache.get(s)); return; }
+      dgkFetch('GetStockSecuritiesInfoService', 'getStockPriceInfo',
+        { itmsNm: s, pageNo: 1, numOfRows: 1, resultType: 'json' }, (j) => {
+          const b = j && (j.response || j).body;
+          if (!b) { cb(null); return; }
+          const it = b.items;
+          const arr = !it ? [] : (Array.isArray(it) ? it : (Array.isArray(it.item) ? it.item : (it.item ? [it.item] : [])));
+          _stockCache.set(s, arr[0] || null);
+          cb(arr[0] || null);
+        });
+    }
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    const _ksdCache = new Map();
+    function loadShareDistribution(corpNm, cb) {
+      const s = String(corpNm || '').trim();
+      if (!s) { cb(null); return; }
+      if (_ksdCache.has(s)) { cb(_ksdCache.get(s)); return; }
+      const yr = new Date().getFullYear() - 1;   
+      dgkFetch('CorpSvc', 'getIssucoCustnoByNm', { issucoNm: s, pageNo: 1, numOfRows: 3 }, (doc) => {
+        if (!doc) { cb(null); return; }
+        const rows = [...doc.getElementsByTagName('item')].map((el) => ({
+          no: _xt(el, 'issucoCustno'), nm: _xt(el, 'issucoNm'), list: _xt(el, 'listNm'),
+        }));
+        
+        const hit = rows.find((r) => r.list && r.nm === s);
+        if (!hit) { _ksdCache.set(s, null); cb(null); return; }
+        dgkFetch('CorpSvc', 'getStkDistributionStatus', { issucoCustno: hit.no, rgtStdDt: `${yr}1231` }, (doc2) => {
+          if (!doc2) { _ksdCache.set(s, null); cb(null); return; }
+          const rows2 = [...doc2.getElementsByTagName('item')].map((el) => ({
+            tp: _xt(el, 'stkDistbutTpnm'), shrs: Number(_xt(el, 'shrs')) || 0, ratio: Number(_xt(el, 'stkqtyRatio')) || 0,
+          }));
+          const minor = rows2.find((r) => r.tp === '소액주주합계');
+          const out = minor ? { list: hit.list, shrs: minor.shrs, ratio: minor.ratio } : null;
+          _ksdCache.set(s, out);
+          cb(out);
+        }, true);
+      }, true);
     }
 
     function loadAptBasis(kaptCode, cb) {
@@ -10729,6 +10861,29 @@
                           + (c.grp.top && c.grp.top.nm ? ` <span style="color:var(--c-muted);">(${esc(c.grp.top.nm)} ${esc(String(c.grp.top.rate))}%)</span>` : '')
                           + '</div>'
                         : '')
+                      
+                      + (c.unreg
+                        ? `<div style="font-size:12px;margin-top:2px;">미등기임원 <b>${esc(c.unreg.unrgstExutCnt)}명</b>`
+                          + (window.obEok && c.unreg.anulSlryTamt ? ` · 연간급여 ${window.obEok(c.unreg.anulSlryTamt)}` : '')
+                          + (window.obEok && c.unreg.avgPn1Slramt ? ` <span style="color:var(--c-muted);">(1인평균 ${window.obEok(c.unreg.avgPn1Slramt)})</span>` : '')
+                          + '</div>'
+                        : '')
+                      
+                      + (c.risk && c.risk.length
+                        ? `<div style="font-size:12px;margin-top:2px;color:#e8590c;">⚠ 공시 `
+                          + c.risk.map((r) => `${esc(r.label)} ${r.n}건`).join(' · ') + '</div>'
+                        : '')
+                      
+                      + (c.stk
+                        ? `<div style="font-size:12px;margin-top:2px;">주가 <b>${Number(c.stk.clpr).toLocaleString('ko-KR')}원</b>`
+                          + (c.stk.fltRt != null ? ` <span style="color:${Number(c.stk.fltRt) >= 0 ? '#e03131' : '#1971c2'};">${c.stk.fltRt >= 0 ? '+' : ''}${esc(c.stk.fltRt)}%</span>` : '')
+                          + ` <span style="color:var(--c-muted);">(${esc(c.stk.basDt || '')})</span></div>`
+                        : '')
+                      
+                      + (c.ksd
+                        ? `<div style="font-size:12px;margin-top:2px;">소액주주 <b>${c.ksd.shrs.toLocaleString('ko-KR')}명</b>`
+                          + ` <span style="color:var(--c-muted);">(보유 ${esc(String(c.ksd.ratio))}%)</span></div>`
+                        : '')
                       + '</div>';
                   }).join('')
                   + '<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">금융위 기업기본정보 · '
@@ -11610,12 +11765,29 @@
             render();
             
             
+            
+            
+            
+            
+            
             const withCrno = out.filter((c) => c.top && c.top.crno);
+            const _corpJobs = [];
             withCrno.forEach((c) => {
-              loadCorpFinance(c.top.crno, (fin) => { c.fin = fin; render(); });
-              loadCorpGovern(c.top.crno, (gov) => { c.gov = gov; render(); });
-              loadCorpGroup(c.top.crno, (grp) => { c.grp = grp; render(); });
+              _corpJobs.push((next) => loadCorpFinance(c.top.crno, (fin) => { c.fin = fin; render(); next(); }));
+              _corpJobs.push((next) => loadCorpGovern(c.top.crno, (gov) => { c.gov = gov; render(); next(); }));
+              _corpJobs.push((next) => loadCorpGroup(c.top.crno, (grp) => { c.grp = grp; render(); next(); }));
+              _corpJobs.push((next) => loadCorpUnreg(c.top.crno, (unreg) => { c.unreg = unreg; render(); next(); }));
+              _corpJobs.push((next) => loadCorpRisk(c.top.crno, (risk) => { c.risk = risk; render(); next(); }));
+              
+              
+              
+              
+              if (/^(유가|코스닥|코넥스)/.test(c.top.corpRegMrktDcdNm || '')) {
+                _corpJobs.push((next) => loadStockPrice(c.top.corpNm, (stk) => { c.stk = stk; render(); next(); }));
+                _corpJobs.push((next) => loadShareDistribution(c.top.corpNm, (ksd) => { c.ksd = ksd; render(); next(); }));
+              }
             });
+            (function seq(i) { if (i >= _corpJobs.length) return; _corpJobs[i](() => seq(i + 1)); })(0);
           }));
         };
         
