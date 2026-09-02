@@ -11978,7 +11978,9 @@
       let shtHtml = '';
       
       
-      if ((st.sht && st.sht.length) || (st.demol && st.demol.length)) {
+      
+      
+      if (wantInfo.sht && ((st.sht && st.sht.length) || (st.demol && st.demol.length))) {
         const tr = (v) => String(v == null ? '' : v).trim();
         const ymd = (v) => (/^\d{8}$/.test(tr(v)) ? tr(v).slice(0, 4) + '.' + tr(v).slice(4, 6) + '.' + tr(v).slice(6, 8) : '');
         const list = (st.sht || []).slice().sort((a, b) => tr(b.shterDay).localeCompare(tr(a.shterDay)));
