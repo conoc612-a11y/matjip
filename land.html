@@ -7843,6 +7843,58 @@
               };
             });
           });
+          
+          
+          
+          
+          
+          
+          {
+            const pop = [];
+            UA_SERVICES.forEach(([, items]) => items.forEach((it) => {
+              if (it.pk && !it.w) pop.push(it);   
+            }));
+            if (pop.length) {
+              const sec2 = L.DomUtil.create('div', 'lp-sec closed', body);
+              const head2 = L.DomUtil.create('div', 'lp-head', sec2);
+              head2.innerHTML = '<span style="width:13px;"></span>'
+                + '<span class="lp-name">필지 팝업 데이터</span>'
+                + `<span style="font-weight:400;font-size:11px;color:var(--muted);">${pop.length}종</span>`
+                + '<span class="lp-arrow">▾</span>';
+              const kids2 = L.DomUtil.create('div', 'lp-kids', sec2);
+              head2.onclick = () => { sec2.classList.toggle('closed'); };
+              const note2 = L.DomUtil.create('div', '', kids2);
+              note2.style.cssText = 'padding:2px 10px 6px 14px;font-size:11px;color:var(--muted);line-height:1.5;';
+              note2.textContent = '지도에 레이어로 안 그려지는 데이터입니다. 지도에서 필지를 클릭하면'
+                + ' 그 필지의 팝업 안에서 보입니다. 이름을 누르면 무엇을 주는지 펼쳐집니다.';
+              pop.forEach((it) => {
+                const row = L.DomUtil.create('div', '', kids2);
+                const b2 = L.DomUtil.create('div', '', row);
+                b2.style.cssText = 'padding:3px 8px 3px 22px;font-size:12px;cursor:pointer;border-radius:6px;';
+                b2.innerHTML = esc(it.t)
+                  + ` <span style="color:var(--muted);font-size:10.5px;">op ${it.u}/${it.n}</span>`;
+                b2.onmouseenter = () => { b2.style.background = 'var(--c-hover)'; };
+                b2.onmouseleave = () => { b2.style.background = ''; };
+                const bx = L.DomUtil.create('div', '', row);
+                bx.style.cssText = 'display:none;padding:4px 10px 7px 22px;font-size:11.5px;'
+                  + 'color:var(--muted);line-height:1.55;';
+                let built2 = false;
+                b2.onclick = (e) => {
+                  e.stopPropagation();
+                  if (!built2) {
+                    built2 = true;
+                    const d = detailByPk[it.pk] || UA_DETAILS[it.t];
+                    bx.innerHTML = (d && d.d ? d.d + '<br>' : '')
+                      + '<b>필지를 클릭</b>하면 팝업 안에서 보입니다 (지도 레이어 없음).'
+                      + `<div style="margin-top:3px;">제공 op <b>${it.n}개</b> 중 <b>${it.u}개</b> 사용</div>`
+                      + `<div style="margin-top:3px;">포털 pk <a href="https://www.data.go.kr/data/${esc(it.pk)}/openapi.do" target="_blank" rel="noopener">${esc(it.pk)}</a></div>`;
+                  }
+                  bx.style.display = bx.style.display === 'none' ? 'block' : 'none';
+                };
+              });
+            }
+          }
+
         }, 0);
 
         
