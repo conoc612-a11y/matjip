@@ -7910,120 +7910,114 @@
             const m = /data\.go\.kr\/data\/(\d+)\//.exec(UA_DETAILS[k].p || '');
             if (m) detailByPk[m[1]] = UA_DETAILS[k];
           });
-          const uaSecs = [];
-          UA_SERVICES.forEach(([cat, items]) => {
+          
+          
+          
+          
+          
+          const CAT_TARGET = {
+            '부동산·건축': '건물 상세 정보 (팝업)',
+            '공공주택·임대': '청약',
+            '생활 인프라': '현장 확인',
+            '사업자·기업·금융': '기업·금융 (공공데이터)',      
+            '그 외': '그 외 공공데이터',                      
+            '제공기관 자체 서비스': '지도 기반 · 외부 서비스',   
+            '민간 API': '지도 기반 · 외부 서비스',
+            '공개 웹 수집': '지도 기반 · 외부 서비스',
+          };
+          const secByName = {};
+          body.querySelectorAll('.lp-sec').forEach((s) => {
+            const n = s.querySelector('.lp-head .lp-name');
+            if (n) secByName[n.textContent.trim()] = s;
+          });
+          const newSecs = [];
+          const ensureSec = (name) => {
+            if (secByName[name]) return secByName[name];
             const sec = L.DomUtil.create('div', 'lp-sec closed', body);
-            uaSecs.push(sec);
-            const head = L.DomUtil.create('div', 'lp-head', sec);
-            head.innerHTML = '<input type="checkbox" class="lp-cb">'
-              + '<span class="lp-name">공공데이터 · ' + esc(cat) + '</span>'
-              + `<span style="font-weight:400;font-size:11px;color:var(--muted);">${items.length}종</span>`
-            head.innerHTML += '<span class="lp-arrow">▾</span>';
-            const kids = L.DomUtil.create('div', 'lp-kids', sec);
-            
-            
-            const bigCb = head.querySelector('.lp-cb');
-            const syncBigUa = () => {
-              const cbs = [...kids.querySelectorAll('input.lp-cb')];
-              if (!cbs.length) { bigCb.disabled = true; return; }
-              const on = cbs.filter((c) => c.checked).length;
-              bigCb.checked = on > 0;
-              bigCb.indeterminate = on > 0 && on < cbs.length;
-            };
-            bigCb.onclick = (e) => { e.stopPropagation(); };
-            bigCb.onchange = () => {
-              const target = bigCb.checked;
-              bigCb.indeterminate = false;
-              kids.querySelectorAll('input.lp-cb').forEach((c) => {
-                if (c.checked !== target) { c.checked = target; if (c.onchange) c.onchange(); }
-              });
-            };
-            head.onclick = (e) => {
-              if (e.target.closest('.lp-cb')) return;
-              sec.classList.toggle('closed');
-            };
-            items.forEach((it) => {
-              const row = L.DomUtil.create('div', '', kids);
-              const btn = L.DomUtil.create('div', '', row);
-              const wLayerName = it.w ? it.w.split(' · ')[0] : '';
-              const wLayer = LAYER_BY_NAME[wLayerName] || null;
-              const wKey = (!wLayer && it.pk) ? (UA_POPUP_KEY[it.pk] || '') : '';
-              const canToggle = !!(wLayer || wKey);
-              btn.style.cssText = 'padding:3px 8px 3px 14px;font-size:12px;cursor:pointer;'
-                + 'border-radius:6px;display:flex;align-items:flex-start;gap:6px;';
-              const wTxt = wLayerName || (it.pk ? '필지 팝업' : '지도 기반 — 끌 수 없음');
-              btn.innerHTML = (canToggle ? '<input type="checkbox" class="lp-cb" style="margin-top:3px;">'
-                                         : '<span style="width:13px;flex-shrink:0;"></span>')
-                + '<span style="flex:1;min-width:0;">' + esc(it.t)
-                + (it.n ? ` <span style="color:var(--muted);font-size:10.5px;">op ${it.u}/${it.n}</span>` : '')
-                + `<div style="font-size:10.5px;color:var(--muted);">↳ ${esc(wTxt)}</div>`
-                + '</span>';
-              const cb1 = btn.querySelector('.lp-cb');
-              if (cb1) {
-                cb1.checked = wLayer ? map.hasLayer(wLayer) : !!wantInfo[wKey];
-                cb1.onclick = (e) => { e.stopPropagation(); };
-                cb1.onchange = () => {
-                  
-                  if (wLayer) {
-                    if (cb1.checked) { map.addLayer(wLayer); map.fire('overlayadd', { layer: wLayer }); }
-                    else { map.removeLayer(wLayer); map.fire('overlayremove', { layer: wLayer }); }
-                    return;
-                  }
-                  const pair = _infoMap.find((x) => x[1] === wKey);
-                  if (pair) {
-                    if (cb1.checked) { map.addLayer(pair[0]); map.fire('overlayadd', { layer: pair[0] }); }
-                    else { map.removeLayer(pair[0]); map.fire('overlayremove', { layer: pair[0] }); }
-                  }
-                  wantInfo[wKey] = cb1.checked;
-                  
-                  if (window.__mjPopup) {
-                    if (cb1.checked) window.__mjPopup.reload();
-                    else window.__mjPopup.clearAndRender(UA_STATE_FIELDS[wKey] || []);
-                  }
-                  syncBigUa();
-                };
-              }
-              btn.onmouseenter = () => { btn.style.background = 'var(--c-hover)'; };
-              btn.onmouseleave = () => { btn.style.background = ''; };
-              const box = L.DomUtil.create('div', '', row);
-              box.style.cssText = 'display:none;padding:4px 10px 7px 33px;font-size:11.5px;'
-                + 'color:var(--muted);line-height:1.55;';
-              let built = false;
-              btn.onclick = (e) => {
-                e.stopPropagation();
-                if (!built) {
-                  built = true;
-                  const d = detailByPk[it.pk] || UA_DETAILS[it.t];
-                  box.innerHTML = (d && d.d ? d.d + '<br>' : '')
-                    + (it.pk
-                      ? (wLayer ? `<div>지도 레이어 — <b>${esc(wLayerName)}</b></div>`
-                                : '<div><b>필지를 클릭</b>하면 팝업 안에서 보입니다.</div>')
-                        + `<div style="margin-top:3px;">제공 op <b>${it.n}개</b> 중 <b>${it.u}개</b> 사용</div>`
-                        + `<div style="margin-top:3px;">포털 pk <a href="https://www.data.go.kr/data/${esc(it.pk)}/openapi.do" target="_blank" rel="noopener">${esc(it.pk)}</a></div>`
-                      : esc(it.d || '') + '<div style="margin-top:3px;">공공데이터포털을 거치지 않고 '
-                        + '<b>기관이 직접 운영</b>하는 서비스입니다.</div>');
+            const hd = L.DomUtil.create('div', 'lp-head', sec);
+            hd.innerHTML = '<input type="checkbox" class="lp-cb">'
+              + '<span class="lp-name">' + esc(name) + '</span>'
+              + '<span class="lp-arrow">▾</span>';
+            L.DomUtil.create('div', 'lp-kids', sec);
+            hd.onclick = (e) => { if (!e.target.closest('.lp-cb')) sec.classList.toggle('closed'); };
+            secByName[name] = sec;
+            newSecs.push(sec);
+            return sec;
+          };
+          const addRow = (kids, it) => {
+            const row = L.DomUtil.create('div', '', kids);
+            const btn = L.DomUtil.create('div', '', row);
+            const wKey = it.pk ? (UA_POPUP_KEY[it.pk] || '') : '';
+            btn.style.cssText = 'padding:3px 8px 3px 14px;font-size:12px;cursor:pointer;'
+              + 'border-radius:6px;display:flex;align-items:flex-start;gap:6px;';
+            const wTxt = it.pk ? '필지 팝업' : '지도 기반 — 끌 수 없음';
+            btn.innerHTML = (wKey ? '<input type="checkbox" class="lp-cb" style="margin-top:3px;">'
+                                  : '<span style="width:13px;flex-shrink:0;"></span>')
+              + '<span style="flex:1;min-width:0;">' + esc(it.t)
+              + (it.n ? ` <span style="color:var(--muted);font-size:10.5px;">op ${it.u}/${it.n}</span>` : '')
+              + `<div style="font-size:10.5px;color:var(--muted);">↳ ${esc(wTxt)}</div>`
+              + '</span>';
+            const cb = btn.querySelector('.lp-cb');
+            if (cb) {
+              cb.checked = !!wantInfo[wKey];
+              cb.onclick = (e) => { e.stopPropagation(); };
+              cb.onchange = () => {
+                const pair = _infoMap.find((x) => x[1] === wKey);
+                if (pair) {
+                  if (cb.checked) { map.addLayer(pair[0]); map.fire('overlayadd', { layer: pair[0] }); }
+                  else { map.removeLayer(pair[0]); map.fire('overlayremove', { layer: pair[0] }); }
                 }
-                box.style.display = box.style.display === 'none' ? 'block' : 'none';
+                wantInfo[wKey] = cb.checked;
+                if (window.__mjPopup) {
+                  if (cb.checked) window.__mjPopup.reload();
+                  else window.__mjPopup.clearAndRender(UA_STATE_FIELDS[wKey] || []);
+                }
               };
+            }
+            btn.onmouseenter = () => { btn.style.background = 'var(--c-hover)'; };
+            btn.onmouseleave = () => { btn.style.background = ''; };
+            const box = L.DomUtil.create('div', '', row);
+            box.style.cssText = 'display:none;padding:4px 10px 7px 33px;font-size:11.5px;'
+              + 'color:var(--muted);line-height:1.55;';
+            let built = false;
+            btn.onclick = (e) => {
+              e.stopPropagation();
+              if (!built) {
+                built = true;
+                const d = detailByPk[it.pk] || UA_DETAILS[it.t];
+                box.innerHTML = (d && d.d ? d.d + '<br>' : '')
+                  + (it.pk
+                    ? '<div><b>필지를 클릭</b>하면 팝업 안에서 보입니다.</div>'
+                      + `<div style="margin-top:3px;">제공 op <b>${it.n}개</b> 중 <b>${it.u}개</b> 사용</div>`
+                      + `<div style="margin-top:3px;">포털 pk <a href="https://www.data.go.kr/data/${esc(it.pk)}/openapi.do" target="_blank" rel="noopener">${esc(it.pk)}</a></div>`
+                    : esc(it.d || '') + '<div style="margin-top:3px;">공공데이터포털을 거치지 않고 '
+                      + '<b>기관이 직접 운영</b>하는 서비스입니다.</div>');
+              }
+              box.style.display = box.style.display === 'none' ? 'block' : 'none';
+            };
+          };
+          UA_SERVICES.forEach(([cat, items]) => {
+            const target = CAT_TARGET[cat] || '그 외 공공데이터';
+            items.forEach((it) => {
+              if (it.w) return;                 
+              const sec = ensureSec(target);
+              addRow(sec.querySelector('.lp-kids'), it);
             });
           });
           
-          
-          
           {
             let ref = roleBar.nextSibling;
-            uaSecs.forEach((s2) => { body.insertBefore(s2, ref); ref = s2.nextSibling; });
-            uaSecs.forEach((s2) => {
-              const cb = s2.querySelector('.lp-head .lp-cb');
-              const kk = s2.querySelector('.lp-kids');
-              if (!cb || !kk) return;
-              const cbs = [...kk.querySelectorAll('input.lp-cb')];
-              if (!cbs.length) { cb.disabled = true; return; }
-              const on = cbs.filter((c) => c.checked).length;
-              cb.checked = on > 0;
-              cb.indeterminate = on > 0 && on < cbs.length;
-            });
+            newSecs.forEach((s2) => { body.insertBefore(s2, ref); ref = s2.nextSibling; });
           }
+          
+          Object.values(secByName).forEach((sec) => {
+            const cb = sec.querySelector('.lp-head .lp-cb');
+            const kk = sec.querySelector('.lp-kids');
+            if (!cb || !kk || cb.dataset.uaWired) return;
+            const cbs = () => [...kk.querySelectorAll('input.lp-cb')];
+            if (!cbs().length) { cb.disabled = true; return; }
+            cb.dataset.uaWired = '1';
+          });
         }, 0);
 
         
