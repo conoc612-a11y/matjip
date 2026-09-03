@@ -88,7 +88,8 @@
   //  · 노선 선형(loadLane)은 거의 안 변한다 → 길게 보관(7일).
   //  · 경로 탐색(searchPubTransPathT)은 소요시간·요금이 바뀔 수 있다 → 짧게(30분).
   var CACHE_PREFIX = 'mj_odsay_';
-  var CACHE_MAX = 40;            // localStorage 를 무한정 먹지 않게 상한을 둔다
+  var CACHE_MAX = 40;            // localStorage 를 무한정 먹지 않게 개수 상한
+  var CACHE_MAX_BYTES = 60000;   // 항목 하나의 상한. 이보다 크면 캐시하지 않는다
   var TTL_LANE = 7 * 24 * 3600e3;
   var TTL_PATH = 30 * 60e3;
   var stats = { net: 0, hit: 0 };   // 검증용 — 캐시가 실제로 먹는지 눈으로 센다
@@ -120,18 +121,12 @@
           .slice(0, keys.length - CACHE_MAX + 1)
           .forEach(function (x) { try { localStorage.removeItem(x.k); } catch (e) {} });
       }
-      localStorage.setItem(CACHE_PREFIX + key, JSON.stringify({ exp: Date.now() + ttl, v: val }));
+      var body = JSON.stringify({ exp: Date.now() + ttl, v: val });
+      // 🔴 저장소는 즐겨찾기(mj_saved_props·mj_saved_agents)와 **같이 쓴다.** 경로 캐시가
+      //    다 먹으면 사용자가 저장을 못 하게 된다. 큰 것은 아예 캐시하지 않는다.
+      if (body.length > CACHE_MAX_BYTES) return;
+      localStorage.setItem(CACHE_PREFIX + key, body);
     } catch (e) {}   // 용량 초과 등 — 캐시는 있으면 좋은 것이지 필수가 아니다
-  }
-  // 캐시에 있으면 그걸 주고, 없으면 받아서 넣는다.
-  function jgetCached(url, key, ttl) {
-    var hit = cacheGet(key);
-    if (hit) return Promise.resolve(hit);
-    stats.net++;
-    return jget(url).then(function (j) {
-      if (j && !j.error) cacheSet(key, j, ttl);
-      return j;
-    });
   }
   // 출발·도착을 소수점 4자리(약 11m)로 뭉갠다 — 몇 m 차이로 캐시를 놓치지 않게.
   function odKey(o, d) {
@@ -154,17 +149,31 @@
     var key = encodeURIComponent(window.ODSAY_KEY || (typeof ODSAY_KEY !== 'undefined' ? ODSAY_KEY : ''));
     var url = base + 'searchPubTransPathT?SX=' + o.lng + '&SY=' + o.lat + '&EX=' + d.lng + '&EY=' + d.lat + '&apiKey=' + key;
 
-    return jgetCached(url, odKey(o, d), TTL_PATH).then(function (j) {
-      var p = j && j.result && j.result.path && j.result.path[0];
+    // 🔴 응답 전체를 캐시하면 안 된다 — searchPubTransPathT 는 경로를 **21개** 돌려주는데
+    //    우리가 쓰는 건 path[0] 뿐이다(실측 77KB). info·subPath 만 남겨 담는다.
+    var pKey = odKey(o, d);
+    var cachedPath = cacheGet(pKey);
+    var pathP = cachedPath ? Promise.resolve(cachedPath) : (stats.net++, jget(url).then(function (j) {
+      var p0 = j && j.result && j.result.path && j.result.path[0];
+      if (!p0) return null;
+      var slim = { info: p0.info, subPath: p0.subPath };
+      cacheSet(pKey, slim, TTL_PATH);
+      return slim;
+    }));
+
+    return pathP.then(function (p) {
       if (!p) return null;
       var mapObj = p.info && p.info.mapObj;
       if (!mapObj) return { info: p.info, subPath: p.subPath, lanes: [] };
       // loadLane 은 호출을 한 번 더 쓴다(무료 쿼터). 그래서 선을 실제로 그릴 때만 부르고,
       // mapObj 를 키로 캐시한다 — 같은 경로를 다시 그릴 땐 호출이 0 이다.
-      return jgetCached(base + 'loadLane?mapObject=' + encodeURIComponent('0:0@' + mapObj) + '&apiKey=' + key,
-                        'l_' + mapObj, TTL_LANE)
+      var lKey = 'l_' + mapObj, cachedLane = cacheGet(lKey);
+      if (cachedLane) return { info: p.info, subPath: p.subPath, lanes: cachedLane };
+      stats.net++;
+      return jget(base + 'loadLane?mapObject=' + encodeURIComponent('0:0@' + mapObj) + '&apiKey=' + key)
         .then(function (lj) {
           var lanes = (lj && lj.result && lj.result.lane) || [];
+          if (lanes.length) cacheSet(lKey, lanes, TTL_LANE);   // 오류는 캐시하지 않는다
           return { info: p.info, subPath: p.subPath, lanes: lanes };
         })
         .catch(function () { return { info: p.info, subPath: p.subPath, lanes: [] }; });
