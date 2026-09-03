@@ -78,6 +78,67 @@
     });
   }
 
+  // ── ODsay 호출 캐시 ─────────────────────────────────────────────
+  // 왜: 대중교통 1회 조회에 ODsay 호출이 **2번** 든다(searchPubTransPathT + loadLane).
+  //     Basic(무료) 한도가 1,000회/일이라 하루 500회 조회분이다. 게다가 사용자가
+  //     도보↔대중교통↔자차 를 오갈 때마다 같은 경로를 매번 새로 물어보고 있었다.
+  //     ⚠️ 한 번에 받는 방법은 없다 — 공식 문서상 mapObj 는 "보간점 API 를 호출하기 위한
+  //     파라미터"이고 geometry 를 응답에 포함시키는 옵션이 없다. 그래서 호출 수 자체는
+  //     못 줄이고, **같은 것을 다시 묻지 않는 것**으로 줄인다.
+  //  · 노선 선형(loadLane)은 거의 안 변한다 → 길게 보관(7일).
+  //  · 경로 탐색(searchPubTransPathT)은 소요시간·요금이 바뀔 수 있다 → 짧게(30분).
+  var CACHE_PREFIX = 'mj_odsay_';
+  var CACHE_MAX = 40;            // localStorage 를 무한정 먹지 않게 상한을 둔다
+  var TTL_LANE = 7 * 24 * 3600e3;
+  var TTL_PATH = 30 * 60e3;
+  var stats = { net: 0, hit: 0 };   // 검증용 — 캐시가 실제로 먹는지 눈으로 센다
+
+  function cacheGet(key) {
+    try {
+      var raw = localStorage.getItem(CACHE_PREFIX + key);
+      if (!raw) return null;
+      var o = JSON.parse(raw);
+      if (!o || !o.exp || Date.now() > o.exp) { localStorage.removeItem(CACHE_PREFIX + key); return null; }
+      stats.hit++;
+      return o.v;
+    } catch (e) { return null; }   // 사파리 프라이빗 등에서 던진다 — 캐시 없음으로 취급
+  }
+  function cacheSet(key, val, ttl) {
+    try {
+      // 상한을 넘으면 가장 오래된 것부터 버린다(만료시각 기준).
+      var keys = [];
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && k.indexOf(CACHE_PREFIX) === 0) keys.push(k);
+      }
+      if (keys.length >= CACHE_MAX) {
+        keys.map(function (k) {
+          var e = 0;
+          try { e = (JSON.parse(localStorage.getItem(k)) || {}).exp || 0; } catch (x) {}
+          return { k: k, e: e };
+        }).sort(function (a, b) { return a.e - b.e; })
+          .slice(0, keys.length - CACHE_MAX + 1)
+          .forEach(function (x) { try { localStorage.removeItem(x.k); } catch (e) {} });
+      }
+      localStorage.setItem(CACHE_PREFIX + key, JSON.stringify({ exp: Date.now() + ttl, v: val }));
+    } catch (e) {}   // 용량 초과 등 — 캐시는 있으면 좋은 것이지 필수가 아니다
+  }
+  // 캐시에 있으면 그걸 주고, 없으면 받아서 넣는다.
+  function jgetCached(url, key, ttl) {
+    var hit = cacheGet(key);
+    if (hit) return Promise.resolve(hit);
+    stats.net++;
+    return jget(url).then(function (j) {
+      if (j && !j.error) cacheSet(key, j, ttl);
+      return j;
+    });
+  }
+  // 출발·도착을 소수점 4자리(약 11m)로 뭉갠다 — 몇 m 차이로 캐시를 놓치지 않게.
+  function odKey(o, d) {
+    var r = function (n) { return Number(n).toFixed(4); };
+    return 'p_' + r(o.lat) + ',' + r(o.lng) + '_' + r(d.lat) + ',' + r(d.lng);
+  }
+
   // 지하철은 출구 좌표가 있으면 그쪽이 실제로 걸어가는 지점이다.
   function legStart(s) {
     return { lat: Number(s.startExitY || s.startY), lng: Number(s.startExitX || s.startX) };
@@ -93,13 +154,15 @@
     var key = encodeURIComponent(window.ODSAY_KEY || (typeof ODSAY_KEY !== 'undefined' ? ODSAY_KEY : ''));
     var url = base + 'searchPubTransPathT?SX=' + o.lng + '&SY=' + o.lat + '&EX=' + d.lng + '&EY=' + d.lat + '&apiKey=' + key;
 
-    return jget(url).then(function (j) {
+    return jgetCached(url, odKey(o, d), TTL_PATH).then(function (j) {
       var p = j && j.result && j.result.path && j.result.path[0];
       if (!p) return null;
       var mapObj = p.info && p.info.mapObj;
       if (!mapObj) return { info: p.info, subPath: p.subPath, lanes: [] };
-      // loadLane 은 호출을 한 번 더 쓴다(무료 쿼터). 그래서 선을 실제로 그릴 때만 부른다.
-      return jget(base + 'loadLane?mapObject=' + encodeURIComponent('0:0@' + mapObj) + '&apiKey=' + key)
+      // loadLane 은 호출을 한 번 더 쓴다(무료 쿼터). 그래서 선을 실제로 그릴 때만 부르고,
+      // mapObj 를 키로 캐시한다 — 같은 경로를 다시 그릴 땐 호출이 0 이다.
+      return jgetCached(base + 'loadLane?mapObject=' + encodeURIComponent('0:0@' + mapObj) + '&apiKey=' + key,
+                        'l_' + mapObj, TTL_LANE)
         .then(function (lj) {
           var lanes = (lj && lj.result && lj.result.lane) || [];
           return { info: p.info, subPath: p.subPath, lanes: lanes };
@@ -129,7 +192,15 @@
           (sec.graphPos || []).forEach(function (g) { coords.push([g.y, g.x]); });
         });
       }
-      // loadLane 이 비면(옛 노선·해외 등) 정류장 좌표 두 점으로라도 잇는다.
+      // loadLane 이 비면(한도 초과·옛 노선 등) **1차 응답에 이미 들어 있는 정류장 좌표**를 쓴다.
+      // 공짜다(추가 호출 없음). 다만 정류장 사이를 직선으로 이으므로 코너가 잘린다 —
+      // 실측(2026-09-03): 버스 관악06 11정류장 기준 2,789m 로 실제 3,272m 보다 483m(17%) 짧고,
+      // 지하철 2호선은 실제 선형에서 최대 186m 벗어난다. 그래서 대체용일 뿐 상시로는 안 쓴다.
+      if (coords.length < 2) {
+        var st = (s.passStopList && s.passStopList.stations) || [];
+        coords = st.map(function (x) { return [Number(x.y), Number(x.x)]; })
+                   .filter(function (c) { return isFinite(c[0]) && isFinite(c[1]); });
+      }
       if (coords.length < 2) {
         var a = legStart(s), b = legEnd(s);
         if (isFinite(a.lat) && isFinite(b.lat)) coords = [[a.lat, a.lng], [b.lat, b.lng]];
@@ -178,5 +249,6 @@
     });
   }
 
-  window.RouteAPI = { osrm: osrm, transit: transit, transitSteps: transitSteps, kmBetween: kmBetween };
+  window.RouteAPI = { osrm: osrm, transit: transit, transitSteps: transitSteps, kmBetween: kmBetween,
+    stats: stats };   // { net, hit } — 캐시가 먹는지 확인용
 })();
