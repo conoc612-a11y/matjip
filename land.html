@@ -490,9 +490,9 @@
     .apd-lb-zoom button:hover { background:rgba(255,255,255,.3); }
     
     .engine-bar { display:flex; gap:4px; margin-bottom:10px; background:var(--c-hover); padding:4px; border-radius:10px; }
-    .tool-btn { flex:1; font:inherit; font-size:13px; font-weight:600; padding:7px 10px; border:none; background:transparent; color:var(--muted); border-radius:7px; cursor:pointer; transition:all .15s; }
-    .tool-btn:hover { color:var(--text); }
-    .tool-btn.on { background:var(--card); color:var(--c-primary); box-shadow:var(--c-shadow); }
+    .tool-btn { flex:1; font:inherit; font-size:13px; font-weight:600; padding:7px 10px; border:1px solid var(--line); background:var(--card); color:var(--muted); border-radius:7px; cursor:pointer; transition:all .15s; }
+    .tool-btn:hover { color:var(--text); border-color:var(--c-primary); }
+    .tool-btn.on { background:var(--card); color:var(--c-primary); border-color:var(--c-primary); box-shadow:var(--c-shadow); }
     .search-row { display:flex; gap:8px; margin-bottom:12px; }
     .search-inp { width:100%; font:inherit; font-size:14px; padding:11px 14px; border:1px solid var(--line); border-radius:10px; background:var(--card); color:var(--text); }
     .search-inp::placeholder { color:var(--muted); }
@@ -500,8 +500,9 @@
     .gps-btn { width:44px; flex-shrink:0; border:1px solid var(--line); background:var(--card); color:var(--c-primary); border-radius:7px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
     .gps-btn:hover { border-color:var(--c-primary); background:var(--c-primary-soft); }
     .list-tabs { display:flex; background:var(--c-hover); border-radius:10px; padding:4px; margin:4px 0 14px; }
-    .list-tab { flex:1; font:inherit; font-size:13px; font-weight:600; padding:8px 6px; border:none; background:transparent; color:var(--muted); border-radius:7px; cursor:pointer; transition:all .15s; }
-    .list-tab.active { background:var(--card); color:var(--c-primary); box-shadow:var(--c-shadow); }
+    .list-tab { flex:1; font:inherit; font-size:13px; font-weight:600; padding:8px 6px; border:1px solid var(--line); background:var(--card); color:var(--muted); border-radius:7px; cursor:pointer; transition:all .15s; }
+    .list-tab.active { background:var(--card); color:var(--c-primary); border-color:var(--c-primary); box-shadow:var(--c-shadow); }
+    .list-tab:hover { border-color:var(--c-primary); color:var(--text); }
     .fav-cats { display:none; gap:6px; flex-wrap:wrap; margin:-4px 0 14px; }
     .fav-cats.on { display:flex; }
     .fav-cat { font:inherit; font-size:13px; padding:6px 14px; border:1px solid var(--line); background:var(--card); color:var(--muted); border-radius:7px; cursor:pointer; transition:all .15s; }
@@ -640,7 +641,7 @@
 
 
     .lp { position:relative; }
-    .lp-toggle { width:34px; height:34px; border:1px solid var(--line); background:var(--card); color:var(--text);
+    .lp-toggle { width:34px; height:34px; border:1px solid var(--line); background:var(--card); color:var(--c-primary);
       border-radius:7px; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:var(--c-shadow); }
     .lp-toggle svg { width:20px; height:20px; }
     .lp-body { display:none; position:absolute; right:0; top:40px; width:250px; background:var(--card);
@@ -14963,7 +14964,7 @@
         chips.dataset.built = '1';
         chips.innerHTML = NEARBY_PRESETS.map((k) =>
           `<button type="button" class="nb-chip" data-k="${esc(k)}" style="font:inherit;font-size:12px;`
-          + `padding:3px 9px;border-radius:999px;border:1px solid var(--c-border);background:var(--card);`
+          + `padding:3px 9px;border-radius:7px;border:1px solid var(--c-border);background:var(--card);`
           + `color:var(--c-text);cursor:pointer;">${esc(k)}</button>`).join('');
         chips.querySelectorAll('.nb-chip').forEach((b) => {
           b.onclick = () => { $('nearby-q').value = b.dataset.k; runNearby(); };
