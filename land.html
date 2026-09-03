@@ -184,7 +184,9 @@
       margin-right:6px; color:#8A6D1F; }
     body[data-uimode="data"] .list-tab .fi { font-size:15px; }
     body[data-uimode="data"] .list-tab.active .fi { color:#C83C52; }
-    body:not([data-uimode="data"]) .fi { display:none; }
+    
+    body:not([data-uimode="data"]) :is(#panel, .leaflet-popup, .auction-panel,
+      .side-panel, .lp-body, .lc) .fi { display:none; }
     
 
     body[data-uimode="data"] .leaflet-popup-content { min-width:280px; }
@@ -754,6 +756,13 @@
     
     .cctv-icon { width:34px; height:34px; margin:-34px 0 0 -17px; border-radius:50% 50% 50% 0; background:var(--c-danger); transform:rotate(-45deg); display:flex; align-items:center; justify-content:center; box-shadow:var(--c-shadow); }
     .cctv-icon img { width:20px; height:20px; transform:rotate(45deg); filter:invert(1); }
+    
+
+
+    .svc-pin-wrap { background:none; border:none; }
+    .svc-pin { display:flex; align-items:center; justify-content:center; border-radius:50%;
+      color:#fff; border:2px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,.45); }
+    body .svc-pin .fi { margin:0; color:#fff; line-height:1; }
 
     .cctv-pc { width:100%; min-width:320px; max-width:100%; padding:0; box-sizing:border-box; overflow:hidden; display:flex; flex-direction:column; height:100%; }
     .cctv-pc-head { display:flex; align-items:center; justify-content:space-between; padding:11px 13px; border-bottom:1px solid var(--line); font-weight:700; font-size:14px; flex:none; }
@@ -3052,6 +3061,24 @@
       
       
       const NATL_COLOR = { '임대(대부)': '#0ca678', 매각: '#e8590c' };
+      
+      
+      
+      
+      
+      window.svcIcon = function (fi, bg, px) {
+        px = Math.max(20, Math.round(px || 30));
+        const k = fi + '|' + bg + '|' + px;
+        if (!window._svcIconCache) window._svcIconCache = {};
+        if (!window._svcIconCache[k]) {
+          window._svcIconCache[k] = L.divIcon({
+            className: 'svc-pin-wrap',
+            html: `<span class="svc-pin" style="background:${bg};width:${px}px;height:${px}px;font-size:${Math.round(px * 0.48)}px;"><i class="fi ${fi}"></i></span>`,
+            iconSize: [px, px], iconAnchor: [Math.floor(px / 2), Math.floor(px / 2)],
+          });
+        }
+        return window._svcIconCache[k];
+      };
       const natlCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 60 });
       
       natlCluster.on('click', (e) => {
@@ -3098,7 +3125,7 @@
         natlCluster.clearLayers();
         natlCluster.addLayers(natlRows.map((d) => {
           const col = NATL_COLOR[d.way] || '#868e96';
-          const m = L.circleMarker([d.lat, d.lng], { radius: 8, color: '#000', weight: 1.6, fillColor: col, fillOpacity: 0.88 });
+          const m = L.marker([d.lat, d.lng], { icon: svcIcon('fi-rr-bank', col, 28) });
           m._pop = (() => natlPopupHtml(d));
           m.bindTooltip(esc(d.nm || d.addr || ''), { direction: 'top' });
           return m;
@@ -3146,7 +3173,7 @@
         const list = filter ? parkingRows.filter(filter) : parkingRows;
         parkingCluster.addLayers(list.map((d) => {
           const col = PARKING_COLOR[d.fee || 'unknown'];
-          const m = L.circleMarker([d.lat, d.lng], { radius: 9, color: '#000', weight: 2, fillColor: col, fillOpacity: 0.9 });
+          const m = L.marker([d.lat, d.lng], { icon: svcIcon('fi-rr-parking-circle', col, 30) });
           m._pop = (() => parkingPopupHtml(d));
           m.bindTooltip(esc(d.nm || d.addr || ''), { direction: 'top' });
           return m;
@@ -3423,10 +3450,9 @@
         if (!busRows) return;
         busCluster.clearLayers();
         busCluster.addLayers(busRows.map((d) => {
-          const m = L.circleMarker([d.lat, d.lng], {
-            radius: d.ty === '한강선착장' ? 9 : 5, color: '#000',
-            weight: d.ty === '한강선착장' ? 2 : 1,
-            fillColor: BUS_COLOR[d.ty] || '#868e96', fillOpacity: 0.85,
+          const pier = d.ty === '한강선착장';
+          const m = L.marker([d.lat, d.lng], {
+            icon: svcIcon('fi-rr-bus', BUS_COLOR[d.ty] || '#868e96', pier ? 30 : 22),
           });
           m._pop = (() => busPopupHtml(d));
           return m;
@@ -3497,9 +3523,7 @@
         bikeCluster.addLayers(bikeRows.map((d) => {
           
           const rr = d.hold ? Math.min(9, 4 + Math.round(d.hold / 8)) : 4;
-          const mk = L.circleMarker([d.lat, d.lng], {
-            radius: rr, color: '#000', weight: 1, fillColor: '#2f9e44', fillOpacity: 0.8,
-          });
+          const mk = L.marker([d.lat, d.lng], { icon: svcIcon('fi-rr-bike', '#2f9e44', rr * 2 + 12) });
           mk._pop = (() => bikePopupHtml(d));
           return mk;
         }));
@@ -3583,10 +3607,7 @@
         subCluster.addLayers(subRows.map((d) => {
           const tot = (d.on || 0) + (d.off || 0);
           const rr = 5 + Math.round(Math.sqrt(tot / mx) * 8);
-          const mk = L.circleMarker([d.lat, d.lng], {
-            radius: rr, color: '#000', weight: 1.4,
-            fillColor: subColor(d), fillOpacity: 0.85,
-          });
+          const mk = L.marker([d.lat, d.lng], { icon: svcIcon('fi-rr-subway', subColor(d), rr * 2 + 12) });
           mk._pop = (() => subwayPopupHtml(d));
           mk.bindTooltip(esc(d.nm), { direction: 'top' });
           return mk;
@@ -3773,9 +3794,8 @@
         const mx = Math.max.apply(null, trdarRows.map((d) => d.amt || 0).concat([1]));
         trdarCluster.addLayers(trdarRows.map((d) => {
           const rr = 5 + Math.round(Math.sqrt((d.amt || 0) / mx) * 9);
-          const m = L.circleMarker([d.lat, d.lng], {
-            radius: rr, color: '#000', weight: 1.2,
-            fillColor: TRDAR_SE_COLOR[d.se] || '#868e96', fillOpacity: 0.8,
+          const m = L.marker([d.lat, d.lng], {
+            icon: svcIcon('fi-rr-coins', TRDAR_SE_COLOR[d.se] || '#868e96', rr * 2 + 12),
           });
           m._pop = (() => trdarPopupHtml(d));
           m.bindTooltip(esc(d.nm), { direction: 'top' });
@@ -3894,10 +3914,9 @@
         if (!schoolRows) return;
         schoolCluster.clearLayers();
         schoolCluster.addLayers(schoolRows.map((d) => {
-          const m = L.circleMarker([d.lat, d.lng], {
-            
-            radius: d.lv ? 8 : 6.5, color: '#000', weight: 1.5,
-            fillColor: schColor(d), fillOpacity: 0.85,
+          
+          const m = L.marker([d.lat, d.lng], {
+            icon: svcIcon('fi-rr-graduation-cap', schColor(d), d.lv ? 28 : 25),
           });
           m._pop = (() => schoolPopupHtml(d));
           m.bindTooltip(esc(d.nm), { direction: 'top' });
@@ -3968,9 +3987,8 @@
         if (!hospRows) return;
         hospCluster.clearLayers();
         hospCluster.addLayers(hospRows.map((d) => {
-          const m = L.circleMarker([d.lat, d.lng], {
-            radius: HOSP_COLOR[d.cl] ? 8 : 6, color: '#000', weight: 1.5,
-            fillColor: HOSP_COLOR[d.cl] || '#f8a5c2', fillOpacity: 0.85,
+          const m = L.marker([d.lat, d.lng], {
+            icon: svcIcon('fi-rr-hospital', HOSP_COLOR[d.cl] || '#f8a5c2', HOSP_COLOR[d.cl] ? 28 : 24),
           });
           m._pop = (() => hospPopupHtml(d));
           return m;
@@ -3980,9 +3998,7 @@
         if (!emrgRows) return;
         emrgCluster.clearLayers();
         emrgCluster.addLayers(emrgRows.map((d) => {
-          const m = L.circleMarker([d.lat, d.lng], {
-            radius: 10, color: '#000', weight: 2, fillColor: '#e03131', fillOpacity: 0.95,
-          });
+          const m = L.marker([d.lat, d.lng], { icon: svcIcon('fi-rr-ambulance', '#e03131', 32) });
           m._pop = (() => emrgPopupHtml(d));
           m.bindTooltip(esc(d.nm), { direction: 'top' });
           return m;
@@ -3994,14 +4010,14 @@
             if (!r) { toast('따릉이 정보를 불러오지 못했습니다.'); return; }
             bikeBuild();
             const wh = r.filter((x) => x.hold).length;
-            toast('따릉이 대여소 ' + r.length.toLocaleString() + '곳 — 원 크기는 거치대 수('
+            toast('따릉이 대여소 ' + r.length.toLocaleString() + '곳 — 핀 크기는 거치대 수('
               + wh.toLocaleString() + '곳에 정보 있음)');
           });
         } else if (e.layer === subCluster) {
           loadSubway().then((r) => {
             if (!r) { toast('지하철 정보를 불러오지 못했습니다.'); return; }
             subBuild();
-            toast('지하철역 ' + r.length + '곳 — 원 크기는 이용량, 색은 호선');
+            toast('지하철역 ' + r.length + '곳 — 핀 크기는 이용량, 색은 호선');
           });
         } else if (e.layer === trdarCluster) {
           loadTrdar().then((r) => {
@@ -4011,7 +4027,7 @@
             r.forEach((d) => { c[d.se] = (c[d.se] || 0) + 1; });
             toast('상권 ' + r.length.toLocaleString() + '곳 — '
               + Object.entries(c).sort((a, b) => b[1] - a[1]).map((x) => x[0] + ' ' + x[1]).join(' · ')
-              + ' · 원 크기는 매출 규모');
+              + ' · 핀 크기는 매출 규모');
           });
         } else if (e.layer === schoolCluster) {
           loadSchool().then((r) => {
@@ -4069,11 +4085,7 @@
       function evBuild() {
         if (!evRows) return;
         evCluster.clearLayers();
-        const evIcon = L.divIcon({
-          className: '',
-          html: '<div style="width:26px;height:26px;background:#2f9e44;border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;"><img src="icons/ev-station.png" style="width:15px;height:15px;filter:invert(1)" alt=""></div>',
-          iconSize: [26, 26], iconAnchor: [13, 13],
-        });
+        const evIcon = svcIcon('fi-rr-charging-station', '#2f9e44', 30);
         evCluster.addLayers(evRows.map((d) => {
           const m = L.marker([d.lat, d.lng], { icon: evIcon });
           m._pop = (() => evPopupHtml(d));
@@ -4129,13 +4141,11 @@
       function agedBuild() {
         if (!agedRows) return;
         agedCluster.clearLayers();
-        const agedIcon = L.divIcon({
-          className: '',
-          html: '<div style="width:26px;height:26px;background:#e03131;border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;">노</div>',
-          iconSize: [26, 26], iconAnchor: [13, 13],
-        });
         agedCluster.addLayers(agedRows.map((d) => {
-          const m = L.marker([d.lat, d.lng], { icon: agedIcon });
+          
+          const m = L.marker([d.lat, d.lng], {
+            icon: svcIcon('fi-rr-shield', AGED_GRADE_COLOR[d.grade] || '#868e96', 28),
+          });
           m._pop = (() => agedPopupHtml(d));
           m.bindTooltip(esc(d.name), { direction: 'top' });
           return m;
@@ -4655,13 +4665,7 @@
       
       const LIFE_TY = { DP: '백화점', LM: '대형마트', SM: '기업형슈퍼', CS: '편의점' };
       window.LIFE_TY = LIFE_TY;
-      const _lifeIcon = L.divIcon({
-        className: '',
-        html: '<div style="width:24px;height:24px;background:#0f766e;border:2px solid #fff;border-radius:50%;'
-          + 'box-shadow:0 1px 4px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;'
-          + 'font:700 11px/1 system-ui;color:#fff;">마</div>',
-        iconSize: [24, 24], iconAnchor: [12, 12],
-      });
+      const _lifeIcon = svcIcon('fi-rr-shopping-cart', '#0f766e', 30);
       
       
       
@@ -4712,13 +4716,7 @@
       
       const greenCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 50 });
       let grnMapRows = null, _grnMapPromise = null;
-      const _grnIcon = L.divIcon({
-        className: '',
-        html: '<div style="width:24px;height:24px;background:#2f9e44;border:2px solid #fff;border-radius:50%;'
-          + 'box-shadow:0 1px 4px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;'
-          + 'font:700 11px/1 system-ui;color:#fff;">녹</div>',
-        iconSize: [24, 24], iconAnchor: [12, 12],
-      });
+      const _grnIcon = svcIcon('fi-rr-leaf', '#2f9e44', 30);
       function loadGreenMap() {
         if (!_grnMapPromise) {
           _grnMapPromise = fetch('greenbuild.json')
@@ -4769,13 +4767,7 @@
       
       const rstCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 50 });
       let rstMapRows = null, _rstMapPromise = null;
-      const _rstIcon = L.divIcon({
-        className: '',
-        html: '<div style="width:24px;height:24px;background:#1c7ed6;border:2px solid #fff;border-radius:50%;'
-          + 'box-shadow:0 1px 4px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;'
-          + 'font:700 11px/1 system-ui;color:#fff;">화</div>',
-        iconSize: [24, 24], iconAnchor: [12, 12],
-      });
+      const _rstIcon = svcIcon('fi-rr-toilet', '#1c7ed6', 30);
       function loadRestroomMap() {
         if (!_rstMapPromise) {
           _rstMapPromise = fetch('restroom.json')
