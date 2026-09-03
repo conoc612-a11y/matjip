@@ -209,8 +209,9 @@
       .side-panel, .lp-body, .lc) .fi { display:none; }
     
 
-    #nearby-chips .nb-chip { flex:1 1 0; white-space:nowrap; text-align:center; }
-    #nearby-chips .nb-chip.active { background:#8A6D1F !important; border-color:#8A6D1F !important; color:#fff; }
+
+    #nearby-chips .nb-chip { white-space:nowrap; text-align:center; }
+    #nearby-chips .nb-chip.active { background:#8A6D1F !important; border-color:#8A6D1F !important; color:#fff !important; }
     
 
     body[data-uimode="data"] .leaflet-popup-content { min-width:280px; }
@@ -633,7 +634,7 @@
     .lc-sub { font-weight:600; font-size:14px; margin-bottom:6px; }
     
 
-    .rp-chips { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px; }
+    .rp-chips { display:grid; grid-template-columns:repeat(auto-fit,minmax(70px,1fr)); gap:6px; margin-bottom:6px; }
     .rp-chips .fav-cat { padding:4px 10px; font-size:12px; }
     .lc-dot { display:inline-block; width:9px; height:9px; border-radius:50%; vertical-align:middle; margin-right:5px; }
     
@@ -1105,7 +1106,7 @@
             autocomplete="off" style="flex:1;min-width:0;" />
           <button type="button" id="nearby-go" class="pc-btn pc-btn-primary" style="flex:none;width:44px;padding-left:0;padding-right:0;" title="검색">찾기</button>
         </div>
-        <div id="nearby-chips" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;"></div>
+        <div id="nearby-chips" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(70px,1fr));gap:4px;margin-top:6px;"></div>
       </div>
       <div class="fav-cats" id="fav-cats">
         <button class="fav-cat active" data-cat="전체">전체</button>
@@ -14994,7 +14995,7 @@
         chips.dataset.built = '1';
         chips.innerHTML = NEARBY_PRESETS.map((k) =>
           `<button type="button" class="nb-chip" data-k="${esc(k)}" style="font:inherit;font-size:12px;`
-          + `padding:3px 12px;border-radius:7px;border:1px solid var(--c-border);background:var(--card);`
+          + `padding:3px 4px;border-radius:7px;border:1px solid var(--c-border);background:var(--card);`
           + `color:var(--c-text);cursor:pointer;">${esc(k)}</button>`).join('');
         chips.querySelectorAll('.nb-chip').forEach((b) => {
           b.onclick = () => {
