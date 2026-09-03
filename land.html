@@ -183,6 +183,15 @@
     
 
 
+    html:not(.dark) body[data-uimode="data"] :is(.pc-btn-primary, .btn-mini.primary) {
+      background:#C1935C; border-color:#C1935C; color:#3A2F0B; }
+    html:not(.dark) body[data-uimode="data"] :is(.pc-btn-primary:hover, .btn-mini.primary:hover,
+      a.pc-btn-primary:hover) { background:#A8842F; border-color:#A8842F; color:#3A2F0B; }
+    
+    :focus-visible { outline:2px solid var(--c-primary); outline-offset:1px; }
+    
+
+
     body[data-uimode="data"] .fi { font-size:1.05em; line-height:1; vertical-align:-.15em;
       margin-right:6px; color:#8A6D1F; }
     body[data-uimode="data"] .list-tab .fi { font-size:15px; }
@@ -257,7 +266,7 @@
     
 
     .ap-search-row { padding:6px 12px; border-bottom:1px solid var(--line); }
-    .ap-search-row input { width:100%; box-sizing:border-box; font:inherit; font-size:13px; padding:7px 10px; border:1px solid var(--line); border-radius:999px; background:var(--card); color:var(--text); outline:none; }
+    .ap-search-row input { width:100%; box-sizing:border-box; font:inherit; font-size:13px; padding:7px 10px; border:1px solid var(--line); border-radius:7px; background:var(--card); color:var(--text); outline:none; }
     .ap-search-row input:focus { border-color:var(--c-primary); }
     .ap-list { flex:1; overflow-y:auto; padding:6px; min-height:0; }
     .ap-detail { flex:1; overflow-y:auto; padding:6px; min-height:0; }
@@ -494,7 +503,7 @@
     .tool-btn:hover { color:var(--text); border-color:var(--c-primary); }
     .tool-btn.on { background:var(--card); color:var(--c-primary); border-color:var(--c-primary); box-shadow:var(--c-shadow); }
     .search-row { display:flex; gap:8px; margin-bottom:12px; }
-    .search-inp { width:100%; font:inherit; font-size:14px; padding:11px 14px; border:1px solid var(--line); border-radius:10px; background:var(--card); color:var(--text); }
+    .search-inp { width:100%; font:inherit; font-size:14px; padding:11px 14px; border:1px solid var(--line); border-radius:7px; background:var(--card); color:var(--text); }
     .search-inp::placeholder { color:var(--muted); }
     .search-inp:focus { outline:2px solid var(--c-primary); outline-offset:-1px; border-color:var(--c-primary); }
     .gps-btn { width:44px; flex-shrink:0; border:1px solid var(--line); background:var(--card); color:var(--c-primary); border-radius:7px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
@@ -1316,20 +1325,20 @@
           <div style="font-size:13px;color:var(--muted);margin-bottom:12px;">사업자등록번호를 입력하세요(하이픈 자동 입력). 대표자·개업일을 함께 입력하면 국세청 등록 정보와 <b>진위 일치</b> 여부까지 확인합니다.</div>
           <div style="font-size:13px;color:var(--muted);margin-bottom:4px;">사업자등록번호 <span style="color:var(--c-primary);">*</span></div>
           <input id="bizno-input" inputmode="numeric" maxlength="12" placeholder="123-45-67890"
-            style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text);font:inherit;font-size:15px;margin-bottom:10px;">
+            style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--line);border-radius:7px;background:var(--card);color:var(--text);font:inherit;font-size:15px;margin-bottom:10px;">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
             <div>
               <div style="font-size:13px;color:var(--muted);margin-bottom:4px;">대표자</div>
-              <input id="bizno-name" maxlength="30" placeholder="홍길동" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text);font:inherit;font-size:15px;">
+              <input id="bizno-name" maxlength="30" placeholder="홍길동" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--line);border-radius:7px;background:var(--card);color:var(--text);font:inherit;font-size:15px;">
             </div>
             <div>
               <div style="font-size:13px;color:var(--muted);margin-bottom:4px;">개업일자</div>
-              <input id="bizno-date" type="date" max="${new Date().toISOString().slice(0, 10)}" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text);font:inherit;font-size:15px;">
+              <input id="bizno-date" type="date" max="${new Date().toISOString().slice(0, 10)}" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--line);border-radius:7px;background:var(--card);color:var(--text);font:inherit;font-size:15px;">
             </div>
           </div>
           <div style="font-size:13px;color:var(--muted);margin-bottom:10px;">상호(선택)</div>
           <input id="bizno-bname" maxlength="50" placeholder="(주)OO부동산"
-            style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text);font:inherit;font-size:15px;margin-bottom:12px;">
+            style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--line);border-radius:7px;background:var(--card);color:var(--text);font:inherit;font-size:15px;margin-bottom:12px;">
           <button id="bizno-go" type="button" class="pc-btn pc-btn-primary">조회하기</button>
           <div id="bizno-hist" style="display:none;"></div>
           <div id="bizno-result" style="margin-top:14px;display:none;"></div>
