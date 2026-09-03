@@ -172,7 +172,9 @@
     html:not(.dark) body[data-uimode="data"] #panel { background:#F5ECE6; }
     html:not(.dark) body[data-uimode="data"] .search-row { background:#F5ECE6; }
     html:not(.dark) body[data-uimode="data"] .search-inp { background:#fff; }
-    html:not(.dark) body[data-uimode="data"] .list-tabs { background:#E9CBB2; }
+    
+
+    html:not(.dark) body[data-uimode="data"] .list-tabs { background:#F5ECE6; }
     html:not(.dark) body[data-uimode="data"] .list-tab { color:#7A6A58; }
     html:not(.dark) body[data-uimode="data"] .list-tab.active { background:#fff; color:#C83C52; }
     html:not(.dark) body[data-uimode="data"] .rec { border-left:3px solid #C1935C; }
@@ -1082,7 +1084,7 @@
         <div style="display:flex;gap:6px;">
           <input type="text" id="nearby-q" class="search-inp" placeholder="예: 초등학교, 카페, 은행 (Enter)"
             autocomplete="off" style="flex:1;min-width:0;" />
-          <button type="button" id="nearby-go" class="pc-btn pc-btn-primary" style="flex:none;padding:6px 12px;">찾기</button>
+          <button type="button" id="nearby-go" class="pc-btn pc-btn-primary" style="flex:none;width:44px;padding-left:0;padding-right:0;" title="검색">찾기</button>
         </div>
         <div id="nearby-chips" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;"></div>
       </div>
