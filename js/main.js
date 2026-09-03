@@ -209,40 +209,40 @@ window.setRoutePt = function (w, la, lo) {
   else $('banner').textContent = rStart ? '🏁 도착지를 지도/마커에서 [도착]으로 지정하세요.' : '🚩 출발지를 [출발]로 지정하세요.';
 };
 window.setRouteMode = function (m) { rMode = m; computeRoute(); };
+// 경로선은 js/route-line.js 가 그린다(흰 테두리 + 진행방향 꺾쇠). 좌표는 js/route-api.js.
+// 2026-09-03 이전에는 대중교통이 출발→도착 **직선 점선**이었다 — ODsay 노선 좌표를 안 썼다.
+let rRL = null;
+function routeRender(segments) {
+  if (!rRL) rRL = RouteLine.naver(map);
+  rRL.draw(segments);
+  const b = rRL.bounds();
+  if (b) map.fitBounds(b);
+}
 async function computeRoute() {
   if (!(rStart && rEnd)) return;
-  if (rLine) { rLine.setMap(null); rLine = null; }
+  if (rLine) { rLine.setMap(null); rLine = null; }   // 구버전 선 잔재 정리
+  if (rRL) rRL.clear();
   $('banner').innerHTML = '경로 계산 중…' + modeBar() + clrLink;
+  const o = { lat: rStart.la, lng: rStart.lo }, d = { lat: rEnd.la, lng: rEnd.lo };
   try {
     if (rMode === 'transit') {
-      rLine = new naver.maps.Polyline({ map, path: [latLng(rStart.la, rStart.lo), latLng(rEnd.la, rEnd.lo)], strokeColor: '#378add', strokeWeight: 4, strokeStyle: 'shortdash', strokeOpacity: 0.9 });
-      map.fitBounds(pathBounds([latLng(rStart.la, rStart.lo), latLng(rEnd.la, rEnd.lo)]));
-      const url = `https://api.odsay.com/v1/api/searchPubTransPathT?SX=${rStart.lo}&SY=${rStart.la}&EX=${rEnd.lo}&EY=${rEnd.la}&apiKey=${encodeURIComponent(ODSAY_KEY)}`;
-      const j = await (await fetch(url)).json();
-      const p = j.result && j.result.path && j.result.path[0];
-      if (p) {
-        const i = p.info, ICON = { 1: '🚇', 2: '🚌', 3: '🚶' };
-        const steps = (p.subPath || []).filter((s) => s.trafficType !== 3 || s.sectionTime > 0).map((s) => {
-          if (s.trafficType === 3) return `🚶 도보 ${s.sectionTime}분`;
-          const lane = (s.lane && s.lane[0]) || {};
-          const name = s.trafficType === 1 ? (lane.name || '지하철') : (lane.busNo ? lane.busNo + '번 버스' : '버스');
-          return `${ICON[s.trafficType]} <b>${esc(name)}</b> · ${esc(s.startName)}→${esc(s.endName)} (${s.stationCount}정거장)`;
-        });
-        $('banner').innerHTML = `<div style="font-weight:700;">🚌 ${i.totalTime}분 · 환승 ${i.busTransitCount + i.subwayTransitCount}회 · ${i.payment.toLocaleString()}원</div><ol style="margin:4px 0;padding-left:18px;line-height:1.6;">${steps.map((x) => `<li>${x}</li>`).join('')}</ol>` + modeBar() + clrLink;
-      }
-      else $('banner').innerHTML = '가까워서 대중교통 경로가 없어요(도보 권장).' + modeBar() + clrLink;
+      const r = await RouteAPI.transit(o, d);
+      if (!r || !r.segments.length) { $('banner').innerHTML = '가까워서 대중교통 경로가 없어요(도보 권장).' + modeBar() + clrLink; return; }
+      routeRender(r.segments);
+      const i = r.info;
+      const steps = RouteAPI.transitSteps(r.subPath, esc);
+      $('banner').innerHTML = `<div style="font-weight:700;">🚌 ${i.totalTime}분 · 환승 ${i.busTransitCount + i.subwayTransitCount}회 · ${i.payment.toLocaleString()}원</div><ol style="margin:4px 0;padding-left:18px;line-height:1.6;">${steps.map((x) => `<li>${x}</li>`).join('')}</ol>` + modeBar() + clrLink;
     } else {
-      const url = `https://router.project-osrm.org/route/v1/driving/${rStart.lo},${rStart.la};${rEnd.lo},${rEnd.la}?overview=full&geometries=geojson`;
-      const j = await (await fetch(url)).json();
-      const rt = j.routes && j.routes[0];
+      // ⚠️ 도보는 보행자 서버로 부른다 — router.project-osrm.org 는 /foot/ 로 불러도
+      //    자동차와 같은 값을 준다(프로필 무시, 2026-09-03 실측).
+      const isWalk = rMode === 'walk';
+      const rt = await RouteAPI.osrm(isWalk ? 'foot' : 'car', o, d);
       if (!rt) { $('banner').innerHTML = '경로를 찾지 못했어요.' + modeBar() + clrLink; return; }
-      const path = rt.geometry.coordinates.map((c) => latLng(c[1], c[0]));
-      const color = rMode === 'walk' ? '#2f9e44' : '#e8590c';
-      rLine = new naver.maps.Polyline({ map, path, strokeColor: color, strokeWeight: 5, strokeOpacity: 0.85 });
-      map.fitBounds(pathBounds(path));
+      routeRender([{ type: isWalk ? 'walk' : 'car', coords: rt.coords }]);
       const km = rt.distance / 1000;
-      if (rMode === 'walk') {
-        $('banner').innerHTML = `🚶 도보 약 <b>${Math.round(km / 4.5 * 60)}분</b> · ${km.toFixed(1)}km <span style="color:#999;">(4.5km/h 추정)</span>` + modeBar() + clrLink;
+      if (isWalk) {
+        const note = rt.approx ? ' <span style="color:#999;">(보행 서버 응답 없어 차도 기준 대체)</span>' : '';
+        $('banner').innerHTML = `🚶 도보 약 <b>${Math.round(rt.duration / 60)}분</b> · ${km.toFixed(1)}km${note}` + modeBar() + clrLink;
       } else {
         const taxi = Math.round((4800 + Math.max(0, km - 1.6) * 770) / 100) * 100; // 서울 중형 거리 기준 추정(시간요금 제외)
         $('banner').innerHTML = `🚗 자차 약 <b>${Math.round(rt.duration / 60)}분</b> · ${km.toFixed(1)}km · 🚕 예상 택시요금 ≈ <b>${taxi.toLocaleString()}원</b> <span style="color:#999;">(추정)</span>` + modeBar() + clrLink;
@@ -250,7 +250,7 @@ async function computeRoute() {
     }
   } catch (e) { $('banner').innerHTML = '경로 조회 실패(네트워크).' + modeBar() + clrLink; }
 }
-window.clearRoute = function () { rStart = rEnd = null; [rStartMk, rEndMk, rLine].forEach((o) => o && o.setMap(null)); rStartMk = rEndMk = rLine = null; render(); };
+window.clearRoute = function () { rStart = rEnd = null; [rStartMk, rEndMk, rLine].forEach((o) => o && o.setMap(null)); rStartMk = rEndMk = rLine = null; if (rRL) rRL.clear(); render(); };
 
 // ── ⑧ 검색: 네이버 / 카카오 엔진 + 자동완성 ────────────────────────────────
 let searchMarkers = [];

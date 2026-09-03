@@ -79,6 +79,7 @@ matjip 이 화면에 표시하는 데이터의 **원천과 이용조건**입니�
 |---|---|---|
 | OpenStreetMap 기여자 | 배경지도 타일 | **ODbL — `© OpenStreetMap contributors` 표기 필수** |
 | OSRM (Project OSRM) | 자차 경로 탐색 | BSD-2-Clause · 데이터는 OpenStreetMap(ODbL) |
+| FOSSGIS e.V. (OSRM 인스턴스) | 도보 경로 탐색 · 자차 경로 대체 | BSD-2-Clause · 데이터는 OpenStreetMap(ODbL) |
 | Freepik (Flaticon) | 아이콘 | Flaticon 라이선스 — 출처표시 |
 
 배경지도에 OpenStreetMap 타일을 쓰는 화면에는 **`© OpenStreetMap contributors`** 를 표시합니다(ODbL 요구사항).
