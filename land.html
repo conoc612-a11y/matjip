@@ -92,9 +92,11 @@
 
     
     .nav-tab { color:var(--muted); padding:7px 12px; border-radius:7px; text-decoration:none; font-weight:500; border:1px solid var(--line); background:var(--card); transition:background .15s,color .15s,border-color .15s; }
-    .nav-tab:hover { background:var(--c-hover); color:var(--text); border-color:var(--c-primary); }
-    .nav-tab.active { background:var(--c-primary); color:#fff; border-color:var(--c-primary); }
-    .icon-btn { width:34px; height:34px; border:none; background:var(--c-hover); color:var(--text); border-radius:7px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:16px; line-height:1; }
+    .nav-tab:hover { background:var(--c-hover); color:var(--text); }
+    
+
+    .nav-tab.active { background:var(--c-text); color:var(--card); border-color:var(--c-text); }
+    .icon-btn { width:34px; height:34px; border:1px solid var(--line); background:var(--c-hover); color:var(--text); border-radius:7px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:16px; line-height:1; }
     .icon-btn svg { width:18px; height:18px; }
     .icon-btn:hover { background:var(--line); }
     .profile { position:relative; }
@@ -199,8 +201,12 @@
     body[data-uimode="data"] .list-tab .fi { font-size:15px; }
     body[data-uimode="data"] .list-tab.active .fi { color:#C83C52; }
     
+    
     body:not([data-uimode="data"]) :is(#panel, .leaflet-popup, .auction-panel,
       .side-panel, .lp-body, .lc) .fi { display:none; }
+    
+
+    #nearby-chips .nb-chip { flex:1 1 0; white-space:nowrap; text-align:center; }
     
 
     body[data-uimode="data"] .leaflet-popup-content { min-width:280px; }
@@ -1080,7 +1086,7 @@
       </div>
       
 
-      <div class="nearby-box" id="nearby-box" style="display:none;padding:8px 12px;border-bottom:1px solid var(--line);">
+      <div class="nearby-box" id="nearby-box" style="display:none;padding:8px 16px;border-bottom:1px solid var(--line);">
         <div style="display:flex;gap:6px;">
           <input type="text" id="nearby-q" class="search-inp" placeholder="예: 초등학교, 카페, 은행 (Enter)"
             autocomplete="off" style="flex:1;min-width:0;" />
