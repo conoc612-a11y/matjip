@@ -106,9 +106,9 @@ button,
 .footer-stats { flex:0 0 auto; display:flex; gap:14px; align-items:center; font-size:13px; color:var(--muted); white-space:nowrap; }
 .footer-stats b { font-weight:600; color:var(--text); }
 .footer-stats .footer-note { color:var(--muted); font-size:11px; }
-.footer-admin { flex:none; font-size:12px; font-weight:600; color:var(--accent); text-decoration:none;
-  border:1px solid var(--accent); border-radius:6px; padding:2px 10px; margin-left:8px; white-space:nowrap; }
-.footer-admin:hover { background:var(--accent); color:#fff; }
+.footer-admin { flex:none; font-size:12px; font-weight:600; color:#8A6D1F; text-decoration:none;
+  border:1px solid #C1935C; border-radius:7px; padding:2px 10px; margin-left:8px; white-space:nowrap; }
+.footer-admin:hover { background:#C1935C; color:#3A2F0B; }
 .footer-contact { font-size:13px; color:var(--muted); white-space:nowrap; }
 
 /* ── 모바일 하단 시트 (2026-08-12, land 디자인 기준) ──
