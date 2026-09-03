@@ -182,7 +182,6 @@
 
     html:not(.dark) body[data-uimode="data"] .list-tabs { background:#F5ECE6; }
     html:not(.dark) body[data-uimode="data"] .list-tab { color:#7A6A58; }
-    html:not(.dark) body[data-uimode="data"] .list-tab.active { background:#fff; color:#C83C52; }
     html:not(.dark) body[data-uimode="data"] .rec { border-left:3px solid #C1935C; }
     html:not(.dark) body[data-uimode="data"] .rec:hover { border-color:#ECA6A6; }
     html:not(.dark) body[data-uimode="data"] .rec .score { font-size:17px; }
@@ -203,7 +202,7 @@
     body[data-uimode="data"] .fi { font-size:1.05em; line-height:1; vertical-align:-.15em;
       margin-right:6px; color:#8A6D1F; }
     body[data-uimode="data"] .list-tab .fi { font-size:15px; }
-    body[data-uimode="data"] .list-tab.active .fi { color:#C83C52; }
+    body[data-uimode="data"] .list-tab.active .fi { color:#fff; }
     
     
     body:not([data-uimode="data"]) :is(#panel, .leaflet-popup, .auction-panel,
@@ -211,6 +210,7 @@
     
 
     #nearby-chips .nb-chip { flex:1 1 0; white-space:nowrap; text-align:center; }
+    #nearby-chips .nb-chip.active { background:#8A6D1F !important; border-color:#8A6D1F !important; color:#fff; }
     
 
     body[data-uimode="data"] .leaflet-popup-content { min-width:280px; }
@@ -514,7 +514,7 @@
     
     .tool-btn { flex:1; font:inherit; font-size:13px; font-weight:600; padding:7px 12px; border:1px solid var(--line); background:var(--card); color:var(--muted); border-radius:7px; cursor:pointer; transition:all .15s; }
     .tool-btn:hover { color:var(--text); border-color:#8A6D1F; }
-    .tool-btn.on { background:var(--card); color:#8A6D1F; border-color:#8A6D1F; box-shadow:var(--c-shadow); }
+    .tool-btn.on { background:#8A6D1F; color:#fff; border-color:#8A6D1F; box-shadow:var(--c-shadow); }
     .search-row { display:flex; gap:8px; margin-bottom:12px; }
     .search-inp { width:100%; font:inherit; font-size:14px; padding:11px 14px; border:1px solid var(--line); border-radius:7px; background:var(--card); color:var(--text); }
     .search-inp::placeholder { color:var(--muted); }
@@ -523,7 +523,7 @@
     .gps-btn:hover { border-color:#8A6D1F; background:var(--c-primary-soft); }
     .list-tabs { display:flex; background:var(--c-hover); border-radius:10px; padding:4px; margin:4px 0 14px; }
     .list-tab { flex:1; font:inherit; font-size:13px; font-weight:600; padding:8px 12px; border:1px solid var(--line); background:var(--card); color:var(--muted); border-radius:7px; cursor:pointer; transition:all .15s; }
-    .list-tab.active { background:var(--card); color:#8A6D1F; border-color:#8A6D1F; box-shadow:var(--c-shadow); }
+    .list-tab.active { background:#8A6D1F; color:#fff; border-color:#8A6D1F; }
     .list-tab:hover { border-color:#8A6D1F; color:var(--text); }
     .fav-cats { display:none; gap:6px; flex-wrap:wrap; margin:-4px 0 14px; }
     .fav-cats.on { display:flex; }
@@ -943,6 +943,11 @@
     @media (max-width:640px) {
       header { padding:0 12px; }
       .brand-title { font-size:16px; }
+      
+
+      header { height:auto; min-height:58px; flex-wrap:wrap; row-gap:6px; padding-top:8px; padding-bottom:8px; }
+      
+      #bizno-btn { display:none; }
     }
   </style>
   
@@ -14992,7 +14997,10 @@
           + `padding:3px 12px;border-radius:7px;border:1px solid var(--c-border);background:var(--card);`
           + `color:var(--c-text);cursor:pointer;">${esc(k)}</button>`).join('');
         chips.querySelectorAll('.nb-chip').forEach((b) => {
-          b.onclick = () => { $('nearby-q').value = b.dataset.k; runNearby(); };
+          b.onclick = () => {
+            chips.querySelectorAll('.nb-chip').forEach((c) => c.classList.toggle('active', c === b));
+            $('nearby-q').value = b.dataset.k; runNearby();
+          };
         });
       }
       const anchored = !!agentAnchor;
@@ -15204,6 +15212,11 @@
     (() => {
       const q = $('nearby-q'), go = $('nearby-go');
       if (q) q.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); runNearby(); } });
+      
+      if (q) q.addEventListener('input', () => {
+        const chips = $('nearby-chips');
+        if (chips) chips.querySelectorAll('.nb-chip.active').forEach((c) => c.classList.remove('active'));
+      });
       if (go) go.addEventListener('click', () => runNearby());
     })();
     document.querySelectorAll('.fav-cat').forEach((c) => c.addEventListener('click', () => {
