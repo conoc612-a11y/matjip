@@ -182,6 +182,8 @@
 
     html:not(.dark) body[data-uimode="data"] .list-tabs { background:#F5ECE6; }
     html:not(.dark) body[data-uimode="data"] .list-tab { color:#7A6A58; }
+    
+    html:not(.dark) body[data-uimode="data"] .list-tab.active { color:#fff; }
     html:not(.dark) body[data-uimode="data"] .rec { border-left:3px solid #C1935C; }
     html:not(.dark) body[data-uimode="data"] .rec:hover { border-color:#ECA6A6; }
     html:not(.dark) body[data-uimode="data"] .rec .score { font-size:17px; }
@@ -543,8 +545,8 @@
     .kakao-back { background:var(--card); border:1px solid var(--line); border-radius:7px; color:#8A6D1F; cursor:pointer; font:inherit; font-size:13px; font-weight:600; padding:8px 12px; margin-bottom:10px; }
     .kakao-back:hover { border-color:#8A6D1F; }
     
-    .rec { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin-bottom:10px; cursor:pointer; box-shadow:var(--c-shadow); transition:box-shadow .15s,border-color .15s,transform .15s; }
-    .rec:hover { border-color:#8A6D1F; box-shadow:var(--c-shadow-lg); transform:translateY(-1px); }
+    .rec { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin-bottom:10px; cursor:pointer; transition:border-color .15s; }
+    .rec:hover { border-color:#8A6D1F; }
     .rec h3 { margin:0 0 5px; font-size:16px; font-weight:600; letter-spacing:-.2px; }
     .rec .meta { font-size:13px; color:var(--muted); }
     .rec .tags { margin:9px 0; display:flex; flex-wrap:wrap; gap:6px; }
