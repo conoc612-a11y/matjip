@@ -94,8 +94,7 @@
     .nav-tab { color:var(--muted); padding:7px 12px; border-radius:7px; text-decoration:none; font-weight:500; border:1px solid var(--line); background:var(--card); transition:background .15s,color .15s,border-color .15s; }
     .nav-tab:hover { background:var(--c-hover); color:var(--text); }
     
-
-    .nav-tab.active { background:#C1935C; color:#3A2F0B; border-color:#C1935C; }
+    .nav-tab.active { background:#8A6D1F; color:#fff; border-color:#8A6D1F; }
     .icon-btn { width:34px; height:34px; border:1px solid var(--line); background:var(--c-hover); color:var(--text); border-radius:7px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:16px; line-height:1; }
     .icon-btn svg { width:18px; height:18px; }
     .icon-btn:hover { background:var(--line); }
@@ -129,9 +128,14 @@
 
 
     .ui-modes { margin-left:auto; display:flex; gap:4px; flex-shrink:0; }
-    .ui-mode { border:1px solid #C1935C; background:transparent; color:#8A6D1F;
+    .ui-mode { border:1px solid var(--line); background:var(--card); color:var(--text);
       border-radius:7px; font:inherit; font-size:12px; font-weight:700; padding:3px 12px; cursor:pointer; white-space:nowrap; }
-    .ui-mode.on { background:#C1935C; color:#3A2F0B; border-color:#C1935C; }
+    .ui-mode:hover { border-color:#8A6D1F; color:#8A6D1F; }
+    .ui-mode.on { background:#8A6D1F; color:#fff; border-color:#8A6D1F; }
+    
+
+    #nearby-go { background:#fff; border-color:#8A6D1F; color:#8A6D1F; }
+    #nearby-go:hover { background:#8A6D1F; border-color:#8A6D1F; color:#fff; }
     @media (max-width:640px) { .ui-mode { padding:3px 8px; } }
     
 
@@ -188,11 +192,11 @@
 
 
     html:not(.dark) body[data-uimode="data"] :is(.pc-btn-primary, .btn-mini.primary) {
-      background:#C1935C; border-color:#C1935C; color:#3A2F0B; }
+      background:#fff; border-color:#8A6D1F; color:#8A6D1F; }
     html:not(.dark) body[data-uimode="data"] :is(.pc-btn-primary:hover, .btn-mini.primary:hover,
-      a.pc-btn-primary:hover) { background:#A8842F; border-color:#A8842F; color:#3A2F0B; }
+      a.pc-btn-primary:hover) { background:#6E5716; border-color:#6E5716; color:#fff; }
     
-    :focus-visible { outline:2px solid var(--c-primary); outline-offset:1px; }
+    :focus-visible { outline:2px solid #8A6D1F; outline-offset:1px; }
     
 
 
@@ -261,21 +265,21 @@
     .ap-title { font-size:14px; }
     .ap-count { color:var(--muted); font-size:12px; }
     .ap-links { display:flex; gap:4px; margin-left:auto; }
-    .ap-links a { font-size:12px; color:var(--c-primary); text-decoration:none; padding:3px 12px; border:1px solid var(--line); border-radius:7px; white-space:nowrap; }
+    .ap-links a { font-size:12px; color:#8A6D1F; text-decoration:none; padding:3px 12px; border:1px solid var(--line); border-radius:7px; white-space:nowrap; }
     .ap-links a:hover { background:var(--c-hover); }
     .ap-fav, .ap-close { border:1px solid var(--line); background:var(--card); color:var(--muted); border-radius:7px; padding:3px 12px; font-size:12px; cursor:pointer; white-space:nowrap; }
     .ap-fav.on { color:#f08c00; border-color:#f08c00; background:rgba(240,140,0,.12); font-weight:600; }
     .ap-fav:hover, .ap-close:hover { color:var(--text); background:var(--c-hover); }
     
 
-    .ap-update { font-size:12px; color:var(--c-primary); text-decoration:none; padding:3px 9px;
-      border:1px solid var(--c-primary); border-radius:7px; white-space:nowrap; }
-    .ap-update:hover { background:var(--c-primary); color:#fff; }
+    .ap-update { font-size:12px; color:#8A6D1F; text-decoration:none; padding:3px 12px;
+      border:1px solid var(--line); border-radius:7px; white-space:nowrap; }
+    .ap-update:hover { background:#8A6D1F; color:#fff; }
     
 
     .ap-search-row { padding:6px 12px; border-bottom:1px solid var(--line); }
     .ap-search-row input { width:100%; box-sizing:border-box; font:inherit; font-size:13px; padding:7px 10px; border:1px solid var(--line); border-radius:7px; background:var(--card); color:var(--text); outline:none; }
-    .ap-search-row input:focus { border-color:var(--c-primary); }
+    .ap-search-row input:focus { border-color:#8A6D1F; }
     .ap-list { flex:1; overflow-y:auto; padding:6px; min-height:0; }
     .ap-detail { flex:1; overflow-y:auto; padding:6px; min-height:0; }
     
@@ -305,8 +309,8 @@
     .auc-pop-gos { display:flex; flex-wrap:wrap; gap:4px; margin-top:7px; }
     .auc-pop-go { flex:1 1 30%; font:inherit; font-size:11px; font-weight:600; padding:6px 4px; border:1px solid var(--line);
       background:var(--card); color:var(--text); border-radius:7px; cursor:pointer; white-space:nowrap; }
-    .auc-pop-go:hover { border-color:var(--c-primary); color:var(--c-primary); }
-    .auc-pop-go:active { background:var(--c-primary); color:#fff; }
+    .auc-pop-go:hover { border-color:#8A6D1F; color:#8A6D1F; }
+    .auc-pop-go:active { background:#8A6D1F; color:#fff; }
     .ap-cn { text-align:left; border:none; background:none; color:var(--c-primary); cursor:pointer; font-size:12px; padding:0; text-decoration:underline; }
     .ap-court { color:var(--muted); font-size:12px; }
     .ap-meta { margin-top:3px; color:var(--muted); font-size:12px; overflow-wrap:anywhere; }
@@ -360,9 +364,9 @@
       color:var(--muted); display:flex; align-items:center; justify-content:center; font-size:15px;
       line-height:1; cursor:pointer; z-index:2002; box-shadow:var(--c-shadow); padding:0;
       pointer-events:auto; touch-action:none; }
-    .panel-slide-tab:hover { color:var(--c-primary); border-color:var(--c-primary); }
+    .panel-slide-tab:hover { color:#8A6D1F; border-color:#8A6D1F; }
     
-    .panel-slide-tab.dragging { cursor:col-resize; color:var(--c-primary); border-color:var(--c-primary); }
+    .panel-slide-tab.dragging { cursor:col-resize; color:#8A6D1F; border-color:#8A6D1F; }
     .panel-sliding { transition:width .2s ease; overflow:hidden; }
     .panel.panel-sliding { transition:flex-basis .2s ease, min-width .2s ease; }
     
@@ -375,7 +379,7 @@
     
     .apd-head { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
     .apd-back, .apd-close { border:1px solid var(--line); background:var(--card); color:var(--text); border-radius:7px; cursor:pointer; font:inherit; font-size:13px; padding:5px 10px; }
-    .apd-back:hover, .apd-close:hover { border-color:var(--c-primary); color:var(--c-primary); }
+    .apd-back:hover, .apd-close:hover { border-color:#8A6D1F; color:#8A6D1F; }
     .apd-title { flex:1; font-size:14px; }
     .apd-photo { position:relative; border-radius:10px; overflow:hidden; background:var(--c-hover); aspect-ratio:4/3; }
     .apd-photo img { width:100%; height:100%; object-fit:cover; display:block; cursor:zoom-in; }
@@ -398,16 +402,16 @@
     .apd-grid-row span { color:var(--muted); flex-shrink:0; }
     .apd-actions { display:flex; gap:6px; flex-wrap:wrap; }
     .apd-btn { flex:1 1 30%; font:inherit; font-size:13px; font-weight:600; padding:9px 8px; border:1px solid var(--line); background:var(--card); color:var(--text); border-radius:7px; cursor:pointer; }
-    .apd-btn:hover { border-color:var(--c-primary); color:var(--c-primary); }
-    .apd-btn.on { background:var(--c-primary); color:#fff; border-color:var(--c-primary); }
+    .apd-btn:hover { border-color:#8A6D1F; color:#8A6D1F; }
+    .apd-btn.on { background:#8A6D1F; color:#fff; border-color:#8A6D1F; }
     .apd-gos { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
     .apd-go { flex:1 1 30%; font:inherit; font-size:12px; font-weight:600; padding:7px 6px; border:1px solid var(--line); background:var(--card); color:var(--text); border-radius:7px; cursor:pointer; }
-    .apd-go:hover { border-color:var(--c-primary); color:var(--c-primary); }
-    .apd-go:active { background:var(--c-primary); color:#fff; }
+    .apd-go:hover { border-color:#8A6D1F; color:#8A6D1F; }
+    .apd-go:active { background:#8A6D1F; color:#fff; }
     
 
 
-    .apd-go.has-local, .auc-pop-go.has-local { border-color:var(--c-primary); color:var(--c-primary); }
+    .apd-go.has-local, .auc-pop-go.has-local { border-color:#8A6D1F; color:#8A6D1F; }
     .apd-go-dot { font-size:7px; vertical-align:super; margin-left:3px; color:var(--c-primary); }
     .apd-go.has-local:active .apd-go-dot, .auc-pop-go.has-local:active .apd-go-dot { color:#fff; }
     
@@ -509,39 +513,42 @@
     .engine-bar { display:flex; gap:4px; margin-bottom:10px; background:var(--c-hover); padding:4px; border-radius:10px; }
     
     .tool-btn { flex:1; font:inherit; font-size:13px; font-weight:600; padding:7px 12px; border:1px solid var(--line); background:var(--card); color:var(--muted); border-radius:7px; cursor:pointer; transition:all .15s; }
-    .tool-btn:hover { color:var(--text); border-color:var(--c-primary); }
-    .tool-btn.on { background:var(--card); color:var(--c-primary); border-color:var(--c-primary); box-shadow:var(--c-shadow); }
+    .tool-btn:hover { color:var(--text); border-color:#8A6D1F; }
+    .tool-btn.on { background:var(--card); color:#8A6D1F; border-color:#8A6D1F; box-shadow:var(--c-shadow); }
     .search-row { display:flex; gap:8px; margin-bottom:12px; }
     .search-inp { width:100%; font:inherit; font-size:14px; padding:11px 14px; border:1px solid var(--line); border-radius:7px; background:var(--card); color:var(--text); }
     .search-inp::placeholder { color:var(--muted); }
-    .search-inp:focus { outline:2px solid var(--c-primary); outline-offset:-1px; border-color:var(--c-primary); }
-    .gps-btn { width:44px; flex-shrink:0; border:1px solid var(--line); background:var(--card); color:var(--c-primary); border-radius:7px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
-    .gps-btn:hover { border-color:var(--c-primary); background:var(--c-primary-soft); }
+    .search-inp:focus { outline:2px solid #8A6D1F; outline-offset:-1px; border-color:#8A6D1F; }
+    .gps-btn { width:44px; flex-shrink:0; border:1px solid var(--line); background:var(--card); color:#8A6D1F; border-radius:7px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+    .gps-btn:hover { border-color:#8A6D1F; background:var(--c-primary-soft); }
     .list-tabs { display:flex; background:var(--c-hover); border-radius:10px; padding:4px; margin:4px 0 14px; }
     .list-tab { flex:1; font:inherit; font-size:13px; font-weight:600; padding:8px 12px; border:1px solid var(--line); background:var(--card); color:var(--muted); border-radius:7px; cursor:pointer; transition:all .15s; }
-    .list-tab.active { background:var(--card); color:var(--c-primary); border-color:var(--c-primary); box-shadow:var(--c-shadow); }
-    .list-tab:hover { border-color:var(--c-primary); color:var(--text); }
+    .list-tab.active { background:var(--card); color:#8A6D1F; border-color:#8A6D1F; box-shadow:var(--c-shadow); }
+    .list-tab:hover { border-color:#8A6D1F; color:var(--text); }
     .fav-cats { display:none; gap:6px; flex-wrap:wrap; margin:-4px 0 14px; }
     .fav-cats.on { display:flex; }
     .fav-cat { font:inherit; font-size:13px; padding:6px 12px; border:1px solid var(--line); background:var(--card); color:var(--muted); border-radius:7px; cursor:pointer; transition:all .15s; }
-    .fav-cat:hover { border-color:var(--c-primary); color:var(--c-primary); }
-    .fav-cat.active { background:var(--c-primary); color:#fff; border-color:var(--c-primary); }
+    
+
+
+    .fav-cat:hover { border-color:#8A6D1F; color:#8A6D1F; }
+    .fav-cat.active { background:#8A6D1F; color:#fff; border-color:#8A6D1F; }
     .banner { background:var(--c-primary-soft); color:var(--text); padding:11px 14px; border-radius:10px; font-size:14px; margin-bottom:12px; line-height:1.55; }
     .banner a { color:var(--c-primary); font-weight:600; }
     #recent { font-size:13px; margin-bottom:12px; color:var(--muted); line-height:2; }
     .recent-chip { display:inline-block; margin:2px 4px 2px 0; padding:3px 10px; border:1px solid var(--line); border-radius:7px; text-decoration:none; color:var(--text); background:var(--card); font-size:13px; }
-    .recent-chip:hover { border-color:var(--c-primary); color:var(--c-primary); }
+    .recent-chip:hover { border-color:#8A6D1F; color:#8A6D1F; }
     #cmp-bar { background:var(--card); border:1px solid var(--line); border-left:3px solid var(--c-primary); border-radius:10px; padding:10px 14px; font-size:14px; margin-bottom:12px; box-shadow:var(--c-shadow); }
-    .kakao-back { background:var(--card); border:1px solid var(--line); border-radius:7px; color:var(--c-primary); cursor:pointer; font:inherit; font-size:13px; font-weight:600; padding:8px 12px; margin-bottom:10px; }
-    .kakao-back:hover { border-color:var(--c-primary); }
+    .kakao-back { background:var(--card); border:1px solid var(--line); border-radius:7px; color:#8A6D1F; cursor:pointer; font:inherit; font-size:13px; font-weight:600; padding:8px 12px; margin-bottom:10px; }
+    .kakao-back:hover { border-color:#8A6D1F; }
     
     .rec { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin-bottom:10px; cursor:pointer; box-shadow:var(--c-shadow); transition:box-shadow .15s,border-color .15s,transform .15s; }
-    .rec:hover { border-color:var(--c-primary); box-shadow:var(--c-shadow-lg); transform:translateY(-1px); }
+    .rec:hover { border-color:#8A6D1F; box-shadow:var(--c-shadow-lg); transform:translateY(-1px); }
     .rec h3 { margin:0 0 5px; font-size:16px; font-weight:600; letter-spacing:-.2px; }
     .rec .meta { font-size:13px; color:var(--muted); }
     .rec .tags { margin:9px 0; display:flex; flex-wrap:wrap; gap:6px; }
     .tag { font-size:12px; background:var(--c-hover); color:var(--muted); border-radius:999px; padding:3px 10px; font-weight:500; }
-    .tag.hit { background:var(--c-primary); color:#fff; }
+    .tag.hit { background:#8A6D1F; color:#fff; }
     .rec .why { font-size:13px; color:var(--ok); margin:6px 0; min-height:15px; }
     
 
@@ -549,8 +556,8 @@
 
     .rec .actions { display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; align-items:flex-start; }
     .rec .actions a, .rec .actions button { font-size:13px; font-weight:500; padding:7px 12px; border-radius:7px; border:1px solid var(--line); cursor:pointer; background:var(--card); color:var(--text); text-decoration:none; white-space:nowrap; flex:0 0 auto; line-height:1.2; }
-    .rec .actions a:hover, .rec .actions button:hover { border-color:var(--c-primary); color:var(--c-primary); }
-    .rec .actions .save { background:var(--c-primary); color:#fff; border:none; }
+    .rec .actions a:hover, .rec .actions button:hover { border-color:#8A6D1F; color:#8A6D1F; }
+    .rec .actions .save { background:#8A6D1F; color:#fff; border:none; }
     .rec .actions .save:hover { color:#fff; }
     .score { float:right; font-size:15px; color:var(--c-price); font-weight:700; margin-left:8px; }
     .cmp-check { float:right; font-size:12px; color:var(--muted); cursor:pointer; user-select:none; margin-left:8px; }
@@ -636,7 +643,7 @@
     .toast.on { opacity:1; transform:translateX(-50%) translateY(0); pointer-events:auto; }
     .toast .action { color:#ffd43b; font-weight:700; cursor:pointer; text-decoration:underline; white-space:nowrap; }
     .jb-stage { font:inherit; font-size:13px; padding:3px 9px; border:1px solid var(--line); border-radius:7px; background:var(--card); color:var(--muted); cursor:pointer; }
-    .jb-stage.active { background:var(--c-primary); border-color:var(--c-primary); color:#fff; }
+    .jb-stage.active { background:#8A6D1F; border-color:#8A6D1F; color:#fff; }
     
     .jb-meta-k { font-size:11px; color:var(--c-muted); }
     .jb-meta-v { font-size:13px; font-weight:600; color:var(--c-text); }
@@ -648,18 +655,18 @@
 
     .bm-picker { display:flex; gap:6px; background:var(--card); border:1px solid var(--line); border-radius:10px; padding:6px; box-shadow:var(--c-shadow); }
     .bm-item { font:inherit; padding:0; border:2px solid var(--line); border-radius:7px; background:var(--card); cursor:pointer; overflow:hidden; width:72px; }
-    .bm-item:hover { border-color:var(--c-primary); }
+    .bm-item:hover { border-color:#8A6D1F; }
     .bm-thumb { display:block; width:100%; height:44px; background-size:cover; background-position:center; background-color:var(--line); }
     .bm-label { display:block; padding:4px 2px; font-size:13px; font-weight:600; color:var(--muted); white-space:nowrap; }
-    .bm-item.on { border-color:var(--c-primary); }
-    .bm-item.on .bm-label { color:var(--c-primary); }
+    .bm-item.on { border-color:#8A6D1F; }
+    .bm-item.on .bm-label { color:#8A6D1F; }
     
 
     
 
 
     .lp { position:relative; }
-    .lp-toggle { width:34px; height:34px; border:1px solid var(--line); background:var(--card); color:var(--c-primary);
+    .lp-toggle { width:34px; height:34px; border:1px solid var(--line); background:var(--card); color:#8A6D1F;
       border-radius:7px; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:var(--c-shadow); }
     .lp-toggle svg { width:20px; height:20px; }
     .lp-body { display:none; position:absolute; right:0; top:40px; width:250px; background:var(--card);
@@ -686,8 +693,8 @@
     .lp-roles-lbl { width:100%; font-size:11px; color:var(--muted); margin-bottom:2px; }
     .lp-role { font:inherit; font-size:12px; padding:3px 12px; border-radius:7px; cursor:pointer;
       border:1px solid var(--line); background:var(--card); color:var(--text); transition:all .12s; }
-    .lp-role:hover { border-color:var(--c-primary); color:var(--c-primary); }
-    .lp-role.on { background:var(--c-primary); border-color:var(--c-primary); color:#fff; font-weight:600; }
+    .lp-role:hover { border-color:#8A6D1F; color:#8A6D1F; }
+    .lp-role.on { background:#8A6D1F; border-color:#8A6D1F; color:#fff; font-weight:600; }
     .lp-role-off { color:var(--muted); }
     .lp-sec + .lp-sec { border-top:1px solid var(--line); margin-top:4px; padding-top:4px; }
     .lp-head { display:flex; align-items:center; gap:6px; padding:5px 8px; font-weight:700; cursor:pointer; border-radius:6px; }
@@ -774,7 +781,7 @@
     .ls-sec { margin-top:6px; border-top:1px solid var(--c-border); padding-top:5px; }
     .pc-actions { display:flex; flex-direction:column; gap:7px; }
     .pc-btn { display:block; width:100%; padding:9px 12px; border-radius:7px; font-family:inherit; font-size:14px; font-weight:500; cursor:pointer; text-align:center; text-decoration:none; box-sizing:border-box; background:var(--card); border:1px solid var(--line); color:var(--text); transition:all .15s; }
-    .pc-btn:hover { border-color:var(--c-primary); color:var(--c-primary); }
+    .pc-btn:hover { border-color:#8A6D1F; color:#8A6D1F; }
     .pc-btn-primary { background:var(--c-primary); color:#fff; border:1px solid var(--c-primary); }
     .pc-btn-primary:hover { background:#1a63a8; color:#fff; }
     
@@ -811,17 +818,17 @@
 
 
     .btn-mini { font:inherit; font-size:13px; font-weight:500; padding:5px 10px; border:1px solid var(--line); border-radius:7px; background:var(--card); color:var(--text); cursor:pointer; }
-    .btn-mini.active { background:var(--c-primary); color:#fff; border-color:var(--c-primary); }
-    .btn-mini.primary { background:var(--c-primary); color:#fff; border-color:var(--c-primary); }
+    .btn-mini.active { background:#8A6D1F; color:#fff; border-color:#8A6D1F; }
+    .btn-mini.primary { background:#8A6D1F; color:#fff; border-color:#8A6D1F; }
     .btn-mini.primary:hover { background:#1a63a8; color:#fff; }
-    .btn-mini.outline { background:transparent; color:var(--c-primary); border-color:var(--c-primary); }
+    .btn-mini.outline { background:transparent; color:#8A6D1F; border-color:#8A6D1F; }
     
 
     .rt-mode { flex:1; font:inherit; font-size:13px; font-weight:600; padding:8px 2px; border:1px solid var(--line); border-radius:7px; background:var(--card); color:var(--text); cursor:pointer; }
-    .rt-mode.on { background:var(--c-primary); color:#fff; border-color:var(--c-primary); }
+    .rt-mode.on { background:#8A6D1F; color:#fff; border-color:#8A6D1F; }
     .pc-price { font-size:16px; font-weight:700; color:var(--c-price); margin-top:2px; }
     .unit-row { display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%; padding:6px 8px; margin-top:4px; background:var(--card); border:1px solid var(--line); border-radius:7px; cursor:pointer; font:inherit; font-size:13px; color:var(--text); text-align:left; box-sizing:border-box; }
-    .unit-row:hover { border-color:var(--c-primary); }
+    .unit-row:hover { border-color:#8A6D1F; }
     .unit-row b { color:var(--text); }
     .unit-row .ur-chev { color:var(--muted); font-size:11px; transition:transform .15s; flex-shrink:0; }
     .unit-row.open .ur-chev { transform:rotate(90deg); }
@@ -903,7 +910,7 @@
 
     .lp-min-btn { position:absolute; top:3px; right:30px; z-index:1100; }
     .lp-restore-chip { position:absolute; right:12px; bottom:12px; z-index:1500; display:flex; align-items:center; gap:6px; max-width:300px; padding:8px 12px; background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:7px; box-shadow:var(--c-shadow-lg); font-size:13px; cursor:pointer; }
-    .lp-restore-chip:hover { border-color:var(--c-primary); }
+    .lp-restore-chip:hover { border-color:#8A6D1F; }
     .lp-restore-chip b { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     
     .leaflet-tooltip.hov-tip { background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:8px; padding:7px 10px; box-shadow:var(--c-shadow-lg); font-size:13px; line-height:1.55; }
@@ -929,8 +936,8 @@
     
     #jb-stage-bar { position:absolute; bottom:18px; left:50%; transform:translateX(-50%); display:flex; gap:6px; padding:6px 10px; background:var(--card); border-radius:999px; box-shadow:var(--c-shadow-lg); z-index:900; max-width:90vw; overflow-x:auto; white-space:nowrap; }
     .jb-chip { padding:6px 12px; border-radius:7px; border:1px solid var(--line); background:var(--card); font-size:13px; cursor:pointer; font-family:inherit; color:var(--muted); transition:all .15s; }
-    .jb-chip:hover { border-color:var(--c-primary); color:var(--c-primary); }
-    .jb-chip.active { border-color:var(--c-primary); background:var(--c-primary); color:#fff; }
+    .jb-chip:hover { border-color:#8A6D1F; color:#8A6D1F; }
+    .jb-chip.active { border-color:#8A6D1F; background:#8A6D1F; color:#fff; }
     
     .build-tag { opacity:.55; }
     @media (max-width:640px) {
@@ -2557,7 +2564,7 @@
       
       
       function rpAptPopHtml(d) {
-        return `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${rpColorMode.v === 'move' ? rpMoveColor(d) : ageColor(d.build)};flex-shrink:0;"></span><span class="rp-name">${esc(d.name)}</span></div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div><div class="pc-price">매매 ${uPriceMain(d)}</div>${uPriceSub(d) ? `<div style="margin-top:3px;">${uPriceSub(d)}</div>` : ''}<div style="margin-top:3px;">전용 ${uAreaTxt(d.area)} · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="margin-top:3px;">${esc(d.build || '?')}년 건축${parseInt(d.build) <= 1994 ? '<span style="background:#e03131;color:#fff;font-size:12px;padding:2px 8px;border-radius:999px;margin-left:6px;">재건축연한 초과</span>' : ''}</div>${jeonseHtml(d, '평형 기준')}${rpFlagsHtml(d)}${rpTrendHtml(d)}${rpDealTableHtml(d)}<div class="rp-radius-stat rp-stat" style="display:none;"></div></div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline" style="border-color:var(--c-price) !important;color:var(--c-price);"><i class="fi fi-rr-bookmark"></i>저장</button><a href="https://map.naver.com/p/search/${encodeURIComponent(d.name + ' ' + (d.dong || d.gu || ''))}?c=${d.lng},${d.lat},17,0,0,0,dh" target="_blank" rel="noopener" class="pc-btn pc-btn-primary rp-naver">네이버 부동산</a><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline"><i class="fi fi-rr-flag"></i>출발</button><button class="rt-end pc-btn pc-btn-outline"><i class="fi fi-rr-marker"></i>도착</button></div><button class="sv-btn pc-btn pc-btn-outline"><i class="fi fi-rr-video-camera"></i>거리뷰</button></div></div>`;
+        return `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${rpColorMode.v === 'move' ? rpMoveColor(d) : ageColor(d.build)};flex-shrink:0;"></span><span class="rp-name">${esc(d.name)}</span></div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div><div class="pc-price">매매 ${uPriceMain(d)}</div>${uPriceSub(d) ? `<div style="margin-top:3px;">${uPriceSub(d)}</div>` : ''}<div style="margin-top:3px;">전용 ${uAreaTxt(d.area)} · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="margin-top:3px;">${esc(d.build || '?')}년 건축${parseInt(d.build) <= 1994 ? '<span style="background:#e03131;color:#fff;font-size:12px;padding:2px 8px;border-radius:999px;margin-left:6px;">재건축연한 초과</span>' : ''}</div>${jeonseHtml(d, '평형 기준')}${rpFlagsHtml(d)}${rpTrendHtml(d)}${rpDealTableHtml(d)}<div class="rp-radius-stat rp-stat" style="display:none;"></div></div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline" style="border-color:var(--line) !important;color:var(--c-price);"><i class="fi fi-rr-bookmark"></i>저장</button><a href="https://map.naver.com/p/search/${encodeURIComponent(d.name + ' ' + (d.dong || d.gu || ''))}?c=${d.lng},${d.lat},17,0,0,0,dh" target="_blank" rel="noopener" class="pc-btn pc-btn-primary rp-naver">네이버 부동산</a><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline"><i class="fi fi-rr-flag"></i>출발</button><button class="rt-end pc-btn pc-btn-outline"><i class="fi fi-rr-marker"></i>도착</button></div><button class="sv-btn pc-btn pc-btn-outline"><i class="fi fi-rr-video-camera"></i>거리뷰</button></div></div>`;
       }
       
       
@@ -2809,7 +2816,7 @@
         const range = d.cnt > 1 && d.pmax > d.pmin
           ? `<div style="margin-top:3px;font-size:12px;color:var(--c-muted);">12개월 ${d.cnt}건 · ${d.pmin}~${d.pmax}억</div>`
           : `<div style="margin-top:3px;font-size:12px;color:var(--c-muted);">12개월 ${d.cnt}건</div>`;
-        return `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};flex-shrink:0;"></span><span class="rp-name">${esc(d.name)}</span><span style="font-size:12px;background:var(--c-primary);color:#fff;padding:1px 8px;border-radius:999px;">${esc(d.type)}</span></div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div><div class="pc-price">매매 ${uPriceMain(d)}</div>${uPriceSub(d) ? `<div style="margin-top:3px;">${uPriceSub(d)}</div>` : ''}<div style="margin-top:3px;">전용 ${uAreaTxt(d.area)} · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="margin-top:3px;">${esc(d.build)}년 건축${oldTag}</div>${jeonseHtml(d, '건물 기준 참고')}${range}<div class="rp-radius-stat" style="display:none;"></div></div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline" style="border-color:var(--c-price) !important;color:var(--c-price);"><i class="fi fi-rr-bookmark"></i>저장</button><a href="${naverSearchUrl(d.name + ' ' + (d.dong || d.gu || ''), d.lat, d.lng)}" target="_blank" rel="noopener" class="pc-btn pc-btn-primary rp-naver">네이버 부동산</a><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline"><i class="fi fi-rr-flag"></i>출발</button><button class="rt-end pc-btn pc-btn-outline"><i class="fi fi-rr-marker"></i>도착</button></div><button class="sv-btn pc-btn pc-btn-outline"><i class="fi fi-rr-video-camera"></i>거리뷰</button></div></div>`;
+        return `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};flex-shrink:0;"></span><span class="rp-name">${esc(d.name)}</span><span style="font-size:12px;background:var(--c-primary);color:#fff;padding:1px 8px;border-radius:999px;">${esc(d.type)}</span></div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div><div class="pc-price">매매 ${uPriceMain(d)}</div>${uPriceSub(d) ? `<div style="margin-top:3px;">${uPriceSub(d)}</div>` : ''}<div style="margin-top:3px;">전용 ${uAreaTxt(d.area)} · ${esc(d.floor)}층 · 거래 ${esc(d.ymd)}</div><div style="margin-top:3px;">${esc(d.build)}년 건축${oldTag}</div>${jeonseHtml(d, '건물 기준 참고')}${range}<div class="rp-radius-stat" style="display:none;"></div></div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline" style="border-color:var(--line) !important;color:var(--c-price);"><i class="fi fi-rr-bookmark"></i>저장</button><a href="${naverSearchUrl(d.name + ' ' + (d.dong || d.gu || ''), d.lat, d.lng)}" target="_blank" rel="noopener" class="pc-btn pc-btn-primary rp-naver">네이버 부동산</a><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline"><i class="fi fi-rr-flag"></i>출발</button><button class="rt-end pc-btn pc-btn-outline"><i class="fi fi-rr-marker"></i>도착</button></div><button class="sv-btn pc-btn pc-btn-outline"><i class="fi fi-rr-video-camera"></i>거리뷰</button></div></div>`;
       }
 
       let villaRows = null, _villaPromise = null;
@@ -6270,10 +6277,10 @@
             + near.map((z) => `<a href="#" class="jb-near-row" data-name="${esc(z.name)}" data-jibun="${esc(z.jibun)}" style="display:flex;align-items:center;gap:4px;padding:5px 8px;border-top:1px solid var(--line);text-decoration:none;color:var(--text);font-size:12px;"><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(z.name)}</span><span style="width:58px;"><span class="jb-mini" style="background:${JB_COLOR[z.g]}">${esc(z.g)}</span></span><span style="width:40px;text-align:right;color:${stageColor(z.stage)};">${z.pct}%</span><span style="width:44px;text-align:right;color:var(--c-muted);">${z.dist}km</span></a>`).join('')
             + '</div>'
           : '';
-        const linkBtns = (d.rc || d.cafe) ? `<div class="pc-btn-row">${d.rc ? `<a href="https://urban.seoul.go.kr/view/map/mapPopup.html?recordCode=${encodeURIComponent(d.rc)}" target="_blank" rel="noopener" class="pc-btn pc-btn-outline" style="border-color:#7048e8 !important;color:#7048e8;">경계지도</a>` : ''}${d.cafe ? `<a href="https://cleanup.seoul.go.kr/cafe/mainIndx.do?cafeUrl=${encodeURIComponent(d.cafe)}" target="_blank" rel="noopener" class="pc-btn pc-btn-outline" style="border-color:var(--c-primary) !important;color:var(--c-primary);">정보공개</a>` : ''}</div>` : '';
+        const linkBtns = (d.rc || d.cafe) ? `<div class="pc-btn-row">${d.rc ? `<a href="https://urban.seoul.go.kr/view/map/mapPopup.html?recordCode=${encodeURIComponent(d.rc)}" target="_blank" rel="noopener" class="pc-btn pc-btn-outline" style="border-color:var(--line) !important;color:#7048e8;">경계지도</a>` : ''}${d.cafe ? `<a href="https://cleanup.seoul.go.kr/cafe/mainIndx.do?cafeUrl=${encodeURIComponent(d.cafe)}" target="_blank" rel="noopener" class="pc-btn pc-btn-outline" style="border-color:var(--line) !important;color:var(--c-primary);">정보공개</a>` : ''}</div>` : '';
         
         const tlHtml = jbTlHtml(d);
-        return `<div class="pc"><div class="pc-head">${badgeLink(`<span style="display:inline-block;background:${c};color:#fff;font-size:12px;padding:2px 8px;border-radius:999px;">${g}</span>`)}${badgeLink(stageBadge)}</div><div class="pc-body"><div style="font-weight:700;font-size:15px;margin-bottom:2px;color:var(--c-text);">${esc(d.name)}</div><div>${esc(d.gu)} ${esc(d.jibun)}${areaTxt}${d.approx ? ' <span style="color:var(--c-price);">(동 근사위치)</span>' : ''}</div><div style="font-size:12px;color:var(--c-muted);margin-top:3px;">사업구분: ${esc(d.gubun)}</div>${meta.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:8px;border-top:1px solid var(--line);padding-top:8px;">${meta.join('')}</div>` : ''}<div style="margin:8px 0 4px;"><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--c-muted);margin-bottom:3px;"><span>진행단계</span><span>${jbPct(es)}%</span></div><div style="height:5px;background:var(--line);border-radius:3px;overflow:hidden;"><div style="height:100%;width:${jbPct(es)}%;background:${stageColor(es)};border-radius:3px;transition:width .3s;"></div></div></div>${tlHtml}${cmpHtml}<div class="jb-rp-stat rp-stat" style="display:none;padding:5px 0;border-top:1px solid var(--c-border);"></div><div class="jb-community" style="display:none;margin-top:6px;"></div></div><div class="pc-actions">${linkBtns}<button class="jb-rp-filter pc-btn pc-btn-outline" style="border-color:var(--c-price) !important;color:var(--c-price);"><i class="fi fi-rr-search"></i>이 구역 실거래 보기</button><button class="jb-community-btn pc-btn pc-btn-outline" style="border-color:#2f9e44 !important;color:#2f9e44;"><i class="fi fi-rr-comments"></i>커뮤니티</button><button class="jb-cmp pc-btn pc-btn-outline" style="border-color:var(--c-primary) !important;color:var(--c-primary);"><i class="fi fi-rr-plus"></i>비교</button><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline" style="border-color:var(--c-success) !important;color:var(--c-success);"><i class="fi fi-rr-flag"></i>출발</button><button class="rt-end pc-btn pc-btn-outline" style="border-color:var(--c-danger) !important;color:var(--c-danger);"><i class="fi fi-rr-marker"></i>도착</button></div><button class="sv-btn pc-btn pc-btn-outline"><i class="fi fi-rr-video-camera"></i>거리뷰</button></div></div>`;
+        return `<div class="pc"><div class="pc-head">${badgeLink(`<span style="display:inline-block;background:${c};color:#fff;font-size:12px;padding:2px 8px;border-radius:999px;">${g}</span>`)}${badgeLink(stageBadge)}</div><div class="pc-body"><div style="font-weight:700;font-size:15px;margin-bottom:2px;color:var(--c-text);">${esc(d.name)}</div><div>${esc(d.gu)} ${esc(d.jibun)}${areaTxt}${d.approx ? ' <span style="color:var(--c-price);">(동 근사위치)</span>' : ''}</div><div style="font-size:12px;color:var(--c-muted);margin-top:3px;">사업구분: ${esc(d.gubun)}</div>${meta.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:8px;border-top:1px solid var(--line);padding-top:8px;">${meta.join('')}</div>` : ''}<div style="margin:8px 0 4px;"><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--c-muted);margin-bottom:3px;"><span>진행단계</span><span>${jbPct(es)}%</span></div><div style="height:5px;background:var(--line);border-radius:3px;overflow:hidden;"><div style="height:100%;width:${jbPct(es)}%;background:${stageColor(es)};border-radius:3px;transition:width .3s;"></div></div></div>${tlHtml}${cmpHtml}<div class="jb-rp-stat rp-stat" style="display:none;padding:5px 0;border-top:1px solid var(--c-border);"></div><div class="jb-community" style="display:none;margin-top:6px;"></div></div><div class="pc-actions">${linkBtns}<button class="jb-rp-filter pc-btn pc-btn-outline" style="border-color:var(--line) !important;color:var(--c-price);"><i class="fi fi-rr-search"></i>이 구역 실거래 보기</button><button class="jb-community-btn pc-btn pc-btn-outline" style="border-color:var(--line) !important;color:#2f9e44;"><i class="fi fi-rr-comments"></i>커뮤니티</button><button class="jb-cmp pc-btn pc-btn-outline" style="border-color:var(--line) !important;color:var(--c-primary);"><i class="fi fi-rr-plus"></i>비교</button><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline" style="border-color:var(--line) !important;color:var(--c-success);"><i class="fi fi-rr-flag"></i>출발</button><button class="rt-end pc-btn pc-btn-outline" style="border-color:var(--line) !important;color:var(--c-danger);"><i class="fi fi-rr-marker"></i>도착</button></div><button class="sv-btn pc-btn pc-btn-outline"><i class="fi fi-rr-video-camera"></i>거리뷰</button></div></div>`;
       }
       window.jbPopupHtml = jbPopupHtml;   
       
@@ -15095,7 +15102,7 @@
           const dm = Number(p.distance) || 0;
           const dtxt = dm ? `${dm >= 1000 ? (dm / 1000).toFixed(1) + 'km' : dm + 'm'} · 도보 ${Math.max(1, Math.round(dm / 1000 / 4.5 * 60))}분` : '';
           const isSaved = savedAgents.some((a) => a.id === p.id);
-          return `<div class="rec" data-i="${i}"><h3>${esc(p.place_name)}</h3><div class="meta">${esc((p.category_name || '').split('>').pop().trim())} · ${esc(p.road_address_name || p.address_name || '')}</div>${dtxt ? `<div class="meta" style="color:var(--muted);margin-top:2px;">${dtxt}</div>` : ''}<div class="actions">${p.phone ? `<a href="tel:${esc(p.phone)}">${esc(p.phone)}</a>` : ''}${p.place_url ? `<a href="${safeUrl(p.place_url)}" target="_blank" rel="noopener">카카오맵</a>` : ''}<button class="agent-save" data-i="${i}" style="font-size:13px;padding:5px 10px;border-radius:6px;cursor:pointer;border:1px solid var(--c-primary);${isSaved ? 'background:var(--c-primary);color:#fff;' : 'background:var(--card);color:var(--c-primary);'}">${isSaved ? '★ 저장됨' : '☆ 저장'}</button></div></div>`;
+          return `<div class="rec" data-i="${i}"><h3>${esc(p.place_name)}</h3><div class="meta">${esc((p.category_name || '').split('>').pop().trim())} · ${esc(p.road_address_name || p.address_name || '')}</div>${dtxt ? `<div class="meta" style="color:var(--muted);margin-top:2px;">${dtxt}</div>` : ''}<div class="actions">${p.phone ? `<a href="tel:${esc(p.phone)}">${esc(p.phone)}</a>` : ''}${p.place_url ? `<a href="${safeUrl(p.place_url)}" target="_blank" rel="noopener">카카오맵</a>` : ''}<button class="agent-save" data-i="${i}" style="font-size:13px;padding:5px 10px;border-radius:6px;cursor:pointer;border:1px solid var(--line);${isSaved ? 'background:#8A6D1F;color:#fff;' : 'background:var(--card);color:#8A6D1F;'}">${isSaved ? '★ 저장됨' : '☆ 저장'}</button></div></div>`;
         }).join('');
         
         data.forEach((p) => {
