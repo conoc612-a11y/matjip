@@ -87,19 +87,43 @@
   //     못 줄이고, **같은 것을 다시 묻지 않는 것**으로 줄인다.
   //  · 노선 선형(loadLane)은 거의 안 변한다 → 길게 보관(7일).
   //  · 경로 탐색(searchPubTransPathT)은 소요시간·요금이 바뀔 수 있다 → 짧게(30분).
-  var CACHE_PREFIX = 'mj_odsay_';
+  // 🔴 프리픽스에 **판(version)** 을 붙인다. 캐시에 담는 모양을 바꿨는데 키를 그대로 두면,
+  //    이미 옛 형식을 담아 둔 브라우저가 그걸 새 모양으로 읽어 길찾기가 통째로 깨진다.
+  //    (실제로 겪었다 — 응답 전체를 담던 판에서 { info, subPath } 판으로 바꾼 뒤,
+  //     옛 항목이 남은 브라우저에서 '대중교통 경로를 찾지 못했어요' 가 떴다.)
+  //    ⚠️ 담는 모양을 바꾸면 이 숫자를 반드시 올려라.
+  var CACHE_PREFIX = 'mj_odsay2_';
+  var CACHE_PREFIX_OLD = ['mj_odsay_'];   // 옛 판 — 처음 한 번 쓸어 담아 지운다
   var CACHE_MAX = 40;            // localStorage 를 무한정 먹지 않게 개수 상한
   var CACHE_MAX_BYTES = 60000;   // 항목 하나의 상한. 이보다 크면 캐시하지 않는다
   var TTL_LANE = 7 * 24 * 3600e3;
   var TTL_PATH = 30 * 60e3;
   var stats = { net: 0, hit: 0 };   // 검증용 — 캐시가 실제로 먹는지 눈으로 센다
 
-  function cacheGet(key) {
+  // 옛 판 찌꺼기를 지운다(파일이 로드될 때 한 번).
+  (function sweepOld() {
+    try {
+      var kill = [];
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (!k) continue;
+        for (var j = 0; j < CACHE_PREFIX_OLD.length; j++) {
+          if (k.indexOf(CACHE_PREFIX_OLD[j]) === 0) { kill.push(k); break; }
+        }
+      }
+      kill.forEach(function (k) { try { localStorage.removeItem(k); } catch (e) {} });
+    } catch (e) {}
+  })();
+
+  // shape: 담긴 값이 기대한 모양인지 확인하는 함수(선택). 아니면 캐시 없음으로 친다 —
+  // 판을 올리는 걸 잊어도 길찾기가 깨지지는 않게 하는 두 번째 안전판이다.
+  function cacheGet(key, shape) {
     try {
       var raw = localStorage.getItem(CACHE_PREFIX + key);
       if (!raw) return null;
       var o = JSON.parse(raw);
       if (!o || !o.exp || Date.now() > o.exp) { localStorage.removeItem(CACHE_PREFIX + key); return null; }
+      if (shape && !shape(o.v)) { localStorage.removeItem(CACHE_PREFIX + key); return null; }
       stats.hit++;
       return o.v;
     } catch (e) { return null; }   // 사파리 프라이빗 등에서 던진다 — 캐시 없음으로 취급
@@ -134,6 +158,20 @@
     return 'p_' + r(o.lat) + ',' + r(o.lng) + '_' + r(d.lat) + ',' + r(d.lng);
   }
 
+  // 도보 구간 캐시 — 대중교통 1회 조회에 OSRM 이 최대 3번 나간다(구간마다 한 번).
+  // 보도는 거의 안 변하니 길게 보관한다. 좌표를 소수점 4자리(약 11m)로 뭉개 키를 만든다.
+  var TTL_WALK = 7 * 24 * 3600e3;
+  function osrmWalkCached(a, b) {
+    var r = function (n) { return Number(n).toFixed(4); };
+    var k = 'w_' + r(a.lat) + ',' + r(a.lng) + '_' + r(b.lat) + ',' + r(b.lng);
+    var hit = cacheGet(k, function (v) { return v && v.coords && v.coords.length > 1; });
+    if (hit) return Promise.resolve(hit);
+    return osrm('foot', a, b).then(function (w) {
+      if (w && w.coords && w.coords.length > 1) cacheSet(k, w, TTL_WALK);
+      return w;
+    });
+  }
+
   // 지하철은 출구 좌표가 있으면 그쪽이 실제로 걸어가는 지점이다.
   function legStart(s) {
     return { lat: Number(s.startExitY || s.startY), lng: Number(s.startExitX || s.startX) };
@@ -152,7 +190,7 @@
     // 🔴 응답 전체를 캐시하면 안 된다 — searchPubTransPathT 는 경로를 **21개** 돌려주는데
     //    우리가 쓰는 건 path[0] 뿐이다(실측 77KB). info·subPath 만 남겨 담는다.
     var pKey = odKey(o, d);
-    var cachedPath = cacheGet(pKey);
+    var cachedPath = cacheGet(pKey, function (v) { return v && v.info && v.subPath; });
     var pathP = cachedPath ? Promise.resolve(cachedPath) : (stats.net++, jget(url).then(function (j) {
       var p0 = j && j.result && j.result.path && j.result.path[0];
       if (!p0) return null;
@@ -167,7 +205,7 @@
       if (!mapObj) return { info: p.info, subPath: p.subPath, lanes: [] };
       // loadLane 은 호출을 한 번 더 쓴다(무료 쿼터). 그래서 선을 실제로 그릴 때만 부르고,
       // mapObj 를 키로 캐시한다 — 같은 경로를 다시 그릴 땐 호출이 0 이다.
-      var lKey = 'l_' + mapObj, cachedLane = cacheGet(lKey);
+      var lKey = 'l_' + mapObj, cachedLane = cacheGet(lKey, function (v) { return v && v.length; });
       if (cachedLane) return { info: p.info, subPath: p.subPath, lanes: cachedLane };
       stats.net++;
       return jget(base + 'loadLane?mapObject=' + encodeURIComponent('0:0@' + mapObj) + '&apiKey=' + key)
@@ -225,12 +263,24 @@
       for (k = i + 1; k < out.length; k++) { if (out[k].coords.length) { next = out[k].coords[0]; break; } }
       var from = prev ? { lat: prev[0], lng: prev[1] } : { lat: o.lat, lng: o.lng };
       var to   = next ? { lat: next[0], lng: next[1] } : { lat: d.lat, lng: d.lng };
-      // 몇 미터짜리 도보는 부르지 않는다 — 호출만 늘고 그림은 안 달라진다.
-      if (kmBetween(from, to) < 0.03) { seg.coords = [[from.lat, from.lng], [to.lat, to.lng]]; return; }
-      walkJobs.push(osrm('foot', from, to).then(function (w) {
-        seg.coords = (w && w.coords && w.coords.length > 1)
-          ? w.coords
-          : [[from.lat, from.lng], [to.lat, to.lng]];   // 실패하면 직선(짧은 연결이라 오차가 작다)
+      var straight = kmBetween(from, to) * 1000;   // m
+      var line = [[from.lat, from.lng], [to.lat, to.lng]];
+
+      // 🔴 **역내 환승은 OSRM 을 부르면 안 된다.** ODsay 가 `distance: 0` 으로 알려주는
+      //    구간은 지하 환승통로 이동이다. OSRM 은 통로를 모르니 지상 도로로 빙 돌린다 —
+      //    실측(2026-09-03, 사당역 2호선→4호선): 직선 37m 인데 **670m** 를 돌리고
+      //    직선에서 **최대 309m** 벗어난다. 그림이 통째로 틀린다.
+      //    부르지 않으면 호출도 하나 준다(경로당 3회 → 2회).
+      if (seg.sub && Number(seg.sub.distance) === 0) { seg.coords = line; return; }
+      // 몇 미터짜리는 불러 봐야 그림이 안 달라진다.
+      if (straight < 30) { seg.coords = line; return; }
+
+      walkJobs.push(osrmWalkCached(from, to).then(function (w) {
+        // 🔴 결과를 그대로 믿지 않는다. 지하 통로·구름다리처럼 보행 데이터에 없는 길이
+        //    끼면 OSRM 이 엉뚱하게 돌린다. 직선의 3배 + 100m 를 넘으면 버리고 직선을 쓴다.
+        //    (실측 기준: 정상 구간은 1.45~1.50배였고, 틀린 환승 구간이 18배였다.)
+        var ok = w && w.coords && w.coords.length > 1 && w.distance <= straight * 3 + 100;
+        seg.coords = ok ? w.coords : line;
       }));
     });
 
