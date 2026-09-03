@@ -149,20 +149,36 @@
 
 
 
+
+
+
+    html:not(.dark) body[data-uimode="data"] :is(#panel, .auction-panel, .side-panel,
+      .leaflet-popup-content-wrapper, .leaflet-popup-tip, .lp-body, .lc, .stat-bar) {
+      --c-card:#FFFDF9; --c-hover:#F5ECE6; --c-bg:#F5ECE6;
+      --c-border:#E9CBB2; --c-line:#E9CBB2;
+      --c-primary:#8A6D1F; --c-primary-soft:#F3E8D2;
+      --c-price:#C83C52; --c-muted:#7E97A3; --c-text:#3A332D;
+      
+
+      --card:#FFFDF9; --bg:#F5ECE6; --line:#E9CBB2;
+      --text:#3A332D; --muted:#7E97A3; --accent:#8A6D1F;
+    }
     html:not(.dark) body[data-uimode="data"] #panel { background:#F5ECE6; }
     html:not(.dark) body[data-uimode="data"] .search-row { background:#F5ECE6; }
-    html:not(.dark) body[data-uimode="data"] .search-inp { border-color:#E9CBB2; background:#fff; }
-    html:not(.dark) body[data-uimode="data"] .search-inp:focus { border-color:#C1935C; outline-color:#C1935C; }
+    html:not(.dark) body[data-uimode="data"] .search-inp { background:#fff; }
     html:not(.dark) body[data-uimode="data"] .list-tabs { background:#E9CBB2; }
     html:not(.dark) body[data-uimode="data"] .list-tab { color:#7A6A58; }
     html:not(.dark) body[data-uimode="data"] .list-tab.active { background:#fff; color:#C83C52; }
-    html:not(.dark) body[data-uimode="data"] .rec { background:#fff; border-color:#E9CBB2; border-left:3px solid #C1935C; }
+    html:not(.dark) body[data-uimode="data"] .rec { border-left:3px solid #C1935C; }
     html:not(.dark) body[data-uimode="data"] .rec:hover { border-color:#ECA6A6; }
-    html:not(.dark) body[data-uimode="data"] .rec .score { color:#C83C52; }
-    html:not(.dark) body[data-uimode="data"] .rec .meta { color:#7E97A3; }
+    html:not(.dark) body[data-uimode="data"] .rec .score { font-size:17px; }
     html:not(.dark) body[data-uimode="data"] .tag { background:#F5ECE6; color:#7A6A58; }
     html:not(.dark) body[data-uimode="data"] .tag.hit { background:#C83C52; color:#fff; }
-    html:not(.dark) body[data-uimode="data"] .banner { background:color-mix(in srgb, #E9CBB2 30%, #fff); }
+    
+
+    body[data-uimode="data"] .leaflet-popup-content { min-width:280px; }
+    body[data-uimode="data"] .pc-price { font-size:19px; }
+    body[data-uimode="data"] .pc-head { font-size:16px; }
     .layout { display:flex; flex-wrap:nowrap; align-items:stretch; flex:9.4; min-height:0; overflow:hidden; position:relative; }
     #map { flex:9 1 0; min-width:0; min-height:0; }
     .panel { flex:1 1 0; min-width:380px; min-height:0; overflow-y:auto; padding:14px 16px; transition:min-width .15s, padding .15s; }
