@@ -11924,7 +11924,13 @@
       }
       return _rgPromise;
     }
-    function loadTrdar(lat, lng, cb) {
+    
+    
+    
+    
+    
+    
+    function loadTrdarRadius(lat, lng, cb) {
       const ck = lat.toFixed(4) + ',' + lng.toFixed(4);
       if (_trdarCache.has(ck)) { cb(_trdarCache.get(ck)); return; }
       fetch(`${SBIZ_PROXY}?mode=radius&cx=${lng.toFixed(6)}&cy=${lat.toFixed(6)}`)
@@ -14110,7 +14116,7 @@
         }
         
         
-        if (wantInfo.trdar) loadTrdar(lat, lng, (d) => {
+        if (wantInfo.trdar) loadTrdarRadius(lat, lng, (d) => {
           if (d) {
             st.trdar = d; render();
             
