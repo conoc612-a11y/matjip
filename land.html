@@ -648,6 +648,22 @@
 
     .rp-chips { margin-bottom:6px; }
     .rp-chips .fav-cat { padding:4px 12px; font-size:12px; }
+    
+
+    .rp-range { position:relative; padding:2px 2px 0; margin:2px 0 8px; }
+    .rp-track { position:relative; height:4px; border-radius:2px; background:var(--line); margin:12px 11px 0; }
+    .rp-fill { position:absolute; top:0; bottom:0; border-radius:2px; background:#8A6D1F; }
+    .rp-range input[type="range"] { position:absolute; left:0; right:0; top:2px; width:100%; margin:0;
+      appearance:none; -webkit-appearance:none; background:transparent; pointer-events:none; height:24px; }
+    .rp-range input[type="range"]::-webkit-slider-thumb { -webkit-appearance:none; pointer-events:auto;
+      width:22px; height:22px; border-radius:50%; background:#fff; border:2px solid #8A6D1F;
+      box-shadow:var(--c-shadow); cursor:pointer; }
+    .rp-range input[type="range"]::-moz-range-thumb { pointer-events:auto;
+      width:18px; height:18px; border-radius:50%; background:#fff; border:2px solid #8A6D1F;
+      box-shadow:var(--c-shadow); cursor:pointer; }
+    .rp-range input[type="range"]::-moz-range-track { background:transparent; }
+    .rp-ticks { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); margin-top:2px; padding:0 11px; }
+    #rp-price-lbl { color:#8A6D1F; }
     .lc-dot { display:inline-block; width:9px; height:9px; border-radius:50%; vertical-align:middle; margin-right:5px; }
     
 
@@ -2575,8 +2591,9 @@
         m.openPopup();
       });
       rpRows = null;
-      const rpFilter = { price: 'all', age: 'all' };
-      const inPrice = (p) => { if (rpFilter.price === 'all') return true; if (p == null) return false; const v = Number(p); return rpFilter.price === 'u10' ? v < 10 : rpFilter.price === '10_20' ? (v >= 10 && v < 20) : rpFilter.price === '20_30' ? (v >= 20 && v < 30) : v >= 30; };
+      const RP_PMAX = 40;   
+      const rpFilter = { price: { lo: 0, hi: RP_PMAX }, age: 'all' };
+      const inPrice = (p) => { const { lo, hi } = rpFilter.price; if (lo <= 0 && hi >= RP_PMAX) return true; if (p == null) return false; const v = Number(p); return v >= lo && (hi >= RP_PMAX || v < hi); };
       const inAge = (b) => { if (rpFilter.age === 'all') return true; const y = parseInt(b) || 0; return rpFilter.age === 'new' ? y >= 2015 : rpFilter.age === 'mid' ? (y >= 2000 && y < 2015) : (y > 0 && y < 2000); };
       
       
@@ -2625,12 +2642,13 @@
       function buildRpPanel() {
         if (_rpPanelBuilt) return;
         _rpPanelBuilt = true;
-        rpPanelBody.innerHTML = '<div class="lc-sub">실거래가</div><div class="rp-chips" id="rp-price" role="group">'
-          + '<button type="button" class="fav-cat active" data-v="all">전체</button>'
-          + '<button type="button" class="fav-cat" data-v="u10">10억 이하</button>'
-          + '<button type="button" class="fav-cat" data-v="10_20">10~20억</button>'
-          + '<button type="button" class="fav-cat" data-v="20_30">20~30억</button>'
-          + '<button type="button" class="fav-cat" data-v="o30">30억+</button></div>'
+        rpPanelBody.innerHTML = '<div class="lc-sub">실거래가</div>'
+          + '<div class="lc-sub" style="margin-top:4px;">가격 <b id="rp-price-lbl">전체</b></div>'
+          + '<div class="rp-range" id="rp-price" role="group" aria-label="가격 범위">'
+          + '<div class="rp-track"><div class="rp-fill" id="rp-fill"></div></div>'
+          + '<input type="range" id="rp-lo" min="0" max="40" step="5" value="0" aria-label="최소 가격">'
+          + '<input type="range" id="rp-hi" min="0" max="40" step="5" value="40" aria-label="최대 가격">'
+          + '<div class="rp-ticks"><span>최소</span><span>10억</span><span>20억</span><span>30억</span><span>최대</span></div></div>'
           + '<div class="lc-sub" style="margin-top:4px;">건축년도</div><div class="rp-chips" id="rp-age" role="group">'
           + '<button type="button" class="fav-cat active" data-v="all">전체</button>'
           + '<button type="button" class="fav-cat" data-v="new">2015~ 신축</button>'
@@ -2688,9 +2706,48 @@
       
       
       function setRpChip(gid, v) { const g = document.getElementById(gid); if (g) g.querySelectorAll('.fav-cat').forEach((c) => c.classList.toggle('active', c.dataset.v === v)); }
+      function rpPriceLabel() {
+        const { lo, hi } = rpFilter.price;
+        const t = (lo <= 0 && hi >= RP_PMAX) ? '전체' : hi >= RP_PMAX ? `${lo}억+` : lo <= 0 ? `${hi}억 이하` : `${lo}~${hi}억`;
+        const el = document.getElementById('rp-price-lbl');
+        if (el) el.textContent = t;
+      }
+      function rpPricePaint() {
+        const loEl = document.getElementById('rp-lo'), hiEl = document.getElementById('rp-hi');
+        if (!loEl || !hiEl) return;
+        const { lo, hi } = rpFilter.price;
+        loEl.value = lo; hiEl.value = hi;
+        const fill = document.getElementById('rp-fill');
+        if (fill) { fill.style.left = (lo / RP_PMAX * 100) + '%'; fill.style.right = (100 - hi / RP_PMAX * 100) + '%'; }
+        rpPriceLabel();
+      }
+      let _rpPriceT = 0;
+      function rpPriceWire() {
+        const loEl = document.getElementById('rp-lo'), hiEl = document.getElementById('rp-hi');
+        if (!loEl || !hiEl || loEl._w) return;
+        loEl._w = hiEl._w = 1;
+        const on = (e) => {
+          let lo = +loEl.value, hi = +hiEl.value;
+          
+          if (e.target === loEl && lo > hi) { lo = hi; loEl.value = lo; }
+          if (e.target === hiEl && hi < lo) { hi = lo; hiEl.value = hi; }
+          rpFilter.price = { lo, hi };
+          rpPricePaint();
+          
+          clearTimeout(_rpPriceT);
+          _rpPriceT = setTimeout(() => { rpBuild(); villaBuild(); rpEmptyNotify(); }, 150);
+        };
+        loEl.addEventListener('input', on);
+        hiEl.addEventListener('input', on);
+        rpPricePaint();
+      }
+      function rpPriceReset() {
+        rpFilter.price = { lo: 0, hi: RP_PMAX };
+        rpPricePaint();
+      }
       function rpResetFilter() {
-        rpFilter.price = 'all'; rpFilter.age = 'all';
-        setRpChip('rp-price', 'all'); setRpChip('rp-age', 'all');
+        rpPriceReset(); rpFilter.age = 'all';
+        setRpChip('rp-age', 'all');
         rpBuild(); villaBuild();
       }
       
@@ -2716,7 +2773,7 @@
       
       
       function rpEmptyNotify() {
-        if (rpFilter.price === 'all' && rpFilter.age === 'all') return;
+        if (rpFilter.price.lo <= 0 && rpFilter.price.hi >= RP_PMAX && rpFilter.age === 'all') return;
         let total = 0, loaded = false;
         if (rpRows) { loaded = true; total += realpriceCluster.getLayers().length; }
         if (villaRows) { loaded = true; total += villaCluster.getLayers().length; }
@@ -2738,7 +2795,7 @@
               rpBuild(); villaBuild(); rpEmptyNotify();
             });
           };
-          wire('rp-price', 'price');
+          rpPriceWire();
           wire('rp-age', 'age');
           const wireU = (gid, key) => {
             const g = document.getElementById(gid);
