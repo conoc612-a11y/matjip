@@ -3338,10 +3338,29 @@
         m.openPopup();
       });
       let parkingRows = null, _parkingPromise = null;
+      
+      
+      
+      
+      function decodeParking(j) {
+        if (!j) return [];
+        if (j.v !== 2) return (j.rows || []).filter((r) => r.lat && r.lng);   
+        const F = {};
+        (j.fields || []).forEach((f, i) => { F[f] = i; });
+        const sg = j.sigungus || [];
+        const out = [];
+        for (const r of (j.rows || [])) {
+          const lat = r[F.lat];
+          const lng = r[F.lng];
+          if (!lat || !lng) continue;
+          out.push({ nm: r[F.nm], addr: r[F.addr], sigungu: sg[r[F.sigungu]], lat, lng, cnt: r[F.cnt] });
+        }
+        return out;
+      }
       function loadParking() {
         if (!_parkingPromise) {
           _parkingPromise = fetch('parking.json').then((r) => r.json()).then((j) => {
-            parkingRows = (j.rows || []).filter((r) => r.lat && r.lng);
+            parkingRows = decodeParking(j);
             return parkingRows;
           }).catch(() => null);
         }
