@@ -39,7 +39,7 @@
   <link rel="stylesheet" href="css/buttons.css" />
   
 
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@flaticon/flaticon-uicons@3.3.1/css/regular/rounded.css" />
+  <link rel="stylesheet" href="css/flaticon.css" />
   <style>
     :root {
       --c-primary:#1971c2; --c-primary-soft:#e7f0fb; --c-price:#d9480f;
@@ -10910,12 +10910,12 @@
       let saved = '';
       try { saved = localStorage.getItem('mj_sp_from') || ''; } catch (e) {}
       const cur = from || saved;
-      body.innerHTML = '<div class="lc-sub" style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:6px;">'
+      body.innerHTML = '<div class="lc-sub" style="margin-bottom:6px;">'
         + '<div id="sp-mode" style="display:flex;gap:4px;">'
-        + '<button type="button" class="rt-mode" data-m="walk">도보</button>'
-        + '<button type="button" class="rt-mode" data-m="car">자차</button>'
-        + '<button type="button" class="rt-mode" data-m="bus">버스</button>'
-        + '<button type="button" class="rt-mode" data-m="subway">지하철</button></div></div>'
+        + '<button type="button" class="rt-mode" data-m="walk" style="flex:1;text-align:center;">도보</button>'
+        + '<button type="button" class="rt-mode" data-m="car" style="flex:1;text-align:center;">자차</button>'
+        + '<button type="button" class="rt-mode" data-m="bus" style="flex:1;text-align:center;">버스</button>'
+        + '<button type="button" class="rt-mode" data-m="subway" style="flex:1;text-align:center;">지하철</button></div></div>'
         + '<div style="position:relative;margin-bottom:8px;">'
         + `<input id="sp-from" class="search-inp" style="border-radius:7px 7px 0 0;border-bottom:none;" value="${esc(cur)}" placeholder="출발지 입력 · 지도에서 클릭" autocomplete="off">`
         + `<input id="sp-to" class="search-inp" style="border-radius:0 0 7px 7px;margin-top:-1px;" placeholder="도착지 입력 · 지도에서 클릭" autocomplete="off">`
