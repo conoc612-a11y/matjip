@@ -11576,20 +11576,67 @@
     
     
     
+    
+    
+    
+    
+    
+    
+    
+    
+    const _aptNmCache = new Map();
+    const _aptNmInflight = new Map();
+    function aptNameByPnu(pnu, cb) {
+      if (_aptNmCache.has(pnu)) { cb(_aptNmCache.get(pnu)); return; }
+      let pr = _aptNmInflight.get(pnu);
+      if (!pr) {
+        const q = DGK_PROXY + '?svc=AptIdInfoSvc&op=getAptInfo&page=1&perPage=5&'
+          + encodeURIComponent('cond[PNU::EQ]') + '=' + encodeURIComponent(pnu);
+        
+        
+        
+        const tryOnce = (attempt) => fetch(q)
+          .then((r) => (r.ok ? r.json() : Promise.reject(new Error('http ' + r.status))))
+          .catch((e) => {
+            if (attempt >= 2) throw e;
+            return new Promise((res) => setTimeout(res, attempt === 0 ? 600 : 1800))
+              .then(() => tryOnce(attempt + 1));
+          });
+        pr = tryOnce(0)
+          .then((j) => {
+            const d = j && Array.isArray(j.data) ? j.data[0] : null;
+            const nm = d ? String(d.COMPLEX_NM1 || '') : '';
+            _aptNmCache.set(pnu, nm);     
+            return nm;
+          })
+          .catch(() => '')                
+          .finally(() => { _aptNmInflight.delete(pnu); });
+        _aptNmInflight.set(pnu, pr);
+      }
+      pr.then(cb);
+    }
     function findKaptCode(pnu, bldNm, cb) {
       const s = String(pnu || '');
       if (!/^\d{19}$/.test(s)) { cb(null, false); return; }
       const bjd = s.slice(0, 10);
-      const pick = (list) => {
+      const pick = (list, nm0) => {
         if (!list || !list.length) return null;
         const norm = (t) => String(t).replace(/\s+/g, '');
-        const nm = norm(bldNm || '');
+        const nm = norm(nm0 || '');
         if (!nm) return list.length === 1 ? list[0] : null;
         let hit = list.filter((x) => norm(x.name) === nm);
         if (!hit.length) hit = list.filter((x) => norm(x.name).includes(nm) || nm.includes(norm(x.name)));
         return hit.length === 1 ? hit[0] : null;
       };
-      if (_kaptCache.has(bjd)) { cb(pick(_kaptCache.get(bjd)), false); return; }
+      
+      
+      
+      const finish = (list) => {
+        const got = pick(list, bldNm);
+        if (got) { cb(got, false); return; }
+        aptNameByPnu(s, (nm2) => cb(nm2 ? pick(list, nm2) : null, false));
+      };
+      if (_kaptCache.has(bjd)) { finish(_kaptCache.get(bjd)); return; }
       fetch(`${MOLIT_PROXY}?svc=AptListService4&op=getLegaldongAptList4&bjdCode=${bjd}&numOfRows=100&pageNo=1`)
         .then((r) => (r.ok ? r.json() : Promise.reject(new Error('http'))))
         .then((j) => {
@@ -11598,7 +11645,7 @@
           const arr = !it ? [] : (Array.isArray(it) ? it : (Array.isArray(it.item) ? it.item : (it.item ? [it.item] : [])));
           const list = arr.filter((x) => x && x.kaptCode).map((x) => ({ code: x.kaptCode, name: String(x.kaptName || '') }));
           if (b) _kaptCache.set(bjd, list);   
-          cb(pick(list), false);
+          finish(list);
         })
         .catch(() => cb(null, true));   
     }
