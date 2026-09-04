@@ -10910,7 +10910,7 @@
       let saved = '';
       try { saved = localStorage.getItem('mj_sp_from') || ''; } catch (e) {}
       const cur = from || saved;
-      body.innerHTML = '<div class="lc-sub" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">이동 수단'
+      body.innerHTML = '<div class="lc-sub" style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:6px;">'
         + '<div id="sp-mode" style="display:flex;gap:4px;">'
         + '<button type="button" class="rt-mode" data-m="walk">도보</button>'
         + '<button type="button" class="rt-mode" data-m="car">자차</button>'
@@ -10922,7 +10922,7 @@
         + '<button type="button" id="sp-swap" title="출발·도착 바꾸기" aria-label="출발 도착 바꾸기" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:50%;background:var(--card);border:1px solid var(--line);color:#8A6D1F;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;"><i class="fi fi-rr-exchange fi-keep"></i></button></div>'
         + '<div style="display:flex;gap:6px;margin-bottom:10px;">'
         + '<button type="button" id="sp-clear" class="fav-cat" style="flex:1 1 0;"><i class="fi fi-rr-rotate-right"></i>다시입력</button>'
-        + '<button type="button" id="sp-go" class="fav-cat" style="flex:1 1 0;background:#8A6D1F;color:#fff;border-color:#8A6D1F;"><i class="fi fi-rr-search"></i>길찾기</button></div>'
+        + '<button type="button" id="sp-go" class="fav-cat" style="flex:1 1 0;background:#8A6D1F;color:#fff;border-color:#8A6D1F;display:flex;align-items:center;justify-content:center;gap:4px;"><i class="fi fi-rr-search"></i>길찾기</button></div>'
         + '<div id="sp-result" style="font-size:13px;margin-top:6px;"></div>';
       p.hidden = false;
       const fromEl = body.querySelector('#sp-from'), toEl = body.querySelector('#sp-to');
