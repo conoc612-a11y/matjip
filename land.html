@@ -145,17 +145,7 @@
 
 
     
-
-    body[data-uimode="map"] #stat-bar > span { display:none; }
-    body[data-uimode="map"] .leaflet-control-zoom a { width:44px; height:44px; line-height:44px; font-size:20px; }
-    body[data-uimode="map"] .lp-toggle { width:44px; height:44px; }
-    
     body[data-uimode="data"] .search-row { position:sticky; top:0; z-index:5; background:var(--card); padding-top:6px; }
-    
-
-    body[data-uimode="map"] .leaflet-control-zoom { border-radius:12px; overflow:hidden; box-shadow:var(--c-shadow-lg); border:1px solid var(--line); }
-    body[data-uimode="map"] .leaflet-control-zoom a { border:none; }
-    body[data-uimode="map"] .leaflet-popup-content-wrapper { border-radius:16px; }
     
 
     body[data-uimode="data"] .list-tabs { position:sticky; top:64px; z-index:5; }
@@ -232,11 +222,12 @@
     
 
 
-
     #nearby-chips, .rp-chips { display:flex; flex-wrap:wrap; }
     #nearby-chips { gap:4px; }
     .rp-chips { gap:6px; }
-    #nearby-chips .nb-chip { flex:1 1 auto; white-space:nowrap; text-align:center; margin:0; }
+    #nearby-chips .nb-chip, .rp-chips .fav-cat { flex:1 1 auto; white-space:nowrap; text-align:center; margin:0; }
+    #u-price .fav-cat, #u-area .fav-cat, #rp-color .fav-cat { flex:1 1 0; min-width:0; }
+    #sp-dests .fav-cat { min-width:70px; }
     
 
     .rp-chips .fav-cat { flex:1 1 0; min-width:0; white-space:nowrap; text-align:center; margin:0; }
@@ -976,7 +967,7 @@
     .leaflet-control-layers, .leaflet-control-layers-expanded { background:var(--card); color:var(--text); }
     .leaflet-control-layers-separator { border-top-color:var(--line); }
     .leaflet-control-layers-toggle { background-color:var(--card); }
-    .leaflet-control-zoom a { background-color:var(--card); color:var(--text); border-color:var(--line); }
+    .leaflet-control-zoom a { background-color:var(--card); color:#8A6D1F; border-color:#8A6D1F; }
     .leaflet-control-zoom a:hover { background-color:var(--c-hover); }
     .leaflet-control-attribution { color:var(--muted); }
     :root.dark .leaflet-control-attribution { background:rgba(27,30,37,.85); }
@@ -1055,8 +1046,6 @@
     <span>실거래 <b id="stat-rp">—</b>건</span>
     <span>관심 <b id="stat-fav">—</b>곳</span>
     <div class="ui-modes" role="group" aria-label="화면 모드">
-      <button type="button" class="ui-mode" data-uimode="map" title="지도를 크게 — 현장 임장용">지도</button>
-      <button type="button" class="ui-mode on" data-uimode="balance" title="지도+목록 기본 배치">균형</button>
       <button type="button" class="ui-mode" data-uimode="data" title="목록을 넓게 — 투자 분석용">데이터</button>
     </div>
   </div>
@@ -1109,6 +1098,12 @@
         <div class="sp-body ui-scroll" id="jb-panel-body"></div>
       </div>
       <div class="side-resizer" id="jb-panel-resizer" title="드래그해서 너비 조절"></div>
+    </aside>
+    <aside id="sp-panel" class="side-panel" hidden aria-label="지하철 최단경로">
+      <div class="sp-inner">
+        <div class="sp-head"><b class="sp-title">지하철 최단경로</b><button type="button" id="sp-panel-close" class="ap-close" title="패널 닫기" aria-label="패널 닫기">✕</button></div>
+        <div class="sp-body ui-scroll" id="sp-panel-body"></div>
+      </div>
     </aside>
     </div>
     
@@ -6136,33 +6131,41 @@
         
         
         
-        function setUiMode(m) {
+        function setUiMode() {
           const pnl = $('panel'), rt = window.__mjRightTab;
-          document.querySelectorAll('.ui-mode').forEach((b) =>
-            b.classList.toggle('on', b.dataset.uimode === m));
+          document.querySelectorAll('.ui-mode').forEach((b) => b.classList.add('on'));
           
-          document.body.dataset.uimode = m;
-          try { localStorage.setItem('mj_uimode', m); } catch (e) {}
-          if (m === 'map') {
-            if (rt && !pnl.classList.contains('collapsed')) rt.toggle();
-          } else {
-            if (rt && pnl.classList.contains('collapsed')) rt.toggle();
-            const saved = Number(localStorage.getItem('mj_panel_w')) || 380;
-            
-            const maxW = Math.max(320, window.innerWidth - 360);
-            const w = m === 'data'
-              ? Math.max(480, Math.min(Math.round(window.innerWidth * 0.42), Math.min(640, maxW)))
-              : Math.min(saved, maxW);
-            pnl.style.flex = `0 0 ${w}px`; pnl.style.minWidth = w + 'px';
-          }
+          document.body.dataset.uimode = 'data';
+          try { localStorage.setItem('mj_uimode', 'data'); } catch (e) {}
+          if (rt && pnl.classList.contains('collapsed')) rt.toggle();
           
+          const maxW = Math.max(320, window.innerWidth - 360);
+          const w = Math.max(480, Math.min(Math.round(window.innerWidth * 0.42), Math.min(640, maxW)));
+          pnl.style.flex = `0 0 ${w}px`; pnl.style.minWidth = w + 'px';
           
           pnl.classList.add('panel-sliding');
           setTimeout(() => pnl.classList.remove('panel-sliding'), 260);
           setTimeout(() => { try { refreshMapSize(); } catch (e) { try { map.invalidateSize(); } catch (_) {} } }, 170);
         }
+        function clearUiMode() {
+          const pnl = $('panel'), rt = window.__mjRightTab;
+          document.querySelectorAll('.ui-mode').forEach((b) => b.classList.remove('on'));
+          delete document.body.dataset.uimode;
+          try { localStorage.removeItem('mj_uimode'); } catch (e) {}
+          if (rt && pnl.classList.contains('collapsed')) rt.toggle();
+          const saved = Number(localStorage.getItem('mj_panel_w')) || 380;
+          const maxW = Math.max(320, window.innerWidth - 360);
+          const w = Math.min(saved, maxW);
+          pnl.style.flex = `0 0 ${w}px`; pnl.style.minWidth = w + 'px';
+          pnl.classList.add('panel-sliding');
+          setTimeout(() => pnl.classList.remove('panel-sliding'), 260);
+          setTimeout(() => { try { refreshMapSize(); } catch (e) { try { map.invalidateSize(); } catch (_) {} } }, 170);
+        }
         document.querySelectorAll('.ui-mode').forEach((b) =>
-          b.addEventListener('click', () => setUiMode(b.dataset.uimode)));
+          b.addEventListener('click', () => {
+            if (document.body.dataset.uimode === 'data') clearUiMode();
+            else setUiMode();
+          }));
         
         
       }
@@ -10857,6 +10860,57 @@
     
     
     
+    const SP_DESTS = ['강남', '여의도', '시청', '잠실', '가산디지털단지'];
+    function openSpPanel(from) {
+      const p = document.getElementById('sp-panel');
+      const body = document.getElementById('sp-panel-body');
+      if (!p || !body) return;
+      if (from) { try { localStorage.setItem('mj_sp_from', from); } catch (e) {} }
+      let saved = '';
+      try { saved = localStorage.getItem('mj_sp_from') || ''; } catch (e) {}
+      const cur = from || saved;
+      body.innerHTML = '<div style="margin-bottom:8px;"><div class="lc-sub">출발역</div>'
+        + `<input id="sp-from" class="search-inp" style="flex:1;min-width:0;" value="${esc(cur)}" placeholder="예: 서울역" autocomplete="off"></div>`
+        + '<div style="margin-bottom:8px;"><div class="lc-sub">도착역</div>'
+        + '<div style="display:flex;gap:6px;"><input id="sp-to" class="search-inp" style="flex:1;min-width:0;" placeholder="예: 강남" autocomplete="off">'
+        + '<button type="button" id="sp-go" class="btn-mini primary" style="flex:none;align-self:center;">조회</button></div></div>'
+        + '<div class="rp-chips" id="sp-dests" role="group">'
+        + SP_DESTS.filter((x) => x !== cur).map((d) => `<button type="button" class="fav-cat" data-v="${esc(d)}">${esc(d)}</button>`).join('')
+        + '</div><div id="sp-result" style="font-size:13px;margin-top:6px;"></div>';
+      p.hidden = false;
+      const fromEl = body.querySelector('#sp-from'), toEl = body.querySelector('#sp-to');
+      const paintDests = () => {
+        const t = toEl.value.trim();
+        body.querySelectorAll('#sp-dests .fav-cat').forEach((c) => c.classList.toggle('active', c.dataset.v === t));
+      };
+      const query = () => {
+        const f = fromEl.value.trim(), t = toEl.value.trim();
+        if (!f || !t) { toast('출발역과 도착역을 입력해 주세요.'); return; }
+        try { localStorage.setItem('mj_sp_from', f); } catch (e) {}
+        paintDests();
+        const box = body.querySelector('#sp-result');
+        box.innerHTML = `→ <b>${esc(t)}</b> 조회 중…`;
+        loadShortPath(f, t, (r) => {
+          if (!r) { box.innerHTML = ''; toast('최단경로를 불러오지 못했습니다. 다시 시도해 주세요.'); return; }
+          box.innerHTML = `<div class="pc-price">${esc(f)} → ${esc(t)} · <b>${r.min}분</b> · ${r.km}km</div>`
+            + `<div style="margin-top:3px;">요금 ${Number(r.fare).toLocaleString('ko-KR')}원 · 환승 ${r.trs}회</div>`
+            + (r.via.length ? `<div style="margin-top:3px;font-size:12px;color:var(--c-muted);">경유 ${esc(r.via.join(' · '))}</div>` : '');
+        });
+      };
+      body.querySelector('#sp-go').onclick = query;
+      [fromEl, toEl].forEach((el) => el.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); query(); } }));
+      toEl.addEventListener('input', paintDests);
+      body.querySelectorAll('#sp-dests .fav-cat').forEach((c) => c.addEventListener('click', () => {
+        toEl.value = c.dataset.v; paintDests(); query();
+      }));
+      const x = document.getElementById('sp-panel-close');
+      if (x && !x._w) { x._w = 1; x.addEventListener('click', () => { p.hidden = true; }); }
+    }
+
+    
+    
+    
+    
     
     
     
@@ -12828,24 +12882,11 @@
         }
         
         
-        
         if (st.sub && st.sub.length && st.sub[0] && st.sub[0].nm) {
           const from = st.sub[0].nm;
-          const dests = ['강남', '여의도', '시청', '잠실', '가산디지털단지'].filter((x) => x !== from);
-          const r = st.shortPath;
           rows2.push('<div style="font-size:11px;margin-top:5px;border-top:1px solid var(--line);padding-top:4px;">'
             + `<b>${esc(from)}</b>에서 지하철로`
-            + '<div class="sp-btns" style="display:flex;flex-wrap:wrap;gap:3px;margin-top:3px;">'
-            + dests.map((d) => `<button type="button" class="sp-go" data-from="${esc(from)}" data-to="${esc(d)}" `
-              + 'style="font:inherit;font-size:11px;padding:2px 7px;border:1px solid var(--line);border-radius:999px;'
-              + `background:${r && r.to === d ? 'var(--c-primary)' : 'var(--card)'};`
-              + `color:${r && r.to === d ? '#fff' : 'var(--text)'};cursor:pointer;">${esc(d)}</button>`).join('')
-            + '</div>'
-            + (r && r.min === '…' ? `<div style="margin-top:3px;color:var(--c-muted);">→ <b>${esc(r.to)}</b> 조회 중…</div>`
-              : r ? `<div style="margin-top:3px;">→ <b>${esc(r.to)}</b> ${r.min}분 · ${r.km}km · `
-                + `${r.fare.toLocaleString('ko-KR')}원 · 환승 ${r.trs}회`
-                + (r.via.length ? ` <span style="color:var(--c-muted);">(${esc(r.via.join(', '))})</span>` : '') + '</div>'
-              : '<div style="margin-top:2px;color:var(--c-muted);">역 이름을 누르면 소요시간·요금을 조회합니다</div>')
+            + `<div style="margin-top:4px;"><button type="button" class="pc-btn pc-btn-outline sp-open" data-from="${esc(from)}">좌패널에서 경로 보기</button></div>`
             + '</div>');
         }
         if (rows2.length) {
@@ -13572,17 +13613,10 @@
         if (btn) btn.onclick = (ev) => { stop(ev); loadLedgerDetail(st, render); };
         
         
-        slot.querySelectorAll('.sp-go').forEach((b) => {
+        slot.querySelectorAll('.sp-open').forEach((b) => {
           b.onclick = (ev) => {
             stop(ev);
-            const from = b.dataset.from, to = b.dataset.to;
-            st.shortPath = { to, min: '…', km: '', fare: 0, trs: 0, via: [] };
-            render();
-            loadShortPath(from, to, (r) => {
-              if (r) st.shortPath = r;
-              else { st.shortPath = null; toast('최단경로를 불러오지 못했습니다. 다시 시도해 주세요.'); }
-              render();
-            });
+            if (typeof openSpPanel === 'function') openSpPanel(b.dataset.from);
           };
         });
         
@@ -15348,8 +15382,11 @@
       });
       if (go) go.addEventListener('click', () => runNearby());
     })();
-    document.querySelectorAll('.fav-cat').forEach((c) => c.addEventListener('click', () => {
-      document.querySelectorAll('.fav-cat').forEach((x) => x.classList.remove('active'));
+    
+    
+    
+    document.querySelectorAll('#fav-cats .fav-cat').forEach((c) => c.addEventListener('click', () => {
+      document.querySelectorAll('#fav-cats .fav-cat').forEach((x) => x.classList.remove('active'));
       c.classList.add('active'); propCat = c.dataset.cat; render();
     }));
     $('geo-btn').addEventListener('click', () => {
