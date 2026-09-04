@@ -2265,6 +2265,14 @@
         return Boolean(v) && Number.isFinite(t) && Date.now() - t < APT_MISS_TTL;
       } catch (e) { return false; }
     }
+    
+    
+    
+    
+    
+    
+    
+    
     function loadRp() {
       if (_rpPromise) return _rpPromise;
       const tryApt = !aptMissingCached();
@@ -9475,8 +9483,21 @@
     
     
     const KMA_PROXY = SUPABASE_URL + '/functions/v1/kma-weather-proxy';
-    const _wxCache = new Map();          
+    
+    
+    
+    const WX_STORE = 'mj_wx_v1';   
     const WX_TTL = 10 * 60 * 1000;
+    const _wxCache = new Map(Object.entries((() => {
+      try { return JSON.parse(localStorage.getItem(WX_STORE) || '{}') || {}; } catch (e) { return {}; }
+    })()));                              
+    function wxPersist() {
+      try {
+        const o = {};
+        _wxCache.forEach((v, k) => { if (Date.now() - v.at < WX_TTL) o[k] = v; });
+        localStorage.setItem(WX_STORE, JSON.stringify(o));
+      } catch (e) {}
+    }
     const EXIM_PROXY = SUPABASE_URL + '/functions/v1/eximbank-proxy';
     const CCTV_PROXY = SUPABASE_URL + '/functions/v1/its-cctv-proxy';
     let _weatherReq = 0;
@@ -9508,9 +9529,22 @@
           if (d.error) { $('weather-val').textContent = '조회 실패'; return; }
           const text = (d.temp != null ? d.temp + '℃ ' : '') + (d.label || '');
           _wxCache.set(wxKey, { text, at: Date.now() });
+          wxPersist();
           $('weather-val').textContent = text;
         })
         .catch(() => { if (reqId === _weatherReq) $('weather-val').textContent = '조회 실패'; });
+    }
+    
+    
+    
+    
+    const FX_STORE = 'mj_fx_v1', FX_TTL = 30 * 60 * 1000;   
+    function fxCacheRead() {
+      try {
+        const o = JSON.parse(localStorage.getItem(FX_STORE) || 'null');
+        if (!o || !o.t || Date.now() - o.t > FX_TTL) return null;
+        return o;
+      } catch (e) { return null; }
     }
     function loadRates() {
       
@@ -9518,16 +9552,29 @@
       
       
       
+      const hit = fxCacheRead();
+      if (hit) { $('fx-usd').textContent = hit.usd; $('fx-jpy').textContent = hit.jpy; return; }
       fetch(`${EXIM_PROXY}?kind=exchange`).then((r) => r.json()).then((d) => {
         const items = d.items || [];
         const usd = items.find((x) => x.cur_unit === 'USD');
         const jpy = items.find((x) => x.cur_unit === 'JPY(100)');
-        $('fx-usd').textContent = usd ? usd.deal_bas_r : '조회 실패';
-        $('fx-jpy').textContent = jpy ? jpy.deal_bas_r : '조회 실패';
+        const u = usd ? usd.deal_bas_r : '조회 실패';
+        const j = jpy ? jpy.deal_bas_r : '조회 실패';
+        $('fx-usd').textContent = u;
+        $('fx-jpy').textContent = j;
+        if (usd || jpy) {
+          try { localStorage.setItem(FX_STORE, JSON.stringify({ t: Date.now(), usd: u, jpy: j })); } catch (e) {}
+        }
       }).catch(() => { $('fx-usd').textContent = '조회 실패'; $('fx-jpy').textContent = '조회 실패'; });
     }
-    loadRates();
-    loadWeather(37.5665, 126.9780); 
+    
+    
+    
+    
+    (window.requestIdleCallback || ((f) => setTimeout(f, 300)))(() => {
+      loadRates();
+      loadWeather(37.5665, 126.9780); 
+    });
 
     
     let clickMarker = null;
