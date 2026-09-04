@@ -2216,11 +2216,34 @@
     
     let _rpPromise = null;
     let rpSource = '';        
+    
+    
+    
+    
+    
     function decodeCompactRp(j) {
       const F = {};
       j.fields.forEach((f, i) => { F[f] = i; });
       const pick = (r, k) => (F[k] === undefined ? undefined : r[F[k]]);
-      return j.rows.map((r) => ({
+
+      if (j.v === 2) {                       
+        const C = {};
+        j.cxFields.forEach((f, i) => { C[f] = i; });
+        return j.rows.map((r) => {
+          const c = j.cx[r[F.cx]];
+          return {
+            name: c[C.name], gu: j.gus[c[C.gu]], dong: j.dongs[c[C.dong]],
+            lat: c[C.lat], lng: c[C.lng], priceEok: r[F.price], area: r[F.area],
+            floor: r[F.floor], build: r[F.build], ymd: j.ymds[r[F.ymd]],
+            cnt: pick(r, 'cnt'), pmin: pick(r, 'pmin'), pmax: pick(r, 'pmax'),
+            jeonse: pick(r, 'jeonse') || 0, jrate: pick(r, 'jrate') || 0,
+            gbn: j.gbns && F.gbn !== undefined ? j.gbns[r[F.gbn]] : '',
+            cancel: pick(r, 'cancel') ? 1 : 0, lease: pick(r, 'lease') ? 1 : 0,
+          };
+        });
+      }
+
+      return j.rows.map((r) => ({            
         name: r[F.name], gu: j.gus[r[F.gu]], dong: j.dongs[r[F.dong]],
         lat: r[F.lat], lng: r[F.lng], priceEok: r[F.price], area: r[F.area],
         floor: r[F.floor], build: r[F.build], ymd: r[F.ymd],
@@ -9366,8 +9389,20 @@
         requestAnimationFrame(syncPopupMaxHeight);
       }
     }
+    (window.requestIdleCallback || ((f) => setTimeout(f, 2500)))(() => { ensureNaver(); });
+
     
-    (window.requestIdleCallback || ((f) => setTimeout(f, 2500)))(() => { loadRp(); ensureNaver(); });
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
 
     
     let vsMarker = null;
