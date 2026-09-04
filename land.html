@@ -10886,20 +10886,21 @@
       let saved = '';
       try { saved = localStorage.getItem('mj_sp_from') || ''; } catch (e) {}
       const cur = from || saved;
-      body.innerHTML = '<div style="position:relative;margin-bottom:8px;">'
-        + `<input id="sp-from" class="search-inp" style="border-radius:7px 7px 0 0;border-bottom:none;" value="${esc(cur)}" placeholder="출발지 입력" autocomplete="off">`
-        + `<input id="sp-to" class="search-inp" style="border-radius:0 0 7px 7px;margin-top:-1px;" placeholder="도착지 입력" autocomplete="off">`
-        + '<button type="button" id="sp-swap" title="출발·도착 바꾸기" aria-label="출발 도착 바꾸기" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:50%;background:var(--card);border:1px solid var(--line);color:var(--c-primary);cursor:pointer;font-size:14px;line-height:1;"><i class="fi fi-rr-exchange fi-keep"></i></button></div>'
-        + '<div style="display:flex;gap:6px;margin-bottom:10px;">'
-        + '<button type="button" id="sp-clear" class="pc-btn pc-btn-outline" style="flex:1;"><i class="fi fi-rr-rotate-right"></i>다시입력</button>'
-        + '<button type="button" id="sp-go" class="pc-btn pc-btn-primary" style="flex:2;">길찾기 ›</button></div>'
-        + '<div class="lc-sub">자주 가는 곳</div>'
+      body.innerHTML = '<div class="lc-sub">자주 가는 곳</div>'
         + '<div class="rp-chips" id="sp-favs" role="group">'
         + SP_FAVS.map(([k, nm, fi]) => {
           const v = spFavGet(k);
           return `<button type="button" class="fav-cat" data-k="${k}" title="${v ? esc(v) + '으로 도착지 설정 · 바꾸려면 출발지를 입력하고 다시 누르세요' : '현재 출발지를 ' + esc(nm) + '(으)로 저장'}"><i class="fi ${fi}"></i>${esc(nm)}${v ? ' · ' + esc(v) : ''}</button>`;
         }).join('')
-        + '</div><div id="sp-result" style="font-size:13px;margin-top:6px;"></div>';
+        + '</div>'
+        + '<div style="position:relative;margin-bottom:8px;">'
+        + `<input id="sp-from" class="search-inp" style="border-radius:7px 7px 0 0;border-bottom:none;" value="${esc(cur)}" placeholder="출발지 입력" autocomplete="off">`
+        + `<input id="sp-to" class="search-inp" style="border-radius:0 0 7px 7px;margin-top:-1px;" placeholder="도착지 입력" autocomplete="off">`
+        + '<button type="button" id="sp-swap" title="출발·도착 바꾸기" aria-label="출발 도착 바꾸기" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:50%;background:var(--card);border:1px solid var(--line);color:#8A6D1F;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;"><i class="fi fi-rr-exchange fi-keep"></i></button></div>'
+        + '<div style="display:flex;gap:6px;margin-bottom:10px;">'
+        + '<button type="button" id="sp-clear" class="fav-cat" style="flex:1 1 0;"><i class="fi fi-rr-rotate-right"></i>다시입력</button>'
+        + '<button type="button" id="sp-go" class="fav-cat" style="flex:1 1 0;background:#8A6D1F;color:#fff;border-color:#8A6D1F;"><i class="fi fi-rr-search"></i>길찾기</button></div>'
+        + '<div id="sp-result" style="font-size:13px;margin-top:6px;"></div>';
       p.hidden = false;
       const fromEl = body.querySelector('#sp-from'), toEl = body.querySelector('#sp-to');
       const paintFavs = () => {
