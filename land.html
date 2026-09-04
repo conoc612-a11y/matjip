@@ -1846,6 +1846,13 @@
     let subMeta = null;
     
     
+    
+    let subStations = null;
+    
+    
+    fetch('transit_subway.json').then((r) => r.ok ? r.json() : null).then((j) => { subStations = j && j.rows || null; }).catch(() => {});
+    
+    
     let lpData = null, _lpPromise = null;
     
     
@@ -3698,7 +3705,7 @@
         if (!_subPromise) {
           _subPromise = fetch('transit_subway.json')
             .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
-            .then((j) => { subRows = j.rows || []; subMeta = j; return subRows; })
+            .then((j) => { subRows = j.rows || []; subMeta = j; subStations = subRows; return subRows; })
             .catch((e) => { console.error('지하철 로드 실패:', e); return null; });
         }
         return _subPromise;
@@ -10942,8 +10949,18 @@
         const box = body.querySelector('#sp-result');
         box.innerHTML = `→ <b>${esc(t)}</b> 조회 중…`;
         
+        
+        
         if (spMode === 'subway') {
-          loadShortPath(f, t, (r) => {
+          const matchStation = (text) => {
+            if (!subStations || !subStations.length) return text.replace(/역$/, '');
+            const exact = subStations.find((d) => d.nm && d.nm === text);
+            if (exact) return exact.nm;
+            const sub = subStations.find((d) => d.nm && (d.nm.includes(text) || text.includes(d.nm)));
+            return sub ? sub.nm : text;
+          };
+          const apiFrom = matchStation(f), apiTo = matchStation(t);
+          loadShortPath(apiFrom, apiTo, (r) => {
             if (!r) { box.innerHTML = ''; toast('최단 경로를 불러오지 못했습니다. 역 이름을 확인해 주세요.'); return; }
             box.innerHTML = `<div class="pc-price">${esc(f)} → ${esc(t)} · <b>${r.min}분</b> · ${r.km}km</div>`
               + `<div style="margin-top:3px;">요금 ${Number(r.fare).toLocaleString('ko-KR')}원 · 환승 ${r.trs}회</div>`
@@ -10971,9 +10988,9 @@
         if (!text) return res(null);
         const c = el._coord || fallback;
         if (c) return res({ lat: c.lat, lng: c.lng, label: text });
-        if (subRows && subRows.length) {
-          const hit = subRows.find((d) => d.nm && text.indexOf(d.nm) !== -1)
-            || subRows.find((d) => d.nm && d.nm.indexOf(text) !== -1);
+        if (subStations && subStations.length) {
+          const hit = subStations.find((d) => d.nm && text.indexOf(d.nm) !== -1)
+            || subStations.find((d) => d.nm && d.nm.indexOf(text) !== -1);
           if (hit) return res({ lat: hit.lat, lng: hit.lng, label: hit.nm });
         }
         geocodeText(text, (g) => res(g ? { lat: g.lat, lng: g.lng, label: g.label } : null));
@@ -11022,6 +11039,8 @@
         fromEl.focus();
       };
       [fromEl, toEl].forEach((el) => el.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); query(); } }));
+      
+      [fromEl, toEl].forEach((el) => el.addEventListener('input', () => { delete el._coord; }));
       toEl.addEventListener('input', paintFavs);
       body.querySelectorAll('#sp-favs .fav-cat').forEach((c) => c.addEventListener('click', () => {
         const k = c.dataset.k, v = spFavGet(k);
