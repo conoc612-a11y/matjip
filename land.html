@@ -216,7 +216,11 @@
     
 
 
-    #nearby-chips .nb-chip { white-space:nowrap; text-align:center; }
+
+    #nearby-chips, .rp-chips { display:flex; flex-wrap:wrap; }
+    #nearby-chips { gap:4px; }
+    .rp-chips { gap:6px; }
+    #nearby-chips .nb-chip, .rp-chips .fav-cat { flex:1 1 auto; white-space:nowrap; text-align:center; margin:0; }
     #nearby-chips .nb-chip.active { background:#8A6D1F !important; border-color:#8A6D1F !important; color:#fff !important; }
     
 
@@ -642,7 +646,7 @@
     .lc-sub { font-weight:600; font-size:14px; margin-bottom:6px; }
     
 
-    .rp-chips { display:grid; grid-template-columns:repeat(auto-fit,minmax(70px,1fr)); gap:6px; margin-bottom:6px; }
+    .rp-chips { margin-bottom:6px; }
     .rp-chips .fav-cat { padding:4px 10px; font-size:12px; }
     .lc-dot { display:inline-block; width:9px; height:9px; border-radius:50%; vertical-align:middle; margin-right:5px; }
     
@@ -1108,13 +1112,13 @@
       </div>
       
 
-      <div class="nearby-box" id="nearby-box" style="display:none;padding:8px 16px;border-bottom:1px solid var(--line);">
+      <div class="nearby-box" id="nearby-box" style="display:none;padding:8px 0;border-bottom:1px solid var(--line);">
         <div style="display:flex;gap:6px;">
           <input type="text" id="nearby-q" class="search-inp" placeholder="예: 초등학교, 카페, 은행 (Enter)"
             autocomplete="off" style="flex:1;min-width:0;" />
           <button type="button" id="nearby-go" class="pc-btn pc-btn-primary" style="flex:none;width:44px;padding-left:0;padding-right:0;" title="검색">찾기</button>
         </div>
-        <div id="nearby-chips" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(70px,1fr));gap:4px;margin-top:6px;"></div>
+        <div id="nearby-chips" style="margin-top:6px;"></div>
       </div>
       <div class="fav-cats" id="fav-cats">
         <button class="fav-cat active" data-cat="전체">전체</button>
