@@ -236,10 +236,10 @@
     #nearby-chips, .rp-chips { display:flex; flex-wrap:wrap; }
     #nearby-chips { gap:4px; }
     .rp-chips { gap:6px; }
-    #nearby-chips .nb-chip, .rp-chips .fav-cat { flex:1 1 auto; white-space:nowrap; text-align:center; margin:0; }
+    #nearby-chips .nb-chip { flex:1 1 auto; white-space:nowrap; text-align:center; margin:0; }
     
 
-    #u-price .fav-cat, #u-area .fav-cat { flex:1 1 0; min-width:0; }
+    .rp-chips .fav-cat { flex:1 1 0; min-width:0; white-space:nowrap; text-align:center; margin:0; }
     #nearby-chips .nb-chip.active { background:#8A6D1F !important; border-color:#8A6D1F !important; color:#fff !important; }
     
 
@@ -393,7 +393,13 @@
       width:20px; height:44px; border-radius:7px; border:1px solid var(--line); background:var(--card);
       color:var(--muted); display:flex; align-items:center; justify-content:center; font-size:15px;
       line-height:1; cursor:pointer; z-index:2002; box-shadow:var(--c-shadow); padding:0;
-      pointer-events:auto; touch-action:none; }
+      pointer-events:auto; touch-action:none; opacity:0; transition:opacity .15s; }
+    
+
+    
+
+    .panel-slide-tab:hover, .panel-resizer:hover .panel-slide-tab, .panel-slide-tab.dragging { opacity:1; }
+    @media (hover:none) { .panel-slide-tab { opacity:1; } }
     .panel-slide-tab:hover { color:#8A6D1F; border-color:#8A6D1F; }
     
     .panel-slide-tab.dragging { cursor:col-resize; color:#8A6D1F; border-color:#8A6D1F; }
@@ -6056,8 +6062,9 @@
             
             
             
-            const cw = opts.flexTarget ? 0 : (opts.collapsedWidth || 0);
-            if (opts.flexTarget) { panel.style.flex = '0 0 0px'; panel.style.minWidth = '0px'; }
+            
+            const cw = opts.collapsedWidth || 0;
+            if (opts.flexTarget) { panel.style.flex = `0 0 ${cw}px`; panel.style.minWidth = cw + 'px'; }
             else { panel.style.width = cw + 'px'; panel.style.minWidth = cw + 'px'; }
           } else {
             panel.classList.remove('collapsed');
@@ -6066,6 +6073,9 @@
             else { panel.style.width = w + 'px'; panel.style.minWidth = ''; }
           }
           setGlyph();
+          
+          
+          tab.style.opacity = panel.classList.contains('collapsed') ? '1' : '';
           setTimeout(() => panel.classList.remove('panel-sliding'), 220);
           if (opts.onToggle) opts.onToggle();
         };
@@ -6101,7 +6111,7 @@
         
         const pnl = $('panel');
         const rightTab = window.__mjRightTab = makeSlideTab($('panel-resizer'), pnl, {
-          side: 'right', flexTarget: true, defaultWidth: 380,
+          side: 'right', flexTarget: true, defaultWidth: 380, collapsedWidth: 22,
           onToggle: () => setTimeout(refreshMapSize, 160),
           resize: {
             reverseW: true, applyStyle: false,
