@@ -1099,9 +1099,9 @@
       </div>
       <div class="side-resizer" id="jb-panel-resizer" title="드래그해서 너비 조절"></div>
     </aside>
-    <aside id="sp-panel" class="side-panel collapsed" aria-label="지하철 최단경로">
+    <aside id="sp-panel" class="side-panel collapsed" aria-label="길찾기">
       <div class="sp-inner">
-        <div class="sp-head"><b class="sp-title">지하철 최단경로</b><button type="button" id="sp-panel-close" class="ap-close" title="패널 닫기" aria-label="패널 닫기">✕</button></div>
+        <div class="sp-head"><b class="sp-title">길찾기</b><button type="button" id="sp-panel-close" class="ap-close" title="패널 닫기" aria-label="패널 닫기">✕</button></div>
         <div class="sp-body ui-scroll" id="sp-panel-body"></div>
       </div>
       <div class="side-resizer" id="sp-panel-resizer" title="드래그해서 너비 조절"></div>
@@ -9381,6 +9381,23 @@
       document.head.appendChild(s);
     }
     
+    
+    function geocodeText(q, cb) {
+      if (!q || !cb) return;
+      const name = '__vwgeo_' + Date.now() + '_' + (++_vwRevSeq);
+      window[name] = (data) => {
+        try { delete window[name]; } catch (e) {}
+        const items = (data.response && data.response.result && data.response.result.items) || [];
+        if (!items.length) { cb(null); return; }
+        const it = items[0];
+        cb({ lat: Number(it.point.y), lng: Number(it.point.x), label: it.title || q });
+      };
+      const s = document.createElement('script');
+      s.src = `https://api.vworld.kr/req/search?service=search&request=search&version=2.0&crs=EPSG:4326&size=1&page=1&query=${encodeURIComponent(q)}&type=place&format=json&key=${VWORLD_KEY}&callback=${name}`;
+      s.onerror = () => { try { delete window[name]; } catch (e) {} cb(null); };
+      document.head.appendChild(s);
+    }
+    
 
     const markers = {}; 
     let user = null;
@@ -10886,16 +10903,15 @@
       let saved = '';
       try { saved = localStorage.getItem('mj_sp_from') || ''; } catch (e) {}
       const cur = from || saved;
-      body.innerHTML = '<div class="lc-sub">자주 가는 곳</div>'
-        + '<div class="rp-chips" id="sp-favs" role="group">'
-        + SP_FAVS.map(([k, nm, fi]) => {
-          const v = spFavGet(k);
-          return `<button type="button" class="fav-cat" data-k="${k}" title="${v ? esc(v) + '으로 도착지 설정 · 바꾸려면 출발지를 입력하고 다시 누르세요' : '현재 출발지를 ' + esc(nm) + '(으)로 저장'}"><i class="fi ${fi}"></i>${esc(nm)}${v ? ' · ' + esc(v) : ''}</button>`;
-        }).join('')
-        + '</div>'
+      body.innerHTML = '<div class="lc-sub" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">이동 수단'
+        + '<div id="sp-mode" style="display:flex;gap:4px;">'
+        + '<button type="button" class="rt-mode" data-m="walk">도보</button>'
+        + '<button type="button" class="rt-mode" data-m="car">자차</button>'
+        + '<button type="button" class="rt-mode" data-m="bus">버스</button>'
+        + '<button type="button" class="rt-mode" data-m="subway">지하철</button></div></div>'
         + '<div style="position:relative;margin-bottom:8px;">'
-        + `<input id="sp-from" class="search-inp" style="border-radius:7px 7px 0 0;border-bottom:none;" value="${esc(cur)}" placeholder="출발지 입력" autocomplete="off">`
-        + `<input id="sp-to" class="search-inp" style="border-radius:0 0 7px 7px;margin-top:-1px;" placeholder="도착지 입력" autocomplete="off">`
+        + `<input id="sp-from" class="search-inp" style="border-radius:7px 7px 0 0;border-bottom:none;" value="${esc(cur)}" placeholder="출발지 입력 · 지도에서 클릭" autocomplete="off">`
+        + `<input id="sp-to" class="search-inp" style="border-radius:0 0 7px 7px;margin-top:-1px;" placeholder="도착지 입력 · 지도에서 클릭" autocomplete="off">`
         + '<button type="button" id="sp-swap" title="출발·도착 바꾸기" aria-label="출발 도착 바꾸기" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:50%;background:var(--card);border:1px solid var(--line);color:#8A6D1F;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;"><i class="fi fi-rr-exchange fi-keep"></i></button></div>'
         + '<div style="display:flex;gap:6px;margin-bottom:10px;">'
         + '<button type="button" id="sp-clear" class="fav-cat" style="flex:1 1 0;"><i class="fi fi-rr-rotate-right"></i>다시입력</button>'
@@ -10903,6 +10919,11 @@
         + '<div id="sp-result" style="font-size:13px;margin-top:6px;"></div>';
       p.hidden = false;
       const fromEl = body.querySelector('#sp-from'), toEl = body.querySelector('#sp-to');
+      const modeBtns = body.querySelectorAll('#sp-mode .rt-mode');
+      let spMode = 'walk';
+      const highlightMode = () => modeBtns.forEach((b) => b.classList.toggle('on', b.dataset.m === spMode));
+      modeBtns.forEach((b) => b.addEventListener('click', () => { spMode = b.dataset.m; highlightMode(); }));
+      highlightMode();
       const paintFavs = () => {
         body.querySelectorAll('#sp-favs .fav-cat').forEach((c) => {
           const v = spFavGet(c.dataset.k);
@@ -10920,16 +10941,77 @@
         paintFavs();
         const box = body.querySelector('#sp-result');
         box.innerHTML = `→ <b>${esc(t)}</b> 조회 중…`;
-        loadShortPath(f, t, (r) => {
-          if (!r) { box.innerHTML = ''; toast('최단경로를 불러오지 못했습니다. 다시 시도해 주세요.'); return; }
-          box.innerHTML = `<div class="pc-price">${esc(f)} → ${esc(t)} · <b>${r.min}분</b> · ${r.km}km</div>`
-            + `<div style="margin-top:3px;">요금 ${Number(r.fare).toLocaleString('ko-KR')}원 · 환승 ${r.trs}회</div>`
-            + (r.via.length ? `<div style="margin-top:3px;font-size:12px;color:var(--c-muted);">경유 ${esc(r.via.join(' · '))}</div>` : '');
+        
+        if (spMode === 'subway') {
+          loadShortPath(f, t, (r) => {
+            if (!r) { box.innerHTML = ''; toast('최단 경로를 불러오지 못했습니다. 역 이름을 확인해 주세요.'); return; }
+            box.innerHTML = `<div class="pc-price">${esc(f)} → ${esc(t)} · <b>${r.min}분</b> · ${r.km}km</div>`
+              + `<div style="margin-top:3px;">요금 ${Number(r.fare).toLocaleString('ko-KR')}원 · 환승 ${r.trs}회</div>`
+              + (r.via.length ? `<div style="margin-top:3px;font-size:12px;color:var(--c-muted);">경유 ${esc(r.via.join(' · '))}</div>` : '');
+          });
+          return;
+        }
+        
+        Promise.all([spResolve(fromEl, routeOrigin), spResolve(toEl, routeDest)]).then(([o, d]) => {
+          if (!o || !d) {
+            box.innerHTML = '';
+            toast('출발지·도착지 좌표를 찾지 못했습니다. 지도에서 클릭하거나 정확한 주소·역명을 입력해 주세요.');
+            return;
+          }
+          routeOrigin = o; routeDest = d;
+          if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+          if (routeRL) routeRL.clear();
+          spDraw(spMode, o, d, box);
         });
+      };
+      
+      
+      const spResolve = (el, fallback) => new Promise((res) => {
+        const text = (el.value || '').trim();
+        if (!text) return res(null);
+        const c = el._coord || fallback;
+        if (c) return res({ lat: c.lat, lng: c.lng, label: text });
+        if (subRows && subRows.length) {
+          const hit = subRows.find((d) => d.nm && text.indexOf(d.nm) !== -1)
+            || subRows.find((d) => d.nm && d.nm.indexOf(text) !== -1);
+          if (hit) return res({ lat: hit.lat, lng: hit.lng, label: hit.nm });
+        }
+        geocodeText(text, (g) => res(g ? { lat: g.lat, lng: g.lng, label: g.label } : null));
+      });
+      
+      const spDraw = async (mode, o, d, box) => {
+        box.innerHTML = '경로 계산 중…';
+        try {
+          if (mode === 'bus') {
+            const r = await RouteAPI.transit(o, d);
+            if (!r || !r.segments.length) { box.innerHTML = ''; toast('대중교통 경로를 찾지 못했어요.'); return; }
+            routeRender(r.segments);
+            const i = r.info;
+            const steps = RouteAPI.transitSteps(r.subPath, esc);
+            box.innerHTML = `<div class="pc-price">총 <b>${i.totalTime}분</b> · 환승 ${i.busTransitCount + i.subwayTransitCount}회 · ${i.payment.toLocaleString('ko-KR')}원</div>`
+              + `<ol style="margin:6px 0 0;padding-left:16px;line-height:1.55;word-break:keep-all;">${steps.map((x) => `<li>${x}</li>`).join('')}</ol>`;
+          } else {
+            const isWalk = mode === 'walk';
+            const rt = await RouteAPI.osrm(isWalk ? 'foot' : 'car', o, d);
+            if (!rt) { box.innerHTML = ''; toast('경로를 찾지 못했어요.'); return; }
+            routeRender([{ type: isWalk ? 'walk' : 'car', coords: rt.coords }]);
+            const km = rt.distance / 1000;
+            if (isWalk) {
+              const note = rt.approx ? ' <span style="color:var(--c-muted);">(보행 서버 응답 없어 차도 기준 대체)</span>' : '';
+              box.innerHTML = `<div class="pc-price">도보 약 <b>${Math.round(rt.duration / 60)}분</b> · ${km.toFixed(1)}km</div>${note}`;
+            } else {
+              const taxi = Math.round((4800 + Math.max(0, km - 1.6) * 770) / 100) * 100;
+              box.innerHTML = `<div class="pc-price">자차 약 <b>${Math.round(rt.duration / 60)}분</b> · ${km.toFixed(1)}km</div>`
+                + `<div style="margin-top:3px;">예상 택시요금 ≈ <b>${taxi.toLocaleString('ko-KR')}원</b> <span style="color:var(--c-muted);">(거리 기준 추정)</span></div>`;
+            }
+          }
+        } catch (e) { box.innerHTML = ''; toast('경로 계산 실패(네트워크).'); }
       };
       body.querySelector('#sp-go').onclick = query;
       body.querySelector('#sp-swap').onclick = () => {
         const f = fromEl.value; fromEl.value = toEl.value; toEl.value = f;
+        const fc = fromEl._coord; fromEl._coord = toEl._coord; toEl._coord = fc;
+        const fo = routeOrigin; routeOrigin = routeDest; routeDest = fo;
         paintFavs();
       };
       body.querySelector('#sp-clear').onclick = () => {
@@ -10968,6 +11050,22 @@
     }
     
     try { openSpPanel(null, true); } catch (e) {}
+
+    
+    
+    
+    function spSetPoint(kind, name, lat, lng) {
+      const p = document.getElementById('sp-panel');
+      const body = document.getElementById('sp-panel-body');
+      if (!p || !body) return;
+      if (!body.querySelector('#sp-from')) openSpPanel(null, true);   
+      p.hidden = false;
+      if (p.classList.contains('collapsed') && window.__spTab) window.__spTab.toggle();
+      const el = body.querySelector(kind === 'start' ? '#sp-from' : '#sp-to');
+      if (!el) return;
+      el.value = name || '';
+      el._coord = { lat, lng };
+    }
 
     
     
@@ -14871,12 +14969,13 @@
     }
     function highlightMode() { document.querySelectorAll('.rt-mode').forEach((b) => b.classList.toggle('on', b.dataset.m === routeMode)); }
     function updatePts() { const el = document.getElementById('rt-pts'); if (el) el.innerHTML = `출발 ${routeOrigin ? '✓' : '미지정'} · 도착 ${routeDest ? '✓' : '미지정'}`; }
+    
     function setRoutePoint(kind, lat, lng) {
-      ensureRouteCtrl();
       if (kind === 'start') { routeOrigin = { lat, lng }; if (originMarker) map.removeLayer(originMarker); originMarker = L.marker([lat, lng]).addTo(map).bindTooltip('출발', { permanent: true, direction: 'top' }); }
       else { routeDest = { lat, lng }; if (destMarker) map.removeLayer(destMarker); destMarker = L.marker([lat, lng]).addTo(map).bindTooltip('도착', { permanent: true, direction: 'top' }); }
-      updatePts();
-      if (routeOrigin && routeDest) drawRoute();
+      
+      reverseGeocode(lat, lng, (addr) => spSetPoint(kind, addr || (kind === 'start' ? '출발' : '도착'), lat, lng));
+      if (routeOrigin && routeDest) updatePts();
     }
     function clearRoute() {
       routeOrigin = routeDest = null;
