@@ -44,7 +44,7 @@
     :root {
       --c-primary:#1971c2; --c-primary-soft:#e7f0fb; --c-price:#d9480f;
       --c-success:#2f9e44; --c-danger:#e03131; --c-text:#1f2937; --c-muted:#6b7280;
-      --c-border:#e5e7eb; --c-bg:#f3f5f8; --c-card:#ffffff; --c-hover:#f5f7fa;
+      --c-border:#E2D5C2; --c-bg:#f3f5f8; --c-card:#ffffff; --c-hover:#f5f7fa;
       --c-shadow:0 1px 3px rgba(16,24,40,.06); --c-shadow-lg:0 10px 30px rgba(16,24,40,.14);
       --bg:var(--c-bg); --card:var(--c-card); --line:var(--c-border);
       --text:var(--c-text); --muted:var(--c-muted); --accent:var(--c-primary); --ok:var(--c-success);
@@ -105,6 +105,10 @@
     .profile-menu a, .profile-menu button { display:block; width:100%; text-align:left; padding:10px 14px; font:inherit; font-size:14px; color:var(--text); background:none; border:none; border-bottom:1px solid var(--line); cursor:pointer; text-decoration:none; }
     .profile-menu a:hover, .profile-menu button:hover { background:var(--c-hover); }
     
+
+    .profile-menu a:not(#who), .profile-menu button { border:1px solid var(--line); border-radius:7px; margin:4px 8px; width:auto; }
+    .profile-menu a:not(#who):hover, .profile-menu button:hover { border-color:#8A6D1F; }
+    
     .ac-wrap { position:relative; flex:1; }
     .ac { position:absolute; left:0; right:0; top:calc(100% + 4px); background:var(--card); border:1px solid var(--line); border-radius:10px; z-index:1500; max-height:240px; overflow-y:auto; display:none; box-shadow:var(--c-shadow-lg); }
     .ac.on { display:block; }
@@ -134,7 +138,7 @@
     .ui-mode.on { background:#8A6D1F; color:#fff; border-color:#8A6D1F; }
     
 
-    #nearby-go { background:#fff; border-color:#8A6D1F; color:#8A6D1F; }
+    #nearby-go { background:#fff; border-color:var(--line); color:#8A6D1F; }
     #nearby-go:hover { background:#8A6D1F; border-color:#8A6D1F; color:#fff; }
     @media (max-width:640px) { .ui-mode { padding:3px 8px; } }
     
@@ -208,8 +212,20 @@
     
     
     
+    
     body:not([data-uimode="data"]) :is(#panel, .leaflet-popup, .auction-panel,
       .side-panel, .lp-body, .lc) .fi { display:none; }
+    
+
+    body .ui-pop-btn { border:1px solid var(--line); background:var(--card); color:#8A6D1F; }
+    body .ui-pop-btn:hover { background:#8A6D1F; border-color:#8A6D1F; color:#fff; }
+    body .ui-grip::before, body .ui-grip::after { border-color:var(--line); }
+    
+    * { scrollbar-width:thin; scrollbar-color:#8A6D1F transparent; }
+    *::-webkit-scrollbar { width:10px; height:10px; }
+    *::-webkit-scrollbar-track { background:transparent; }
+    *::-webkit-scrollbar-thumb { background:#C1935C; border-radius:5px; border:2px solid transparent; background-clip:content-box; }
+    *::-webkit-scrollbar-thumb:hover { background:#8A6D1F; border:2px solid transparent; background-clip:content-box; }
     
 
     .tool-btn, .list-tab { min-width:0; }
@@ -221,6 +237,9 @@
     #nearby-chips { gap:4px; }
     .rp-chips { gap:6px; }
     #nearby-chips .nb-chip, .rp-chips .fav-cat { flex:1 1 auto; white-space:nowrap; text-align:center; margin:0; }
+    
+
+    #u-price .fav-cat, #u-area .fav-cat { flex:1 1 0; min-width:0; }
     #nearby-chips .nb-chip.active { background:#8A6D1F !important; border-color:#8A6D1F !important; color:#fff !important; }
     
 
@@ -229,7 +248,7 @@
     body[data-uimode="data"] .pc-head { font-size:16px; }
     .layout { display:flex; flex-wrap:nowrap; align-items:stretch; flex:9.4; min-height:0; overflow:hidden; position:relative; }
     #map { flex:9 1 0; min-width:0; min-height:0; }
-    .panel { flex:1 1 0; min-width:380px; min-height:0; overflow-y:auto; padding:14px 16px; transition:min-width .15s, padding .15s; }
+    .panel { flex:1 1 0; min-width:380px; min-height:0; overflow-y:auto; padding:14px 16px; transition:min-width .15s, padding .15s; border-left:1px solid var(--line); }
     
 
 
@@ -864,7 +883,7 @@
     .unit-detail { display:none; margin:2px 0 2px; padding:7px 9px; border-left:2px solid var(--c-primary); border-radius:0 8px 8px 0; background:var(--c-primary-soft); font-size:12px; color:var(--muted); line-height:1.75; }
     .unit-detail b { color:var(--text); }
     
-    .leaflet-popup-content-wrapper { position:relative; background:var(--card); color:var(--text); border-radius:12px; box-shadow:var(--c-shadow-lg); }
+    .leaflet-popup-content-wrapper { position:relative; background:var(--card); color:var(--text); border-radius:12px; border:1px solid var(--line); box-shadow:var(--c-shadow-lg); }
     
 
 
@@ -2592,9 +2611,10 @@
       });
       rpRows = null;
       const RP_PMAX = 40;   
-      const rpFilter = { price: { lo: 0, hi: RP_PMAX }, age: 'all' };
+      const RP_AMIN = 1970, RP_AMAX = new Date().getFullYear(); 
+      const rpFilter = { price: { lo: 0, hi: RP_PMAX }, age: { lo: RP_AMIN, hi: RP_AMAX } };
       const inPrice = (p) => { const { lo, hi } = rpFilter.price; if (lo <= 0 && hi >= RP_PMAX) return true; if (p == null) return false; const v = Number(p); return v >= lo && (hi >= RP_PMAX || v < hi); };
-      const inAge = (b) => { if (rpFilter.age === 'all') return true; const y = parseInt(b) || 0; return rpFilter.age === 'new' ? y >= 2015 : rpFilter.age === 'mid' ? (y >= 2000 && y < 2015) : (y > 0 && y < 2000); };
+      const inAge = (b) => { const { lo, hi } = rpFilter.age; if (lo <= RP_AMIN && hi >= RP_AMAX) return true; const y = parseInt(b) || 0; return y > 0 && y >= lo && y <= hi; };
       
       
       
@@ -2649,11 +2669,12 @@
           + '<input type="range" id="rp-lo" min="0" max="40" step="5" value="0" aria-label="최소 가격">'
           + '<input type="range" id="rp-hi" min="0" max="40" step="5" value="40" aria-label="최대 가격">'
           + '<div class="rp-ticks"><span>최소</span><span>10억</span><span>20억</span><span>30억</span><span>최대</span></div></div>'
-          + '<div class="lc-sub" style="margin-top:4px;">건축년도</div><div class="rp-chips" id="rp-age" role="group">'
-          + '<button type="button" class="fav-cat active" data-v="all">전체</button>'
-          + '<button type="button" class="fav-cat" data-v="new">2015~ 신축</button>'
-          + '<button type="button" class="fav-cat" data-v="mid">2000~2014</button>'
-          + '<button type="button" class="fav-cat" data-v="old">2000 이전</button></div>'
+          + '<div class="lc-sub" style="margin-top:4px;">건축년도 <b id="rp-age-lbl">전체</b></div>'
+          + '<div class="rp-range" id="rp-age" role="group" aria-label="건축년도 범위">'
+          + '<div class="rp-track"><div class="rp-fill" id="rp-age-fill"></div></div>'
+          + `<input type="range" id="rp-age-lo" min="${RP_AMIN}" max="${RP_AMAX}" step="1" value="${RP_AMIN}" aria-label="최소 건축년도">`
+          + `<input type="range" id="rp-age-hi" min="${RP_AMIN}" max="${RP_AMAX}" step="1" value="${RP_AMAX}" aria-label="최대 건축년도">`
+          + '<div class="rp-ticks"><span>최소</span><span>2000</span><span>최대</span></div></div>'
           + '<div class="lc-sub" style="margin-top:4px;">표시 단위</div><div class="rp-chips" id="u-price" role="group">'
           + '<button type="button" class="fav-cat active" data-v="total">총액</button>'
           + '<button type="button" class="fav-cat" data-v="unit">평단가</button></div>'
@@ -2745,9 +2766,45 @@
         rpFilter.price = { lo: 0, hi: RP_PMAX };
         rpPricePaint();
       }
+      function rpAgeLabel() {
+        const { lo, hi } = rpFilter.age;
+        const t = (lo <= RP_AMIN && hi >= RP_AMAX) ? '전체' : hi >= RP_AMAX ? `${lo}년 이후` : lo <= RP_AMIN ? `${hi}년 이전` : `${lo}~${hi}년`;
+        const el = document.getElementById('rp-age-lbl');
+        if (el) el.textContent = t;
+      }
+      function rpAgePaint() {
+        const loEl = document.getElementById('rp-age-lo'), hiEl = document.getElementById('rp-age-hi');
+        if (!loEl || !hiEl) return;
+        const { lo, hi } = rpFilter.age;
+        loEl.value = lo; hiEl.value = hi;
+        const fill = document.getElementById('rp-age-fill');
+        if (fill) { fill.style.left = ((lo - RP_AMIN) / (RP_AMAX - RP_AMIN) * 100) + '%'; fill.style.right = (100 - (hi - RP_AMIN) / (RP_AMAX - RP_AMIN) * 100) + '%'; }
+        rpAgeLabel();
+      }
+      let _rpAgeT = 0;
+      function rpAgeWire() {
+        const loEl = document.getElementById('rp-age-lo'), hiEl = document.getElementById('rp-age-hi');
+        if (!loEl || !hiEl || loEl._w) return;
+        loEl._w = hiEl._w = 1;
+        const on = (e) => {
+          let lo = +loEl.value, hi = +hiEl.value;
+          if (e.target === loEl && lo > hi) { lo = hi; loEl.value = lo; }
+          if (e.target === hiEl && hi < lo) { hi = lo; hiEl.value = hi; }
+          rpFilter.age = { lo, hi };
+          rpAgePaint();
+          clearTimeout(_rpAgeT);
+          _rpAgeT = setTimeout(() => { rpBuild(); villaBuild(); rpEmptyNotify(); }, 150);
+        };
+        loEl.addEventListener('input', on);
+        hiEl.addEventListener('input', on);
+        rpAgePaint();
+      }
+      function rpAgeReset() {
+        rpFilter.age = { lo: RP_AMIN, hi: RP_AMAX };
+        rpAgePaint();
+      }
       function rpResetFilter() {
-        rpPriceReset(); rpFilter.age = 'all';
-        setRpChip('rp-age', 'all');
+        rpPriceReset(); rpAgeReset();
         rpBuild(); villaBuild();
       }
       
@@ -2773,7 +2830,7 @@
       
       
       function rpEmptyNotify() {
-        if (rpFilter.price.lo <= 0 && rpFilter.price.hi >= RP_PMAX && rpFilter.age === 'all') return;
+        if (rpFilter.price.lo <= 0 && rpFilter.price.hi >= RP_PMAX && rpFilter.age.lo <= RP_AMIN && rpFilter.age.hi >= RP_AMAX) return;
         let total = 0, loaded = false;
         if (rpRows) { loaded = true; total += realpriceCluster.getLayers().length; }
         if (villaRows) { loaded = true; total += villaCluster.getLayers().length; }
@@ -2784,19 +2841,7 @@
         document.getElementById('rp-panel').hidden = false;
         setTimeout(() => {
           
-          const wire = (gid, key) => {
-            const g = document.getElementById(gid);
-            if (!g || g._w) return;
-            g._w = 1;
-            g.addEventListener('click', (ev) => {
-              const b = ev.target.closest('.fav-cat'); if (!b) return;
-              rpFilter[key] = b.dataset.v;
-              g.querySelectorAll('.fav-cat').forEach((c) => c.classList.toggle('active', c === b));
-              rpBuild(); villaBuild(); rpEmptyNotify();
-            });
-          };
-          rpPriceWire();
-          wire('rp-age', 'age');
+          rpPriceWire(); rpAgeWire();
           const wireU = (gid, key) => {
             const g = document.getElementById(gid);
             if (!g || g._w) return;
