@@ -8342,6 +8342,123 @@
       map.on('overlayadd', (e) => { if (e.layer === sbizCluster) sbizEnsure(); });
       map.on('moveend zoomend', () => { if (map.hasLayer(sbizCluster)) sbizEnsure(); });
 
+      
+      
+      
+      
+      
+      
+      
+      
+      const STD_SRC = {
+        cctv: {
+          dir: 'cctv/', idx: 'cctv_index.json', icon: 'fi-rr-video-camera-alt', color: '#495057',
+          title: (d) => d.nm, minZ: 16,
+          body: (d) => line('설치목적', d.purp) + line('카메라', d.cam ? d.cam + '대' : '')
+            + line('화소', d.px ? Number(d.px).toLocaleString() + '만' : '')
+            + line('촬영방면', d.dir) + line('설치', d.ym) + line('주소', d.addr),
+          note: '행정안전부 CCTV정보(공공데이터 제공표준) · 지자체 취합 · 수시 갱신',
+        },
+        wifi: {
+          dir: 'wifi/', idx: 'wifi_index.json', icon: 'fi-rr-wifi', color: '#1971c2',
+          title: (d) => d.nm, minZ: 15,
+          body: (d) => line('SSID', d.ssid) + line('시설', d.kind) + line('제공', d.isp)
+            + line('설치', d.ym) + line('주소', d.addr),
+          note: '행정안전부 무료와이파이정보(공공데이터 제공표준)',
+        },
+      };
+      const line = (k, v) => (v ? '<div class="pc-row"><span class="pc-k">' + k + '</span>'
+        + '<span class="pc-v">' + esc(String(v)) + '</span></div>' : '');
+
+      
+      function makeStdLayer(key) {
+        const C = STD_SRC[key];
+        const cluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 60 });
+        cluster.on('click', (e) => {
+          const m = e.layer;
+          if (!m || !m._pop) return;
+          if (!m.getPopup()) m.bindPopup(m._pop());
+          m.openPopup();
+        });
+        let index = null;
+        let idxP = null;
+        const cache = new Map();     
+        const pending = new Set();
+
+        const loadIdx = () => {
+          if (!idxP) {
+            idxP = fetch(C.idx).then((r) => r.json()).then((j) => { index = j; return j; })
+              .catch(() => { index = null; return null; });
+          }
+          return idxP;
+        };
+        
+        
+        
+        
+        const inView = (b) => (index && index.areas ? index.areas.filter((a) => {
+          if (!a.bb) return false;
+          const [s0, w, n, e] = a.bb;
+          return !(n < b.getSouth() || s0 > b.getNorth() || e < b.getWest() || w > b.getEast());
+        }) : []);
+
+        const build = () => {
+          if (!map.hasLayer(cluster)) return;
+          cluster.clearLayers();
+          if (map.getZoom() < C.minZ) return;
+          const b = map.getBounds();
+          const out = [];
+          for (const a of inView(b)) {
+            const rows = cache.get(a.area);
+            if (!rows) continue;
+            for (const d of rows) {
+              if (!b.contains([d.lat, d.lng])) continue;   
+              const m = L.marker([d.lat, d.lng], { icon: svcIcon(C.icon, C.color, 26) });
+              m._pop = (() => '<div class="pc"><div class="pc-head"><span class="rp-name">'
+                + esc(C.title(d) || '(이름 없음)') + '</span></div><div class="pc-body">'
+                + C.body(d)
+                + '<div style="font-size:11px;color:var(--muted);margin-top:6px;">' + C.note + '</div>'
+                + '</div></div>');
+              m.bindTooltip(esc(C.title(d) || ''), { direction: 'top' });
+              out.push(m);
+            }
+          }
+          cluster.addLayers(out);
+        };
+
+        const ensure = () => {
+          if (!map.hasLayer(cluster)) return;
+          if (map.getZoom() < C.minZ) { build(); return; }
+          loadIdx().then(() => {
+            const need = inView(map.getBounds()).filter((a) => !cache.has(a.area) && !pending.has(a.area));
+            if (!need.length) { build(); return; }
+            for (const a of need) {
+              pending.add(a.area);
+              fetch(C.dir + encodeURIComponent(a.area) + '.json')
+                .then((r) => (r.ok ? r.json() : null))
+                .then((j) => {
+                  if (!j || !Array.isArray(j.rows)) throw new Error('rows 없음');
+                  const I = {};
+                  (j.cols || C.cols).forEach((c, i) => { I[c] = i; });
+                  cache.set(a.area, j.rows.map((r) => {
+                    const o = {};
+                    for (const k of Object.keys(I)) o[k] = r[I[k]];
+                    return o;
+                  }));
+                })
+                
+                .catch(() => { toast(a.area + ' 자료를 불러오지 못했습니다.'); })
+                .finally(() => { pending.delete(a.area); build(); });
+            }
+          });
+        };
+        map.on('overlayadd', (e) => { if (e.layer === cluster) ensure(); });
+        map.on('moveend zoomend', () => { if (map.hasLayer(cluster)) ensure(); });
+        return cluster;
+      }
+      const cctvStdCluster = makeStdLayer('cctv');
+      const wifiCluster = makeStdLayer('wifi');
+
       const LAYER_TREE = [
         
         
@@ -8355,6 +8472,10 @@
           
           
           { name: '상가업소 (상호·업종)', layer: sbizCluster },
+          
+          
+          { name: '방범 CCTV (전국)', layer: cctvStdCluster },
+          { name: '무료 와이파이', layer: wifiCluster },
           { name: '국가자산 (매각·대부)', layer: natlCluster },
           { name: '전기차 충전소', layer: evCluster },
           
@@ -9375,6 +9496,8 @@
           {"t": "서울특별시 (정비사업 정보몽땅)", "pk": "", "u": 0, "n": 0, "o": [], "d": "재개발·재건축 등 정비사업 구역·진행단계", "cat": "제공기관 자체 서비스"},
           {"t": "한국부동산원 (부동산통계정보 R-ONE)", "pk": "", "u": 0, "n": 0, "o": [], "d": "지역별 지가변동률·지가지수(법정동 단위)", "cat": "제공기관 자체 서비스"},
           {"t": "한국자산관리공사 (온비드)", "pk": "", "u": 0, "n": 0, "o": [], "d": "공매 물건 썸네일 이미지 · 물건 상세 링크", "cat": "제공기관 자체 서비스"},
+          {"t": "행정안전부 (공공데이터 제공표준)", "pk": "", "u": 0, "n": 0, "o": [], "d": "전국 CCTV정보(37만) · 무료와이파이정보(9.4만) · 모범음식점정보 — 지자체 취합 CSV", "cat": "제공기관 자체 서비스"},
+          {"t": "행정안전부·경찰청 (생활안전지도)", "pk": "", "u": 0, "n": 0, "o": [], "d": "범죄주의구간·여성밤길치안안전·치안사고통계·CPTED, 침수흔적도·하천범람·산사태 등 WMS 지도", "cat": "제공기관 자체 서비스"},
         ]],
         ['민간 API', [
           {"t": "ODsay", "pk": "", "u": 0, "n": 0, "o": [], "d": "대중교통 경로 탐색", "cat": "민간 API"},
@@ -9385,7 +9508,7 @@
           {"t": "법원행정처 (법원경매)", "pk": "", "u": 0, "n": 0, "o": [], "d": "경매 물건·기일·상세·당사자·감정평가 정보", "cat": "공개 웹 수집"},
         ]],
       ];
-      const UA_SERVICES_N = 108;   
+      const UA_SERVICES_N = 110;   
       
       
       
