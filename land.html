@@ -9775,26 +9775,23 @@
 
     
     let vsMarker = null;
-    function vworldSearch(q, type) {
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    function vworldSearch(q) {
       if (!q) return;
-      const cb = '__vw_' + Date.now();
-      const clean = () => { try { delete window[cb]; } catch (e) {} };
-      window[cb] = (data) => {
-        clean();
-        const items = (data.response && data.response.result && data.response.result.items) || [];
-        if (!items.length) {
-          if (type === 'place') { vworldSearch(q, 'address'); return; } 
-          toast('검색 결과가 없어요: ' + q); return;
-        }
-        const it = items[0], x = Number(it.point.x), y = Number(it.point.y);
-        map.setView([y, x], 16);
+      geocodeText(q, (g) => {
+        if (!g) { toast('검색 결과가 없어요: ' + q); return; }
+        map.setView([g.lat, g.lng], 16);
         if (vsMarker) map.removeLayer(vsMarker);
-        vsMarker = L.marker([y, x]).addTo(map).bindPopup(`<b>${esc(it.title || q)}</b>`).openPopup();
-      };
-      const s = document.createElement('script');
-      s.src = `https://api.vworld.kr/req/search?service=search&request=search&version=2.0&crs=EPSG:4326&size=5&page=1&query=${encodeURIComponent(q)}&type=${type}&format=json&key=${VWORLD_KEY}&callback=${cb}`;
-      s.onerror = clean;
-      document.head.appendChild(s);
+        vsMarker = L.marker([g.lat, g.lng]).addTo(map).bindPopup(`<b>${esc(g.label || q)}</b>`).openPopup();
+      });
     }
     
     
@@ -16785,7 +16782,7 @@
       var q = $('search').value.trim();
       if (!q) { toast('검색어를 입력해 주세요.'); return; }
       $('ac').className = 'ac';
-      if (searchEngine === 'vworld') vworldSearch(q, 'place');
+      if (searchEngine === 'vworld') vworldSearch(q);
       else runKakaoSearch(q);
     }
 
