@@ -11257,11 +11257,14 @@
         + '<button type="button" class="rt-mode" data-m="subway" style="flex:1;text-align:center;">지하철</button></div></div>'
         + '<div style="position:relative;margin-bottom:8px;">'
         + `<input id="sp-from" class="search-inp" style="border-radius:7px 7px 0 0;border-bottom:none;" value="${esc(cur)}" placeholder="출발지 입력 · 지도에서 클릭" autocomplete="off">`
+        + '<input id="sp-via" class="search-inp" style="border-radius:0;margin-top:-1px;" placeholder="경유지(선택) · 비워 두면 안 들릅니다">'
         + `<input id="sp-to" class="search-inp" style="border-radius:0 0 7px 7px;margin-top:-1px;" placeholder="도착지 입력 · 지도에서 클릭" autocomplete="off">`
         + '<button type="button" id="sp-swap" title="출발·도착 바꾸기" aria-label="출발 도착 바꾸기" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:50%;background:var(--card);border:1px solid var(--line);color:#8A6D1F;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;"><i class="fi fi-rr-exchange fi-keep" style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;margin:0;padding:0;line-height:1;"></i></button></div>'
         + '<div style="display:flex;gap:6px;margin-bottom:10px;">'
+        + '<button type="button" id="sp-book" class="fav-cat" title="주소록" style="flex:0 0 auto;"><i class="fi fi-rr-address-book"></i>주소록</button>'
         + '<button type="button" id="sp-clear" class="fav-cat" style="flex:1 1 0;"><i class="fi fi-rr-rotate-right fi-keep"></i>다시입력</button>'
         + '<button type="button" id="sp-go" class="list-tab" style="flex:1 1 0;background:#8A6D1F;color:#fff;border-color:#8A6D1F;"><i class="fi fi-rr-search fi-keep"></i>길찾기</button></div>'
+        + '<div id="sp-bookbox" style="display:none;margin-bottom:10px;"></div>'
         + '<div id="sp-result" style="font-size:13px;margin-top:6px;"></div>';
       p.hidden = false;
       const fromEl = body.querySelector('#sp-from'), toEl = body.querySelector('#sp-to');
@@ -11329,7 +11332,15 @@
           return;
         }
         
-        Promise.all([spResolve(fromEl, routeOrigin), spResolve(toEl, routeDest)]).then(([o, d]) => {
+        
+        
+        
+        const viaEl = body.querySelector('#sp-via');
+        Promise.all([
+          spResolve(fromEl, routeOrigin),
+          spResolve(toEl, routeDest),
+          viaEl && viaEl.value.trim() ? spResolve(viaEl, null) : Promise.resolve(null),
+        ]).then(([o, d, v]) => {
           if (!o || !d) {
             box.innerHTML = '';
             toast('출발지·도착지 좌표를 찾지 못했습니다. 지도에서 클릭하거나 정확한 주소·역명을 입력해 주세요.');
@@ -11338,7 +11349,10 @@
           routeOrigin = o; routeDest = d;
           if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
           if (routeRL) routeRL.clear();
-          spDraw(spMode, o, d, box);
+          if (viaEl && viaEl.value.trim() && !v) {
+            toast('경유지 좌표를 찾지 못해 빼고 계산합니다.');
+          }
+          spDraw(spMode, o, d, box, v ? [v] : null);
         });
       };
       
@@ -11353,10 +11367,31 @@
             || subStations.find((d) => d.nm && d.nm.indexOf(text) !== -1);
           if (hit) return res({ lat: hit.lat, lng: hit.lng, label: hit.nm });
         }
-        geocodeText(text, (g) => res(g ? { lat: g.lat, lng: g.lng, label: g.label } : null));
+        
+        
+        
+        
+        
+        geocodeText(text, (g) => {
+          if (g) { res({ lat: g.lat, lng: g.lng, label: g.label }); return; }
+          fetch(SUPABASE_URL + '/functions/v1/naver-search?query=' + encodeURIComponent(text), {
+            headers: { Authorization: 'Bearer ' + SUPABASE_KEY, apikey: SUPABASE_KEY },
+          })
+            .then((r) => (r.ok ? r.json() : null))
+            .then((j) => {
+              const it = j && Array.isArray(j.items) ? j.items[0] : null;
+              const x = it && Number(it.mapx), y = it && Number(it.mapy);
+              if (!it || !Number.isFinite(x) || !Number.isFinite(y)) { res(null); return; }
+              res({
+                lat: y / 1e7, lng: x / 1e7,
+                label: String(it.title || text).replace(/<[^>]*>/g, ''),
+              });
+            })
+            .catch(() => res(null));
+        });
       });
       
-      const spDraw = async (mode, o, d, box) => {
+      const spDraw = async (mode, o, d, box, via) => {
         box.innerHTML = '경로 계산 중…';
         try {
           if (mode === 'bus') {
@@ -11369,7 +11404,8 @@
               + `<ol style="margin:6px 0 0;padding-left:16px;line-height:1.55;word-break:keep-all;">${steps.map((x) => `<li>${x}</li>`).join('')}</ol>`;
           } else {
             const isWalk = mode === 'walk';
-            const rt = await RouteAPI.osrm(isWalk ? 'foot' : 'car', o, d);
+            
+            const rt = await RouteAPI.osrm(isWalk ? 'foot' : 'car', o, d, via);
             if (!rt) { box.innerHTML = ''; toast('경로를 찾지 못했어요.'); return; }
             routeRender([{ type: isWalk ? 'walk' : 'car', coords: rt.coords }]);
             const km = rt.distance / 1000;
@@ -11384,6 +11420,73 @@
           }
         } catch (e) { box.innerHTML = ''; toast('경로 계산 실패(네트워크).'); }
       };
+      
+      
+      
+      
+      const BOOK_KEY = 'mj_sp_book';
+      const bookGet = () => {
+        try { return JSON.parse(localStorage.getItem(BOOK_KEY) || '[]'); } catch (e) { return []; }
+      };
+      const bookSet = (a) => {
+        try { localStorage.setItem(BOOK_KEY, JSON.stringify(a.slice(0, 30))); } catch (e) {}
+      };
+      const bookBox = body.querySelector('#sp-bookbox');
+      const paintBook = () => {
+        if (!bookBox) return;
+        const list = bookGet();
+        const rows = list.map((v, i) => '<div style="display:flex;align-items:center;gap:4px;'
+          + 'padding:4px 0;border-bottom:1px solid var(--line);">'
+          + '<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'
+          + 'font-size:13px;">' + esc(v) + '</span>'
+          + '<button type="button" class="btn-mini bk-set" data-i="' + i + '" data-t="from">출발</button>'
+          + '<button type="button" class="btn-mini bk-set" data-i="' + i + '" data-t="via">경유</button>'
+          + '<button type="button" class="btn-mini bk-set" data-i="' + i + '" data-t="to">도착</button>'
+          + '<button type="button" class="btn-mini bk-del" data-i="' + i + '" title="지우기" '
+          + 'style="color:var(--c-danger);">×</button></div>').join('');
+        bookBox.innerHTML = '<div style="display:flex;gap:6px;margin-bottom:6px;">'
+          + '<button type="button" id="bk-add-from" class="btn-mini" style="flex:1;">출발지 저장</button>'
+          + '<button type="button" id="bk-add-to" class="btn-mini" style="flex:1;">도착지 저장</button></div>'
+          + (rows || '<div style="font-size:12px;color:var(--c-muted);">저장한 주소가 없습니다. '
+            + '출발지·도착지를 넣고 위 단추로 담아 두세요.</div>');
+        const add = (el) => {
+          const v = (el && el.value || '').trim();
+          if (!v) { toast('먼저 주소를 입력해 주세요.'); return; }
+          const a = bookGet();
+          if (a.includes(v)) { toast('이미 주소록에 있습니다.'); return; }
+          a.unshift(v); bookSet(a); paintBook();
+        };
+        const f1 = bookBox.querySelector('#bk-add-from');
+        const f2 = bookBox.querySelector('#bk-add-to');
+        if (f1) f1.onclick = () => add(fromEl);
+        if (f2) f2.onclick = () => add(toEl);
+        bookBox.querySelectorAll('.bk-set').forEach((b) => {
+          b.onclick = () => {
+            const v = bookGet()[Number(b.dataset.i)];
+            if (!v) return;
+            const t = b.dataset.t;
+            const el = t === 'from' ? fromEl : (t === 'to' ? toEl : body.querySelector('#sp-via'));
+            if (!el) return;
+            el.value = v;
+            el._coord = null;          
+            if (t === 'from') routeOrigin = null;
+            if (t === 'to') routeDest = null;
+          };
+        });
+        bookBox.querySelectorAll('.bk-del').forEach((b) => {
+          b.onclick = () => { const a = bookGet(); a.splice(Number(b.dataset.i), 1); bookSet(a); paintBook(); };
+        });
+      };
+      const bookBtn = body.querySelector('#sp-book');
+      if (bookBtn) {
+        bookBtn.onclick = () => {
+          if (!bookBox) return;
+          const open = bookBox.style.display !== 'none';
+          bookBox.style.display = open ? 'none' : 'block';
+          if (!open) paintBook();
+        };
+      }
+
       body.querySelector('#sp-go').onclick = query;
       body.querySelector('#sp-swap').onclick = () => {
         const f = fromEl.value; fromEl.value = toEl.value; toEl.value = f;
@@ -11393,6 +11496,8 @@
       };
       body.querySelector('#sp-clear').onclick = () => {
         fromEl.value = ''; toEl.value = '';
+        const viaC = body.querySelector('#sp-via');
+        if (viaC) { viaC.value = ''; viaC._coord = null; }   
         body.querySelector('#sp-result').innerHTML = '';
         
         

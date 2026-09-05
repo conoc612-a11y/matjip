@@ -49,9 +49,14 @@
 
   // OSRM 한 구간. o/d 는 {lat,lng}. 실패하면 null 을 돌려주고 호출자가 직선으로 떨어진다.
   // profile: 'foot' | 'car'
-  function osrm(profile, o, d) {
+  // 🔴 **경유지를 받는다.** OSRM 은 좌표를 `;` 로 이어 붙이면 그 순서대로 지난다.
+  //   `osrm(profile, o, d)` 로 부르던 옛 호출은 그대로 둔다(via 를 안 주면 예전과 같다).
+  //   ⚠️ 좌표 순서는 **경도,위도** 다. 뒤집으면 엉뚱한 곳으로 간다.
+  function osrm(profile, o, d, via) {
     var base = profile === 'foot' ? OSRM_FOOT : OSRM_CAR;
-    var url = base + o.lng + ',' + o.lat + ';' + d.lng + ',' + d.lat + '?overview=full&geometries=geojson';
+    var pts = [o].concat(Array.isArray(via) ? via.filter(Boolean) : []).concat([d]);
+    var path = pts.map(function (p) { return p.lng + ',' + p.lat; }).join(';');
+    var url = base + path + '?overview=full&geometries=geojson';
     return jget(url).then(function (j) {
       var rt = j && j.routes && j.routes[0];
       if (!rt) return null;
@@ -63,7 +68,7 @@
     }).catch(function () {
       // 한쪽이 죽거나 느리면 다른 쪽으로 넘어간다. 둘 다 무료 공개 서버라 언제든 흔들린다.
       var alt = profile === 'foot' ? OSRM_CAR : OSRM_CAR_ALT;
-      return jget(alt + o.lng + ',' + o.lat + ';' + d.lng + ',' + d.lat + '?overview=full&geometries=geojson', TIMEOUT_ALT_MS)
+      return jget(alt + path + '?overview=full&geometries=geojson', TIMEOUT_ALT_MS)
         .then(function (j) {
           var rt = j && j.routes && j.routes[0];
           if (!rt) return null;
