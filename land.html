@@ -1714,10 +1714,18 @@
             extra.innerHTML = '<div style="font-size:13px;color:var(--muted);">공공데이터 확인 중…</div>';
             box.appendChild(extra);
             const parts = [];
+            let painted = false;
             const paint = () => {
+              painted = true;
               extra.innerHTML = parts.length ? parts.join('')
                 : '<div style="font-size:12px;color:var(--muted);">추가로 확인된 공공데이터가 없습니다.</div>';
             };
+            
+            
+            
+            
+            
+            setTimeout(() => { if (!painted) paint(); }, 9000);
             const sec = (t, html) => '<div style="margin-bottom:10px;">'
               + '<div style="font-weight:700;font-size:13px;margin-bottom:4px;">' + t + '</div>'
               + '<div style="font-size:13px;">' + html + '</div></div>';
@@ -1734,8 +1742,30 @@
               if (!Number.isFinite(n) || !n) return '';
               return n >= 1e8 ? (n / 1e8).toFixed(0) + '억' : Math.round(n / 1e4).toLocaleString('ko-KR') + '만';
             };
-            let left = 4;   
-            const done = () => { if (--left <= 0) paint(); };
+            let left = 5;   
+            
+            const done = () => { left -= 1; if (left <= 0 || painted) paint(); };
+
+            
+            
+            
+            
+            
+            
+            if (bname && window.kisRisk) {
+              window.kisRisk(bname, digits, (res) => {
+                const h = window.kisRiskHtml(res, bname);
+                if (h) parts.push(sec('건설업체 이력 (키스콘)', h));
+                else if (res) {
+                  
+                  parts.push(sec('건설업체 이력 (키스콘)',
+                    '<span style="color:var(--muted);">2003년 이후 행정처분·폐업 공시가 없습니다.'
+                    + ' <span style="font-size:12px;">(건설업 등록 업체가 아니면 원래 나오지 않습니다)</span></span>'));
+                }
+                
+                done();
+              });
+            } else { done(); }
 
             
             
@@ -8357,6 +8387,410 @@
       const cctvStdCluster = makeStdLayer('cctv');
       const wifiCluster = makeStdLayer('wifi');
 
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      const KIS_PROXY = SUPABASE_URL + '/functions/v1/kiscon-proxy';
+
+      
+      
+      
+      
+      const KIS_ITEMS = {
+        '종합건설업': ['토목공사업', '건축공사업', '토목건축공사업', '산업ㆍ환경설비공사업', '조경공사업'],
+        '전문건설업': ['지반조성ㆍ포장공사업', '실내건축공사업', '금속ㆍ창호ㆍ지붕ㆍ건축물조립공사업',
+          '도장ㆍ습식ㆍ방수ㆍ석공사업', '철근ㆍ콘크리트공사업', '구조물해체ㆍ비계공사업',
+          '상ㆍ하수도설비공사업', '철강구조물공사업', '수중ㆍ준설공사업', '조경식재ㆍ시설물공사업',
+          '기계설비ㆍ가스공사업', '가스ㆍ난방공사업', '승강기ㆍ삭도공사업', '시설물유지관리업'],
+      };
+      const KIS_COLOR = { '종합건설업': '#1971c2', '전문건설업': '#e8590c' };
+
+      
+      
+      const KIS_SIDO = [
+        ['서울', '서울'], ['부산', '부산'], ['대구', '대구'], ['인천', '인천'],
+        ['광주', '전남광주'], ['대전', '대전'], ['울산', '울산'], ['세종', '세종시'],
+        ['경기', '경기'], ['강원', '강원'],
+        ['충청북', '충북'], ['충북', '충북'], ['충청남', '충남'], ['충남', '충남'],
+        ['전라북', '전북'], ['전북', '전북'], ['전라남', '전남광주'], ['전남', '전남광주'],
+        ['경상북', '경북'], ['경북', '경북'], ['경상남', '경남'], ['경남', '경남'],
+        ['제주', '제주'],
+      ];
+
+      const kisOn = new Set();                    
+      let kisSubsMids = [];                       
+      const kisCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 60 });
+      const kisGeo = new Map();                   
+      let kisRows = [];                           
+      let kisArea = '';                           
+      let kisBusy = false;
+      let kisSeq = 0;                             
+      let kisRetry = true;                        
+
+      
+      
+      const LS_KIS_GEO = 'mj_kis_geo';
+      try {
+        const saved = JSON.parse(localStorage.getItem(LS_KIS_GEO) || '{}');
+        for (const k of Object.keys(saved)) kisGeo.set(k, saved[k]);
+      } catch (e) {  }
+      const kisGeoSave = () => {
+        try {
+          const o = {};
+          let n = 0;
+          for (const [k, v] of kisGeo) { if (++n > 4000) break; o[k] = v; }   
+          localStorage.setItem(LS_KIS_GEO, JSON.stringify(o));
+        } catch (e) {  }
+      };
+
+      
+      function kisAreaOf(addr) {
+        const t = String(addr || '').trim();
+        if (!t) return null;
+        let sido = '';
+        for (const [pre, k] of KIS_SIDO) { if (t.startsWith(pre)) { sido = k; break; } }
+        if (!sido) return null;
+        
+        const sgg = (t.split(/\s+/)[1] || '').trim();
+        return { sido, sgg };
+      }
+
+      
+      function kisGeocodeAll(list, onOne, onEnd) {
+        let i = 0; let live = 0; let ended = false;
+        const step = () => {
+          if (ended) return;
+          if (i >= list.length && live === 0) { ended = true; kisGeoSave(); onEnd(); return; }
+          while (live < 5 && i < list.length) {
+            const r = list[i++];
+            const key = r.addr;
+            const hit = kisGeo.get(key);
+            if (hit) { onOne(r, hit); continue; }
+            if (!key) continue;
+            live++;
+            geocodeText(key, (p) => {
+              live--;
+              if (p) { kisGeo.set(key, { lat: p.lat, lng: p.lng }); onOne(r, p); }
+              else { kisGeo.set(key, null); }        
+              step();
+            });
+          }
+          if (live === 0 && i >= list.length) { ended = true; kisGeoSave(); onEnd(); }
+        };
+        step();
+      }
+
+      function kisDraw() {
+        kisCluster.clearLayers();
+        if (!map.hasLayer(kisCluster) || !kisOn.size) return;
+        const b = map.getBounds();
+        const out = [];
+        for (const r of kisRows) {
+          if (!kisOn.has(r.item)) continue;
+          const p = kisGeo.get(r.addr);
+          if (!p) continue;
+          if (!b.contains([p.lat, p.lng])) continue;
+          const color = KIS_COLOR[r.group] || '#868e96';
+          const m = L.marker([p.lat, p.lng], { icon: svcIcon('fi-rr-hard-hat', color, 26) });
+          m._pop = (() => kisPopup(r));
+          m._row = r;                                  
+          m.bindTooltip(esc(r.name), { direction: 'top' });
+          out.push(m);
+        }
+        kisCluster.addLayers(out);
+      }
+
+      function kisPopup(r) {
+        const row = (t, v) => (v ? '<div style="font-size:12px;margin-top:2px;">'
+          + '<span style="color:var(--muted);">' + t + '</span> ' + esc(String(v)) + '</div>' : '');
+        return '<div class="pc"><div class="pc-head"><span class="rp-name">' + esc(r.name) + '</span></div>'
+          + '<div class="pc-body">'
+          + '<div style="font-size:12px;"><b>' + esc(r.item || '') + '</b>'
+          + '<span style="color:var(--muted);"> · ' + esc(r.group || '') + '</span></div>'
+          + row('대표', r.master)
+          + row('등록번호', r.regNo)
+          + row('사업자', r.bizno)
+          + row('주소', r.addr)
+          + row('전화', r.tel)
+          + row('공시', (r.date || '').replace(/(\d{4})(\d{2})(\d{2})/, '$1.$2.$3') + ' ' + (r.flag || ''))
+          + (r.from ? row('양도·합병 전', r.from) : '')
+          
+          + '<div class="kis-risk" style="margin-top:6px;border-top:1px solid var(--line);padding-top:6px;'
+          + 'font-size:12px;color:var(--muted);">행정처분·폐업 이력 확인 중…</div>'
+          
+          + '<div style="font-size:11px;color:var(--muted);margin-top:6px;">'
+          + '국토교통부 키스콘 건설업체정보 · 공시(등록·변경)를 낸 업체입니다. '
+          + '주소는 <b>본사 소재지</b>이고 좌표는 주소를 지오코딩한 값이라 실제 위치와 다를 수 있습니다.'
+          + '</div></div></div>';
+      }
+
+      
+      function kisLoad() {
+        if (!map.hasLayer(kisCluster) || !kisOn.size) return;
+        if (map.getZoom() < 12) {
+          kisCluster.clearLayers();
+          return;
+        }
+        const c = map.getCenter();
+        const my = ++kisSeq;
+        reverseGeocode(c.lat, c.lng, (addr) => {
+          if (my !== kisSeq) return;
+          const a = kisAreaOf(addr);
+          
+          
+          if (!a) {
+            if (kisRetry) { kisRetry = false; toast('현재 위치를 알 수 없어 다시 시도합니다…'); setTimeout(kisLoad, 900); }
+            else { kisRetry = true; toast('현재 위치를 알 수 없어 건설업체를 불러오지 못했습니다.'); }
+            return;
+          }
+          kisRetry = true;
+          const tag = a.sido + '|' + a.sgg;
+          if (tag === kisArea) { kisDraw(); return; }      
+          
+          if (kisBusy) { setTimeout(kisLoad, 700); return; }
+          kisBusy = true;
+          
+          const now = new Date();
+          const eD = now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0');
+          const sD = (now.getFullYear() - 3) + '0101';
+          const url = KIS_PROXY + '?op=GongsiReg&sDate=' + sD + '&eDate=' + eD
+            + '&rows=100&sido=' + encodeURIComponent(a.sido)
+            + (a.sgg ? '&sgg=' + encodeURIComponent(a.sgg) : '');
+          toast(a.sgg + ' 건설업체를 불러옵니다…');
+          
+          const pages = [1, 2, 3, 4, 5].map((p) => fetch(url + '&page=' + p)
+            .then((r) => (r.ok ? r.json() : null)).catch(() => null));
+          Promise.all(pages).then((js) => {
+            kisBusy = false;
+            if (my !== kisSeq) return;
+            const rows = [];
+            const seen = new Set();
+            for (const j of js) {
+              if (!j || !Array.isArray(j.rows)) continue;
+              for (const r of j.rows) {
+                
+                const k = r.name + '|' + r.item;
+                if (seen.has(k)) continue;
+                seen.add(k);
+                if (r.addr) rows.push(r);
+              }
+            }
+            kisRows = rows;
+            kisArea = tag;
+            if (!rows.length) { toast(a.sgg + ' 최근 3년 공시가 없습니다.'); kisDraw(); return; }
+            const need = rows.filter((r) => kisOn.has(r.item));
+            kisGeocodeAll(need, () => {}, () => {
+              if (my !== kisSeq) return;
+              kisDraw();
+              const drawn = need.filter((r) => kisGeo.get(r.addr)).length;
+              toast(a.sgg + ' 건설업체 ' + drawn + '곳' + (drawn < need.length
+                ? ' (주소를 못 찾은 ' + (need.length - drawn) + '곳 제외)' : ''));
+            });
+          });
+        });
+      }
+
+      
+      function kisApply() {
+        kisOn.clear();
+        for (const m of kisSubsMids) for (const id of (m._on || [])) kisOn.add(id);
+        if (kisOn.size) {
+          if (!map.hasLayer(kisCluster)) kisCluster.addTo(map);
+          kisArea = '';                     
+          
+          
+          
+          
+          
+          
+          setTimeout(kisLoad, 0);
+        } else if (map.hasLayer(kisCluster)) {
+          map.removeLayer(kisCluster);
+          kisCluster.clearLayers();
+        }
+      }
+      kisCluster.on('click', (e) => {
+        const m = e.layer;
+        if (!m || !m._pop) return;
+        if (!m.getPopup()) m.bindPopup(m._pop());
+        m.openPopup();
+      });
+      
+      
+      
+      
+      map.on('popupopen', (e) => {
+        const pop = e.popup;
+        const el = pop && pop.getElement();
+        const box = el && el.querySelector('.kis-risk');
+        const row = pop && pop._source && pop._source._row;
+        if (!box || !row || box.dataset.done) return;
+        box.dataset.done = '1';
+        kisRisk(row.name, row.bizno, (res) => {
+          const h = kisRiskHtml(res, row.name);
+          if (h) { box.innerHTML = h; box.style.color = 'var(--text)'; }
+          else if (res) box.textContent = '2003년 이후 행정처분·폐업 공시가 없습니다.';
+          else box.textContent = '행정처분·폐업 색인이 아직 없습니다.';
+          
+          
+          
+          
+          if (pop._adjustPan) pop._adjustPan();
+        });
+      });
+      map.on('moveend zoomend', () => { if (map.hasLayer(kisCluster) && kisOn.size) kisLoad(); });
+      
+      window._kis = { cluster: kisCluster, rows: () => kisRows, on: kisOn, geo: kisGeo, load: () => kisLoad(), map };
+      
+      
+      window.kisRisk = kisRisk;
+      window.kisRiskHtml = kisRiskHtml;
+
+      
+      
+
+      
+      
+      
+      
+      
+      const KIS_RISK_DIR = 'kiscon/';
+      const KIS_RISK_BUCKETS = 512;
+      
+      
+      
+      const kisKey = (v) => String(v || '')
+        .replace(/[㈜㈱]/g, '')
+        .replace(/\(\s*[주유재사]\s*\)/g, '')
+        .replace(/주식회사|유한회사|합자회사|합명회사/g, '')
+        .replace(/[\s.,·ㆍ・\-_'"()（）\[\]［］]/g, '')
+        .trim();
+      const kisBucketOf = (k) => {
+        let h = 0;
+        for (let i = 0; i < k.length; i++) h = (h * 31 + k.charCodeAt(i)) >>> 0;
+        return h % KIS_RISK_BUCKETS;
+      };
+      const _kisRiskCache = new Map();      
+
+      
+
+
+
+
+
+      function kisRisk(name, bizno, cb) {
+        const key = kisKey(name);
+        if (!key) { cb(null); return; }
+        const b = kisBucketOf(key);
+        const use = (bk) => {
+          if (!bk) { cb(null); return; }               
+          const rows = bk[key] || [];
+          const bz = String(bizno || '').replace(/\D/g, '');
+          const nums = new Set(rows.map((r) => String(r.b || '').replace(/\D/g, '')).filter(Boolean));
+          
+          
+          const same = bz ? rows.filter((r) => String(r.b || '').replace(/\D/g, '') === bz) : [];
+          cb({ rows, sameBizno: same, dup: nums.size, matchedByBizno: !!(bz && same.length) });
+        };
+        if (_kisRiskCache.has(b)) { use(_kisRiskCache.get(b)); return; }
+        fetch(KIS_RISK_DIR + 'risk_' + b + '.json')
+          .then((r) => (r.ok ? r.json() : null))
+          .catch(() => null)
+          .then((j) => { _kisRiskCache.set(b, j); use(j); });
+      }
+
+      
+      
+      function kisRiskLine(r, n) {
+        
+        
+        const many = n > 1 ? ' <b style="color:var(--c-danger);">×' + n + '건</b>' : '';
+        const d = String(r.d || '').replace(/(\d{4})(\d{2})(\d{2})/, '$1.$2.$3');
+        const where = [r.s, r.g].filter(Boolean).join(' ');
+        if (r.k === 'c') {
+          return '<div style="font-size:12px;margin-top:3px;">'
+            + '<b style="color:#868e96;">폐업</b>' + many + ' <span style="color:var(--muted);">' + esc(d) + '</span> '
+            + esc(r.cw || '') + (r.i ? ' <span style="color:var(--muted);">· ' + esc(r.i) + '</span>' : '')
+            + (where ? ' <span style="color:var(--muted);">· ' + esc(where) + '</span>' : '') + '</div>';
+        }
+        const stop = (r.ps && r.pe)
+          ? ' <span style="color:var(--muted);">' + esc(String(r.ps).slice(4).replace(/(\d{2})(\d{2})/, '$1.$2'))
+            + '~' + esc(String(r.pe).slice(4).replace(/(\d{2})(\d{2})/, '$1.$2')) + '</span>' : '';
+        const fine = r.pf ? ' <span style="color:var(--muted);">과징금 '
+          + (r.pf >= 1e8 ? (r.pf / 1e8).toFixed(1) + '억' : Math.round(r.pf / 1e4).toLocaleString('ko-KR') + '만') + '</span>' : '';
+        return '<div style="font-size:12px;margin-top:3px;">'
+          + '<b style="color:var(--c-danger);">' + esc(r.pn || '행정처분') + '</b>' + many
+          
+          + (r.pd ? ' <span style="color:#1971c2;">(가처분으로 효력 정지)</span>' : '')
+          + ' <span style="color:var(--muted);">' + esc(d) + '</span>' + stop + fine
+          + (r.pw ? '<div style="color:var(--muted);padding-left:2px;">' + esc(r.pw) + '</div>' : '')
+          + '</div>';
+      }
+
+      
+      function kisRiskHtml(res, name) {
+        if (!res || !res.rows.length) return '';
+        const rows = res.matchedByBizno ? res.sameBizno : res.rows;
+        const pen = rows.filter((r) => r.k === 'p');
+        const ces = rows.filter((r) => r.k === 'c');
+        let h = '<div style="font-size:13px;">';
+        h += '<b>' + esc(name) + '</b> ';
+        h += '행정처분 <b style="color:var(--c-danger);">' + pen.length + '건</b>'
+          + ' · 폐업 <b>' + ces.length + '건</b>';
+        if (res.matchedByBizno) {
+          h += ' <span style="color:var(--muted);font-size:12px;">(사업자번호 일치분)</span>';
+        } else if (res.dup > 1) {
+          
+          h += '<div style="color:#e8590c;font-size:12px;margin-top:3px;">'
+            + '⚠️ 같은 상호가 <b>' + res.dup + '곳</b>입니다 — 아래는 그 전부입니다. '
+            + '사업자등록번호를 함께 넣으면 한 곳으로 좁혀집니다.</div>';
+        }
+        h += '</div>';
+        
+        
+        
+        const groups = new Map();
+        for (const r of rows) {
+          const k = [r.k, r.d, r.pn, r.pw, r.i, r.ps, r.pe, r.pf, r.cw].join('|');
+          const g = groups.get(k);
+          if (g) g.n += 1; else groups.set(k, { r, n: 1 });
+        }
+        const gs = [...groups.values()];
+        for (const g of gs.slice(0, 8)) h += kisRiskLine(g.r, g.n);
+        if (gs.length > 8) {
+          h += '<div style="font-size:12px;color:var(--muted);margin-top:3px;">외 '
+            + (gs.length - 8) + '종류</div>';
+        }
+        h += '<div style="font-size:11px;color:var(--muted);margin-top:5px;">'
+          + '국토교통부 키스콘 건설업체정보 · 2003년 이후 공시 · 상호로 맞춘 결과입니다.</div>';
+        return h;
+      }
+
+      function kisMid(g) {
+        const m = {
+          name: g,
+          subs: KIS_ITEMS[g].map((n) => [n, n]),   
+          apply: kisApply,                          
+          swatch: () => KIS_COLOR[g],
+        };
+        kisSubsMids.push(m);
+        return m;
+      }
+
+
       const LAYER_TREE = [
         
         
@@ -8395,6 +8829,13 @@
           { name: '응급의료기관', layer: emrgCluster },
           
           { name: '버스정류소 (11,239곳)', layer: busCluster },
+        ]],
+        
+        
+        
+        ['건설업체 (키스콘)', [
+          kisMid('종합건설업'),
+          kisMid('전문건설업'),
         ]],
         
         
@@ -8817,9 +9258,13 @@
               
               
               
-              const sw = UPIS_SWATCH[id]
-                ? `<img class="lp-sw" src="data:image/png;base64,${UPIS_SWATCH[id]}" alt="">`
-                : '<span class="lp-sw lp-sw-none" title="이 레이어는 제공기관이 범례를 주지 않습니다">?</span>';
+              
+              
+              const sw = mid.swatch
+                ? `<span class="lp-sw" style="background:${mid.swatch(id)};border-radius:3px;"></span>`
+                : (UPIS_SWATCH[id]
+                  ? `<img class="lp-sw" src="data:image/png;base64,${UPIS_SWATCH[id]}" alt="">`
+                  : '<span class="lp-sw lp-sw-none" title="이 레이어는 제공기관이 범례를 주지 않습니다">?</span>');
               s.innerHTML = `<input type="checkbox" class="lp-cb">${sw}<span>${label}</span>`;
               const cb = s.querySelector('input');
               cb.dataset.id = id;   
@@ -8837,7 +9282,8 @@
                   return;
                 }
                 cb.checked ? mid._on.add(id) : mid._on.delete(id);
-                if (mid.vecBz) applyJbBz(mid); else refreshUpisGroup(mid);
+                
+                if (mid.apply) mid.apply(mid); else if (mid.vecBz) applyJbBz(mid); else refreshUpisGroup(mid);
                 midCb.checked = subCbs.some((c) => c.checked);
                 midCb.indeterminate = midCb.checked && !subCbs.every((c) => c.checked);
                 
@@ -8855,7 +9301,7 @@
               subCbs.forEach((c) => { c.checked = midCb.checked; });
               mid._on = new Set(midCb.checked ? mid.subs.map(([id]) => id) : []);
               midCb.indeterminate = false;
-              if (mid.vecBz) applyJbBz(mid); else refreshUpisGroup(mid);
+              if (mid.apply) mid.apply(mid); else if (mid.vecBz) applyJbBz(mid); else refreshUpisGroup(mid);
               syncBig();
               saveLayerState();
             };
