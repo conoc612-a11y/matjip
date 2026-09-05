@@ -11440,10 +11440,79 @@
         });
       });
       
+      
+      
+      
+      
+      
+      
+      
+      const spDirectBus = async (o, d) => {
+        try {
+          const stops = await loadBusStop();
+          if (!stops || !stops.length) return null;
+          const near = (p) => stops
+            .map((r) => ({ no: r.no, nm: r.nm, km: RouteAPI.kmBetween(p, { lat: r.lat, lng: r.lng }) }))
+            .filter((x) => x.no && x.km < 1.0)          
+            .sort((a, b) => a.km - b.km).slice(0, 6);
+          const A = near(o), B = near(d);
+          if (!A.length || !B.length) return null;
+          const ask = async (list) => {
+            const m = new Map();
+            const rs = await Promise.all(list.map((x) => fetch(
+              SUPABASE_URL + '/functions/v1/seoul-bus-arrival?stId=' + encodeURIComponent(x.no),
+            ).then((r) => (r.ok ? r.json() : null)).catch(() => null)));
+            rs.forEach((j, i) => {
+              for (const r of (j && j.routes) || []) {
+                const k = r.routeId || r.no;
+                
+                if (!m.has(k) || list[i].km < m.get(k).km) {
+                  m.set(k, { no: r.no, ord: r.ord, stop: list[i].nm, km: list[i].km, msg: r.msg1 });
+                }
+              }
+            });
+            return m;
+          };
+          const [ma, mb] = await Promise.all([ask(A), ask(B)]);
+          const out = [];
+          for (const [k, a] of ma) {
+            const b = mb.get(k);
+            if (!b || !a.ord || !b.ord || a.ord >= b.ord) continue;   
+            out.push({
+              no: a.no, from: a.stop, to: b.stop, stops: b.ord - a.ord,
+              msg: /후\[|곧 도착|도착/.test(a.msg || '') ? a.msg : '',
+              walk: (a.km + b.km < 0.1 ? '100m 미만' : Math.round((a.km + b.km) * 1000) + 'm'),
+            });
+          }
+          
+          out.sort((x, y) => (y.msg ? 1 : 0) - (x.msg ? 1 : 0) || x.stops - y.stops);
+          return out;
+        } catch (e) { return null; }
+      };
+
+      
       const spDraw = async (mode, o, d, box, via) => {
         box.innerHTML = '경로 계산 중…';
         try {
           if (mode === 'bus') {
+            
+            
+            
+            
+            const direct = await spDirectBus(o, d);
+            if (direct && direct.length) {
+              box.innerHTML = '<div class="pc-price">직통 버스 <b>' + direct.length + '개</b></div>'
+                + '<ol style="margin:6px 0 0;padding-left:16px;line-height:1.5;word-break:keep-all;">'
+                + direct.slice(0, 6).map((x) => '<li style="margin-top:2px;"><b>' + esc(x.no) + '</b> '
+                  + esc(x.from) + ' → ' + esc(x.to)
+                  + '<span style="color:var(--c-muted);"> · ' + x.stops + '개 정류장</span>'
+                  + (x.msg ? ' <span style="color:var(--c-primary);">' + esc(x.msg) + '</span>' : '')
+                  + '</li>').join('')
+                + '</ol>'
+                + '<div style="font-size:11px;color:var(--c-muted);margin-top:4px;">'
+                + '서울시 버스도착정보 · 걷는 거리 ' + direct[0].walk + ' · <b>환승은 빠져 있습니다</b></div>';
+              return;
+            }
             const r = await RouteAPI.transit(o, d);
             if (!r || !r.segments.length) { box.innerHTML = ''; toast('대중교통 경로를 찾지 못했어요.'); return; }
             routeRender(r.segments);
