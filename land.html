@@ -3847,6 +3847,9 @@
           + `<div><b>${esc(d.nm)}</b></div>`
           + `<div style="margin-top:3px;font-size:12px;">${esc(d.ty)}${d.no ? ' · 정류소번호 ' + esc(d.no) : ''}</div>`
           + busVolHtml(d)
+          
+          
+          + (d.no ? `<div class="bus-arr" data-st="${esc(String(d.no))}" style="margin-top:6px;"></div>` : '')
           + '<div style="margin-top:5px;font-size:11px;color:var(--c-muted);">서울 열린데이터광장 버스정류소 위치정보'
           + (busVol && busVol.by.has(String(d.no)) ? ' · 승하차 ' + busVol.ym.slice(0, 4) + '.' + busVol.ym.slice(4) + ' 일평균' : '')
           + '</div>'
@@ -3864,6 +3867,49 @@
           return m;
         }));
       }
+      
+      
+      
+      
+      
+      
+      const _busArrSeen = new WeakSet();
+      function fillBusArrival(root) {
+        const box = root && root.querySelector && root.querySelector('.bus-arr');
+        if (!box || _busArrSeen.has(box)) return;
+        _busArrSeen.add(box);
+        const st = box.dataset.st;
+        if (!st) return;
+        box.innerHTML = '<span style="font-size:12px;color:var(--c-muted);">도착정보 확인 중…</span>';
+        fetch(SUPABASE_URL + '/functions/v1/seoul-bus-arrival?stId=' + encodeURIComponent(st))
+          .then((r) => (r.ok ? r.json() : Promise.reject(new Error('http'))))
+          .then((j) => {
+            const rows = (j && j.routes) || [];
+            if (!rows.length) {
+              box.innerHTML = '<span style="font-size:12px;color:var(--c-muted);">'
+                + esc(j && j.msg ? j.msg : '지금 오는 버스 정보가 없습니다.') + '</span>';
+              return;
+            }
+            box.innerHTML = '<div style="font-weight:700;font-size:12px;margin-bottom:2px;">실시간 도착</div>'
+              + rows.slice(0, 8).map((x) => '<div style="font-size:12px;margin-top:2px;">'
+                + '<b>' + esc(x.no) + '</b> <span style="color:'
+                + (/후\[|곧 도착|도착/.test(x.msg1) ? 'var(--c-primary)' : 'var(--c-muted)') + ';">'
+                + esc(x.msg1) + '</span></div>').join('')
+              + (rows.length > 8 ? '<div style="font-size:11px;color:var(--c-muted);margin-top:2px;">외 '
+                + (rows.length - 8) + '개 노선</div>' : '')
+              + '<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">'
+              + '서울시 버스도착정보 · <b>저상버스 기준</b>이라 일부 노선은 빠질 수 있습니다</div>';
+          })
+          .catch(() => {
+            box.innerHTML = '<span style="font-size:12px;color:var(--c-danger);">'
+              + '도착정보를 불러오지 못했습니다.</span>';
+          });
+      }
+      map.on('popupopen', (e) => {
+        const el = e && e.popup && e.popup.getElement();
+        if (el) fillBusArrival(el);
+      });
+
       map.on('overlayadd', (e) => {
         if (e.layer !== busCluster) return;
         
