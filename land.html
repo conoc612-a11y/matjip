@@ -11565,6 +11565,146 @@
       };
 
       
+      
+      
+      
+      
+      
+      
+      
+      const spDrawPath = async (path, o, d) => {
+        if (!path || !path.legs) return;
+        const legs = path.legs.filter((l) => l.fy && l.fx && l.ty && l.tx);
+        if (!legs.length) return;
+        const segs = await Promise.all(legs.map(async (l) => {
+          const a = { lat: l.fy, lng: l.fx };
+          const b = { lat: l.ty, lng: l.tx };
+          if (l.kind !== 'bus') {
+            const pts = await new Promise((res) => {
+              const nm = (t) => String(t || '').replace(/역$/, '');
+              loadShortPath(nm(l.from), nm(l.to), (r) => {
+                if (!r || !r.stops || r.stops.length < 2 || !subStations) { res(null); return; }
+                const co = r.stops.map((x) => {
+                  const hit = subStations.find((y) => y.nm === x)
+                    || subStations.find((y) => y.nm && (y.nm.includes(x) || x.includes(y.nm)));
+                  return hit ? [hit.lat, hit.lng] : null;
+                }).filter(Boolean);
+                res(co.length >= 2 ? co : null);
+              });
+            });
+            return { type: 'subway', coords: pts || [[a.lat, a.lng], [b.lat, b.lng]] };
+          }
+          const rt = await RouteAPI.osrm('car', a, b).catch(() => null);
+          return {
+            type: 'bus',
+            coords: (rt && rt.coords && rt.coords.length > 1) ? rt.coords : [[a.lat, a.lng], [b.lat, b.lng]],
+          };
+        }));
+        const walkTo = async (from, to) => {
+          const rt = await RouteAPI.osrm('foot', from, to).catch(() => null);
+          return {
+            type: 'walk',
+            coords: (rt && rt.coords && rt.coords.length > 1) ? rt.coords : [[from.lat, from.lng], [to.lat, to.lng]],
+          };
+        };
+        const full = [await walkTo(o, { lat: legs[0].fy, lng: legs[0].fx })];
+        full.push(...segs);
+        const last = legs[legs.length - 1];
+        full.push(await walkTo({ lat: last.ty, lng: last.tx }, d));
+        routeRender(full);
+      };
+
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      const spRenderPaths = (paths, box, o, d) => {
+        const nowPlus = (min) => {
+          const t = new Date(Date.now() + min * 60000);
+          const h = t.getHours();
+          return (h < 12 ? '오전 ' : '오후 ') + (h % 12 || 12) + ':' + String(t.getMinutes()).padStart(2, '0');
+        };
+        const badge = (l) => {
+          if (l.kind === 'subway') {
+            const c = SUB_LINE_COLOR[l.name] || '#495057';
+            const n = (l.name.match(/^\d+/) || ['●'])[0];
+            return '<span style="display:inline-flex;align-items:center;gap:4px;">'
+              + '<span style="width:16px;height:16px;border-radius:50%;background:' + c + ';color:#fff;'
+              + 'font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;">'
+              + esc(n) + '</span>'
+              + '<b style="color:' + c + ';">' + esc(l.name) + '</b></span>';
+          }
+          return '<span style="display:inline-flex;align-items:center;gap:4px;">'
+            + '<span style="width:16px;height:16px;border-radius:4px;background:#1971c2;color:#fff;'
+            + 'font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;">버</span>'
+            + '<b>' + esc(l.name) + '</b></span>';
+        };
+        
+        const kindOf = (p) => {
+          const hasBus = p.legs.some((x) => x.kind === 'bus');
+          const hasSub = p.legs.some((x) => x.kind === 'subway');
+          return hasBus && hasSub ? 'mix' : (hasBus ? 'bus' : 'sub');
+        };
+        const TABS = [['all', '전체'], ['sub', '지하철'], ['bus', '버스'], ['mix', '버스+지하철']];
+        let tab = 'all';
+        let sel = 0;
+        const draw = () => {
+          const list = paths.filter((p) => tab === 'all' || kindOf(p) === tab);
+          const tabHtml = '<div style="display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:8px;">'
+            + TABS.map((t) => {
+              const k = t[0];
+              const n = paths.filter((p) => k === 'all' || kindOf(p) === k).length;
+              if (!n) return '';
+              const on = tab === k;
+              return '<button type="button" class="sp-tab" data-k="' + k + '" style="flex:0 0 auto;'
+                + 'padding:5px 9px;border:none;background:none;cursor:pointer;font-size:12px;'
+                + (on ? 'font-weight:700;color:var(--c-primary);border-bottom:2px solid var(--c-primary);'
+                      : 'color:var(--c-muted);border-bottom:2px solid transparent;')
+                + '">' + t[1] + ' <span style="font-size:11px;">' + n + '</span></button>';
+            }).join('') + '</div>';
+          const cards = list.map((p, i) => {
+            const idx = paths.indexOf(p);
+            const on = idx === sel;
+            return '<div class="sp-card" data-i="' + idx + '" style="cursor:pointer;padding:9px 10px;'
+              + 'border:1px solid ' + (on ? 'var(--c-primary)' : 'var(--line)') + ';border-radius:9px;'
+              + 'margin-top:' + (i ? '7px' : '0') + ';">'
+              + '<div style="display:flex;align-items:baseline;gap:7px;flex-wrap:wrap;">'
+              + '<span style="font-size:20px;font-weight:800;">' + p.min
+              + '<span style="font-size:13px;font-weight:600;">분</span></span>'
+              + '<span style="font-size:12px;color:var(--c-muted);">' + nowPlus(p.min) + ' 도착</span>'
+              + '<span style="font-size:12px;color:var(--c-muted);">· 환승 '
+              + Math.max(0, p.legs.length - 1) + '회</span>'
+              + '<span style="margin-left:auto;font-size:12px;color:var(--c-muted);">'
+              + (p.m / 1000).toFixed(1) + 'km</span></div>'
+              + '<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:6px;font-size:12px;">'
+              + p.legs.map((l, k) => (k ? '<span style="color:var(--c-muted);">›</span>' : '') + badge(l)).join('')
+              + '</div>'
+              + '<div style="margin-top:5px;font-size:12px;color:var(--c-muted);line-height:1.5;">'
+              + '<div>승차 <span style="color:var(--fg);">' + esc(p.legs[0].from) + '</span></div>'
+              + '<div>하차 <span style="color:var(--fg);">' + esc(p.legs[p.legs.length - 1].to) + '</span></div>'
+              + '</div></div>';
+          }).join('');
+          box.innerHTML = tabHtml
+            + (cards || '<div style="font-size:12px;color:var(--c-muted);">해당 경로가 없습니다.</div>')
+            + '<div style="font-size:11px;color:var(--c-muted);margin-top:7px;">'
+            + '서울시 대중교통환승경로 · <b>요금은 제공되지 않습니다</b></div>';
+          box.querySelectorAll('.sp-tab').forEach((b) => {
+            b.onclick = () => { tab = b.dataset.k; draw(); };
+          });
+          box.querySelectorAll('.sp-card').forEach((c) => {
+            c.onclick = () => { sel = Number(c.dataset.i); draw(); spDrawPath(paths[sel], o, d); };
+          });
+        };
+        draw();
+        spDrawPath(paths[0], o, d);
+      };
+
+      
       const spDraw = async (mode, o, d, box, via) => {
         box.innerHTML = '경로 계산 중…';
         try {
@@ -11597,73 +11737,7 @@
               + `?sx=${o.lng}&sy=${o.lat}&ex=${d.lng}&ey=${d.lat}`)
               .then((x) => (x.ok ? x.json() : null)).catch(() => null);
             if (seoulPath && Array.isArray(seoulPath.paths) && seoulPath.paths.length) {
-              const kindNm = (k) => (k === 'bus' ? '버스' : '지하철');
-              box.innerHTML = seoulPath.paths.slice(0, 3).map((p, i) => '<div style="margin-top:'
-                + (i ? '8px' : '0') + ';">'
-                + '<div class="pc-price">' + p.min + '분 · ' + (p.m / 1000).toFixed(1) + 'km'
-                + '<span style="color:var(--c-muted);font-size:12px;"> · 환승 '
-                + Math.max(0, p.legs.length - 1) + '회</span></div>'
-                + '<ol style="margin:4px 0 0;padding-left:16px;line-height:1.5;">'
-                + p.legs.map((l) => '<li style="margin-top:2px;">' + kindNm(l.kind) + ' <b>'
-                  + esc(l.name) + '</b> ' + esc(l.from) + ' → ' + esc(l.to) + '</li>').join('')
-                + '</ol></div>').join('')
-                + '<div style="font-size:11px;color:var(--c-muted);margin-top:6px;">'
-                + '서울시 대중교통환승경로 · <b>요금은 제공되지 않습니다</b></div>';
-              
-              
-              
-              
-              
-              
-              
-              const legs = seoulPath.paths[0].legs.filter((l) => l.fy && l.fx && l.ty && l.tx);
-              const segs = await Promise.all(legs.map(async (l) => {
-                const a = { lat: l.fy, lng: l.fx };
-                const b = { lat: l.ty, lng: l.tx };
-                if (l.kind !== 'bus') {
-                  
-                  
-                  
-                  
-                  const pts = await new Promise((res) => {
-                    const nm = (t) => String(t || '').replace(/역$/, '');
-                    loadShortPath(nm(l.from), nm(l.to), (r) => {
-                      if (!r || !r.stops || r.stops.length < 2 || !subStations) { res(null); return; }
-                      const co = r.stops.map((s) => {
-                        const hit = subStations.find((x) => x.nm === s)
-                          || subStations.find((x) => x.nm && (x.nm.includes(s) || s.includes(x.nm)));
-                        return hit ? [hit.lat, hit.lng] : null;
-                      }).filter(Boolean);
-                      res(co.length >= 2 ? co : null);
-                    });
-                  });
-                  return { type: 'subway',
-                    coords: pts || [[a.lat, a.lng], [b.lat, b.lng]] };
-                }
-                
-                const rt = await RouteAPI.osrm('car', a, b).catch(() => null);
-                return {
-                  type: 'bus',
-                  coords: (rt && rt.coords && rt.coords.length > 1)
-                    ? rt.coords : [[a.lat, a.lng], [b.lat, b.lng]],
-                };
-              }));
-              
-              
-              const walkTo = async (from, to) => {
-                const rt = await RouteAPI.osrm('foot', from, to).catch(() => null);
-                return { type: 'walk',
-                  coords: (rt && rt.coords && rt.coords.length > 1)
-                    ? rt.coords : [[from.lat, from.lng], [to.lat, to.lng]] };
-              };
-              const full = [];
-              if (legs.length) {
-                full.push(await walkTo(o, { lat: legs[0].fy, lng: legs[0].fx }));
-                full.push(...segs);
-                const last = legs[legs.length - 1];
-                full.push(await walkTo({ lat: last.ty, lng: last.tx }, d));
-              }
-              if (full.length) routeRender(full);
+              spRenderPaths(seoulPath.paths, box, o, d);
               return;
             }
             const r = await RouteAPI.transit(o, d);
