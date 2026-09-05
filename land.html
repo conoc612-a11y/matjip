@@ -9147,6 +9147,7 @@
           {"t": "국토지리정보원 (V-World)", "pk": "", "u": 0, "n": 0, "o": [], "d": "지적도·용도지역·건물·행정경계·배경지도, 주소→좌표 변환", "cat": "제공기관 자체 서비스"},
           {"t": "서울특별시 (TOPIS 교통정보)", "pk": "", "u": 0, "n": 0, "o": [], "d": "시내 도로 실시간 CCTV 영상", "cat": "제공기관 자체 서비스"},
           {"t": "서울특별시 (UPIS 도시계획정보)", "pk": "", "u": 0, "n": 0, "o": [], "d": "도시계획시설·용도지구·지구단위계획·주제도", "cat": "제공기관 자체 서비스"},
+          {"t": "서울특별시 (버스정보시스템 BIS)", "pk": "", "u": 0, "n": 0, "o": [], "d": "정류소별 버스 실시간 도착정보(노선·도착예정·정류소 순번)", "cat": "제공기관 자체 서비스"},
           {"t": "서울특별시 (서울 열린데이터광장)", "pk": "", "u": 0, "n": 0, "o": [], "d": "버스정류소 위치·정류장 이용량, 지하철역 위치·시간대별 승하차, 따릉이 대여소, 학교 기본정보, 상권분석(영역·매출·유동인구·직장인구), 행정동 생활인구", "cat": "제공기관 자체 서비스"},
           {"t": "서울특별시 (정비사업 정보몽땅)", "pk": "", "u": 0, "n": 0, "o": [], "d": "재개발·재건축 등 정비사업 구역·진행단계", "cat": "제공기관 자체 서비스"},
           {"t": "한국부동산원 (부동산통계정보 R-ONE)", "pk": "", "u": 0, "n": 0, "o": [], "d": "지역별 지가변동률·지가지수(법정동 단위)", "cat": "제공기관 자체 서비스"},
@@ -9161,7 +9162,7 @@
           {"t": "법원행정처 (법원경매)", "pk": "", "u": 0, "n": 0, "o": [], "d": "경매 물건·기일·상세·당사자·감정평가 정보", "cat": "공개 웹 수집"},
         ]],
       ];
-      const UA_SERVICES_N = 107;   
+      const UA_SERVICES_N = 108;   
       
       
       
@@ -11519,6 +11520,37 @@
                 + '</ol>'
                 + '<div style="font-size:11px;color:var(--c-muted);margin-top:4px;">'
                 + '서울시 버스도착정보 · 걷는 거리 ' + direct[0].walk + ' · <b>환승은 빠져 있습니다</b></div>';
+              return;
+            }
+            
+            
+            
+            
+            
+            
+            const seoulPath = await fetch(SUPABASE_URL + '/functions/v1/seoul-transit-path'
+              + `?sx=${o.lng}&sy=${o.lat}&ex=${d.lng}&ey=${d.lat}`)
+              .then((x) => (x.ok ? x.json() : null)).catch(() => null);
+            if (seoulPath && Array.isArray(seoulPath.paths) && seoulPath.paths.length) {
+              const kindNm = (k) => (k === 'bus' ? '버스' : '지하철');
+              box.innerHTML = seoulPath.paths.slice(0, 3).map((p, i) => '<div style="margin-top:'
+                + (i ? '8px' : '0') + ';">'
+                + '<div class="pc-price">' + p.min + '분 · ' + (p.m / 1000).toFixed(1) + 'km'
+                + '<span style="color:var(--c-muted);font-size:12px;"> · 환승 '
+                + Math.max(0, p.legs.length - 1) + '회</span></div>'
+                + '<ol style="margin:4px 0 0;padding-left:16px;line-height:1.5;">'
+                + p.legs.map((l) => '<li style="margin-top:2px;">' + kindNm(l.kind) + ' <b>'
+                  + esc(l.name) + '</b> ' + esc(l.from) + ' → ' + esc(l.to) + '</li>').join('')
+                + '</ol></div>').join('')
+                + '<div style="font-size:11px;color:var(--c-muted);margin-top:6px;">'
+                + '서울시 대중교통환승경로 · <b>요금은 제공되지 않습니다</b></div>';
+              
+              
+              const segs = seoulPath.paths[0].legs
+                .filter((l) => l.fy && l.fx && l.ty && l.tx)
+                .map((l) => ({ type: l.kind === 'bus' ? 'bus' : 'subway',
+                  coords: [[l.fy, l.fx], [l.ty, l.tx]] }));
+              if (segs.length) routeRender(segs);
               return;
             }
             const r = await RouteAPI.transit(o, d);
