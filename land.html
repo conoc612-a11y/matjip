@@ -1382,6 +1382,9 @@
 
     
     
+    const LOCALGOV_YEAR = '2025';
+    
+    
     
     const BIZNO_ENDPOINT = new URLSearchParams(location.search).get('biznoEndpoint')
       || SUPABASE_URL + '/functions/v1/bizno-proxy';
@@ -1567,7 +1570,7 @@
               if (!Number.isFinite(n) || !n) return '';
               return n >= 1e8 ? (n / 1e8).toFixed(0) + '억' : Math.round(n / 1e4).toLocaleString('ko-KR') + '만';
             };
-            let left = 3;
+            let left = 4;   
             const done = () => { if (--left <= 0) paint(); };
 
             
@@ -1631,6 +1634,58 @@
               })
               .catch(() => {})
               .finally(done);
+
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            if (!bname) { left -= 1; } else {
+              const nameKey = nokey(bname);
+              fetch(DGK_PROXY + '?svc=openApiMngInfo3&op=openXmlMngInfo2'
+                + '&pageNo=1&numOfRows=500&ac_year=' + LOCALGOV_YEAR + '&type=xml')
+                .then((r) => (r.ok ? r.text() : Promise.reject(new Error('http'))))
+                .then((xml) => {
+                  const doc = new DOMParser().parseFromString(xml, 'text/xml');
+                  const pick = (el, t) => {
+                    const n = el.getElementsByTagName(t)[0];
+                    return n ? String(n.textContent || '') : '';
+                  };
+                  const hit = [...doc.getElementsByTagName('item')]
+                    .map((el) => ({
+                      nm: pick(el, 'ENT_NAME'),
+                      asset: Number(pick(el, 'TOT_JAE_JS')) || 0,
+                      debt: Number(pick(el, 'TOT_JAE_BU')) || 0,
+                      profit: Number(pick(el, 'TOT_GYE_YI')) || 0,
+                    }))
+                    .filter((x) => {
+                      const k = nokey(x.nm);
+                      return k && nameKey && (k.includes(nameKey) || nameKey.includes(k));
+                    });
+                  if (!hit.length) return;
+                  const eok = (v) => (Math.abs(v) >= 1e6
+                    ? (v / 1e6).toFixed(1) + '조'
+                    : Math.round(v / 100).toLocaleString('ko-KR') + '억');
+                  const x = hit[0];
+                  const ratio = x.asset - x.debt > 0
+                    ? Math.round((x.debt / (x.asset - x.debt)) * 100) : null;
+                  parts.push(sec('지방공기업 경영정보',
+                    '<div style="margin-bottom:3px;">' + esc(x.nm) + '</div>'
+                    + `<div class="pc-price">자산 ${eok(x.asset)} · 부채 ${eok(x.debt)}</div>`
+                    + (ratio !== null
+                      ? `<div style="margin-top:3px;">부채비율 <b>${ratio.toLocaleString('ko-KR')}%</b></div>` : '')
+                    + `<div style="margin-top:2px;">당기손익 <b>${x.profit < 0 ? '-' : ''}${eok(Math.abs(x.profit))}</b></div>`
+                    + '<div style="font-size:12px;color:var(--muted);margin-top:3px;">'
+                    + LOCALGOV_YEAR + '년 · 출처 한국지역정보개발원</div>'));
+                })
+                .catch(() => {})
+                .finally(done);
+            }
 
             if (!bname) {
               
@@ -8462,6 +8517,7 @@
               '15043360': 'dgk',   
               '15043459': 'dgk',   
               '15056765': 'dgk',   
+              '15056798': 'dgk',   
               '15057231': 'dgk',   
               '15057332': 'fund',   
               '15057670': 'dgk',   
@@ -8914,6 +8970,7 @@
           {"t": "전국초중등학교위치표준데이터", "pk": "15021148", "u": 1, "n": 1, "o": ["tn_pubr_public_elesch_mskul_lc_api"], "w": "따릉이 대여소 · 병원·의원 (심평원) · 상권 (매출·유동인구) · 응급의료기관 · 지하철역 (역세권 강도) · 학교 (초·중·고) · 학군 (직선 800m)"},
           {"t": "조달청_나라장터 발주계획현황서비스", "pk": "15129462", "u": 8, "n": 8, "o": ["getOrderPlanSttusListThng", "getOrderPlanSttusListCnstwk", "getOrderPlanSttusListServc", "getOrderPlanSttusListFrgcpt"], "w": ""},
           {"t": "한국소비자원_생필품 가격 정보_GW", "pk": "15158701", "u": 4, "n": 4, "o": ["getProductPriceInfoSvc", "getStandardInfoSvc.do", "getStoreInfoSvc.do", "getProductInfoSvc.do"], "w": "건축 인허가 이력 · 공공데이터 더보기 · 공중화장실 (동 단위) · 공중화장실 (비상벨·CCTV) · 녹색건축 인증 (G-SEED) · 녹색건축 인증 (동 단위"},
+          {"t": "한국지역정보개발원_경영정보 조회 서비스", "pk": "15056798", "u": 1, "n": 1, "o": ["openXmlMngInfo2"], "w": ""},
           {"t": "해양수산부 국립해양조사원_바다갈라짐 체험지수 조회", "pk": "15142485", "u": 1, "n": 1, "o": ["GetFcstSeaSplitApiServicev2"], "w": ""},
           {"t": "해양수산부 국립해양조사원_바다여행지수 조회", "pk": "15142491", "u": 1, "n": 1, "o": ["GetFcstSeaTripApiServicev2"], "w": ""},
           {"t": "해양수산부_포락지관리정보", "pk": "3056339", "u": 8, "n": 8, "o": ["getSubmergedLandsList2.0", "getSubmergedLandsAreaList2.0", "getSubmergedLandsAreaExtentList2.0", "getSubmergedLandsExaminationAreaExtentList2.0"], "w": ""},
@@ -8938,7 +8995,7 @@
           {"t": "법원행정처 (법원경매)", "pk": "", "u": 0, "n": 0, "o": [], "d": "경매 물건·기일·상세·당사자·감정평가 정보", "cat": "공개 웹 수집"},
         ]],
       ];
-      const UA_SERVICES_N = 106;   
+      const UA_SERVICES_N = 107;   
       
       
       
@@ -9019,6 +9076,15 @@
           d: '팝업 · 공공데이터 더보기(단지코드·동수·세대수·사용승인). 정식명 <b>한국부동산원_공동주택 단지 식별정보 조회 서비스</b>. 🔑 응답에 <b>PNU 가 있어</b> 단지를 이름 문자열이 아니라 <b>표준 단지코드(COMPLEX_PK)</b>로 잇는다 — 표기 차이("래미안대치팰리스" vs "래미안 대치 팰리스")로 어긋나던 문제의 답이다. 조건 필터가 <code>cond[ADRES::LIKE]</code> 형태라 주소로 좁혀 받은 뒤 PNU 로 고른다.',
           o: ['getAptInfo', 'getDongInfo', 'getHistInfo'],
           p: '프록시 <code>svc=AptIdInfoSvc</code>(odcloud) · 포털 pk <a href="https://www.data.go.kr/data/15106817/openapi.do" target="_blank" rel="noopener">15106817</a>',
+        },
+        '지방공기업 경영정보(한국지역정보개발원)': {
+          d: '사업자등록증 조회 · <b>상호</b>가 지방공기업이면 자산·부채·부채비율·당기손익. '
+            + '금융위 기업재무정보는 <b>상장 법인만</b> 준다 — 지방공사·지방공단·출자출연기관은 거기 없다. '
+            + '실측 2025년 421곳(서울 8곳). <b>서울주택도시개발공사</b> 자산 32.1조·부채 21.6조. '
+            + '⚠️ 이름이 「SH공사」 가 아니라 「서울주택도시개발공사」 다. 단위는 백만원. '
+            + '정식명 <b>한국지역정보개발원_경영정보 조회 서비스</b>',
+          o: ['openXmlMngInfo2'],
+          p: '프록시 <code>svc=openApiMngInfo3</code> · 포털 pk <a href="https://www.data.go.kr/data/15056798/openapi.do" target="_blank" rel="noopener">15056798</a>',
         },
         '국유일반재산 입찰대상물건(캠코)': {
           d: '팝업 · 공공데이터 더보기(건수 · 최초입찰가 범위). 정식명 <b>한국자산관리공사_국유일반재산 입찰대상물건내역 조회서비스</b>. 온비드 압류재산과 달리 <b>국가가 직접 파는 땅·건물</b>이다(실측 81,484건). ⚠️ 응답 20개 필드에 <b>주소가 없다</b> — 그래서 <b>지도 레이어로는 못 올린다.</b> 규모·가격대 통계로만 보여준다.',
