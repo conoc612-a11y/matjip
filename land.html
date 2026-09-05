@@ -11427,20 +11427,58 @@
       
       
       const BOOK_LS = 'mj_sp_book';
+      
+      
       const bookGet = () => {
-        try { return JSON.parse(localStorage.getItem(BOOK_LS) || '[]'); } catch (e) { return []; }
+        let a = [];
+        try { a = JSON.parse(localStorage.getItem(BOOK_LS) || '[]'); } catch (e) { return []; }
+        if (!Array.isArray(a)) return [];
+        return a.map((x) => (typeof x === 'string' ? { v: x, fav: false } : x))
+          .filter((x) => x && x.v);
       };
       const bookSet = (a) => {
         try { localStorage.setItem(BOOK_LS, JSON.stringify(a.slice(0, 30))); } catch (e) {}
       };
+      let bookOnlyFav = false;          
       const bookBox = body.querySelector('#sp-bookbox');
+      
+      const favRows = () => {
+        let a = [];
+        try { a = loadSavedProps(); } catch (e) { a = []; }
+        if (!a.length) {
+          return '<div style="font-size:12px;color:var(--c-muted);">'
+            + '즐겨찾기한 부동산이 없습니다. 오른쪽 <b>즐겨찾기</b> 목록에서 ★ 로 담으면 여기 나옵니다.</div>';
+        }
+        return a.map((x, i) => '<div style="display:flex;align-items:center;gap:4px;'
+          + 'padding:4px 0;border-bottom:1px solid var(--line);">'
+          + '<span style="color:var(--c-primary);">★</span>'
+          + '<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'
+          + 'font-size:13px;">' + esc(x.name || '(이름 없음)')
+          + (x.gu || x.dong ? '<span style="color:var(--c-muted);"> · '
+            + esc([x.gu, x.dong].filter(Boolean).join(' ')) + '</span>' : '')
+          + '</span>'
+          + '<button type="button" class="btn-mini fv-set" data-i="' + i + '" data-t="from">출발</button>'
+          + '<button type="button" class="btn-mini fv-set" data-i="' + i + '" data-t="via">경유</button>'
+          + '<button type="button" class="btn-mini fv-set" data-i="' + i + '" data-t="to">도착</button>'
+          + '</div>').join('');
+      };
       const paintBook = () => {
         if (!bookBox) return;
-        const list = bookGet();
-        const rows = list.map((v, i) => '<div style="display:flex;align-items:center;gap:4px;'
+        
+        
+        
+        
+        
+        const all = bookGet();
+        const order = all.map((x, i) => [x, i]);
+        const list = bookOnlyFav ? [] : order;
+        const rows = list.map(([x, i]) => '<div style="display:flex;align-items:center;gap:4px;'
           + 'padding:4px 0;border-bottom:1px solid var(--line);">'
+          + '<button type="button" class="btn-mini bk-fav" data-i="' + i + '" '
+          + 'title="' + (x.fav ? '즐겨찾기 해제' : '즐겨찾기') + '" style="color:'
+          + (x.fav ? 'var(--c-primary)' : 'var(--c-muted)') + ';">' + (x.fav ? '★' : '☆') + '</button>'
           + '<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'
-          + 'font-size:13px;">' + esc(v) + '</span>'
+          + 'font-size:13px;">' + esc(x.v) + '</span>'
           + '<button type="button" class="btn-mini bk-set" data-i="' + i + '" data-t="from">출발</button>'
           + '<button type="button" class="btn-mini bk-set" data-i="' + i + '" data-t="via">경유</button>'
           + '<button type="button" class="btn-mini bk-set" data-i="' + i + '" data-t="to">도착</button>'
@@ -11448,15 +11486,20 @@
           + 'style="color:var(--c-danger);">×</button></div>').join('');
         bookBox.innerHTML = '<div style="display:flex;gap:6px;margin-bottom:6px;">'
           + '<button type="button" id="bk-add-from" class="btn-mini" style="flex:1;">출발지 저장</button>'
-          + '<button type="button" id="bk-add-to" class="btn-mini" style="flex:1;">도착지 저장</button></div>'
-          + (rows || '<div style="font-size:12px;color:var(--c-muted);">저장한 주소가 없습니다. '
-            + '출발지·도착지를 넣고 위 단추로 담아 두세요.</div>');
+          + '<button type="button" id="bk-add-to" class="btn-mini" style="flex:1;">도착지 저장</button>'
+          + '<button type="button" id="bk-only-fav" class="btn-mini" style="flex:0 0 auto;color:'
+          + (bookOnlyFav ? 'var(--c-primary)' : 'var(--c-muted)') + ';" '
+          + 'title="앱 즐겨찾기(저장한 부동산) 불러오기">'
+          + (bookOnlyFav ? '★ 즐겨찾기' : '☆ 즐겨찾기') + '</button></div>'
+          + (bookOnlyFav ? favRows() : (rows
+            || '<div style="font-size:12px;color:var(--c-muted);">저장한 주소가 없습니다. '
+              + '출발지·도착지를 넣고 위 단추로 담아 두세요.</div>'));
         const add = (el) => {
           const v = (el && el.value || '').trim();
           if (!v) { toast('먼저 주소를 입력해 주세요.'); return; }
           const a = bookGet();
-          if (a.includes(v)) { toast('이미 주소록에 있습니다.'); return; }
-          a.unshift(v); bookSet(a); paintBook();
+          if (a.some((x) => x.v === v)) { toast('이미 주소록에 있습니다.'); return; }
+          a.unshift({ v, fav: false }); bookSet(a); paintBook();
         };
         const f1 = bookBox.querySelector('#bk-add-from');
         const f2 = bookBox.querySelector('#bk-add-to');
@@ -11464,7 +11507,8 @@
         if (f2) f2.onclick = () => add(toEl);
         bookBox.querySelectorAll('.bk-set').forEach((b) => {
           b.onclick = () => {
-            const v = bookGet()[Number(b.dataset.i)];
+            const row = bookGet()[Number(b.dataset.i)];
+            const v = row && row.v;
             if (!v) return;
             const t = b.dataset.t;
             const el = t === 'from' ? fromEl : (t === 'to' ? toEl : body.querySelector('#sp-via'));
@@ -11478,6 +11522,33 @@
         bookBox.querySelectorAll('.bk-del').forEach((b) => {
           b.onclick = () => { const a = bookGet(); a.splice(Number(b.dataset.i), 1); bookSet(a); paintBook(); };
         });
+        bookBox.querySelectorAll('.bk-fav').forEach((b) => {
+          b.onclick = () => {
+            const a = bookGet(); const i = Number(b.dataset.i);
+            if (!a[i]) return;
+            a[i].fav = !a[i].fav; bookSet(a); paintBook();
+          };
+        });
+        bookBox.querySelectorAll('.fv-set').forEach((b) => {
+          b.onclick = () => {
+            let a = [];
+            try { a = loadSavedProps(); } catch (e) { a = []; }
+            const x = a[Number(b.dataset.i)];
+            if (!x) return;
+            const t = b.dataset.t;
+            const el = t === 'from' ? fromEl : (t === 'to' ? toEl : body.querySelector('#sp-via'));
+            if (!el) return;
+            el.value = [x.gu, x.dong, x.name].filter(Boolean).join(' ');
+            
+            
+            el._coord = (Number.isFinite(x.lat) && Number.isFinite(x.lng))
+              ? { lat: x.lat, lng: x.lng } : null;
+            if (t === 'from') routeOrigin = el._coord;
+            if (t === 'to') routeDest = el._coord;
+          };
+        });
+        const onlyBtn = bookBox.querySelector('#bk-only-fav');
+        if (onlyBtn) onlyBtn.onclick = () => { bookOnlyFav = !bookOnlyFav; paintBook(); };
       };
       const bookBtn = body.querySelector('#sp-book');
       if (bookBtn) {

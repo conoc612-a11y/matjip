@@ -92,38 +92,16 @@
 
   // ── Leaflet 어댑터 ──────────────────────────────────────────────
   function leafletAdapter(map) {
-    var layer = null, segs = [], onView = null;
+    var layer = null, segs = [];
     // 🔴 land.html 은 `preferCanvas: true` 다(마커 9천개·정점 4.2만개 때문). 그대로 두면
     //    경로선이 캔버스에 그려져 ①흐르는 점선 CSS 가 안 먹고 ②DOM 검사로 확인할 수 없다.
     //    경로선은 정점이 100여 개뿐이라 SVG 로 그려도 부담이 없다 — 렌더러를 명시한다.
     var svgR = L.svg({ padding: 0.4 });
 
-    function drawArrows() {
-      if (!layer) return;
-      // 화살표만 지운다(본선·테두리는 그대로) — 매 줌마다 전부 다시 그리면 깜빡인다.
-      var kill = [];
-      layer.eachLayer(function (l) { if (l._mjArrow) kill.push(l); });
-      kill.forEach(function (l) { layer.removeLayer(l); });
-      var pad = map.getBounds().pad(0.15), placed = 0;
-      segs.forEach(function (s) {
-        // 도보에도 화살표를 그린다 — 이제 모든 모드가 같은 색·같은 흐름이라
-        // 도보만 방향 표시가 없으면 오히려 어색하다(2026-09-05 사용자 요청).
-        if (placed >= ARROW_MAX) return;
-        var pts = s.coords.map(function (c) { return map.latLngToLayerPoint(L.latLng(c[0], c[1])); });
-        spacePoints(pts, ARROW_GAP_PX).forEach(function (p) {
-          if (placed >= ARROW_MAX) return;
-          var ll = map.layerPointToLatLng(L.point(p.x, p.y));
-          if (!pad.contains(ll)) return;           // 화면 밖 화살표는 만들지 않는다
-          var mk = L.marker(ll, {
-            interactive: false, keyboard: false,
-            icon: L.divIcon({ className: 'mj-rl-arrow', html: chevronHTML(p.ang), iconSize: [16, 16], iconAnchor: [8, 8] })
-          });
-          mk._mjArrow = true;
-          mk.addTo(layer);
-          placed++;
-        });
-      });
-    }
+    // 🔴 **화살표(꺾쇠)를 그리지 않는다** — 선 안을 흐르는 동그라미가 방향을 맡는다
+    //   (2026-09-05 사용자 요청: "동그라미가 움직이는데 화살표는 그대로 있네, 화살표 지워줘").
+    //   ⚠️ **네이버 어댑터에는 화살표를 남겨 뒀다.** 네이버 Polyline 은 className 을 못 받아
+    //      흐르는 애니메이션이 안 걸린다 — 거기선 화살표가 유일한 방향 표시다.
 
     return {
       draw: function (segments) {
@@ -165,9 +143,6 @@
             icon: L.divIcon({ className: 'mj-rl-node', html: nodeHTML(style(segs[i].type).color), iconSize: [13, 13], iconAnchor: [7, 7] })
           }).addTo(layer);
         }
-        drawArrows();
-        onView = function () { drawArrows(); };
-        map.on('zoomend moveend', onView);
         return this;
       },
       bounds: function () {
@@ -176,7 +151,6 @@
         return all.length ? L.latLngBounds(all) : null;
       },
       clear: function () {
-        if (onView) { map.off('zoomend moveend', onView); onView = null; }
         if (layer) { map.removeLayer(layer); layer = null; }
         segs = [];
       }
