@@ -1503,10 +1503,76 @@
               const a2 = Array.isArray(it2) ? it2 : (it2 ? [it2] : []);
               const hit = a2.find((x) => x && /^[0-9]{10}$/.test(String(x.bzno || '')));
               if (!hit) {
-                box.innerHTML = '<span style="color:var(--c-danger);font-size:14px;">'
-                  + (crno.length >= 10 ? '그 법인등록번호로' : '그 상호로')
-                  + ' 사업자등록번호를 찾지 못했습니다. 다른 표기로 다시 시도하거나 '
-                  + '사업자등록번호를 직접 입력해 주세요.</span>';
+                
+                
+                
+                if (!bname) {
+                  box.innerHTML = '<span style="color:var(--c-danger);font-size:14px;">'
+                    + '그 법인등록번호로 사업자등록번호를 찾지 못했습니다. '
+                    + '상호나 사업자등록번호로 다시 시도해 주세요.</span>';
+                  return;
+                }
+                
+                
+                
+                const norm0 = (v) => String(v || '')
+                  .replace(/[（）()\[\]{}]/g, '')
+                  .replace(/주식회사|유한회사|합자회사|합명회사|재단법인|사단법인/g, '')
+                  .replace(/[\s.,'"·\-]/g, '')
+                  .toLowerCase();
+                const key0 = norm0(bname);
+                fetch(DGK_PROXY + '?svc=openApiMngInfo3&op=openXmlMngInfo2'
+                  + '&pageNo=1&numOfRows=500&ac_year=' + LOCALGOV_YEAR + '&type=xml')
+                  .then((r) => (r.ok ? r.text() : Promise.reject(new Error('http'))))
+                  .then((xml) => {
+                    const doc = new DOMParser().parseFromString(xml, 'text/xml');
+                    const pick = (el, t) => {
+                      const n = el.getElementsByTagName(t)[0];
+                      return n ? String(n.textContent || '') : '';
+                    };
+                    const g = [...doc.getElementsByTagName('item')]
+                      .map((el) => ({
+                        nm: pick(el, 'ENT_NAME'),
+                        asset: Number(pick(el, 'TOT_JAE_JS')) || 0,
+                        debt: Number(pick(el, 'TOT_JAE_BU')) || 0,
+                        profit: Number(pick(el, 'TOT_GYE_YI')) || 0,
+                      }))
+                      .find((x) => {
+                        const k = norm0(x.nm);
+                        return k && key0 && (k.includes(key0) || key0.includes(k));
+                      });
+                    if (!g) {
+                      box.innerHTML = '<span style="color:var(--c-danger);font-size:14px;">'
+                        + '그 상호로 사업자등록번호를 찾지 못했습니다. 다른 표기로 다시 시도하거나 '
+                        + '사업자등록번호를 직접 입력해 주세요.</span>';
+                      return;
+                    }
+                    const eok = (v) => (Math.abs(v) >= 1e6
+                      ? (v / 1e6).toFixed(1) + '조'
+                      : Math.round(v / 100).toLocaleString('ko-KR') + '억');
+                    const ratio = g.asset - g.debt > 0
+                      ? Math.round((g.debt / (g.asset - g.debt)) * 100) : null;
+                    box.innerHTML = '<div style="margin-bottom:10px;">'
+                      + '<div style="font-weight:700;font-size:13px;margin-bottom:4px;">지방공기업 경영정보</div>'
+                      + '<div style="font-size:13px;">'
+                      + '<div style="margin-bottom:3px;">' + esc(g.nm) + '</div>'
+                      + '<div class="pc-price">자산 ' + eok(g.asset) + ' · 부채 ' + eok(g.debt) + '</div>'
+                      + (ratio !== null ? '<div style="margin-top:3px;">부채비율 <b>'
+                          + ratio.toLocaleString('ko-KR') + '%</b></div>' : '')
+                      + '<div style="margin-top:2px;">당기손익 <b>' + (g.profit < 0 ? '-' : '')
+                      + eok(Math.abs(g.profit)) + '</b></div>'
+                      + '<div style="font-size:12px;color:var(--muted);margin-top:3px;">'
+                      + LOCALGOV_YEAR + '년 · 출처 한국지역정보개발원</div>'
+                      + '</div></div>'
+                      + '<div style="font-size:12px;color:var(--muted);">'
+                      + '지방공기업이라 <b>금융위 법인 등록부에는 없습니다</b> — 사업자등록번호를 자동으로 '
+                      + '채우지 못했습니다. 국세청 사업 상태·국민연금 사업장을 함께 보려면 '
+                      + '사업자등록번호를 입력해 주세요.</div>';
+                  })
+                  .catch(() => {
+                    box.innerHTML = '<span style="color:var(--c-danger);font-size:14px;">'
+                      + '그 상호로 사업자등록번호를 찾지 못했습니다.</span>';
+                  });
                 return;
               }
               $('bizno-input').value = String(hit.bzno);
