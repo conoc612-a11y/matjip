@@ -1399,8 +1399,8 @@
             <b style="font-size:16px;">사업자등록증 조회</b>
             <button id="bizno-close" type="button" class="btn-mini">닫기</button>
           </div>
-          <div style="font-size:13px;color:var(--muted);margin-bottom:12px;">사업자등록번호를 입력하세요(하이픈 자동 입력). 대표자·개업일을 함께 입력하면 국세청 등록 정보와 <b>진위 일치</b> 여부까지 확인합니다.</div>
-          <div style="font-size:13px;color:var(--muted);margin-bottom:4px;">사업자등록번호 <span style="color:var(--c-primary);">*</span></div>
+          <div style="font-size:13px;color:var(--muted);margin-bottom:12px;"><b>사업자등록번호 · 상호 · 법인등록번호</b> 중 <b>하나만</b> 넣어도 됩니다. 상호나 법인등록번호로 찾으면 사업자등록번호를 자동으로 채워 국세청 조회까지 이어갑니다. 대표자·개업일자를 함께 넣으면 <b>진위 일치</b> 여부까지 확인합니다.</div>
+          <div style="font-size:13px;color:var(--muted);margin-bottom:4px;">사업자등록번호(선택)</div>
           <input id="bizno-input" inputmode="numeric" maxlength="12" placeholder="123-45-67890"
             style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--line);border-radius:7px;background:var(--card);color:var(--text);font:inherit;font-size:15px;margin-bottom:10px;">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
@@ -1416,6 +1416,9 @@
           <div style="font-size:13px;color:var(--muted);margin-bottom:10px;">상호(선택)</div>
           <input id="bizno-bname" maxlength="50" placeholder="(주)OO부동산"
             style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--line);border-radius:7px;background:var(--card);color:var(--text);font:inherit;font-size:15px;margin-bottom:12px;">
+          <div style="font-size:13px;color:var(--muted);margin:10px 0 4px;">법인등록번호(선택)</div>
+          <input id="bizno-crno" inputmode="numeric" maxlength="16" placeholder="110111-1105215"
+            style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--line);border-radius:7px;background:var(--card);color:var(--fg);font-size:15px;margin-bottom:10px;">
           <button id="bizno-go" type="button" class="pc-btn pc-btn-primary">조회하기</button>
           <div id="bizno-hist" style="display:none;"></div>
           <div id="bizno-result" style="margin-top:14px;display:none;"></div>
@@ -1478,8 +1481,51 @@
       const name = ($('bizno-name').value || '').trim();
       const bname = ($('bizno-bname').value || '').trim();
       const startDt = ($('bizno-date').value || '').replace(/-/g, '');
+      const crno = ($('bizno-crno') ? $('bizno-crno').value : '').replace(/[^0-9]/g, '');
       box.style.display = 'block';
-      if (!/^[0-9]{10}$/.test(digits)) { box.innerHTML = '<span style="color:var(--c-danger);font-size:14px;">사업자등록번호 10자리를 입력하세요.</span>'; return; }
+      
+      
+      
+      
+      
+      
+      
+      if (!/^[0-9]{10}$/.test(digits)) {
+        if (crno.length >= 10 || bname) {
+          box.innerHTML = '<span style="font-size:14px;">사업자등록번호를 찾는 중…</span>';
+          $('bizno-go').disabled = true;
+          const q = crno.length >= 10 ? { crno } : { corpNm: bname };
+          dgkFetch('GetCorpBasicInfoService_V2', 'getCorpOutline_V2',
+            Object.assign({ numOfRows: 5, pageNo: 1, resultType: 'json' }, q), (j2) => {
+              $('bizno-go').disabled = false;
+              const b2 = j2 && j2.response && j2.response.body;
+              const it2 = b2 && b2.items && (b2.items.item || b2.items);
+              const a2 = Array.isArray(it2) ? it2 : (it2 ? [it2] : []);
+              const hit = a2.find((x) => x && /^[0-9]{10}$/.test(String(x.bzno || '')));
+              if (!hit) {
+                box.innerHTML = '<span style="color:var(--c-danger);font-size:14px;">'
+                  + (crno.length >= 10 ? '그 법인등록번호로' : '그 상호로')
+                  + ' 사업자등록번호를 찾지 못했습니다. 다른 표기로 다시 시도하거나 '
+                  + '사업자등록번호를 직접 입력해 주세요.</span>';
+                return;
+              }
+              $('bizno-input').value = String(hit.bzno);
+              if (!bname && hit.corpNm) $('bizno-bname').value = String(hit.corpNm);
+              if ($('bizno-crno') && !crno && hit.crno) $('bizno-crno').value = String(hit.crno);
+              lookupBizno();          
+            });
+          return;
+        }
+        if (name || startDt) {
+          box.innerHTML = '<span style="color:var(--c-danger);font-size:14px;">'
+            + '대표자명·개업일자<b>만으로는</b> 찾을 수 없습니다 — 제공기관이 그 조건을 받지 않습니다.<br>'
+            + '<b>사업자등록번호 · 상호 · 법인등록번호</b> 중 하나를 함께 넣어 주세요.</span>';
+          return;
+        }
+        box.innerHTML = '<span style="color:var(--c-danger);font-size:14px;">'
+          + '사업자등록번호 10자리, 또는 <b>상호</b>나 <b>법인등록번호</b>를 입력해 주세요.</span>';
+        return;
+      }
       const validate = !!(name && startDt);
       if ((name || startDt) && !validate) {
         box.innerHTML = '<span style="color:var(--c-danger);font-size:14px;">진위확인은 대표자와 개업일자를 <b>모두</b> 입력해야 합니다. 번호만 입력하면 상태조회만 됩니다.</span>';
