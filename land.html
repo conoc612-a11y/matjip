@@ -3890,11 +3890,19 @@
                 + esc(j && j.msg ? j.msg : '지금 오는 버스 정보가 없습니다.') + '</span>';
               return;
             }
+            
+            
+            
+            
+            const same = (a, b) => !b || b === a || /운행종료|출발대기/.test(b);
             box.innerHTML = '<div style="font-weight:700;font-size:12px;margin-bottom:2px;">실시간 도착</div>'
               + rows.slice(0, 8).map((x) => '<div style="font-size:12px;margin-top:2px;">'
                 + '<b>' + esc(x.no) + '</b> <span style="color:'
                 + (/후\[|곧 도착|도착/.test(x.msg1) ? 'var(--c-primary)' : 'var(--c-muted)') + ';">'
-                + esc(x.msg1) + '</span></div>').join('')
+                + esc(x.msg1) + '</span>'
+                + (same(x.msg1, x.msg2) ? ''
+                  : '<span style="color:var(--c-muted);"> · 다음 ' + esc(x.msg2) + '</span>')
+                + '</div>').join('')
               + (rows.length > 8 ? '<div style="font-size:11px;color:var(--c-muted);margin-top:2px;">외 '
                 + (rows.length - 8) + '개 노선</div>' : '')
               + '<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">'
@@ -11716,13 +11724,30 @@
               const cg = j.congest || {};
               
               
-              const sub = (j.subway || []).slice(0, 6).map((x) => '<div style="margin-top:2px;">'
-                + '<b>' + esc(x.line) + '</b> ' + esc(x.dir) + ' 방면 '
-                + (x.sec > 0
-                  ? '<span style="color:var(--c-primary);">' + esc(secOf(x.sec)) + ' 후</span>'
-                    + (x.info ? ' <span style="color:var(--c-muted);font-size:11px;">' + esc(x.info) + '</span>' : '')
-                  : '<span style="color:var(--c-primary);">' + esc(x.info || '곧 도착') + '</span>')
-                + '</div>').join('');
+              
+              
+              
+              
+              
+              const byDir = new Map();
+              for (const x of (j.subway || [])) {
+                const k = x.line + '|' + x.dir;
+                if (!byDir.has(k)) byDir.set(k, []);
+                byDir.get(k).push(x);
+              }
+              const when = (x) => (x.sec > 0
+                ? '<span style="color:var(--c-primary);">' + esc(secOf(x.sec)) + ' 후</span>'
+                : '<span style="color:var(--c-primary);">' + esc(x.info || '곧 도착') + '</span>');
+              const sub = [...byDir.values()].slice(0, 5).map((g) => {
+                g.sort((a, b) => (a.sec || 0) - (b.sec || 0));
+                const first = g[0];
+                const next = g.find((y) => y !== first && (y.sec || 0) > (first.sec || 0));
+                return '<div style="margin-top:2px;">'
+                  + '<b>' + esc(first.line) + '</b> ' + esc(first.dir) + ' 방면 ' + when(first)
+                  + (next ? '<span style="color:var(--c-muted);"> · 다음 '
+                    + (next.sec > 0 ? esc(secOf(next.sec)) + ' 후' : esc(next.info || '')) + '</span>' : '')
+                  + '</div>';
+              }).join('');
               const prk = (j.parking || []).slice(0, 4).map((x) => '<div style="margin-top:2px;">'
                 + esc(x.name) + ' <b>' + Number(x.cur).toLocaleString('ko-KR') + '대</b></div>').join('');
               const bk = (j.bike || []).slice(0, 4).map((x) => '<div style="margin-top:2px;">'
