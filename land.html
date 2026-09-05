@@ -1571,8 +1571,15 @@
             const done = () => { if (--left <= 0) paint(); };
 
             
+            
+            
+            
+            
+            
             fetch(MOLIT_PROXY + '?svc=NpsBplcInfoInqireServiceV2&op=getBassInfoSearchV2'
-              + '&bzowrRgstNo=' + digits.slice(0, 6) + '&numOfRows=50&pageNo=1&dataType=JSON')
+              + '&bzowrRgstNo=' + digits.slice(0, 6)
+              + (bname ? '&wkplNm=' + encodeURIComponent(bname) : '')
+              + '&numOfRows=50&pageNo=1&dataType=JSON')
               .then((r) => (r.ok ? r.json() : null))
               .then((j) => {
                 const b = j && j.response && j.response.body;
@@ -1581,7 +1588,10 @@
                 if (!a.length) return;
                 
                 const key = nokey(bname);
-                const hit = key ? a.filter((x) => nokey(x.wkplNm).includes(key)) : [];
+                let hit = key ? a.filter((x) => nokey(x.wkplNm).includes(key)) : [];
+                
+                
+                if (key && !hit.length && a.length) hit = a;
                 
                 
                 
@@ -1593,15 +1603,31 @@
                     + '<br>같은 앞자리 사업장 ' + (b.totalCount || a.length) + '건 · 출처 국민연금공단</span>'));
                   return;
                 }
-                const list = hit.slice(0, 5);
+                
+                
+                
+                
+                const byWkpl = new Map();
+                for (const x of hit) {
+                  const k = nokey(x.wkplNm) + '|' + nokey(x.wkplRoadNmDtlAddr);
+                  const prev = byWkpl.get(k);
+                  if (!prev || String(x.dataCrtYm || '') > String(prev.dataCrtYm || '')) byWkpl.set(k, x);
+                }
+                const uniq = [...byWkpl.values()]
+                  .sort((x, y) => String(y.dataCrtYm || '').localeCompare(String(x.dataCrtYm || '')));
+                const ym = String(uniq[0] && uniq[0].dataCrtYm || '');
+                const list = uniq.slice(0, 5);
                 parts.push(sec('국민연금 가입 사업장',
                   list.map((x) => '<div style="margin-top:2px;">'
                     + esc(String(x.wkplNm || '').slice(0, 60))
                     + (x.wkplRoadNmDtlAddr
                       ? '<span style="color:var(--muted);"> · ' + esc(x.wkplRoadNmDtlAddr) + '</span>' : '')
                     + '</div>').join('')
-                  + '<div style="color:var(--muted);font-size:12px;margin-top:3px;">상호 일치 '
-                    + hit.length + '건 · 출처 국민연금공단</div>'));
+                  + '<div style="color:var(--muted);font-size:12px;margin-top:3px;">사업장 '
+                    + uniq.length + '곳'
+                    + (uniq.length > 5 ? ' 중 5곳' : '')
+                    + (ym.length === 6 ? ' · 기준 ' + ym.slice(0, 4) + '-' + ym.slice(4) : '')
+                    + ' · 출처 국민연금공단</div>'));
               })
               .catch(() => {})
               .finally(done);
@@ -4855,6 +4881,7 @@
             color: '#e8590c', weight: 1.5, opacity: 0.85,
             fillColor: '#e8590c', fillOpacity: 0.10,
           });
+          
           
           
           
