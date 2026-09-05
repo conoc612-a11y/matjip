@@ -8094,6 +8094,58 @@
       const infoFund = L.layerGroup();
       const infoBid = L.layerGroup();
       
+      
+      
+      
+      
+      
+      
+      const npsAreaLayer = L.layerGroup();
+      let npsAreaRows = null, _npsAreaPromise = null;
+      function loadNpsArea() {
+        if (!_npsAreaPromise) {
+          _npsAreaPromise = fetch('nps_area.json')
+            .then((r) => (r.ok ? r.json() : Promise.reject(new Error('http'))))
+            .then((j) => { npsAreaRows = (j.rows || []).filter((x) => x.lat && x.lng); return npsAreaRows; })
+            .catch(() => { npsAreaRows = []; return npsAreaRows; });
+        }
+        return _npsAreaPromise;
+      }
+      function npsAreaBuild() {
+        npsAreaLayer.clearLayers();
+        const max = Math.max(1, ...(npsAreaRows || []).map((x) => Number(x.cnt) || 0));
+        for (const d of (npsAreaRows || [])) {
+          const cnt = Number(d.cnt) || 0;
+          
+          const r = 10 + Math.sqrt(cnt / max) * 26;
+          const m = L.circleMarker([d.lat, d.lng], {
+            renderer: L.svg({ padding: 0.4 }),
+            radius: r / 2, color: '#ffffff', weight: 2,
+            fillColor: '#1971c2', fillOpacity: 0.55, interactive: true,
+          });
+          const won = (v) => Number(v || 0).toLocaleString('ko-KR');
+          m.bindPopup('<div class="pc"><div class="pc-head">'
+            + '<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#1971c2;flex-shrink:0;"></span>'
+            + '<span class="rp-name">국민연금 가입현황</span></div><div class="pc-body">'
+            + '<div><b>' + esc(d.nm) + '</b></div>'
+            + '<div class="pc-price">가입자 ' + won(cnt) + '명</div>'
+            + (d.pen ? '<div style="margin-top:3px;">평균 예상연금 <b>' + won(d.pen) + '원</b></div>' : '')
+            + '<div style="margin-top:6px;font-size:11px;color:var(--c-muted);">'
+            + '국민연금공단 가입현황 · 자치구 단위 통계입니다</div>'
+            + '</div></div>');
+          m.bindTooltip(esc(d.nm) + ' ' + won(cnt) + '명', { direction: 'top' });
+          npsAreaLayer.addLayer(m);
+        }
+      }
+      map.on('overlayadd', (e) => {
+        if (e.layer !== npsAreaLayer) return;
+        loadNpsArea().then((rows) => {
+          if (!rows || !rows.length) { toast('국민연금 가입현황을 불러오지 못했습니다.'); return; }
+          npsAreaBuild();
+          toast('국민연금 가입현황 — 자치구 ' + rows.length + '곳 · 원 크기는 가입자 수');
+        });
+      });
+
       const infoNps = L.layerGroup();    
       const infoRst = L.layerGroup();    
       const infoGrn = L.layerGroup();    
@@ -8179,6 +8231,7 @@
           
           { name: '입찰 · 수의계약 (아파트)', layer: infoBid },
           
+          { name: '국민연금 가입현황 (자치구)', layer: npsAreaLayer },
           { name: '법인 사업장 (국민연금)', layer: infoNps },
           { name: '공중화장실 (동 단위)', layer: infoRst },
           { name: '녹색건축 인증 (동 단위)', layer: infoGrn },
