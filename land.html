@@ -8237,119 +8237,6 @@
       
       
       
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      const SBIZ_BASE = 'sbiz/';
-      const SBIZ_MIN_Z = 16;
-      const sbizCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 60 });
-      sbizCluster.on('click', (e) => {
-        const m = e.layer;
-        if (!m || !m._pop) return;
-        if (!m.getPopup()) m.bindPopup(m._pop());
-        m.openPopup();
-      });
-      let sbizIndex = null;
-      let _sbizIndexP = null;
-      const sbizGu = new Map();       
-      const sbizPending = new Set();  
-      function loadSbizIndex() {
-        if (!_sbizIndexP) {
-          _sbizIndexP = fetch('sbiz_index.json').then((r) => r.json())
-            .then((j) => { sbizIndex = j; return j; })
-            .catch(() => { sbizIndex = null; return null; });
-        }
-        return _sbizIndexP;
-      }
-      function sbizPopupHtml(d) {
-        const line = (k, v) => (v ? '<div class="pc-row"><span class="pc-k">' + k + '</span>'
-          + '<span class="pc-v">' + esc(v) + '</span></div>' : '');
-        return '<div class="pc"><div class="pc-head"><span class="rp-name">'
-          + esc(d.nm) + (d.br ? ' ' + esc(d.br) : '') + '</span></div><div class="pc-body">'
-          + line('업종', d.ind)
-          + line('건물', d.bld)
-          + line('층', d.flr ? d.flr + '층' : '')
-          + '<div style="font-size:11px;color:var(--muted);margin-top:6px;">'
-          + '소상공인시장진흥공단 상가(상권)정보 · <b>분기 갱신</b>이라 폐업이 늦게 반영됩니다'
-          + '<br>상가업소 대상이라 사무실·일반 사무업은 빠져 있습니다</div>'
-          + '</div></div>';
-      }
-      
-      function sbizGusInView(b) {
-        if (!sbizIndex) return [];
-        return sbizIndex.areas.filter((a) => {
-          const [s0, w, n, e] = a.bb;
-          return !(n < b.getSouth() || s0 > b.getNorth() || e < b.getWest() || w > b.getEast());
-        });
-      }
-      function sbizBuild() {
-        if (!map.hasLayer(sbizCluster)) return;
-        const z = map.getZoom();
-        sbizCluster.clearLayers();
-        if (z < SBIZ_MIN_Z) return;                 
-        const b = map.getBounds();
-        const out = [];
-        for (const a of sbizGusInView(b)) {
-          const rows = sbizGu.get(a.gu);
-          if (!rows) continue;
-          for (const r of rows) {
-            if (!b.contains([r.lat, r.lng])) continue;   
-            const m = L.marker([r.lat, r.lng], { icon: svcIcon('fi-rr-shop', '#e8590c', 26) });
-            m._pop = (() => sbizPopupHtml(r));
-            m.bindTooltip(esc(r.nm), { direction: 'top' });
-            out.push(m);
-          }
-        }
-        sbizCluster.addLayers(out);
-      }
-      function sbizEnsure() {
-        if (!map.hasLayer(sbizCluster)) return;
-        if (map.getZoom() < SBIZ_MIN_Z) { sbizBuild(); return; }
-        loadSbizIndex().then(() => {
-          const need = sbizGusInView(map.getBounds())
-            .filter((a) => !sbizGu.has(a.gu) && !sbizPending.has(a.gu));
-          if (!need.length) { sbizBuild(); return; }
-          for (const a of need) {
-            sbizPending.add(a.gu);
-            fetch(SBIZ_BASE + a.gu + '.json')
-              .then((r) => (r.ok ? r.json() : null))
-              .then((j) => {
-                if (!j || !Array.isArray(j.rows)) throw new Error('rows 없음');
-                const I = {};
-                (j.cols || sbizIndex.cols).forEach((c, i) => { I[c] = i; });
-                sbizGu.set(a.gu, j.rows.map((r) => ({
-                  nm: r[I.nm], br: r[I.br], ind: r[I.ind], pnu: r[I.pnu],
-                  flr: r[I.flr], lat: r[I.lat], lng: r[I.lng], bld: r[I.bld],
-                })));
-              })
-              
-              .catch(() => { toast(a.nm + ' 상가업소를 불러오지 못했습니다.'); })
-              .finally(() => { sbizPending.delete(a.gu); sbizBuild(); });
-          }
-        });
-      }
-      map.on('overlayadd', (e) => { if (e.layer === sbizCluster) sbizEnsure(); });
-      map.on('moveend zoomend', () => { if (map.hasLayer(sbizCluster)) sbizEnsure(); });
-
-      
-      
-      
-      
-      
-      
-      
-      
       const STD_SRC = {
         cctv: {
           dir: 'cctv/', idx: 'cctv_index.json', icon: 'fi-rr-video-camera-alt', color: '#495057',
@@ -8358,6 +8245,14 @@
             + line('화소', d.px ? Number(d.px).toLocaleString() + '만' : '')
             + line('촬영방면', d.dir) + line('설치', d.ym) + line('주소', d.addr),
           note: '행정안전부 CCTV정보(공공데이터 제공표준) · 지자체 취합 · 수시 갱신',
+        },
+        sbiz: {
+          dir: 'sbiz/', idx: 'sbiz_index.json', icon: 'fi-rr-shop', color: '#e8590c',
+          title: (d) => (d.nm + (d.br ? ' ' + d.br : '')), minZ: 16,
+          body: (d) => line('업종', d.ind) + line('건물', d.bld)
+            + line('층', d.flr ? d.flr + '층' : '') + line('주소', d.addr),
+          note: '소상공인시장진흥공단 상가(상권)정보 · <b>분기 갱신</b>이라 폐업이 늦게 반영됩니다'
+            + '<br>상가업소 대상이라 사무실·일반 사무업은 빠져 있습니다',
         },
         wifi: {
           dir: 'wifi/', idx: 'wifi_index.json', icon: 'fi-rr-wifi', color: '#1971c2',
@@ -8456,6 +8351,9 @@
         map.on('moveend zoomend', () => { if (map.hasLayer(cluster)) ensure(); });
         return cluster;
       }
+      
+      
+      const sbizStdCluster = makeStdLayer('sbiz');
       const cctvStdCluster = makeStdLayer('cctv');
       const wifiCluster = makeStdLayer('wifi');
 
@@ -8471,7 +8369,7 @@
           { name: '주차장 (실제 시설)', layer: parkingCluster },
           
           
-          { name: '상가업소 (상호·업종)', layer: sbizCluster },
+          { name: '상가업소 (상호·업종)', layer: sbizStdCluster },
           
           
           { name: '방범 CCTV (전국)', layer: cctvStdCluster },
