@@ -22,7 +22,9 @@
   var PALETTE = {
     subway: { color: '#d9480f', weight: 6 },
     bus:    { color: '#f76707', weight: 6 },
-    walk:   { color: '#ffa94d', weight: 5, dashed: true },
+    // 🔴 도보도 **같은 색**을 쓴다(사용자 요청 2026-09-05). 예전엔 연한 주황(#ffa94d)이라
+    //    자차·버스·지하철과 따로 놀았다. 구분은 색이 아니라 **점선**이 맡는다.
+    walk:   { color: '#e8590c', weight: 5, dashed: true },
     car:    { color: '#e8590c', weight: 6 }
   };
   var CASING = { color: '#ffffff', add: 5, opacity: 0.95 };
@@ -74,8 +76,15 @@
     if (document.getElementById('mj-rl-css')) return;
     var s = document.createElement('style');
     s.id = 'mj-rl-css';
+    // 🔴 **선 안에서 움직이는 동그라미** — `stroke-linecap:round` 에 길이 0 인 대시를 주면
+    //   점이 되고, `stroke-dashoffset` 을 굴리면 그 점이 선을 따라 흐른다.
+    //   마커를 매 프레임 옮기는 방식이 아니라 **CSS 한 줄**이라 지도가 무거워지지 않는다
+    //   (이 지도는 마커가 21만 개다 — rAF 로 마커를 굴리면 바로 버벅인다).
     s.textContent = '.mj-rl-flow{animation:mj-rl-flow 1.1s linear infinite;}'
       + '@keyframes mj-rl-flow{to{stroke-dashoffset:-20;}}'
+      + '.mj-rl-dots{animation:mj-rl-dots 1.6s linear infinite;stroke-linecap:round;}'
+      + '@keyframes mj-rl-dots{to{stroke-dashoffset:-24;}}'
+      + '@media (prefers-reduced-motion:reduce){.mj-rl-dots{animation:none;}}'
       + '.mj-rl-arrow,.mj-rl-node{pointer-events:none!important;background:none!important;border:none!important;}'
       + '@media (prefers-reduced-motion:reduce){.mj-rl-flow{animation:none;}}';
     document.head.appendChild(s);
@@ -97,7 +106,8 @@
       kill.forEach(function (l) { layer.removeLayer(l); });
       var pad = map.getBounds().pad(0.15), placed = 0;
       segs.forEach(function (s) {
-        if (s.type === 'walk') return;             // 도보는 흐르는 점선이 방향을 맡는다
+        // 도보에도 화살표를 그린다 — 이제 모든 모드가 같은 색·같은 흐름이라
+        // 도보만 방향 표시가 없으면 오히려 어색하다(2026-09-05 사용자 요청).
         if (placed >= ARROW_MAX) return;
         var pts = s.coords.map(function (c) { return map.latLngToLayerPoint(L.latLng(c[0], c[1])); });
         spacePoints(pts, ARROW_GAP_PX).forEach(function (p) {
@@ -137,6 +147,13 @@
             lineCap: 'round', lineJoin: 'round', interactive: false, smoothFactor: 0.5,
             dashArray: st.dashed ? DASH : null,
             className: st.dashed ? 'mj-rl-flow' : ''
+          }).addTo(layer);
+          // 흐르는 동그라미 — 본선 **위에** 얹는다. 길이 0 + round 캡 = 점.
+          // 간격(24)은 위 keyframes 의 이동량과 같아야 점이 끊기지 않고 이어져 흐른다.
+          L.polyline(lls, {
+            renderer: svgR, color: '#ffffff', weight: Math.max(2, st.weight - 3), opacity: 0.9,
+            lineCap: 'round', interactive: false, smoothFactor: 0.5,
+            dashArray: '0 24', className: 'mj-rl-dots'
           }).addTo(layer);
         });
         // 구간 경계(환승 지점) — 구간이 2개 이상일 때만 의미가 있다

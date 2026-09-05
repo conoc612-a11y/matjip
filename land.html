@@ -11195,6 +11195,26 @@
         dptreStn: fromStn, arvlStn: toStn, searchDt: dt, dataType: 'JSON',
       }, (j) => {
         const b = j && j.body;
+        
+        
+        
+        
+        
+        const legs = [];
+        for (const x of (b && Array.isArray(b.paths) ? b.paths : [])) {
+          const ln = (x.dptreStn && x.dptreStn.lineNm) || '';
+          const from = (x.dptreStn && x.dptreStn.stnNm) || '';
+          const to = (x.arvlStn && x.arvlStn.stnNm) || '';
+          const dir = x.tmnlStnNm || '';
+          const last = legs[legs.length - 1];
+          if (last && last.line === ln && last.dir === dir) {
+            last.to = to;                       
+            last.sec += Number(x.reqHr) || 0;
+            last.stops += 1;
+          } else {
+            legs.push({ line: ln, dir, from, to, sec: Number(x.reqHr) || 0, stops: 1 });
+          }
+        }
         cb(b && b.totalReqHr ? {
           from: fromStn, to: toStn,
           min: Math.round(Number(b.totalReqHr) / 60),
@@ -11202,6 +11222,7 @@
           fare: Number(b.totalCardCrg) || 0,
           trs: Number(b.trsitNmtm) || 0,
           via: (b.trfstnNms || []).map((x) => x.stnNm).filter(Boolean),
+          legs,
         } : null);
       });
     }
@@ -11291,7 +11312,17 @@
           const apiFrom = matchStation(f), apiTo = matchStation(t);
           loadShortPath(apiFrom, apiTo, (r) => {
             if (!r) { box.innerHTML = ''; toast('최단 경로를 불러오지 못했습니다. 역 이름을 확인해 주세요.'); return; }
+            
+            const legHtml = (r.legs || []).map((g, i) => '<li style="margin-top:2px;">'
+              + '<b>' + esc(g.line) + '</b> ' + esc(g.from) + ' → ' + esc(g.to)
+              + '<span style="color:var(--c-muted);"> · ' + g.stops + '개역'
+              + (g.sec ? ' · ' + Math.max(1, Math.round(g.sec / 60)) + '분' : '')
+              + (g.dir ? ' · ' + esc(g.dir) + ' 방면' : '')
+              + '</span>'
+              + (i < (r.legs.length - 1) ? '<span style="color:var(--c-primary);"> ↳ 환승</span>' : '')
+              + '</li>').join('');
             box.innerHTML = `<div class="pc-price">${esc(f)} → ${esc(t)} · <b>${r.min}분</b> · ${r.km}km</div>`
+              + (legHtml ? `<ol style="margin:6px 0 0;padding-left:16px;line-height:1.5;">${legHtml}</ol>` : '')
               + `<div style="margin-top:3px;">요금 ${Number(r.fare).toLocaleString('ko-KR')}원 · 환승 ${r.trs}회</div>`
               + (r.via.length ? `<div style="margin-top:3px;font-size:12px;color:var(--c-muted);">경유 ${esc(r.via.join(' · '))}</div>` : '');
           });
