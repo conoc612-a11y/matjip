@@ -11265,6 +11265,9 @@
         + '<button type="button" id="sp-clear" class="fav-cat" style="flex:1 1 0;"><i class="fi fi-rr-rotate-right fi-keep"></i>다시입력</button>'
         + '<button type="button" id="sp-go" class="list-tab" style="flex:1 1 0;background:#8A6D1F;color:#fff;border-color:#8A6D1F;"><i class="fi fi-rr-search fi-keep"></i>길찾기</button></div>'
         + '<div id="sp-bookbox" style="display:none;margin-bottom:10px;"></div>'
+        + '<button type="button" id="sp-live" class="fav-cat" style="width:100%;margin-bottom:8px;">'
+        + '<i class="fi fi-rr-time-fast"></i>이 근처 실시간 (서울시)</button>'
+        + '<div id="sp-livebox" style="display:none;margin-bottom:10px;"></div>'
         + '<div id="sp-result" style="font-size:13px;margin-top:6px;"></div>';
       p.hidden = false;
       const fromEl = body.querySelector('#sp-from'), toEl = body.querySelector('#sp-to');
@@ -11550,6 +11553,98 @@
         const onlyBtn = bookBox.querySelector('#bk-only-fav');
         if (onlyBtn) onlyBtn.onclick = () => { bookOnlyFav = !bookOnlyFav; paintBook(); };
       };
+      
+      
+      
+      
+      
+      
+      
+      let _areaRows = null, _areaPromise = null;
+      const loadAreas = () => {
+        if (_areaRows) return Promise.resolve(_areaRows);
+        if (!_areaPromise) {
+          _areaPromise = fetch('citydata_areas.json')
+            .then((r) => (r.ok ? r.json() : Promise.reject(new Error('http'))))
+            .then((j) => { _areaRows = (j.rows || []).filter((x) => x.lat && x.lng); return _areaRows; })
+            .catch(() => { _areaRows = []; return _areaRows; });
+        }
+        return _areaPromise;
+      };
+      const liveBox = body.querySelector('#sp-livebox');
+      const liveBtn = body.querySelector('#sp-live');
+      const secOf = (n) => (n >= 60 ? Math.floor(n / 60) + '분 ' + (n % 60 ? (n % 60) + '초' : '') : n + '초');
+      const paintLive = () => {
+        if (!liveBox) return;
+        liveBox.innerHTML = '<div style="font-size:12px;color:var(--c-muted);">불러오는 중…</div>';
+        loadAreas().then((areas) => {
+          if (!areas.length) {
+            liveBox.innerHTML = '<div style="font-size:12px;color:var(--c-danger);">'
+              + '장소 목록을 불러오지 못했습니다 (citydata_areas.json).</div>';
+            return;
+          }
+          const c = map.getCenter();
+          let best = null, bestD = Infinity;
+          for (const a of areas) {
+            const d = RouteAPI.kmBetween({ lat: c.lat, lng: c.lng }, { lat: a.lat, lng: a.lng });
+            if (d < bestD) { bestD = d; best = a; }
+          }
+          if (!best) { liveBox.innerHTML = ''; return; }
+          fetch(SUPABASE_URL + '/functions/v1/seoul-citydata?area=' + encodeURIComponent(best.cd))
+            .then((r) => (r.ok ? r.json() : Promise.reject(new Error('http'))))
+            .then((j) => {
+              if (!j || j.error) {
+                liveBox.innerHTML = '<div style="font-size:12px;color:var(--c-danger);">'
+                  + '실시간 정보를 불러오지 못했습니다.</div>';
+                return;
+              }
+              const cg = j.congest || {};
+              
+              
+              const sub = (j.subway || []).slice(0, 6).map((x) => '<div style="margin-top:2px;">'
+                + '<b>' + esc(x.line) + '</b> ' + esc(x.dir) + ' 방면 '
+                + (x.sec > 0
+                  ? '<span style="color:var(--c-primary);">' + esc(secOf(x.sec)) + ' 후</span>'
+                    + (x.info ? ' <span style="color:var(--c-muted);font-size:11px;">' + esc(x.info) + '</span>' : '')
+                  : '<span style="color:var(--c-primary);">' + esc(x.info || '곧 도착') + '</span>')
+                + '</div>').join('');
+              const prk = (j.parking || []).slice(0, 4).map((x) => '<div style="margin-top:2px;">'
+                + esc(x.name) + ' <b>' + Number(x.cur).toLocaleString('ko-KR') + '대</b></div>').join('');
+              const bk = (j.bike || []).slice(0, 4).map((x) => '<div style="margin-top:2px;">'
+                + esc(x.name) + ' <b>' + x.parked + '</b>/' + x.racks + '</div>').join('');
+              const part = (t, html, empty) => '<div style="margin-top:8px;">'
+                + '<div style="font-weight:700;font-size:12px;margin-bottom:2px;">' + t + '</div>'
+                + '<div style="font-size:12px;">' + (html
+                  || '<span style="color:var(--c-muted);">' + empty + '</span>') + '</div></div>';
+              liveBox.innerHTML = '<div style="font-size:12px;color:var(--c-muted);margin-bottom:4px;">'
+                + esc(j.area.nm) + ' 기준 · 지도 중심에서 ' + bestD.toFixed(1) + 'km'
+                + '</div>'
+                + '<div class="pc-price">' + esc(cg.level || '-') + '</div>'
+                + (cg.min ? '<div style="font-size:12px;margin-top:2px;">추정 인구 '
+                  + Number(cg.min).toLocaleString('ko-KR') + '~' + Number(cg.max).toLocaleString('ko-KR') + '명'
+                  + (cg.time ? ' <span style="color:var(--c-muted);">· ' + esc(cg.time) + '</span>' : '')
+                  + '</div>' : '')
+                + part('지하철 도착', sub, '이 장소엔 지하철 정보가 없습니다')
+                + part('주차장 실시간', prk, '실시간을 주는 주차장이 없습니다')
+                + part('따릉이 (거치/총)', bk, '이 장소엔 대여소 정보가 없습니다')
+                + '<div style="font-size:11px;color:var(--c-muted);margin-top:6px;">'
+                + '출처 서울시 실시간 도시데이터 · 동네 단위 값입니다</div>';
+            })
+            .catch(() => {
+              liveBox.innerHTML = '<div style="font-size:12px;color:var(--c-danger);">'
+                + '실시간 정보를 불러오지 못했습니다 (네트워크).</div>';
+            });
+        });
+      };
+      if (liveBtn) {
+        liveBtn.onclick = () => {
+          if (!liveBox) return;
+          const open = liveBox.style.display !== 'none';
+          liveBox.style.display = open ? 'none' : 'block';
+          if (!open) paintLive();
+        };
+      }
+
       const bookBtn = body.querySelector('#sp-book');
       if (bookBtn) {
         bookBtn.onclick = () => {
