@@ -1419,14 +1419,36 @@
           <div style="font-size:13px;color:var(--muted);margin:10px 0 4px;">법인등록번호(선택)</div>
           <input id="bizno-crno" inputmode="numeric" maxlength="16" placeholder="110111-1105215"
             style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--line);border-radius:7px;background:var(--card);color:var(--fg);font-size:15px;margin-bottom:10px;">
-          <button id="bizno-go" type="button" class="pc-btn pc-btn-primary">조회하기</button>
+          <div style="display:flex;gap:8px;">
+            <button id="bizno-go" type="button" class="pc-btn pc-btn-primary" style="flex:1;">조회하기</button>
+            <button id="bizno-reset" type="button" class="pc-btn" style="flex:0 0 92px;">초기화</button>
+          </div>
           <div id="bizno-hist" style="display:none;"></div>
           <div id="bizno-result" style="margin-top:14px;display:none;"></div>
         </div>`;
         document.body.appendChild(m);
-        m.addEventListener('click', (e) => { if (e.target === m) m.style.display = 'none'; });
+        
+        
+        
+        
+        let _bizDownOnBg = false;
+        m.addEventListener('mousedown', (e) => { _bizDownOnBg = (e.target === m); });
+        m.addEventListener('click', (e) => {
+          if (e.target === m && _bizDownOnBg) m.style.display = 'none';
+          _bizDownOnBg = false;
+        });
         $('bizno-close').onclick = () => { m.style.display = 'none'; };
         $('bizno-go').onclick = lookupBizno;
+        
+        
+        $('bizno-reset').onclick = () => {
+          ['bizno-input', 'bizno-name', 'bizno-date', 'bizno-bname', 'bizno-crno']
+            .forEach((id) => { const el = $(id); if (el) el.value = ''; });
+          const rb = $('bizno-result');
+          if (rb) { rb.innerHTML = ''; rb.style.display = 'none'; }
+          $('bizno-go').disabled = false;
+          $('bizno-input').focus();
+        };
         $('bizno-input').addEventListener('input', (e) => { const f = _bizFmt(e.target.value || ''); if (f !== e.target.value) { e.target.value = f; try { e.target.setSelectionRange(f.length, f.length); } catch (er) {} } });
         ['bizno-input', 'bizno-name', 'bizno-date', 'bizno-bname'].forEach((id) => $(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') lookupBizno(); }));
       }
@@ -9776,20 +9798,50 @@
     }
     
     
+    
+    
+    
+    
+    
+    
+    
+    
+    
     function geocodeText(q, cb) {
       if (!q || !cb) return;
-      const name = '__vwgeo_' + Date.now() + '_' + (++_vwRevSeq);
-      window[name] = (data) => {
-        try { delete window[name]; } catch (e) {}
-        const items = (data.response && data.response.result && data.response.result.items) || [];
-        if (!items.length) { cb(null); return; }
-        const it = items[0];
-        cb({ lat: Number(it.point.y), lng: Number(it.point.x), label: it.title || q });
+      const looksRoad = /(로|길)\s?\d/.test(q);
+      const looksParcel = /(동|리|가)\s?\d+(-\d+)?/.test(q);
+      const order = looksRoad
+        ? [['address', 'road'], ['address', 'parcel'], ['place', '']]
+        : looksParcel
+          ? [['address', 'parcel'], ['address', 'road'], ['place', '']]
+          : [['place', ''], ['address', 'road'], ['address', 'parcel']];
+      const step = (i) => {
+        if (i >= order.length) { cb(null); return; }
+        const type = order[i][0];
+        const cat = order[i][1];
+        const name = '__vwgeo_' + Date.now() + '_' + (++_vwRevSeq);
+        let done = false;
+        const next = () => { if (done) return; done = true; try { delete window[name]; } catch (e) {} step(i + 1); };
+        window[name] = (data) => {
+          if (done) return;
+          const items = (data && data.response && data.response.result && data.response.result.items) || [];
+          const it = items[0];
+          
+          if (!it || !it.point || !Number.isFinite(Number(it.point.y))) { next(); return; }
+          done = true;
+          try { delete window[name]; } catch (e) {}
+          cb({ lat: Number(it.point.y), lng: Number(it.point.x), label: it.title || q });
+        };
+        const el = document.createElement('script');
+        el.src = 'https://api.vworld.kr/req/search?service=search&request=search&version=2.0'
+          + '&crs=EPSG:4326&size=1&page=1&query=' + encodeURIComponent(q)
+          + '&type=' + type + (cat ? '&category=' + cat : '')
+          + '&format=json&key=' + VWORLD_KEY + '&callback=' + name;
+        el.onerror = next;
+        document.head.appendChild(el);
       };
-      const s = document.createElement('script');
-      s.src = `https://api.vworld.kr/req/search?service=search&request=search&version=2.0&crs=EPSG:4326&size=1&page=1&query=${encodeURIComponent(q)}&type=place&format=json&key=${VWORLD_KEY}&callback=${name}`;
-      s.onerror = () => { try { delete window[name]; } catch (e) {} cb(null); };
-      document.head.appendChild(s);
+      step(0);
     }
     
 
@@ -11370,11 +11422,16 @@
       try { saved = localStorage.getItem('mj_sp_from') || ''; } catch (e) {}
       const cur = from || saved;
       body.innerHTML = '<div class="lc-sub" style="margin-bottom:6px;">'
-        + '<div id="sp-mode" style="display:flex;gap:4px;">'
-        + '<button type="button" class="rt-mode" data-m="walk" style="flex:1;text-align:center;">도보</button>'
-        + '<button type="button" class="rt-mode" data-m="car" style="flex:1;text-align:center;">자차</button>'
-        + '<button type="button" class="rt-mode" data-m="bus" style="flex:1;text-align:center;">버스</button>'
-        + '<button type="button" class="rt-mode" data-m="subway" style="flex:1;text-align:center;">지하철</button></div></div>'
+        
+        
+        
+        
+        + '<div id="sp-mode" style="display:flex;gap:4px;flex-wrap:wrap;">'
+        + '<button type="button" class="rt-mode" data-m="walk" style="flex:1 1 56px;text-align:center;">도보</button>'
+        + '<button type="button" class="rt-mode" data-m="car" style="flex:1 1 56px;text-align:center;">자차</button>'
+        + '<button type="button" class="rt-mode" data-m="bus" style="flex:1 1 56px;text-align:center;">버스</button>'
+        + '<button type="button" class="rt-mode" data-m="subway" style="flex:1 1 62px;text-align:center;">지하철</button>'
+        + '<button type="button" class="rt-mode" data-m="mix" style="flex:1 1 88px;text-align:center;">버스+지하철</button></div></div>'
         + '<div style="position:relative;margin-bottom:8px;">'
         + `<input id="sp-from" class="search-inp" style="border-radius:7px 7px 0 0;border-bottom:none;" value="${esc(cur)}" placeholder="출발지 입력 · 지도에서 클릭" autocomplete="off">`
         + '<input id="sp-via" class="search-inp" style="border-radius:0;margin-top:-1px;" placeholder="경유지(선택) · 비워 두면 안 들릅니다">'
@@ -11427,15 +11484,27 @@
         
         
         
-        if (spMode === 'subway') {
-          const matchStation = (text) => {
-            if (!subStations || !subStations.length) return text.replace(/역$/, '');
-            const exact = subStations.find((d) => d.nm && d.nm === text);
-            if (exact) return exact.nm;
-            const sub = subStations.find((d) => d.nm && (d.nm.includes(text) || text.includes(d.nm)));
-            return sub ? sub.nm : text;
-          };
-          const apiFrom = matchStation(f), apiTo = matchStation(t);
+        
+        
+        
+        
+        
+        
+        
+        
+        const stationOf = (text) => {
+          if (!subStations || !subStations.length) return null;
+          const exact = subStations.find((d) => d.nm && d.nm === text);
+          if (exact) return exact.nm;
+          const bare = String(text).replace(/역$/, '').trim();
+          if (!bare) return null;
+          const hit = subStations.find((d) => d.nm && d.nm === bare);
+          return hit ? hit.nm : null;
+        };
+        const stFrom = spMode === 'subway' ? stationOf(f) : null;
+        const stTo = spMode === 'subway' ? stationOf(t) : null;
+        if (spMode === 'subway' && stFrom && stTo) {
+          const apiFrom = stFrom, apiTo = stTo;
           loadShortPath(apiFrom, apiTo, (r) => {
             if (!r) { box.innerHTML = ''; toast('최단 경로를 불러오지 못했습니다. 역 이름을 확인해 주세요.'); return; }
             
@@ -11454,6 +11523,7 @@
           });
           return;
         }
+        
         
         
         
@@ -11485,9 +11555,16 @@
         if (!text) return res(null);
         const c = el._coord || fallback;
         if (c) return res({ lat: c.lat, lng: c.lng, label: text });
+        
+        
+        
+        
+        
+        
+        
         if (subStations && subStations.length) {
-          const hit = subStations.find((d) => d.nm && text.indexOf(d.nm) !== -1)
-            || subStations.find((d) => d.nm && d.nm.indexOf(text) !== -1);
+          const bare = text.replace(/역$/, '').trim();
+          const hit = subStations.find((d) => d.nm && (d.nm === text || d.nm === bare));
           if (hit) return res({ lat: hit.lat, lng: hit.lng, label: hit.nm });
         }
         
@@ -11623,7 +11700,8 @@
       
       
       
-      const spRenderPaths = (paths, box, o, d) => {
+      const spRenderPaths = (paths, box, o, d, mode) => {
+        const MODE_NM = mode === 'subway' ? '지하철' : mode === 'bus' ? '버스' : '버스+지하철';
         const nowPlus = (min) => {
           const t = new Date(Date.now() + min * 60000);
           const h = t.getHours();
@@ -11645,28 +11723,12 @@
             + '<b>' + esc(l.name) + '</b></span>';
         };
         
-        const kindOf = (p) => {
-          const hasBus = p.legs.some((x) => x.kind === 'bus');
-          const hasSub = p.legs.some((x) => x.kind === 'subway');
-          return hasBus && hasSub ? 'mix' : (hasBus ? 'bus' : 'sub');
-        };
-        const TABS = [['all', '전체'], ['sub', '지하철'], ['bus', '버스'], ['mix', '버스+지하철']];
-        let tab = 'all';
+        
+        
+        
         let sel = 0;
         const draw = () => {
-          const list = paths.filter((p) => tab === 'all' || kindOf(p) === tab);
-          const tabHtml = '<div style="display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:8px;">'
-            + TABS.map((t) => {
-              const k = t[0];
-              const n = paths.filter((p) => k === 'all' || kindOf(p) === k).length;
-              if (!n) return '';
-              const on = tab === k;
-              return '<button type="button" class="sp-tab" data-k="' + k + '" style="flex:0 0 auto;'
-                + 'padding:5px 9px;border:none;background:none;cursor:pointer;font-size:12px;'
-                + (on ? 'font-weight:700;color:var(--c-primary);border-bottom:2px solid var(--c-primary);'
-                      : 'color:var(--c-muted);border-bottom:2px solid transparent;')
-                + '">' + t[1] + ' <span style="font-size:11px;">' + n + '</span></button>';
-            }).join('') + '</div>';
+          const list = paths;
           const cards = list.map((p, i) => {
             const idx = paths.indexOf(p);
             const on = idx === sel;
@@ -11689,13 +11751,11 @@
               + '<div>하차 <span style="color:var(--fg);">' + esc(p.legs[p.legs.length - 1].to) + '</span></div>'
               + '</div></div>';
           }).join('');
-          box.innerHTML = tabHtml
+          box.innerHTML = '<div style="font-size:12px;color:var(--c-muted);margin-bottom:6px;">'
+            + MODE_NM + ' 경로 <b style="color:var(--fg);">' + paths.length + '개</b></div>'
             + (cards || '<div style="font-size:12px;color:var(--c-muted);">해당 경로가 없습니다.</div>')
             + '<div style="font-size:11px;color:var(--c-muted);margin-top:7px;">'
             + '서울시 대중교통환승경로 · <b>요금은 제공되지 않습니다</b></div>';
-          box.querySelectorAll('.sp-tab').forEach((b) => {
-            b.onclick = () => { tab = b.dataset.k; draw(); };
-          });
           box.querySelectorAll('.sp-card').forEach((c) => {
             c.onclick = () => { sel = Number(c.dataset.i); draw(); spDrawPath(paths[sel], o, d); };
           });
@@ -11708,12 +11768,18 @@
       const spDraw = async (mode, o, d, box, via) => {
         box.innerHTML = '경로 계산 중…';
         try {
-          if (mode === 'bus') {
+          
+          
+          
+          
+          if (mode === 'bus' || mode === 'subway' || mode === 'mix') {
             
             
             
             
-            const direct = await spDirectBus(o, d);
+            
+            
+            const direct = mode === 'bus' ? await spDirectBus(o, d) : null;
             if (direct && direct.length) {
               box.innerHTML = '<div class="pc-price">직통 버스 <b>' + direct.length + '개</b></div>'
                 + '<ol style="margin:6px 0 0;padding-left:16px;line-height:1.5;word-break:keep-all;">'
@@ -11734,10 +11800,27 @@
             
             
             const seoulPath = await fetch(SUPABASE_URL + '/functions/v1/seoul-transit-path'
-              + `?sx=${o.lng}&sy=${o.lat}&ex=${d.lng}&ey=${d.lat}`)
+              + `?mode=${mode}&sx=${o.lng}&sy=${o.lat}&ex=${d.lng}&ey=${d.lat}`)
               .then((x) => (x.ok ? x.json() : null)).catch(() => null);
             if (seoulPath && Array.isArray(seoulPath.paths) && seoulPath.paths.length) {
-              spRenderPaths(seoulPath.paths, box, o, d);
+              spRenderPaths(seoulPath.paths, box, o, d, mode);
+              return;
+            }
+            
+            
+            
+            if (seoulPath && Array.isArray(seoulPath.paths) && !seoulPath.paths.length && !seoulPath.outside) {
+              const what = mode === 'subway' ? '지하철' : mode === 'bus' ? '버스' : '버스+지하철';
+              box.innerHTML = '<div style="font-size:13px;">' + what + ' 경로를 찾지 못했습니다.</div>'
+                + '<div style="font-size:12px;color:var(--c-muted);margin-top:4px;">'
+                + esc(seoulPath.msg || '')
+                + (mode === 'subway' ? '<br>출발지나 도착지가 역에서 멀면 나오지 않습니다.'
+                  + ' <b>버스+지하철</b> 로 바꿔 보세요.' : '') + '</div>';
+              return;
+            }
+            
+            if (mode === 'subway') {
+              box.innerHTML = '<div style="font-size:13px;">지하철 경로를 찾지 못했습니다.</div>';
               return;
             }
             const r = await RouteAPI.transit(o, d);
