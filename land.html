@@ -11278,6 +11278,18 @@
           trs: Number(b.trsitNmtm) || 0,
           via: (b.trfstnNms || []).map((x) => x.stnNm).filter(Boolean),
           legs,
+          
+          
+          stops: (() => {
+            const out = [];
+            for (const x of (Array.isArray(b.paths) ? b.paths : [])) {
+              const f = (x.dptreStn && x.dptreStn.stnNm) || '';
+              const t = (x.arvlStn && x.arvlStn.stnNm) || '';
+              if (f && out[out.length - 1] !== f) out.push(f);
+              if (t) out.push(t);
+            }
+            return out;
+          })(),
         } : null);
       });
     }
@@ -11546,11 +11558,59 @@
                 + '서울시 대중교통환승경로 · <b>요금은 제공되지 않습니다</b></div>';
               
               
-              const segs = seoulPath.paths[0].legs
-                .filter((l) => l.fy && l.fx && l.ty && l.tx)
-                .map((l) => ({ type: l.kind === 'bus' ? 'bus' : 'subway',
-                  coords: [[l.fy, l.fx], [l.ty, l.tx]] }));
-              if (segs.length) routeRender(segs);
+              
+              
+              
+              
+              
+              const legs = seoulPath.paths[0].legs.filter((l) => l.fy && l.fx && l.ty && l.tx);
+              const segs = await Promise.all(legs.map(async (l) => {
+                const a = { lat: l.fy, lng: l.fx };
+                const b = { lat: l.ty, lng: l.tx };
+                if (l.kind !== 'bus') {
+                  
+                  
+                  
+                  
+                  const pts = await new Promise((res) => {
+                    const nm = (t) => String(t || '').replace(/역$/, '');
+                    loadShortPath(nm(l.from), nm(l.to), (r) => {
+                      if (!r || !r.stops || r.stops.length < 2 || !subStations) { res(null); return; }
+                      const co = r.stops.map((s) => {
+                        const hit = subStations.find((x) => x.nm === s)
+                          || subStations.find((x) => x.nm && (x.nm.includes(s) || s.includes(x.nm)));
+                        return hit ? [hit.lat, hit.lng] : null;
+                      }).filter(Boolean);
+                      res(co.length >= 2 ? co : null);
+                    });
+                  });
+                  return { type: 'subway',
+                    coords: pts || [[a.lat, a.lng], [b.lat, b.lng]] };
+                }
+                
+                const rt = await RouteAPI.osrm('car', a, b).catch(() => null);
+                return {
+                  type: 'bus',
+                  coords: (rt && rt.coords && rt.coords.length > 1)
+                    ? rt.coords : [[a.lat, a.lng], [b.lat, b.lng]],
+                };
+              }));
+              
+              
+              const walkTo = async (from, to) => {
+                const rt = await RouteAPI.osrm('foot', from, to).catch(() => null);
+                return { type: 'walk',
+                  coords: (rt && rt.coords && rt.coords.length > 1)
+                    ? rt.coords : [[from.lat, from.lng], [to.lat, to.lng]] };
+              };
+              const full = [];
+              if (legs.length) {
+                full.push(await walkTo(o, { lat: legs[0].fy, lng: legs[0].fx }));
+                full.push(...segs);
+                const last = legs[legs.length - 1];
+                full.push(await walkTo({ lat: last.ty, lng: last.tx }, d));
+              }
+              if (full.length) routeRender(full);
               return;
             }
             const r = await RouteAPI.transit(o, d);
