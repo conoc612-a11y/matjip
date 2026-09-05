@@ -8644,7 +8644,14 @@
           UA_SERVICES.forEach(([cat, items]) => {
             const target = CAT_TARGET[cat] || '기타 공공데이터';
             items.forEach((it) => {
-              if (it.w) return;                 
+              
+              
+              
+              
+              
+              
+              
+              if (it.w && !(it.pk && UA_POPUP_KEY[it.pk])) return;
               const sec = ensureSec(target);
               addRow(sec.querySelector('.lp-kids'), it);
             });
