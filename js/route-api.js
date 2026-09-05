@@ -184,6 +184,14 @@
   // 반환: { info, steps, segments } — segments 는 RouteLine 이 그대로 먹는 형식이다.
   function transit(o, d) {
     var base = 'https://api.odsay.com/v1/api/';
+    // 🔴 **`encodeURIComponent` 여야 한다. `encodeURI` 는 안 된다.**
+    //   ODsay 키는 보안정책상 특수문자를 포함한다(공식 URI 인코딩가이드). 우리 키는
+    //   `H4Vo/z04g/E+AUShnTQIiQ` 처럼 `/` 와 `+` 가 들어 있는데 —
+    //   `encodeURI` 는 그 둘을 **그대로 둔다**(실측: 입력과 출력이 같다).
+    //   질의문자열에서 `+` 는 **공백**으로 해석되므로 키가 망가져 `ApiKeyAuthFailed` 가 난다.
+    //   ⚠️ 가이드 본문은 `encodeURI()` 를 권하지만 이 키에는 통하지 않는다 — 그대로 믿지 마라.
+    //   ⛔ 손으로 URL 을 이어 붙여 시험하지 마라. 2026-09-05 에 그렇게 해서
+    //      "키가 죽었다" 고 잘못 판단했다. 앱은 멀쩡히 돌고 있었다.
     var key = encodeURIComponent(window.ODSAY_KEY || (typeof ODSAY_KEY !== 'undefined' ? ODSAY_KEY : ''));
     var url = base + 'searchPubTransPathT?SX=' + o.lng + '&SY=' + o.lat + '&EX=' + d.lng + '&EY=' + d.lat + '&apiKey=' + key;
 
