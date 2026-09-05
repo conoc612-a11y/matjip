@@ -11424,12 +11424,14 @@
       
       
       
-      const BOOK_KEY = 'mj_sp_book';
+      
+      
+      const BOOK_LS = 'mj_sp_book';
       const bookGet = () => {
-        try { return JSON.parse(localStorage.getItem(BOOK_KEY) || '[]'); } catch (e) { return []; }
+        try { return JSON.parse(localStorage.getItem(BOOK_LS) || '[]'); } catch (e) { return []; }
       };
       const bookSet = (a) => {
-        try { localStorage.setItem(BOOK_KEY, JSON.stringify(a.slice(0, 30))); } catch (e) {}
+        try { localStorage.setItem(BOOK_LS, JSON.stringify(a.slice(0, 30))); } catch (e) {}
       };
       const bookBox = body.querySelector('#sp-bookbox');
       const paintBook = () => {
