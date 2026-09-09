@@ -52,7 +52,11 @@ function fitToPoints(pts) {
 // 네이버 지도 인증 실패 시(도메인 미등록/키 오류) 조용히 죽지 않고 안내 ──
 window.navermap_authFailure = function () {
   const b = $('banner');
-  if (b) b.innerHTML = '⚠️ 네이버 지도 인증 실패 — NCP 콘솔의 Web 서비스 URL에 <b>https://conoc612-a11y.github.io</b> 가 등록됐는지 확인해 주세요.';
+  // ⛔ 도메인을 글자로 박지 마라 — 옮길 때마다 낡는다. 실제로 낡았다:
+  //    airealty.co.kr 로 옮기는데 안내는 github.io 를 가리키고 있었다(2026-09-10).
+  //    현재 주소를 읽으면 어디에 올려도 맞는 안내가 나온다.
+  if (b) b.innerHTML = '⚠️ 네이버 지도 인증 실패 — NCP 콘솔의 Web 서비스 URL에 <b>'
+    + location.origin + '</b> 가 등록됐는지 확인해 주세요.';
 };
 
 // ── ③ 테마·최근 본 곳 (localStorage) ───────────────────────────────────────
