@@ -15,7 +15,7 @@
 const SUPABASE_URL = 'https://bhgijvaxxjnocgfnaaeu.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_rYaGd3kk5UuFBe3TSpFA8g_uGHWwkqM';
 const ODSAY_KEY = 'H4Vo/z04g/E+AUShnTQIiQ'; // ODsay 대중교통(웹 도메인 잠금 키 → 프론트 노출 안전)
-const VWORLD_KEY = 'B2CDEEDD-D622-311B-883B-CC7890E50822'; // V-World 지도
+const VWORLD_KEY = '60353720-B2BE-43A1-B6F7-A77361FCFC76'; // V-World 지도
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 
