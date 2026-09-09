@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex" />
+  <title>페이지를 찾을 수 없습니다 — 부동산 all in one</title>
+  <!--
+    🔴 **이 파일이 없으면 Cloudflare Pages 가 없는 파일에 200 을 준다.**
+       공식 문서(Serving Pages · Not Found behavior):
+         "If your project does not include a top-level 404.html file, Pages assumes
+          that you are deploying a single-page application … matches all incoming
+          paths to the root (/)"
+       실측 2026-09-10: `matjip-14e.pages.dev/cleanup_seoul.json` 이 **HTTP 200** 에
+       `index.html`(온보딩 리다이렉트 HTML)을 돌려줬다. GitHub Pages 는 404 를 준다.
+
+    ⛔ 왜 치명적인가 — 우리 코드는 자료를 이렇게 받는다:
+         fetch('auction_sold.json?v=1').then(r => r.json())
+       `res.ok` 가 **true** 로 오고 본문이 HTML 이라, 파일이 없을 때 깨끗한 404 대신
+       JSON 파싱 오류가 난다. `.catch()` 로 삼키는 자리에서는 **오류 없이 빈 화면**이
+       되어 원인 추적이 매우 어렵다.
+
+    ⚠️ 지우지 마라. `tools/deploy_public.js` 가 `*.html` 확장자 규칙으로 자동 배포한다
+       (EXCLUDE 목록에 없음 — 확인함). 따로 등록할 필요는 없다.
+    ⚠️ 링크는 **절대경로** `/land.html` 이다. 상대경로로 쓰면 안 된다 —
+       이 페이지는 `/chatbot/없는파일` 처럼 **어느 깊이에서도** 뜨므로 상대경로면
+       엉뚱한 곳을 가리킨다. 루트 도메인(airealty.co.kr) 기준으로 맞춘 것이다.
+       ⛔ GitHub Pages 는 하위 경로(/matjip/)라 이 링크가 안 맞는다. 이전이 끝나면
+          GitHub Pages 는 끄므로 문제되지 않지만, 그 전까지 양쪽을 쓰면 알고 있어라.
+  -->
+  <style>
+    :root { color-scheme: light; }
+    body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+      background:#F5ECE6; color:#3A332D;
+      font:15px/1.7 system-ui,-apple-system,"Malgun Gothic",sans-serif; }
+    .box { background:#FFFDF9; border:1px solid #E9CBB2; border-radius:7px;
+      padding:34px 38px; max-width:460px; box-shadow:0 10px 30px rgba(16,24,40,.14); }
+    h1 { margin:0 0 6px; font-size:19px; }
+    p { margin:0 0 18px; color:#6b7280; font-size:14px; }
+    a { display:inline-block; padding:9px 12px; border:1px solid #E9CBB2; border-radius:7px;
+      background:#fff; color:#8A6D1F; font-weight:600; text-decoration:none; }
+    a:hover { background:#8A6D1F; border-color:#8A6D1F; color:#fff; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>페이지를 찾을 수 없습니다</h1>
+    <p>주소가 바뀌었거나 삭제된 페이지입니다.</p>
+    <a href="/land.html">지도로 이동</a>
+  </div>
+</body>
+</html>
