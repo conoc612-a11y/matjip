@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=38b4fd93"></script>
+  <script src="js/auth-guard.js?v=0e65cb81"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -36,12 +36,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=38b4fd93" />
+  <link rel="stylesheet" href="css/buttons.css?v=0e65cb81" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=38b4fd93" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=0e65cb81" />
   <style>
     :root {
       --c-primary:#1971c2; --c-primary-soft:#e7f0fb; --c-price:#d9480f;
@@ -1407,7 +1407,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=38b4fd93"></script>
+  <script src="js/ie-guard.js?v=0e65cb81"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1624,22 +1624,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-10 05:00 · 38b4fd93</span></span>
+          · <span class="build-tag">build 2026-09-10 05:17 · 0e65cb81</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=38b4fd93"></script>
+  <script src="js/joinkey.js?v=0e65cb81"></script>
   
-  <script src="js/identity.js?v=38b4fd93"></script>
-  <script src="js/common.js?v=38b4fd93"></script>
-  <script src="js/ui-resize.js?v=38b4fd93"></script>
-  <script src="js/footer-resize.js?v=38b4fd93"></script>
-  <script src="js/route-line.js?v=38b4fd93"></script>
-  <script src="js/route-api.js?v=38b4fd93"></script>
-  <script src="js/footer-stats.js?v=38b4fd93"></script>
+  <script src="js/identity.js?v=0e65cb81"></script>
+  <script src="js/common.js?v=0e65cb81"></script>
+  <script src="js/ui-resize.js?v=0e65cb81"></script>
+  <script src="js/footer-resize.js?v=0e65cb81"></script>
+  <script src="js/route-line.js?v=0e65cb81"></script>
+  <script src="js/route-api.js?v=0e65cb81"></script>
+  <script src="js/footer-stats.js?v=0e65cb81"></script>
   <script>
     
     
@@ -21129,6 +21129,168 @@
     const AGENT_KEY = 'mj_saved_agents';
     function loadSavedAgents() { try { return JSON.parse(localStorage.getItem(AGENT_KEY) || '[]'); } catch (e) { return []; } }
     function saveSavedAgents(a) { try { localStorage.setItem(AGENT_KEY, JSON.stringify(a)); } catch (e) {} }
+    
+    
+    
+    
+    
+    
+    
+    
+    const FAV_PROP_COLS = ['이름', '구', '동', '면적(㎡)', '층', '유형', '건축년도',
+      '거래가(만원)', '거래일', '전세(만원)', '전세가율(%)', '위도', '경도', 'id'];
+    const FAV_AGENT_COLS = ['상호', '분류', '주소', '전화', '링크', '위도', '경도', 'id'];
+    const _favYmd = (v) => {
+      const t = String(v == null ? '' : v);
+      return /^\d{8}$/.test(t) ? t.slice(0, 4) + '-' + t.slice(4, 6) + '-' + t.slice(6) : t;
+    };
+    function favPropRows() {
+      return loadSavedProps().map((d) => [
+        d.name || '', d.gu || '', d.dong || '', d.area == null ? '' : d.area,
+        d.floor == null ? '' : d.floor, d.type || '', d.build == null ? '' : d.build,
+        d.priceEok == null ? '' : Math.round(d.priceEok * 1e4), _favYmd(d.ymd),
+        d.jeonse == null ? '' : Math.round(d.jeonse * 1e4), d.jrate == null ? '' : d.jrate,
+        d.lat == null ? '' : d.lat, d.lng == null ? '' : d.lng, d.id || '',
+      ]);
+    }
+    function favAgentRows() {
+      return loadSavedAgents().map((a) => [
+        a.name || '', a.category || '', a.address || '', a.phone || '', a.url || '',
+        a.lat == null ? '' : a.lat, a.lng == null ? '' : a.lng, a.id || '',
+      ]);
+    }
+    function favStamp() {
+      const d = new Date();
+      const p = (n) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}`;
+    }
+    function favDownload(blob, name) {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    }
+    
+    let _xlsxPromise = null;
+    function ensureXlsx() {
+      if (window.XLSX) return Promise.resolve(window.XLSX);
+      if (_xlsxPromise) return _xlsxPromise;
+      _xlsxPromise = new Promise((res, rej) => {
+        const sc = document.createElement('script');
+        sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+        sc.onload = () => (window.XLSX ? res(window.XLSX) : rej(new Error('XLSX 없음')));
+        sc.onerror = () => rej(new Error('불러오기 실패'));
+        document.head.appendChild(sc);
+      });
+      return _xlsxPromise;
+    }
+    async function favExportXlsx() {
+      const X = await ensureXlsx();
+      const wb = X.utils.book_new();
+      X.utils.book_append_sheet(wb, X.utils.aoa_to_sheet([FAV_PROP_COLS, ...favPropRows()]), '부동산');
+      X.utils.book_append_sheet(wb, X.utils.aoa_to_sheet([FAV_AGENT_COLS, ...favAgentRows()]), '공인중개사');
+      X.writeFile(wb, `즐겨찾기_${favStamp()}.xlsx`);
+    }
+    function _favTable(cols, rows) {
+      if (!rows.length) return '<p>저장한 항목이 없습니다.</p>';
+      const th = cols.map((c) => `<th>${esc(c)}</th>`).join('');
+      const tr = rows.map((r) => `<tr>${r.map((v) => `<td>${esc(v)}</td>`).join('')}</tr>`).join('');
+      return `<table border="1" cellspacing="0" cellpadding="4"><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table>`;
+    }
+    function favExportDoc() {
+      
+      const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office"'
+        + ' xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">'
+        + '<head><meta charset="utf-8"><title>즐겨찾기</title>'
+        + '<style>body{font-family:"맑은 고딕",sans-serif;font-size:10pt;}'
+        + 'table{border-collapse:collapse;} th{background:#f2f2f2;}</style></head><body>'
+        + `<h2>부동산 즐겨찾기</h2><p>내보낸 날짜: ${esc(new Date().toLocaleString('ko-KR'))}</p>`
+        + `<h3>부동산</h3>${_favTable(FAV_PROP_COLS, favPropRows())}`
+        + `<h3>공인중개사</h3>${_favTable(FAV_AGENT_COLS, favAgentRows())}`
+        + '</body></html>';
+      favDownload(new Blob(['\ufeff' + html], { type: 'application/msword' }),
+        `즐겨찾기_${favStamp()}.doc`);
+    }
+    function favExportRtf() {
+      
+      const e = (v) => String(v == null ? '' : v)
+        .replace(/[\\{}]/g, (c) => '\\' + c)
+        .replace(/[^\x00-\x7F]/g, (c) => '\\u' + c.charCodeAt(0) + '?');
+      const lines = [];
+      lines.push('\\b ' + e('부동산 즐겨찾기') + '\\b0\\par');
+      lines.push(e('내보낸 날짜: ' + new Date().toLocaleString('ko-KR')) + '\\par\\par');
+      const block = (title, cols, rows) => {
+        lines.push('\\b ' + e(title) + '\\b0\\par');
+        if (!rows.length) { lines.push(e('저장한 항목이 없습니다.') + '\\par\\par'); return; }
+        rows.forEach((r, i) => {
+          const body = cols.map((c, k) => `${c}: ${r[k]}`).filter((t) => !/: $/.test(t)).join('  |  ');
+          lines.push(e(`${i + 1}. ${body}`) + '\\par');
+        });
+        lines.push('\\par');
+      };
+      block('부동산', FAV_PROP_COLS, favPropRows());
+      block('공인중개사', FAV_AGENT_COLS, favAgentRows());
+      const rtf = '{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 Malgun Gothic;}}\\f0\\fs20 ' + lines.join('\n') + '}';
+      favDownload(new Blob([rtf], { type: 'application/rtf' }), `즐겨찾기_${favStamp()}.rtf`);
+    }
+    
+    
+    const FAV_PROP_MAP = {
+      '이름': 'name', '구': 'gu', '동': 'dong', '면적(㎡)': 'area', '층': 'floor',
+      '유형': 'type', '건축년도': 'build', '거래가(만원)': '_price', '거래일': 'ymd',
+      '전세(만원)': '_jeonse', '전세가율(%)': 'jrate', '위도': 'lat', '경도': 'lng', 'id': 'id',
+    };
+    const FAV_AGENT_MAP = {
+      '상호': 'name', '분류': 'category', '주소': 'address', '전화': 'phone',
+      '링크': 'url', '위도': 'lat', '경도': 'lng', 'id': 'id',
+    };
+    const _favNum = (v) => (v === '' || v == null || isNaN(Number(v)) ? null : Number(v));
+    function favRowsToObjs(aoa, map, isProp) {
+      if (!aoa || aoa.length < 2) return [];
+      const head = aoa[0].map((h) => String(h == null ? '' : h).trim());
+      const out = [];
+      for (let i = 1; i < aoa.length; i++) {
+        const row = aoa[i];
+        if (!row || !row.length) continue;
+        const o = {};
+        head.forEach((h, k) => {
+          const key = map[h];
+          if (!key) return;
+          const v = row[k];
+          if (v === '' || v == null) return;
+          o[key] = v;
+        });
+        if (!o.name) continue;                       
+        if (isProp) {
+          
+          if (o._price != null) { const n = _favNum(o._price); if (n != null) o.priceEok = n / 1e4; }
+          if (o._jeonse != null) { const n = _favNum(o._jeonse); if (n != null) o.jeonse = n / 1e4; }
+          delete o._price; delete o._jeonse;
+          if (o.ymd != null) o.ymd = String(o.ymd).replace(/-/g, '');
+          ['area', 'floor', 'build', 'jrate', 'lat', 'lng'].forEach((k) => {
+            if (o[k] != null) { const n = _favNum(o[k]); if (n != null) o[k] = n; }
+          });
+          if (!o.id) o.id = propId(o);
+        } else {
+          ['lat', 'lng'].forEach((k) => {
+            if (o[k] != null) { const n = _favNum(o[k]); if (n != null) o[k] = n; }
+          });
+          if (!o.id) o.id = `${o.name}|${o.address || ''}`;
+        }
+        out.push(o);
+      }
+      return out;
+    }
+    async function favParseXlsx(file) {
+      const X = await ensureXlsx();
+      const wb = X.read(await file.arrayBuffer(), { type: 'array' });
+      const sheet = (nm) => (wb.Sheets[nm] ? X.utils.sheet_to_json(wb.Sheets[nm], { header: 1, defval: '' }) : null);
+      return {
+        props: favRowsToObjs(sheet('부동산'), FAV_PROP_MAP, true),
+        agents: favRowsToObjs(sheet('공인중개사'), FAV_AGENT_MAP, false),
+      };
+    }
     function toggleAgentSave(p) {
       let a = loadSavedAgents();
       if (a.some((x) => x.id === p.id)) a = a.filter((x) => x.id !== p.id);
@@ -21302,10 +21464,12 @@
         </div>`;
       });
       const allCards = [...propCards, ...agentCards];
-      $('rec-list').innerHTML = `<div class="fav-tools" style="display:flex;gap:6px;margin-bottom:8px;">
-          <button class="fav-export btn-mini outline" style="flex:1;">⬇ 내보내기 (JSON)</button>
-          <button class="fav-import btn-mini outline" style="flex:1;">⬆ 가져오기</button>
-          <input type="file" id="fav-file" accept=".json,application/json" style="display:none;">
+      $('rec-list').innerHTML = `<div class="fav-tools" style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
+          <button class="fav-xlsx btn-mini outline" style="flex:1;">⬇ 엑셀</button>
+          <button class="fav-doc btn-mini outline" style="flex:1;">⬇ 워드</button>
+          <button class="fav-rtf btn-mini outline" style="flex:1;">⬇ 한글</button>
+          <button class="fav-import btn-mini outline" style="flex:1 0 100%;">⬆ 가져오기 (엑셀·JSON)</button>
+          <input type="file" id="fav-file" accept=".xlsx,.json,application/json" style="display:none;">
         </div>`
         + (allCards.length ? allCards.join('')
         : '<div style="text-align:center;color:var(--muted);padding:24px 0;">저장한 부동산·공인중개사가 없어요.<br>지도를 클릭해 「저장」을 누르거나 공인중개사 목록의 「☆ 저장」을 이용해보세요.</div>');
@@ -21388,35 +21552,63 @@
         render();
       }));
       
-      const expBtn = $('rec-list').querySelector('.fav-export');
-      if (expBtn) expBtn.addEventListener('click', () => {
-        const blob = new Blob([JSON.stringify({ props: loadSavedProps(), agents: loadSavedAgents(), exportedAt: new Date().toISOString() }, null, 2)], { type: 'application/json' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'matjip-favorites.json';
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-      });
+      const _favBind = (sel, fn, busyLabel) => {
+        const b = $('rec-list').querySelector(sel);
+        if (!b) return;
+        b.addEventListener('click', async () => {
+          if (!loadSavedProps().length && !loadSavedAgents().length) {
+            try { toast('저장한 항목이 없어요.'); } catch (e) {}
+            return;
+          }
+          const keep = b.textContent;
+          b.disabled = true;
+          if (busyLabel) b.textContent = busyLabel;
+          try { await fn(); }
+          catch (err) {
+            console.error('즐겨찾기 내보내기 실패:', err);
+            try { toast('내보내기에 실패했어요. 잠시 후 다시 시도해 주세요.'); } catch (e) {}
+          } finally { b.disabled = false; b.textContent = keep; }
+        });
+      };
+      
+      _favBind('.fav-xlsx', favExportXlsx, '준비 중…');
+      _favBind('.fav-doc', favExportDoc, null);
+      _favBind('.fav-rtf', favExportRtf, null);
       
       const impBtn = $('rec-list').querySelector('.fav-import'), favFile = $('fav-file');
       if (impBtn) impBtn.addEventListener('click', () => favFile && favFile.click());
-      if (favFile) favFile.addEventListener('change', (e) => {
+      
+      
+      
+      const _favMerge = (d) => {
+        const props = loadSavedProps(), agents = loadSavedAgents();
+        let n = 0;
+        (d.props || []).forEach((p) => {
+          if (p && p.id && !props.some((x) => x.id === p.id)) { props.push(p); n++; }
+        });
+        (d.agents || []).forEach((a) => {
+          if (a && a.id && !agents.some((x) => x.id === a.id)) { agents.push(a); n++; }
+        });
+        saveSavedProps(props); saveSavedAgents(agents);
+        render();
+        try { toast(n ? `${n}건을 가져왔어요.` : '새로 추가된 항목이 없어요.'); } catch (e) {}
+      };
+      if (favFile) favFile.addEventListener('change', async (e) => {
         const f = e.target.files[0];
         e.target.value = '';
         if (!f) return;
-        const reader = new FileReader();
-        reader.onload = () => {
-          try {
-            const d = JSON.parse(reader.result);
-            if (!Array.isArray(d.props) || !Array.isArray(d.agents)) throw new Error('bad');
-            const props = loadSavedProps(), agents = loadSavedAgents();
-            d.props.forEach((p) => { if (p && p.id && !props.some((x) => x.id === p.id)) props.push(p); });
-            d.agents.forEach((a) => { if (a && a.id && !agents.some((x) => x.id === a.id)) agents.push(a); });
-            saveSavedProps(props); saveSavedAgents(agents);
-            render();
-          } catch (err) { alert('파일 형식이 올바르지 않아요.'); }
-        };
-        reader.readAsText(f);
+        try {
+          if (/\.xlsx$/i.test(f.name)) {
+            _favMerge(await favParseXlsx(f));
+            return;
+          }
+          const d = JSON.parse(await f.text());
+          if (!Array.isArray(d.props) || !Array.isArray(d.agents)) throw new Error('bad');
+          _favMerge(d);
+        } catch (err) {
+          console.error('즐겨찾기 가져오기 실패:', err);
+          alert('파일을 읽지 못했어요. 내보내기로 만든 엑셀(.xlsx) 또는 JSON 파일인지 확인해 주세요.');
+        }
       });
     }
 
