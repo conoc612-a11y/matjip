@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js"></script>
+  <script src="js/auth-guard.js?v=f2a96397"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -36,12 +36,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css" />
+  <link rel="stylesheet" href="css/buttons.css?v=f2a96397" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=f2a96397" />
   <style>
     :root {
       --c-primary:#1971c2; --c-primary-soft:#e7f0fb; --c-price:#d9480f;
@@ -1407,7 +1407,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js"></script>
+  <script src="js/ie-guard.js?v=f2a96397"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1624,22 +1624,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-10 03:26 · 1efd304c</span></span>
+          · <span class="build-tag">build 2026-09-10 03:49 · f2a96397</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js"></script>
+  <script src="js/joinkey.js?v=f2a96397"></script>
   
-  <script src="js/identity.js"></script>
-  <script src="js/common.js"></script>
-  <script src="js/ui-resize.js"></script>
-  <script src="js/footer-resize.js"></script>
-  <script src="js/route-line.js"></script>
-  <script src="js/route-api.js"></script>
-  <script src="js/footer-stats.js"></script>
+  <script src="js/identity.js?v=f2a96397"></script>
+  <script src="js/common.js?v=f2a96397"></script>
+  <script src="js/ui-resize.js?v=f2a96397"></script>
+  <script src="js/footer-resize.js?v=f2a96397"></script>
+  <script src="js/route-line.js?v=f2a96397"></script>
+  <script src="js/route-api.js?v=f2a96397"></script>
+  <script src="js/footer-stats.js?v=f2a96397"></script>
   <script>
     
     
@@ -5889,11 +5889,45 @@
       let _aucDetailAuthWarned = false;
       
       function aucDetailFromSession(cn) {
-        try { const v = sessionStorage.getItem('aucdtl:' + cn); return v ? JSON.parse(v) : undefined; }
+        try { const v = sessionStorage.getItem('aucdtl2:' + cn); return v ? JSON.parse(v) : undefined; }
         catch (e) { return undefined; }
       }
       function aucDetailToSession(cn, body) {
-        try { sessionStorage.setItem('aucdtl:' + cn, JSON.stringify(body)); } catch (e) {  }
+        try { sessionStorage.setItem('aucdtl2:' + cn, JSON.stringify(body)); } catch (e) {  }
+      }
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      const _ENT = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: '\u00A0' };
+      function unent(s) {
+        let t = String(s);
+        for (let i = 0; i < 3; i++) {
+          const prev = t;
+          t = t.replace(/&(amp|lt|gt|quot|apos|nbsp|#x?[0-9a-fA-F]+);/g, (m, k) => {
+            if (k[0] !== '#') return _ENT[k] || m;
+            const n = (k[1] === 'x' || k[1] === 'X') ? parseInt(k.slice(2), 16) : parseInt(k.slice(1), 10);
+            return (Number.isFinite(n) && n > 0 && n <= 0x10FFFF) ? String.fromCodePoint(n) : m;
+          });
+          if (t === prev) break;
+        }
+        return t;
+      }
+      
+      function unentDeep(v) {
+        if (typeof v === 'string') return unent(v);
+        if (Array.isArray(v)) return v.map(unentDeep);
+        if (v && typeof v === 'object') {
+          const o = {};
+          for (const k in v) if (Object.prototype.hasOwnProperty.call(v, k)) o[k] = unentDeep(v[k]);
+          return o;
+        }
+        return v;
       }
       async function fetchAucDetail(cn) {
         if (_aucDetailCache.has(cn)) return _aucDetailCache.get(cn);
@@ -5929,7 +5963,7 @@
             }
             if (!r.ok) return null;
             const j = await r.json();
-            const body = j && j.body ? j.body : null;
+            const body = j && j.body ? unentDeep(j.body) : null;
             
             
             _aucDetailCache.set(cn, body);
@@ -8936,7 +8970,7 @@
             
             const _aeeUrl = aucAeeDocUrl(det);
             const _aeeLink = _aeeUrl
-              ? `<div style="margin-top:6px;"><a href="${_aeeUrl}" target="_blank" rel="noopener"`
+              ? `<div style="margin-top:6px;"><a href="${safeUrl(_aeeUrl)}" target="_blank" rel="noopener"`
                 + ` class="pc-btn pc-btn-primary" style="display:inline-block;">감정평가서 원문 열기</a>`
                 + `<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">`
                 + `한국감정평가사협회 · 매각기일 2주 전부터 열립니다.</div></div>`
@@ -8953,7 +8987,7 @@
           
           const _objUrl = aucObjctDocUrl(det);
           const _objLink = _objUrl
-            ? `<div style="margin-top:6px;"><a href="${_objUrl}" target="_blank" rel="noopener"`
+            ? `<div style="margin-top:6px;"><a href="${safeUrl(_objUrl)}" target="_blank" rel="noopener"`
               + ` class="pc-btn pc-btn-primary" style="display:inline-block;">법원 매각물건명세서 원문 열기</a>`
               + `<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">`
               + `대법원 전자문서(ECFS) · 점유자·보증금·확정일자·<b>최선순위 설정일</b>이 여기 있습니다.</div></div>`
