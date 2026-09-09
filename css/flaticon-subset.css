@@ -1,0 +1,37 @@
+/* 기계 생성 — 손대지 마라. `python tools/subset_uicons.py` (36개 아이콘) */
+@font-face{font-family:uicons-regular-rounded;src:url(../fonts/uicons-subset.woff2) format("woff2"),url(../fonts/uicons-subset.woff) format("woff");font-display:swap}i[class^=fi-rr-]:before,i[class*=" fi-rr-"]:before,span[class^=fi-rr-]:before,span[class*=fi-rr-]:before{font-family:uicons-regular-rounded!important;font-style:normal;font-weight:400!important;font-variant:normal;text-transform:none;line-height:1;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}.fi-rr-address-book:before{content:"\f11b"}
+.fi-rr-ambulance:before{content:"\f13f"}
+.fi-rr-bank:before{content:"\f20a"}
+.fi-rr-bike:before{content:"\f245"}
+.fi-rr-bookmark:before{content:"\f28b"}
+.fi-rr-building:before{content:"\f303"}
+.fi-rr-bus:before{content:"\f310"}
+.fi-rr-charging-station:before{content:"\f39c"}
+.fi-rr-coins:before{content:"\f494"}
+.fi-rr-comments:before{content:"\f4bc"}
+.fi-rr-exchange:before{content:"\f5ea"}
+.fi-rr-flag:before{content:"\f695"}
+.fi-rr-graduation-cap:before{content:"\f70f"}
+.fi-rr-hard-hat:before{content:"\f77a"}
+.fi-rr-heart:before{content:"\f7a0"}
+.fi-rr-home:before{content:"\f7b8"}
+.fi-rr-hospital:before{content:"\f7c5"}
+.fi-rr-leaf:before{content:"\f88c"}
+.fi-rr-marker:before{content:"\f8fd"}
+.fi-rr-parking-circle:before{content:"\f9fd"}
+.fi-rr-pharmacy:before{content:"\fa60"}
+.fi-rr-plus:before{content:"\faac"}
+.fi-rr-rotate-right:before{content:"\fb6a"}
+.fi-rr-route:before{content:"\fb6f"}
+.fi-rr-search:before{content:"\fbba"}
+.fi-rr-shield:before{content:"\fbe8"}
+.fi-rr-shop:before{content:"\fbf5"}
+.fi-rr-shopping-cart:before{content:"\fbfc"}
+.fi-rr-subway:before{content:"\fd10"}
+.fi-rr-time-fast:before{content:"\fda4"}
+.fi-rr-toilet:before{content:"\fdc2"}
+.fi-rr-trophy:before{content:"\fe39"}
+.fi-rr-utensils:before{content:"\fea8"}
+.fi-rr-video-camera:before{content:"\febe"}
+.fi-rr-video-camera-alt:before{content:"\febd"}
+.fi-rr-wifi:before{content:"\ff08"}
