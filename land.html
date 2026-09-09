@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=f2a96397"></script>
+  <script src="js/auth-guard.js?v=38b4fd93"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -36,12 +36,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=f2a96397" />
+  <link rel="stylesheet" href="css/buttons.css?v=38b4fd93" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=f2a96397" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=38b4fd93" />
   <style>
     :root {
       --c-primary:#1971c2; --c-primary-soft:#e7f0fb; --c-price:#d9480f;
@@ -1407,7 +1407,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=f2a96397"></script>
+  <script src="js/ie-guard.js?v=38b4fd93"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1624,22 +1624,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-10 03:49 · f2a96397</span></span>
+          · <span class="build-tag">build 2026-09-10 05:00 · 38b4fd93</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=f2a96397"></script>
+  <script src="js/joinkey.js?v=38b4fd93"></script>
   
-  <script src="js/identity.js?v=f2a96397"></script>
-  <script src="js/common.js?v=f2a96397"></script>
-  <script src="js/ui-resize.js?v=f2a96397"></script>
-  <script src="js/footer-resize.js?v=f2a96397"></script>
-  <script src="js/route-line.js?v=f2a96397"></script>
-  <script src="js/route-api.js?v=f2a96397"></script>
-  <script src="js/footer-stats.js?v=f2a96397"></script>
+  <script src="js/identity.js?v=38b4fd93"></script>
+  <script src="js/common.js?v=38b4fd93"></script>
+  <script src="js/ui-resize.js?v=38b4fd93"></script>
+  <script src="js/footer-resize.js?v=38b4fd93"></script>
+  <script src="js/route-line.js?v=38b4fd93"></script>
+  <script src="js/route-api.js?v=38b4fd93"></script>
+  <script src="js/footer-stats.js?v=38b4fd93"></script>
   <script>
     
     
@@ -12784,7 +12784,12 @@
               if (!built) {
                 built = true;
                 const d = detailByPk[it.pk] || UA_DETAILS[it.t];
-                box.innerHTML = (d && d.d ? esc(d.d) + '<br>' : '')
+                
+                
+                
+                
+                
+                box.innerHTML = (d && d.d ? d.d + '<br>' : '')
                   + (it.pk
                     ? '<div><b>필지를 클릭</b>하면 팝업 안에서 보입니다.</div>'
                       + `<div style="margin-top:3px;">제공 op <b>${it.n}개</b> 중 <b>${it.u}개</b> 사용</div>`
@@ -13313,7 +13318,7 @@
           p: '프록시 <code>svc=AptRepairsCostServiceV3</code> · 포털 pk <a href="https://www.data.go.kr/data/15059160/openapi.do" target="_blank" rel="noopener">15059160</a>',
         },
         '공동주택 입찰결과공지': {
-          d: '팝업 · 입찰 · 수의계약(입찰공고의 결과보기). 정식명 <b>국토교통부_공동주택 입찰결과공지 정보제공 서비스</b>. ⚠️ 승인은 됐지만 <b>데이터가 통째로 비어 있다</b> — 4개 경로·2013~2026 전 연도 0건(실측). 명세 오류가 아니라 제공 데이터가 비어 있는 것이다.',
+          d: '팝업 · 입찰 · 수의계약(입찰공고의 결과보기). 정식명 <b>국토교통부_공동주택 입찰결과공지 정보제공 서비스</b>. ⚠️ <b>제공기관 자료가 비어 있습니다</b> — 2013~2026 전 연도 0건(2026-09-03 확인).',
           o: ['getBidEntrpsInfoSearchV3'],
           p: '프록시 <code>svc=ApHusBidResultNoticeInfoOfferServiceV3</code> · 포털 pk <a href="https://www.data.go.kr/data/15059177/openapi.do" target="_blank" rel="noopener">15059177</a>',
         },
@@ -13344,19 +13349,19 @@
         '지방공기업 경영정보(한국지역정보개발원)': {
           d: '사업자등록증 조회 · <b>상호</b>가 지방공기업이면 자산·부채·부채비율·당기손익. '
             + '금융위 기업재무정보는 <b>상장 법인만</b> 준다 — 지방공사·지방공단·출자출연기관은 거기 없다. '
-            + '실측 2025년 421곳(서울 8곳). <b>서울주택도시개발공사</b> 자산 32.1조·부채 21.6조. '
+            + '2025년 421곳(서울 8곳). <b>서울주택도시개발공사</b> 자산 32.1조·부채 21.6조. '
             + '⚠️ 이름이 「SH공사」 가 아니라 「서울주택도시개발공사」 다. 단위는 백만원. '
             + '정식명 <b>한국지역정보개발원_경영정보 조회 서비스</b>',
           o: ['openXmlMngInfo2'],
           p: '프록시 <code>svc=openApiMngInfo3</code> · 포털 pk <a href="https://www.data.go.kr/data/15056798/openapi.do" target="_blank" rel="noopener">15056798</a>',
         },
         '국유일반재산 입찰대상물건(캠코)': {
-          d: '팝업 · 공공데이터 더보기(건수 · 최초입찰가 범위). 정식명 <b>한국자산관리공사_국유일반재산 입찰대상물건내역 조회서비스</b>. 온비드 압류재산과 달리 <b>국가가 직접 파는 땅·건물</b>이다(실측 81,484건). ⚠️ 응답 20개 필드에 <b>주소가 없다</b> — 그래서 <b>지도 레이어로는 못 올린다.</b> 규모·가격대 통계로만 보여준다.',
+          d: '팝업 · 공공데이터 더보기(건수 · 최초입찰가 범위). 정식명 <b>한국자산관리공사_국유일반재산 입찰대상물건내역 조회서비스</b>. 온비드 압류재산과 달리 <b>국가가 직접 파는 땅·건물</b>이다(81,484건). ⚠️ 응답 20개 필드에 <b>주소가 없다</b> — 그래서 <b>지도 레이어로는 못 올린다.</b> 규모·가격대 통계로만 보여준다.',
           o: ['cltrLst'],
           p: '프록시 <code>svc=kamcoRlcBidTrgtCltr</code> · 포털 pk <a href="https://www.data.go.kr/data/15126370/openapi.do" target="_blank" rel="noopener">15126370</a>',
         },
         '전국지가변동률 마이크로데이터(부동산원)': {
-          d: '팝업 · 공공데이터 더보기. 정식명 <b>한국부동산원_전국지가변동률조사 마이크로데이터 조회 서비스</b>. 필지별 용도지역·이용상황·면적·토지단가를 주는 감정평가 근거 자료다. ⚠️ <b>2026-09-03 실측 totalCount=0</b> — 호출은 정상인데 제공기관이 아직 데이터를 채우지 않았다(조건 없이 불러도 0). 화면에 "제공기관 데이터 0건" 이라고 그대로 밝힌다. ⛔ 이걸 "미연결" 로 되돌리지 마라.',
+          d: '팝업 · 공공데이터 더보기. 정식명 <b>한국부동산원_전국지가변동률조사 마이크로데이터 조회 서비스</b>. 필지별 용도지역·이용상황·면적·토지단가를 주는 감정평가 근거 자료다. ⚠️ <b>제공기관 자료가 아직 비어 있습니다</b>(2026-09-03 확인). 화면에 "제공기관 데이터 0건" 이라고 그대로 밝힌다. ⛔ 이걸 "미연결" 로 되돌리지 마라.',
           o: ['getLfrMicro'],
           p: '프록시 <code>svc=LfrMasterSvc</code>(odcloud) · 포털 pk <a href="https://www.data.go.kr/data/15121307/openapi.do" target="_blank" rel="noopener">15121307</a>',
         },
@@ -13371,17 +13376,17 @@
           p: '수집기 + 프록시 <code>svc=HWSPR03</code> · 포털 pk <a href="https://www.data.go.kr/data/15108378/openapi.do" target="_blank" rel="noopener">15108378</a>',
         },
         '크라우드펀딩 중개업자(금융위)': {
-          d: '팝업 · 공공데이터 더보기(중개업자 수·주요 이름). 정식명 <b>금융위원회_크라우드펀딩중개업자정보</b>(실측 788건). 부동산 조각투자·개발 펀딩이 이 제도를 타므로 <b>소액 개발자금이 어디로 흐르는가</b>의 대리 지표다.',
+          d: '팝업 · 공공데이터 더보기(중개업자 수·주요 이름). 정식명 <b>금융위원회_크라우드펀딩중개업자정보</b>(788건). 부동산 조각투자·개발 펀딩이 이 제도를 타므로 <b>소액 개발자금이 어디로 흐르는가</b>의 대리 지표다.',
           o: ['getFundBrokInfo_V2'],
           p: '프록시 <code>svc=GetFundBrokInfoService_V2</code> · 포털 pk <a href="https://www.data.go.kr/data/15043360/openapi.do" target="_blank" rel="noopener">15043360</a>',
         },
         '가맹점 인테리어 비용(공정위)': {
-          d: '상권 · 프랜차이즈 업소(브랜드별 3.3㎡당·총 인테리어비 범위). 정식명 <b>공정거래위원회_가맹정보_브랜드 가맹점 인테리어 비용정보 제공 서비스</b>. 인테리어비가 큰 업종일수록 임차인이 쉽게 못 나가 <b>공실 위험이 낮고 계약이 길다</b>. 🔑 <code>brandMnno</code> 가 필수라 "브랜드번호를 못 구한다" 고 넘겨 왔는데, <b>응답에 <code>brandNm</code> 이 들어 있다</b>(2026-09-03 실측) — 다리는 처음부터 있었다. 수집기 <code>tools/collect_interior.js</code> → <code>interior.json</code>.',
+          d: '상권 · 프랜차이즈 업소(브랜드별 3.3㎡당·총 인테리어비 범위). 정식명 <b>공정거래위원회_가맹정보_브랜드 가맹점 인테리어 비용정보 제공 서비스</b>. 인테리어비가 큰 업종일수록 임차인이 쉽게 못 나가 <b>공실 위험이 낮고 계약이 길다</b>. 브랜드명 기준으로 연결해 보여 줍니다.',
           o: ['getbrandFrcsBzmnIntrrctinfo'],
           p: '수집기 + 프록시 <code>svc=FftcBrandFrcsIntInfo2_Service</code> · 포털 pk <a href="https://www.data.go.kr/data/15125479/openapi.do" target="_blank" rel="noopener">15125479</a>',
         },
         '의료서비스 이용률(복지부)': {
-          d: '팝업 · 공공데이터 더보기(연령대별 외래 이용률). 정식명 <b>보건복지부_보건·복지현황_의료서비스 이용률</b>. 고령 비중이 큰 지역에서 병원 접근성이 임대 수요를 가르는 이유를 수치로 받친다. 🔴 <b>XML 만 준다</b> — <code>type=json</code> 을 붙이면 INVALID_REQUEST_PARAMETER_ERROR 가 온다(실측). ⚠️ 전국 통계라 필지마다 달라지지 않는다 — 화면에 "전국" 이라고 밝혀 적는다.',
+          d: '팝업 · 공공데이터 더보기(연령대별 외래 이용률). 정식명 <b>보건복지부_보건·복지현황_의료서비스 이용률</b>. 고령 비중이 큰 지역에서 병원 접근성이 임대 수요를 가르는 이유를 수치로 받친다. ⚠️ 전국 단위 통계라 필지마다 달라지지 않습니다 — 화면에 「전국」으로 표시합니다.',
           o: ['callStat12Api'],
           p: '프록시 <code>svc=ODMS_STAT_12</code> · 포털 pk <a href="https://www.data.go.kr/data/15098808/openapi.do" target="_blank" rel="noopener">15098808</a>',
         },
@@ -13440,7 +13445,7 @@
           p: '프록시 <code>svc=AptBasisInfoServiceV5</code> · 포털 pk <a href="https://www.data.go.kr/data/15058453/openapi.do" target="_blank" rel="noopener">15058453</a>',
         },
         '아파트 매매 실거래가(기본판)': {
-          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b>국토교통부_아파트 매매 실거래가 자료</b>.',
+          d: '자료 연동 완료 · 화면 표시는 준비 중입니다. 정식명 <b>국토교통부_아파트 매매 실거래가 자료</b>.',
           o: ['getRTMSDataSvcAptTrade'],
           p: '프록시 <code>svc=RTMSDataSvcAptTrade</code> · 포털 pk <a href="https://www.data.go.kr/data/15126469/openapi.do" target="_blank" rel="noopener">15126469</a>',
         },
@@ -13455,27 +13460,27 @@
           p: '프록시 <code>svc=HsmpWrantRspnsblPdService</code> · 포털 pk <a href="https://www.data.go.kr/data/15057231/openapi.do" target="_blank" rel="noopener">15057231</a>',
         },
         'LH 분양임대공고 상세': {
-          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b>한국토지주택공사_분양임대공고별 상세정보 조회 서비스</b>.',
+          d: '자료 연동 완료 · 화면 표시는 준비 중입니다. 정식명 <b>한국토지주택공사_분양임대공고별 상세정보 조회 서비스</b>.',
           o: ['lhLeaseNoticeDtlInfo1', 'getLeaseNoticeDtlInfo1', 'dsAhflInfo'],
           p: '프록시 <code>svc=lhLeaseNoticeDtlInfo1</code> · 포털 pk <a href="https://www.data.go.kr/data/15057999/openapi.do" target="_blank" rel="noopener">15057999</a>',
         },
         'LH 분양임대공고문': {
-          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b>한국토지주택공사_분양임대공고문 조회 서비스</b>.',
+          d: '자료 연동 완료 · 화면 표시는 준비 중입니다. 정식명 <b>한국토지주택공사_분양임대공고문 조회 서비스</b>.',
           o: ['lhLeaseNoticeInfo1', 'selectWrtancInfo'],
           p: '프록시 <code>svc=lhLeaseNoticeInfo1</code> · 포털 pk <a href="https://www.data.go.kr/data/15058530/openapi.do" target="_blank" rel="noopener">15058530</a>',
         },
         'LH 임대주택단지': {
-          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b>한국토지주택공사_임대주택단지 조회 서비스</b>.',
+          d: '자료 연동 완료 · 화면 표시는 준비 중입니다. 정식명 <b>한국토지주택공사_임대주택단지 조회 서비스</b>.',
           o: ['lhLeaseInfo1'],
           p: '프록시 <code>svc=lhLeaseInfo1</code> · 포털 pk <a href="https://www.data.go.kr/data/15059475/openapi.do" target="_blank" rel="noopener">15059475</a>',
         },
         'CCTV 도로날씨': {
-          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b>기상청_CCTV 기반 도로날씨정보 조회서비스</b>.',
+          d: '자료 연동 완료 · 화면 표시는 준비 중입니다. 정식명 <b>기상청_CCTV 기반 도로날씨정보 조회서비스</b>.',
           o: ['getCctvStnRoadWthr', 'getStdNodeLinkRoadWw'],
           p: '프록시 <code>svc=RoadWthrInfoService</code> · 포털 pk <a href="https://www.data.go.kr/data/15057966/openapi.do" target="_blank" rel="noopener">15057966</a>',
         },
         '공항 출국장 혼잡도': {
-          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b>인천국제공항공사_출국장 혼잡도 조회</b>.',
+          d: '자료 연동 완료 · 화면 표시는 준비 중입니다. 정식명 <b>인천국제공항공사_출국장 혼잡도 조회</b>.',
           o: ['getDepartureCongestion'],
           p: '프록시 <code>svc=statusOfDepartureCongestion</code> · 포털 pk <a href="https://www.data.go.kr/data/15148225/openapi.do" target="_blank" rel="noopener">15148225</a>',
         },
@@ -13485,7 +13490,7 @@
           p: '프록시 <code>svc=WthrWrnInfoService</code> · 포털 pk <a href="https://www.data.go.kr/data/15000415/openapi.do" target="_blank" rel="noopener">15000415</a>',
         },
         '데이터 제공표준(행안부)': {
-          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b>행정안전부_공공데이터 제공표준 조회 서비스</b>.',
+          d: '자료 연동 완료 · 화면 표시는 준비 중입니다. 정식명 <b>행정안전부_공공데이터 제공표준 조회 서비스</b>.',
           o: ['retrievePrvdStdInfo', 'retrievePrvdStdList'],
           p: '프록시 <code>svc=prvdstd20</code> · 포털 pk <a href="https://www.data.go.kr/data/15156266/openapi.do" target="_blank" rel="noopener">15156266</a>',
         },
@@ -13495,7 +13500,7 @@
           p: '프록시 <code>svc=mojmabyun</code> · 포털 pk <a href="https://www.data.go.kr/data/15121954/openapi.do" target="_blank" rel="noopener">15121954</a>',
         },
         '명산 등산로': {
-          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b>산림청_명산등산로_GW</b>.',
+          d: '자료 연동 완료 · 화면 표시는 준비 중입니다. 정식명 <b>산림청_명산등산로_GW</b>.',
           o: ['gdTrailInfoImgOpenAPI', 'gdTrailInfoOpenAPI'],
           p: '프록시 <code>svc=cultureInfoService</code> · 포털 pk <a href="https://www.data.go.kr/data/15158915/openapi.do" target="_blank" rel="noopener">15158915</a>',
         },
@@ -13545,7 +13550,7 @@
           p: '프록시 <code>svc=GetCGDiscInfoService</code> · 포털 pk <a href="https://www.data.go.kr/data/15151165/openapi.do" target="_blank" rel="noopener">15151165</a>',
         },
         '기업집단 내부지분(공정위)': {
-          d: '프록시 연결 — 회사→기업집단코드 매핑에 필요한 "지정된 대규모기업집단 조회"가 별개 신규 pk(15091886)라 미신청. 정식명 <b>공정거래위원회_기업집단포털_특수관계인 내부지분 현황 정보 조회</b>.',
+          d: '자료 연동 완료 · 화면 표시는 준비 중입니다. 기업집단 코드 연결에 필요한 자료가 더 있어야 합니다. 정식명 <b>공정거래위원회_기업집단포털_특수관계인 내부지분 현황 정보 조회</b>.',
           o: ['innerQotaEqltrmCmprList', 'innerQotaEqltrmCmprUnityListApi', 'innerQotaEqltrmCmprAssetsListApi', 'appnGroupSttusList', 'innerQotaEqltrmCmprUnityList', 'publicYmList'],
           p: '프록시 <code>svc=innerQotaEqltrmCmprList</code> · 포털 pk <a href="https://www.data.go.kr/data/15093663/openapi.do" target="_blank" rel="noopener">15093663</a>',
         },
@@ -13560,7 +13565,7 @@
           p: '프록시 <code>svc=GetStockSecuritiesInfoService</code> · 포털 pk <a href="https://www.data.go.kr/data/15094808/openapi.do" target="_blank" rel="noopener">15094808</a>',
         },
         '주식정보 서비스(예탁결제원)': {
-          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b>한국예탁결제원_주식정보서비스_GW</b>.',
+          d: '자료 연동 완료 · 화면 표시는 준비 중입니다. 정식명 <b>한국예탁결제원_주식정보서비스_GW</b>.',
           o: ['getKDRSecnInfo', 'getVctfDivRankInfo', 'getTotIssuStkQty', 'getKDRIssuLmtDetailsN1', 'getSecSetlCostStatN1', 'getStkIsinByNmN1'],
           p: '프록시 <code>svc=StockSvc</code> · 포털 pk <a href="https://www.data.go.kr/data/15157413/openapi.do" target="_blank" rel="noopener">15157413</a>',
         },
@@ -13575,42 +13580,42 @@
           p: '프록시 <code>svc=OrderPlanSttusService</code> · 포털 pk <a href="https://www.data.go.kr/data/15129462/openapi.do" target="_blank" rel="noopener">15129462</a>',
         },
         '바다갈라짐 체험지수': {
-          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b>해양수산부 국립해양조사원_바다갈라짐 체험지수 조회</b>.',
+          d: '자료 연동 완료 · 화면 표시는 준비 중입니다. 정식명 <b>해양수산부 국립해양조사원_바다갈라짐 체험지수 조회</b>.',
           o: ['getFcstSeaSplitApi'],
           p: '프록시 <code>svc=GetFcstSeaSplitApiServicev2</code> · 포털 pk <a href="https://www.data.go.kr/data/15142485/openapi.do" target="_blank" rel="noopener">15142485</a>',
         },
         '바다여행지수': {
-          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b>해양수산부 국립해양조사원_바다여행지수 조회</b>.',
+          d: '자료 연동 완료 · 화면 표시는 준비 중입니다. 정식명 <b>해양수산부 국립해양조사원_바다여행지수 조회</b>.',
           o: ['getFcstSeaTripApi'],
           p: '프록시 <code>svc=GetFcstSeaTripApiServicev2</code> · 포털 pk <a href="https://www.data.go.kr/data/15142491/openapi.do" target="_blank" rel="noopener">15142491</a>',
         },
         '분실물 정보(경찰청)': {
-          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b>경찰청_분실물정보 조회 서비스</b>.',
+          d: '자료 연동 완료 · 화면 표시는 준비 중입니다. 정식명 <b>경찰청_분실물정보 조회 서비스</b>.',
           o: ['getLostGoodsInfoAccToClAreaPd', 'getLostGoodsInfoAccTpNmCstdyPlace', 'getLostGoodsDetailInfo'],
           p: '프록시 <code>svc=LostGoodsInfoInqireService</code> · 포털 pk <a href="https://www.data.go.kr/data/15000799/openapi.do" target="_blank" rel="noopener">15000799</a>',
         },
         '습득물 정보(경찰청)': {
-          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b>경찰청_습득물정보 조회 서비스</b>.',
+          d: '자료 연동 완료 · 화면 표시는 준비 중입니다. 정식명 <b>경찰청_습득물정보 조회 서비스</b>.',
           o: ['getLosfundInfoAccToClAreaPd', 'getLosfundInfoAccTpNmCstdyPlace', 'getLosfundDetailInfo'],
           p: '프록시 <code>svc=LosfundInfoInqireService</code> · 포털 pk <a href="https://www.data.go.kr/data/15058696/openapi.do" target="_blank" rel="noopener">15058696</a>',
         },
         '포락지 관리정보(해수부)': {
-          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b>해양수산부_포락지관리정보</b>.',
+          d: '자료 연동 완료 · 화면 표시는 준비 중입니다. 정식명 <b>해양수산부_포락지관리정보</b>.',
           o: ['getSubmergedLandsList2.0', 'getSubmergedLandsAreaList2.0', 'getSubmergedLandsAreaExtentList2.0', 'getSubmergedLandsExaminationAreaExtentList2.0', 'getSubmergedLandsManagementNumberList2.0', 'getSubmergedLandsLotNumberList2.0'],
           p: '프록시 <code>svc=submergedLandsInfoService2.0</code> · 포털 pk <a href="https://www.data.go.kr/data/3056339/openapi.do" target="_blank" rel="noopener">3056339</a>',
         },
         '포털기관 습득물(경찰청)': {
-          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b>경찰청_포털기관 습득물정보 조회 서비스</b>.',
+          d: '자료 연동 완료 · 화면 표시는 준비 중입니다. 정식명 <b>경찰청_포털기관 습득물정보 조회 서비스</b>.',
           o: ['getPtLosfundInfoAccToClAreaPd', 'getPtLosfundInfoAccTpNmCstdyPlace', 'getPtLosfundDetailInfo', 'getPtLosfundInfoAccToLc'],
           p: '프록시 <code>svc=LosPtfundInfoInqireService</code> · 포털 pk <a href="https://www.data.go.kr/data/15057670/openapi.do" target="_blank" rel="noopener">15057670</a>',
         },
         '핸드폰 찾기(경찰청)': {
-          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b>경찰청_핸드폰 찾기 정보 조회 서비스</b>.',
+          d: '자료 연동 완료 · 화면 표시는 준비 중입니다. 정식명 <b>경찰청_핸드폰 찾기 정보 조회 서비스</b>.',
           o: ['getMoblphonAcctoKindAreaPeriodInfo', 'getMoblphonDetailInfo'],
           p: '프록시 <code>svc=SearchMoblphonInfoInqireService</code> · 포털 pk <a href="https://www.data.go.kr/data/15000442/openapi.do" target="_blank" rel="noopener">15000442</a>',
         },
         '공공도서관 소장도서': {
-          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b>서울특별시교육청 도서관 소장도서 정보</b>. 🔴 미활용 목록엔 &quot;국립중앙도서관&quot; 으로 적혀 있었지만 <b>활용가이드 폴더에 있던 것은 서울시교육청 것</b>이고 그쪽이 열린다. ⚠️ 응답이 <b>22.7초</b> 걸린다(실측) — 팝업에서 동기로 기다리게 만들지 마라.',
+          d: '자료 연동 완료 · 화면 표시는 준비 중입니다. 정식명 <b>서울특별시교육청 도서관 소장도서 정보</b>. 응답이 약 22초로 느려 화면 표시는 준비 중입니다.',
           o: ['getList'],
           p: '프록시 <code>svc=lib</code> · 포털 pk <a href="https://www.data.go.kr/data/3036346/openapi.do" target="_blank" rel="noopener">3036346</a>',
         },
@@ -13619,17 +13624,17 @@
           p: '수집기 <code>tools/collect_goodprice.js</code> → <code>goodprice.json</code> · 포털 pk <a href="https://www.data.go.kr/data/3045247/fileData.do" target="_blank" rel="noopener">3045247</a>',
         },
         '브랜드 가맹점·직영점(공정위)': {
-          d: '팝업 · 이 건물 업소(프랜차이즈 가맹 표시). 정식명 <b>공정거래위원회_가맹정보_브랜드별,업종별 직영점 및 가맹점 분포 현황 제공 서비스</b>. 2026-09-01 활용신청 완료(그 전에는 미신청이었다).',
+          d: '팝업 · 이 건물 업소(프랜차이즈 가맹 표시). 정식명 <b>공정거래위원회_가맹정보_브랜드별,업종별 직영점 및 가맹점 분포 현황 제공 서비스</b>.',
           o: ['getBrandIndutyFrcsStats', 'getBrandIndutyDropStats'],
           p: '프록시 <code>svc=FftcBrandIndutyDropFrcsStatsService</code> · 포털 pk <a href="https://www.data.go.kr/data/15110284/openapi.do" target="_blank" rel="noopener">15110284</a>',
         },
         '서울교통공사 최단경로': {
-          d: '팝업 · 공공데이터 더보기(가까운 역 → 주요 역 소요시간·요금). 정식명 <b>서울교통공사_최단경로이동정보</b>. ⚠️ 옛 <b>HTTP_ERROR(04)</b> 는 장애가 아니라 <b>필수 파라미터 누락</b>이었다(<code>dptreStn·arvlStn·searchDt</code>). 실측: 서울역→강남 15,074m·1,770초·1,650원.',
+          d: '팝업 · 공공데이터 더보기(가까운 역 → 주요 역 소요시간·요금). 정식명 <b>서울교통공사_최단경로이동정보</b>. ⚠️ 옛 <b>HTTP_ERROR(04)</b> 는 장애가 아니라 <b>필수 파라미터 누락</b>이었다(<code>dptreStn·arvlStn·searchDt</code>). 예: 서울역→강남 15,074m·1,770초·1,650원.',
           o: ['getShtrmPath2'],
           p: '프록시 <code>svc=path2</code> · 포털 pk <a href="https://www.data.go.kr/data/15143842/openapi.do" target="_blank" rel="noopener">15143842</a>',
         },
         '청약 당첨자 정보(청약홈)': {
-          d: '프록시 연결 — 화면 연결은 아직. 정식명 <b>한국부동산원_청약홈 청약 신청·당첨자 정보 조회 서비스</b>. 🔴 베이스가 <b>api.odcloud.kr</b> 다 — apis.data.go.kr 로 부르면 NO_OPENAPI_SERVICE_ERROR 다(실측). 페이징도 <code>page/perPage</code> 다. 실측: 서울 연령대별 당첨자 통계 matchCount 868.',
+          d: '자료 연동 완료 · 화면 표시는 준비 중입니다. 정식명 <b>한국부동산원_청약홈 청약 신청·당첨자 정보 조회 서비스</b>. 예: 서울 연령대별 당첨자 통계 868건.',
           o: ['getAPTPrzwnerAreaStat', 'getAPTPrzwnerAgeStat', 'getAPTReqstAreaStat', 'getAPTCmpetrtAreaStat'],
           p: '프록시 <code>svc=v1</code> · 포털 pk <a href="https://www.data.go.kr/data/15110812/openapi.do" target="_blank" rel="noopener">15110812</a>',
         },
@@ -13661,7 +13666,7 @@
         },
         '건축HUB 주택인허가정보': {
           d: '팝업 · 주택 사업 인허가(단지명·사업주체·사업승인일)와 <b>부대복리시설</b>'
-            + '(지상/지하 주차 비율 · 놀이터 · 조경). 실측 2026-09-02 대치동 316(은마) 지상 2,700면 · 지하 0면.',
+            + '(지상/지하 주차 비율 · 놀이터 · 조경). 예: 대치동 316(은마) 지상 2,700면 · 지하 0면.',
           o: ['getHpActOulnInfo', 'getHpMgmCoopTpOulnInfo', 'getHpMgmCoopSbsdWlfarFcInfo'],
           p: '프록시 <code>svc=HsPmsHubService</code> · 포털 pk <a href="https://www.data.go.kr/data/15136560/openapi.do" target="_blank" rel="noopener">15136560</a>',
         },
@@ -13683,7 +13688,7 @@
           p: 'serviceKey · numOfRows · pageNo (+옵션 type/facilNm/facilAddr 지역 필터). sfGrade 안전등급 · mgmBldrgstPk 대장PK 필드 포함'
         },
       };
-      const UA_DEFAULT_DETAIL = '제공 항목 상세는 아직 미측정 — 연동 시 data.go.kr 상세페이지의 상세기능을 확인할 것(경로 추측 금지 규칙).';
+      const UA_DEFAULT_DETAIL = '제공 항목 상세는 공공데이터포털 상세페이지에서 확인하실 수 있습니다.';
       
       
       
@@ -18794,7 +18799,7 @@
           const L = st.landFluct;
           rows2.push('<div style="font-size:11px;margin-top:3px;">지가변동률 마이크로데이터 '
             + (L.total ? `<b>${L.total.toLocaleString('ko-KR')}건</b>`
-              : '<span style="color:var(--c-muted);">제공기관 데이터 0건 (2026-09-03 실측)</span>') + '</div>');
+              : '<span style="color:var(--c-muted);">제공기관 자료 없음 (2026-09-03 확인)</span>') + '</div>');
         }
         if (st.mabyun && st.mabyun.length) {
           const names = [...new Set(st.mabyun.map((x) => x.nm).filter(Boolean))];
