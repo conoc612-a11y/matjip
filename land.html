@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=2694651b"></script>
+  <script src="js/auth-guard.js?v=83780ec8"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -36,12 +36,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=2694651b" />
+  <link rel="stylesheet" href="css/buttons.css?v=83780ec8" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=2694651b" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=83780ec8" />
   <style>
     :root {
       --c-primary:#1971c2; --c-primary-soft:#e7f0fb; --c-price:#d9480f;
@@ -1407,7 +1407,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=2694651b"></script>
+  <script src="js/ie-guard.js?v=83780ec8"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1624,22 +1624,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-10 19:06 · 2694651b</span></span>
+          · <span class="build-tag">build 2026-09-10 19:51 · 83780ec8</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=2694651b"></script>
+  <script src="js/joinkey.js?v=83780ec8"></script>
   
-  <script src="js/identity.js?v=2694651b"></script>
-  <script src="js/common.js?v=2694651b"></script>
-  <script src="js/ui-resize.js?v=2694651b"></script>
-  <script src="js/footer-resize.js?v=2694651b"></script>
-  <script src="js/route-line.js?v=2694651b"></script>
-  <script src="js/route-api.js?v=2694651b"></script>
-  <script src="js/footer-stats.js?v=2694651b"></script>
+  <script src="js/identity.js?v=83780ec8"></script>
+  <script src="js/common.js?v=83780ec8"></script>
+  <script src="js/ui-resize.js?v=83780ec8"></script>
+  <script src="js/footer-resize.js?v=83780ec8"></script>
+  <script src="js/route-line.js?v=83780ec8"></script>
+  <script src="js/route-api.js?v=83780ec8"></script>
+  <script src="js/footer-stats.js?v=83780ec8"></script>
   <script>
     
     
@@ -2273,6 +2273,17 @@
                       const k = nokey(x.nm);
                       return k && nameKey && (k.includes(nameKey) || nameKey.includes(k));
                     });
+                  const tag1 = (t) => { const n = doc.getElementsByTagName(t)[0]; return n ? String(n.textContent || '').trim() : ''; };
+                  
+                  
+                  const ec = tag1('resultCode') || tag1('returnReasonCode') || tag1('returnCode');
+                  const em = tag1('resultMsg') || tag1('returnAuthMsg') || tag1('errMsg');
+                  if (ec && ['01', '02', '10', '11', '12', '20', '22', '30', '31', '32', '99'].includes(ec)
+                    || /ERROR|FAIL|오류|실패|초과|승인|파라미터|NOT_|DENIED/i.test(em)) {
+                    parts.push(sec('지방공기업 경영정보',
+                      '<span style="color:var(--muted);">경영정보를 불러오지 못했습니다(잠시 후 다시 눌러보세요).</span>'));
+                    return;
+                  }
                   if (!hit.length) return;
                   const eok = (v) => (Math.abs(v) >= 1e6
                     ? (v / 1e6).toFixed(1) + '조'
@@ -6637,7 +6648,8 @@
         const num = (y) => Number(String(y).replace(/\./g, ''));
         const next = R.filter((r) => num(r.ymd) >= todayN).slice(0, 3);
         if (!next.length) return '';
-        return next.map((r) => `${r.no}회 ${r.ymd} ${fmtAmt(r.low / 1e4)}`).join(' → ')
+        
+        return next.map((r) => `${r.no}회 ${r.ymd} ${fmtAmtExact(r.low / 1e4)}`).join(' → ')
           + ' (법원 예고 일정)';
       }
 
@@ -7077,7 +7089,8 @@
               + ` vs 동 중앙 ${fmtUnit(r.mid)}/㎡ (${r.n}건) — ${r.note}`;
           }
           if (r.tier === 'unit') {
-            return `${head} · 최저 ${fmtAmt(r.mineEok * 10000)} vs 같은 평형(전용 ${fmtArea(r.area)}) 실거래 중앙 ${fmtAmt(r.midEok * 10000)}`
+            
+            return `${head} · 최저 ${fmtAmtExact(r.mineEok * 10000)} vs 같은 평형(전용 ${fmtArea(r.area)}) 실거래 중앙 ${fmtAmt(r.midEok * 10000)}`
               + ` (최근 ${AUC_NEAR_MONTHS}개월 ${r.n}건 · 같은 건물 판정 근거: ${r.why})`;
           }
           if (r.tier === 'bld') {
@@ -7867,7 +7880,12 @@
               rows.sort((a, b) => Number(b.pbctNsq || 0) - Number(a.pbctNsq || 0));
               _obRsltCache.set(mng, rows);
             } else if (o && o.result) {
-              _obRsltCache.set(mng, []);   
+              
+              
+              const oc = String(o.result.resultCode || '');
+              if (oc === '03' || oc === '3' || /NODATA/i.test(String(o.result.resultMsg || ''))) {
+                _obRsltCache.set(mng, []);   
+              }
             }
             cb(rows || []);
           })
@@ -17486,16 +17504,27 @@
             
             
             
+            
+            
+            const hdr = (j && j.response && j.response.header) || {};
+            const hcode = String(hdr.resultCode || hdr.returnCode || '');
+            const hmsg = String(hdr.resultMsg || hdr.returnMsg || '');
+            if (hcode === '03' || hcode === '3' || /NODATA/i.test(hmsg)) { _brCache.set(key, []); cb([]); return; }
+            if (['01', '02', '10', '11', '12', '20', '22', '30', '31', '32', '99'].includes(hcode)) { cb(null); return; }
             const body = dgkBody(j);
             if (!body) { fail(new Error('빈 응답 봉투')); return; }
             const items = body.items;
             const arr = (!items ? [] : Array.isArray(items.item) ? items.item : [items.item]).filter(Boolean);
             const acc2 = acc.concat(arr);
             const total = Number(body.totalCount) || 0;
-            if (total > acc2.length && acc2.length < MAX_ROWS && pno < MAX_PAGES && arr.length === pageSize) {
+            const capped = acc2.length >= MAX_ROWS || pno >= MAX_PAGES;
+            if (total > acc2.length && !capped && arr.length === pageSize) {
               setTimeout(() => page(pno + 1, acc2), 150);
               return;
             }
+            
+            
+            if (total > acc2.length && !capped) { cb(null); return; }
             _brCache.set(key, acc2);
             cb(acc2);
           })
