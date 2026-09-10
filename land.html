@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=a3c743c7"></script>
+  <script src="js/auth-guard.js?v=c9be4ab4"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -36,12 +36,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=a3c743c7" />
+  <link rel="stylesheet" href="css/buttons.css?v=c9be4ab4" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=a3c743c7" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=c9be4ab4" />
   <style>
     :root {
       --c-primary:#1971c2; --c-primary-soft:#e7f0fb; --c-price:#d9480f;
@@ -1407,7 +1407,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=a3c743c7"></script>
+  <script src="js/ie-guard.js?v=c9be4ab4"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1624,22 +1624,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-10 21:27 · a3c743c7</span></span>
+          · <span class="build-tag">build 2026-09-10 21:38 · c9be4ab4</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=a3c743c7"></script>
+  <script src="js/joinkey.js?v=c9be4ab4"></script>
   
-  <script src="js/identity.js?v=a3c743c7"></script>
-  <script src="js/common.js?v=a3c743c7"></script>
-  <script src="js/ui-resize.js?v=a3c743c7"></script>
-  <script src="js/footer-resize.js?v=a3c743c7"></script>
-  <script src="js/route-line.js?v=a3c743c7"></script>
-  <script src="js/route-api.js?v=a3c743c7"></script>
-  <script src="js/footer-stats.js?v=a3c743c7"></script>
+  <script src="js/identity.js?v=c9be4ab4"></script>
+  <script src="js/common.js?v=c9be4ab4"></script>
+  <script src="js/ui-resize.js?v=c9be4ab4"></script>
+  <script src="js/footer-resize.js?v=c9be4ab4"></script>
+  <script src="js/route-line.js?v=c9be4ab4"></script>
+  <script src="js/route-api.js?v=c9be4ab4"></script>
+  <script src="js/footer-stats.js?v=c9be4ab4"></script>
   <script>
     
     
@@ -20106,6 +20106,7 @@
         });
         }, 4000);   
         
+        
         setTimeout(() => {
         try { if (popupEl && !popupEl.isConnected) return; } catch (_e) { return; }
         
@@ -20221,7 +20222,7 @@
             if (n) loadLhSpl(n, (rows) => { if (rows) { st.lhSpl = { n, rows }; render(); } });
           });
         }
-        }, 8000);   
+        }, 2000);   
         
         
         setTimeout(() => {
@@ -20261,7 +20262,7 @@
         if (wantInfo.fund) loadReserveFund(pnu, (st.br && st.br.bldNm) || '', (arr) => {
           if (arr && arr.length) { st.reserve = arr; render(); }
         });
-        }, 12000);   
+        }, 6000);   
         
         const nk = nonresKey(st.parcel && st.parcel.addr, st.parcel && st.parcel.jibun);
         if (nk) {
