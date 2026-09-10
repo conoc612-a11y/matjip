@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=83780ec8"></script>
+  <script src="js/auth-guard.js?v=a549e127"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -36,12 +36,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=83780ec8" />
+  <link rel="stylesheet" href="css/buttons.css?v=a549e127" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=83780ec8" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=a549e127" />
   <style>
     :root {
       --c-primary:#1971c2; --c-primary-soft:#e7f0fb; --c-price:#d9480f;
@@ -1407,7 +1407,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=83780ec8"></script>
+  <script src="js/ie-guard.js?v=a549e127"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1624,22 +1624,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-10 19:51 · 83780ec8</span></span>
+          · <span class="build-tag">build 2026-09-10 20:12 · a549e127</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=83780ec8"></script>
+  <script src="js/joinkey.js?v=a549e127"></script>
   
-  <script src="js/identity.js?v=83780ec8"></script>
-  <script src="js/common.js?v=83780ec8"></script>
-  <script src="js/ui-resize.js?v=83780ec8"></script>
-  <script src="js/footer-resize.js?v=83780ec8"></script>
-  <script src="js/route-line.js?v=83780ec8"></script>
-  <script src="js/route-api.js?v=83780ec8"></script>
-  <script src="js/footer-stats.js?v=83780ec8"></script>
+  <script src="js/identity.js?v=a549e127"></script>
+  <script src="js/common.js?v=a549e127"></script>
+  <script src="js/ui-resize.js?v=a549e127"></script>
+  <script src="js/footer-resize.js?v=a549e127"></script>
+  <script src="js/route-line.js?v=a549e127"></script>
+  <script src="js/route-api.js?v=a549e127"></script>
+  <script src="js/footer-stats.js?v=a549e127"></script>
   <script>
     
     
@@ -14024,6 +14024,10 @@
     let clickMarker = null;
     
     
+    
+    let _clickGen = 0;
+    
+    
     const clickPinIcon = L.divIcon({
       className: '',
       html: '<div style="width:18px;height:18px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);'
@@ -20609,6 +20613,7 @@
       if (_hovTip) { map.removeLayer(_hovTip); _hovTip = null; _hovKey = ''; }
       if (clickMarker) map.removeLayer(clickMarker);
       clickMarker = L.marker([lat, lng]).addTo(map).bindPopup('정보 불러오는 중…').openPopup();
+      const myGen = ++_clickGen;
       
       clickMarker.on('click', () => {
         if (!clickMarker) return;
@@ -20622,6 +20627,7 @@
       if (landMode === 'nearby' && nearbyLastQ) runNearby(nearbyLastQ);
       
       const _stuckGuard = setTimeout(() => {
+        if (myGen !== _clickGen) return;   
         const pel = clickMarker && clickMarker.getPopup() && clickMarker.getPopup().getElement();
         if (!pel || !/불러오는 중/.test(pel.textContent)) return;
         clickMarker.setPopupContent(`<div class="pc pc-full"><div class="pc-head">위치 정보</div><div class="pc-body"><div>주소를 가져오지 못했어요</div></div><div class="pc-actions">${rtBtns}</div></div>`);
@@ -20674,7 +20680,8 @@
         }
         const buildClickPopup = (addr, bldName, jibun) => {
           
-          if (!clickMarker || clickMarker._dismissed) return;
+          
+          if (!clickMarker || clickMarker._dismissed || myGen !== _clickGen) return;
           const bldHtml = bldName ? `<div style="font-weight:700;font-size:15px;margin-bottom:2px;">${esc(bldName)}</div>` : '';
           
           
@@ -20792,7 +20799,7 @@
             refreshSaveBtn();
             saveBtn.onclick = () => { togglePropSave(clickPropRec()); refreshSaveBtn(); if (landMode === 'favorites') render(); };
           }
-          fillLandInfo(_pel, () => clickMarker && clickMarker.getPopup(), lat, lng, (s) => { clickPropInfo = s; refreshSaveBtn(); }, false, jibun);
+          fillLandInfo(_pel, () => clickMarker && clickMarker.getPopup(), lat, lng, (s) => { if (myGen !== _clickGen) return; clickPropInfo = s; refreshSaveBtn(); }, false, jibun);
           
           
           
@@ -20808,6 +20815,7 @@
           
           const poiBtn = _pel && _pel.querySelector('.poi-btn');
           const renderPoi = (list, auto) => {
+            if (myGen !== _clickGen) return;   
             const box = _pel && _pel.querySelector('.poi-box');
             if (!box) return;
             box.innerHTML = (!list || !list.length)
