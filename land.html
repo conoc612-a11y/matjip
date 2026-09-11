@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=ab82dd67"></script>
+  <script src="js/auth-guard.js?v=7f6be787"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -36,12 +36,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=ab82dd67" />
+  <link rel="stylesheet" href="css/buttons.css?v=7f6be787" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=ab82dd67" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=7f6be787" />
   <style>
     :root {
       --c-primary:#1971c2; --c-primary-soft:#e7f0fb; --c-price:#d9480f;
@@ -1437,7 +1437,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=ab82dd67"></script>
+  <script src="js/ie-guard.js?v=7f6be787"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1488,6 +1488,7 @@
             <a href="https://www.courtauction.go.kr/pgj/index.on?pgjId=151F01&w2xPath=/pgj/ui/pgj100/PGJ151F00.xml" target="_blank" rel="noopener" title="courtauction.go.kr 물건상세검색 — 주소·지역으로 검색">물건검색</a>
           </div>
           <button id="ap-fav" class="ap-fav" title="즐겨찾기한 물건만 보기">☆즐겨찾기</button>
+          <button id="ap-push" class="ap-fav" title="관심물건 변동 푸시 알림 (S3 발송 준비 중)">알림 받기</button>
           
 
 
@@ -1654,22 +1655,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-11 19:49 · ab82dd67</span></span>
+          · <span class="build-tag">build 2026-09-11 21:49 · 7f6be787</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=ab82dd67"></script>
+  <script src="js/joinkey.js?v=7f6be787"></script>
   
-  <script src="js/identity.js?v=ab82dd67"></script>
-  <script src="js/common.js?v=ab82dd67"></script>
-  <script src="js/ui-resize.js?v=ab82dd67"></script>
-  <script src="js/footer-resize.js?v=ab82dd67"></script>
-  <script src="js/route-line.js?v=ab82dd67"></script>
-  <script src="js/route-api.js?v=ab82dd67"></script>
-  <script src="js/footer-stats.js?v=ab82dd67"></script>
+  <script src="js/identity.js?v=7f6be787"></script>
+  <script src="js/common.js?v=7f6be787"></script>
+  <script src="js/ui-resize.js?v=7f6be787"></script>
+  <script src="js/footer-resize.js?v=7f6be787"></script>
+  <script src="js/route-line.js?v=7f6be787"></script>
+  <script src="js/route-api.js?v=7f6be787"></script>
+  <script src="js/footer-stats.js?v=7f6be787"></script>
   <script>
     
     
@@ -8708,6 +8709,70 @@
         } catch (e) { return false; }
       }
       window.__aucFavPull = aucFavPull;   
+      
+      
+      
+      
+      
+      const VAPID_PUBLIC = 'BLM7Yffw8PDevKKLuHVutmKFIA_jZXFKe2ekurkk7NyA37ZockCgCEoEorgFsteq5C_7xWO1sx_QE-1yPxv1Lro';
+      function vapidKey() {
+        const s = VAPID_PUBLIC.replace(/-/g, '+').replace(/_/g, '/');
+        const raw = atob(s + '='.repeat((4 - s.length % 4) % 4));
+        const out = new Uint8Array(raw.length);
+        for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+        return out;
+      }
+      async function aucPushReg() {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
+        try { return await navigator.serviceWorker.register('sw.js'); }
+        catch (e) { return null; }
+      }
+      async function aucPushState() {
+        
+        if (!('serviceWorker' in navigator) || !('PushManager' in window) || !window.Notification) return 'unsupported';
+        if (Notification.permission === 'denied') return 'denied';
+        try {
+          const reg = await navigator.serviceWorker.ready;
+          const sub = await reg.pushManager.getSubscription();
+          return sub ? 'on' : 'off';
+        } catch (e) { return 'off'; }
+      }
+      async function aucPushPaint() {
+        const b = $('ap-push');
+        if (!b) return;
+        const st = await aucPushState();
+        b.classList.toggle('on', st === 'on');
+        b.textContent = st === 'on' ? '알림 켜짐' : st === 'denied' ? '알림 차단됨' : '알림 받기';
+      }
+      async function aucPushToggle() {
+        try {
+          const a = await aucFavWho();
+          if (!a) { try { toast('로그인 후 쓸 수 있어요.'); } catch (e) {} return; }
+          const reg = await aucPushReg();
+          if (!reg) { try { toast('이 브라우저는 푸시를 지원하지 않아요.'); } catch (e) {} return; }
+          const ready = await navigator.serviceWorker.ready;
+          const cur = await ready.pushManager.getSubscription();
+          if (cur) {
+            await cur.unsubscribe();
+            const del = await a.sb.from('push_subs').delete().eq('user_id', a.uid).eq('endpoint', cur.endpoint);
+            if (del.error) throw del.error;
+          } else {
+            if (Notification.permission === 'default') {
+              if (await Notification.requestPermission() !== 'granted') { aucPushPaint(); return; }
+            }
+            if (Notification.permission !== 'granted') { try { toast('브라우저 설정에서 알림을 허용해 주세요.'); } catch (e) {} return; }
+            const sub = await ready.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: vapidKey() });
+            const j = sub.toJSON();
+            const up = await a.sb.from('push_subs').upsert(
+              { user_id: a.uid, endpoint: sub.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth },
+              { onConflict: 'user_id,endpoint' });
+            if (up.error) throw up.error;
+          }
+        } catch (e) { try { toast('푸시 설정에 실패했어요. 다시 시도해 주세요.'); } catch (_) {} }
+        
+        try { await aucPushPaint(); } catch (e) {}
+      }
+      window.__aucPushPaint = aucPushPaint;   
       function auctionFavToggle(key) {
         const list = auctionFavLoad();
         const i = list.indexOf(key);
@@ -9202,7 +9267,7 @@
         
         
         
-        
+        if (label === '감정평가서') return aucAeeDocUrl(det);
         return '';
       }
       
@@ -9653,6 +9718,8 @@
         auctionFitFiltered(auctionBuild());   
       };
       $('ap-close').onclick = () => { auctionPanel.hidden = true; };
+      
+      if ($('ap-push')) $('ap-push').onclick = () => aucPushToggle();
       
       
       
@@ -22511,6 +22578,8 @@
             .catch(() => { });
         }
       }
+      
+      if (window.__aucPushPaint) { try { window.__aucPushPaint(); } catch (e) {} }
       loadFooterStats('land');
       render();
       renderRecent();
