@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=c9be4ab4"></script>
+  <script src="js/auth-guard.js?v=69d2f946"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -36,12 +36,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=c9be4ab4" />
+  <link rel="stylesheet" href="css/buttons.css?v=69d2f946" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=c9be4ab4" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=69d2f946" />
   <style>
     :root {
       --c-primary:#1971c2; --c-primary-soft:#e7f0fb; --c-price:#d9480f;
@@ -1407,7 +1407,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=c9be4ab4"></script>
+  <script src="js/ie-guard.js?v=69d2f946"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1624,22 +1624,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-10 21:38 · c9be4ab4</span></span>
+          · <span class="build-tag">build 2026-09-11 10:19 · 69d2f946</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=c9be4ab4"></script>
+  <script src="js/joinkey.js?v=69d2f946"></script>
   
-  <script src="js/identity.js?v=c9be4ab4"></script>
-  <script src="js/common.js?v=c9be4ab4"></script>
-  <script src="js/ui-resize.js?v=c9be4ab4"></script>
-  <script src="js/footer-resize.js?v=c9be4ab4"></script>
-  <script src="js/route-line.js?v=c9be4ab4"></script>
-  <script src="js/route-api.js?v=c9be4ab4"></script>
-  <script src="js/footer-stats.js?v=c9be4ab4"></script>
+  <script src="js/identity.js?v=69d2f946"></script>
+  <script src="js/common.js?v=69d2f946"></script>
+  <script src="js/ui-resize.js?v=69d2f946"></script>
+  <script src="js/footer-resize.js?v=69d2f946"></script>
+  <script src="js/route-line.js?v=69d2f946"></script>
+  <script src="js/route-api.js?v=69d2f946"></script>
+  <script src="js/footer-stats.js?v=69d2f946"></script>
   <script>
     
     
@@ -17737,10 +17737,38 @@
       if (r.top - dy < topLimit) dy = r.top - topLimit;
       if (r.right > m.right - POPUP_PAD) dx = r.right - (m.right - POPUP_PAD);
       if (r.left - dx < m.left + POPUP_PAD) dx = r.left - (m.left + POPUP_PAD);
-      if (!dx && !dy) return;
       const off = L.point(p.options.offset || [0, 0]);
-      p.options.offset = L.point(off.x - dx, off.y - dy);
-      try { p._updatePosition(); } catch (e) {}
+      if (!dx && !dy) {
+        
+        
+        if ((off.x || off.y)
+          && r.top > m.top + 40 && r.bottom < m.bottom - 40
+          && r.left > m.left + 40 && r.right < m.right - 40) {
+          p.options.offset = L.point(0, 0);
+          try { p._updatePosition(); } catch (e) {}
+          return;
+        }
+      } else {
+        p.options.offset = L.point(off.x - dx, off.y - dy);
+        try { p._updatePosition(); } catch (e) {}
+      }
+      
+      
+      
+      try {
+        const tipC = el.querySelector('.leaflet-popup-tip-container');
+        const ll = p.getLatLng ? p.getLatLng() : null;
+        if (tipC && ll && map) {
+          tipC.style.left = '';
+          const m2 = map.getContainer().getBoundingClientRect();
+          const tr = tipC.getBoundingClientRect();
+          const ax = map.latLngToContainerPoint(ll).x;
+          const tipX = tr.left + tr.width / 2 - m2.left;
+          const half = Math.max(0, el.getBoundingClientRect().width / 2 - 34);
+          const sh = Math.max(-half, Math.min(half, Math.round(ax - tipX)));
+          if (sh) tipC.style.left = `calc(50% + ${sh}px)`;
+        }
+      } catch (e) {}
     }
     function repanPopup(p, precise) {
       if (!p || !p.isOpen || !p.isOpen()) return;
