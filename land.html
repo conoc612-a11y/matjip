@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=16767b43"></script>
+  <script src="js/auth-guard.js?v=b01de046"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -36,12 +36,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=16767b43" />
+  <link rel="stylesheet" href="css/buttons.css?v=b01de046" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=16767b43" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=b01de046" />
   <style>
     :root {
       --c-primary:#1971c2; --c-primary-soft:#e7f0fb; --c-price:#d9480f;
@@ -1421,7 +1421,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=16767b43"></script>
+  <script src="js/ie-guard.js?v=b01de046"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1638,22 +1638,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-11 16:24 · 16767b43</span></span>
+          · <span class="build-tag">build 2026-09-11 16:37 · b01de046</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=16767b43"></script>
+  <script src="js/joinkey.js?v=b01de046"></script>
   
-  <script src="js/identity.js?v=16767b43"></script>
-  <script src="js/common.js?v=16767b43"></script>
-  <script src="js/ui-resize.js?v=16767b43"></script>
-  <script src="js/footer-resize.js?v=16767b43"></script>
-  <script src="js/route-line.js?v=16767b43"></script>
-  <script src="js/route-api.js?v=16767b43"></script>
-  <script src="js/footer-stats.js?v=16767b43"></script>
+  <script src="js/identity.js?v=b01de046"></script>
+  <script src="js/common.js?v=b01de046"></script>
+  <script src="js/ui-resize.js?v=b01de046"></script>
+  <script src="js/footer-resize.js?v=b01de046"></script>
+  <script src="js/route-line.js?v=b01de046"></script>
+  <script src="js/route-api.js?v=b01de046"></script>
+  <script src="js/footer-stats.js?v=b01de046"></script>
   <script>
     
     
@@ -7126,6 +7126,23 @@
           + `<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">`
           + `입찰가는 최저가에서 시작한 것입니다 — 전략에 맞게 고치십시오. 보증금은 최저가의 10% 이상을 준비하십시오.</div>`;
       }
+      
+      
+      
+      
+      function aucGuide(d) {
+        const a = aucApprEok(d), l = aucLowEok(d);
+        const pct = (a > 0 && l > 0) ? ` (이 물건은 감정가의 ${Math.round(l / a * 100)}%입니다)` : '';
+        const steps = [
+          ['1. 최저가 확인', `감정가는 법원 정가, 최저가는 이번 회차 하한입니다. 최저가보다 낮게 쓰면 무효입니다${pct}.`],
+          ['2. 권리분석', `말소기준권리보다 전입이 빠르면 대항력 있음(인수)입니다. 위 '권리분석' 행의 판정을 보십시오.`],
+          ['3. 인수 vs 배당', `대항력 보증금은 낙찰자가 떠안습니다. 위 '낙찰 시뮬레이터'의 인수액을 보십시오.`],
+          ['4. 총액', `입찰가+취득세+인수액이 진짜 나가는 돈입니다. 합계는 위 표에 있습니다.`],
+          ['5. 입찰', `보증금(최저가의 10% 이상)을 준비해 기일에 입찰하십시오. 위 '입찰표 사전작성'을 복사하십시오.`],
+        ];
+        return `<div class="auc-doc-h">경매 5분 가이드</div>`
+          + steps.map(([k, v]) => `<div class="auc-doc-p"><span>${k}</span><div>${v}</div></div>`).join('');
+      }
       function aucInvestHtml(d, sumHtml, rowsHtml, goBtns) {
         const det = d.detail || {};
         
@@ -7157,6 +7174,7 @@
             : '')
           + aucDivdSim(d)
           + aucBidSheet(d)
+          + aucGuide(d)
           + (nd ? `<div class="auc-doc-h">고지사항 전문</div><div class="apd-note">${esc(nd)}</div>` : '')
           + `<div class="auc-doc-h">원문·전체</div>${goBtns}`
           + `<div style="font-size:11px;color:var(--c-muted);margin-top:4px;">`
