@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=a9be7718"></script>
+  <script src="js/auth-guard.js?v=6c68ae88"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -36,12 +36,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=a9be7718" />
+  <link rel="stylesheet" href="css/buttons.css?v=6c68ae88" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=a9be7718" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=6c68ae88" />
   <style>
     :root {
       --c-primary:#1971c2; --c-primary-soft:#e7f0fb; --c-price:#d9480f;
@@ -1421,7 +1421,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=a9be7718"></script>
+  <script src="js/ie-guard.js?v=6c68ae88"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1638,22 +1638,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-11 11:24 · a9be7718</span></span>
+          · <span class="build-tag">build 2026-09-11 16:09 · 6c68ae88</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=a9be7718"></script>
+  <script src="js/joinkey.js?v=6c68ae88"></script>
   
-  <script src="js/identity.js?v=a9be7718"></script>
-  <script src="js/common.js?v=a9be7718"></script>
-  <script src="js/ui-resize.js?v=a9be7718"></script>
-  <script src="js/footer-resize.js?v=a9be7718"></script>
-  <script src="js/route-line.js?v=a9be7718"></script>
-  <script src="js/route-api.js?v=a9be7718"></script>
-  <script src="js/footer-stats.js?v=a9be7718"></script>
+  <script src="js/identity.js?v=6c68ae88"></script>
+  <script src="js/common.js?v=6c68ae88"></script>
+  <script src="js/ui-resize.js?v=6c68ae88"></script>
+  <script src="js/footer-resize.js?v=6c68ae88"></script>
+  <script src="js/route-line.js?v=6c68ae88"></script>
+  <script src="js/route-api.js?v=6c68ae88"></script>
+  <script src="js/footer-stats.js?v=6c68ae88"></script>
   <script>
     
     
@@ -6734,8 +6734,8 @@
       
       
       
-      function aucCostRange(d) {
-        const lowEok = aucLowEok(d);
+      function aucCostRange(d, eokIn) {
+        const lowEok = eokIn || aucLowEok(d);
         if (!lowEok) return null;
         const man = lowEok * 10000;                 
         const use = String((d && d.use) || '');
@@ -7034,6 +7034,70 @@
       
       
       
+      
+      
+      
+      
+      
+      
+      function aucDivdSim(d) {
+        const lowEok = aucLowEok(d);
+        if (!lowEok) return '';
+        const apprEok = aucApprEok(d);
+        const r = aucRights(d);
+        const les = (d.detail && d.detail.curst && d.detail.curst.dlt_ordTsLserLtn) || [];
+        const norm = (v) => { const m = String(v || '').match(/(\d{4})[.\-](\d{1,2})[.\-](\d{1,2})/); return m ? `${m[1]}.${String(m[2]).padStart(2, '0')}.${String(m[3]).padStart(2, '0')}` : ''; };
+        let assumeMan = 0, assumeUnknown = 0, assumeKnown = false;
+        if (r && !r.conflict && !r.noTenant) {
+          les.forEach((L) => {
+            const mv = norm(L.mvinDtlCtt);
+            if (mv && mv < r.senior) {
+              assumeKnown = true;
+              const v = Number(String((L && L.lesDposDts) || '').replace(/[^\d]/g, '')) / 1e4;
+              if (v > 0) assumeMan += v; else assumeUnknown++;
+            }
+          });
+        }
+        const mg = aucMgmtInfo(d);
+        const mgmtMan = (mg && mg.amt && mg.pub) ? mg.amt / 1e4 : 0;
+        
+        if (!assumeKnown && !assumeUnknown && !mgmtMan && !(r && (r.assume || r.conflict))) return '';
+        const scens = [{ t: '최저가', eok: lowEok }];
+        if (apprEok > 0 && Math.abs(apprEok - lowEok) > 1e-9) scens.push({ t: '감정가', eok: apprEok });
+        
+        const insParts = [];
+        if (!r) insParts.push('판정 불가(말소기준 없음)');
+        else {
+          if (assumeMan > 0) insParts.push(`보증금 ${fmtAmtExact(assumeMan)}`);
+          if (assumeUnknown > 0) insParts.push(`보증금 미상 ${assumeUnknown}명`);
+        }
+        if (mgmtMan > 0) insParts.push(`공용관리비 ${fmtAmtExact(mgmtMan)}`);
+        if (!insParts.length) insParts.push(r && r.noTenant ? '없음(임차내역 없음)' : '없음');
+        const insCell = esc(insParts.join(' + '));
+        const knownExtra = (r ? assumeMan : 0) + mgmtMan;
+        const rows = scens.map((s) => {
+          const c = aucCostRange(d, s.eok);
+          if (!c) return '';
+          const bidMan = s.eok * 10000;
+          const tot = `${fmtAmtExact(bidMan + c.taxLo + knownExtra)}`
+            + (Math.abs(c.taxLo - c.taxHi) < 0.001 ? '' : `~${fmtAmtExact(bidMan + c.taxHi + knownExtra)}`);
+          const tax = Math.abs(c.taxLo - c.taxHi) < 0.001
+            ? fmtAmtExact(c.taxLo) : `${fmtAmtExact(c.taxLo)}~${fmtAmtExact(c.taxHi)}`;
+          return `<tr><td>${esc(s.t)}</td><td style="text-align:right;">${fmtAmtExact(bidMan)}</td>`
+            + `<td style="text-align:right;">${tax}</td><td style="text-align:right;">${insCell}</td>`
+            + `<td style="text-align:right;"><b>${tot}</b></td></tr>`;
+        }).join('');
+        const notes = ['선순위 근저당권 등의 채권액은 명세서에서 확인하십시오 — 이 합계에 없습니다.',
+          '집행비용·당해세는 별도입니다.'];
+        if (assumeUnknown > 0) notes.push(`보증금 미상 ${assumeUnknown}명은 합계에 빠졌습니다.`);
+        if (r && r.conflict) notes.push('임차내역 조사 충돌 — 합계를 믿기 전 현장을 확인하십시오.');
+        if (r && r.demandEnd) notes.push(`배당요구종기 ${esc(r.demandEnd)} — 넘기면 배당을 못 받습니다.`);
+        if (mg && mg.amt && !mg.pub) notes.push('전유부분 체납관리비는 원칙적으로 전 소유자 몫이라 합계에 넣지 않았습니다.');
+        return `<div class="auc-doc-h">낙찰 시뮬레이터 — 얼마를 더 내나</div>`
+          + `<table class="rp-deals" style="width:100%;"><thead><tr><th>시나리오</th><th>입찰가</th>`
+          + `<th>취득세 등</th><th>인수액</th><th>합계</th></tr></thead><tbody>${rows}</tbody></table>`
+          + `<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">${notes.join(' ')}</div>`;
+      }
       function aucInvestHtml(d, sumHtml, rowsHtml, goBtns) {
         const det = d.detail || {};
         
@@ -7063,6 +7127,7 @@
               + `법원 집행관 현황조사 결과입니다. 대항력 유무는 <b>말소기준권리</b>와 비교해야 하며,`
               + ` 그 날짜는 매각물건명세서에 있습니다 — 이 표만으로 판단하지 마십시오.</div>`
             : '')
+          + aucDivdSim(d)
           + (nd ? `<div class="auc-doc-h">고지사항 전문</div><div class="apd-note">${esc(nd)}</div>` : '')
           + `<div class="auc-doc-h">원문·전체</div>${goBtns}`
           + `<div style="font-size:11px;color:var(--c-muted);margin-top:4px;">`
