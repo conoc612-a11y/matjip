@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=080ffd92"></script>
+  <script src="js/auth-guard.js?v=0d371243"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -36,12 +36,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=080ffd92" />
+  <link rel="stylesheet" href="css/buttons.css?v=0d371243" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=080ffd92" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=0d371243" />
   <style>
     :root {
       --c-primary:#1971c2; --c-primary-soft:#e7f0fb; --c-price:#d9480f;
@@ -1421,7 +1421,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=080ffd92"></script>
+  <script src="js/ie-guard.js?v=0d371243"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1638,22 +1638,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-11 17:05 · 080ffd92</span></span>
+          · <span class="build-tag">build 2026-09-11 17:21 · 0d371243</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=080ffd92"></script>
+  <script src="js/joinkey.js?v=0d371243"></script>
   
-  <script src="js/identity.js?v=080ffd92"></script>
-  <script src="js/common.js?v=080ffd92"></script>
-  <script src="js/ui-resize.js?v=080ffd92"></script>
-  <script src="js/footer-resize.js?v=080ffd92"></script>
-  <script src="js/route-line.js?v=080ffd92"></script>
-  <script src="js/route-api.js?v=080ffd92"></script>
-  <script src="js/footer-stats.js?v=080ffd92"></script>
+  <script src="js/identity.js?v=0d371243"></script>
+  <script src="js/common.js?v=0d371243"></script>
+  <script src="js/ui-resize.js?v=0d371243"></script>
+  <script src="js/footer-resize.js?v=0d371243"></script>
+  <script src="js/route-line.js?v=0d371243"></script>
+  <script src="js/route-api.js?v=0d371243"></script>
+  <script src="js/footer-stats.js?v=0d371243"></script>
   <script>
     
     
@@ -6734,7 +6734,7 @@
       
       
       
-      function aucCostRange(d, eokIn) {
+      function aucCostRange(d, eokIn, exact1) {
         const lowEok = eokIn || aucLowEok(d);
         if (!lowEok) return null;
         const man = lowEok * 10000;                 
@@ -6746,6 +6746,15 @@
         const area = aucArea(d && d.detail) || (br && br.area) || 0;
         let lo, hi;
         if (!주거) { lo = hi = 4.6; }
+        else if (exact1) {
+          
+          
+          const eok = lowEok;
+          const base = eok <= 6 ? 1.0 : eok > 9 ? 3.0 : 1.0 + 2.0 * (eok - 6) / 3;
+          const edu = eok <= 6 ? 0.1 : eok > 9 ? 0.3 : 0.1 + 0.2 * (eok - 6) / 3;
+          const nong = area > 85 ? 0.2 : 0;
+          lo = hi = base + edu + nong;
+        }
         else {
           const eok = lowEok;
           const base = eok <= 6 ? [1.0, 1.0] : eok <= 9 ? [1.0, 3.0] : [3.0, 3.0];
@@ -7075,18 +7084,35 @@
         if (!insParts.length) insParts.push(r && r.noTenant ? '없음(임차내역 없음)' : '없음');
         const insCell = esc(insParts.join(' + '));
         const knownExtra = (r ? assumeMan : 0) + mgmtMan;
-        const rows = scens.map((s) => {
-          const c = aucCostRange(d, s.eok);
-          if (!c) return '';
+        
+        const cond = aucCondLoad();
+        const scens2 = scens.map((s) => {
+          const c = aucCostRange(d, s.eok, cond.h === '1');
+          if (!c) return null;
           const bidMan = s.eok * 10000;
-          const tot = `${fmtAmtExact(bidMan + c.taxLo + knownExtra)}`
-            + (Math.abs(c.taxLo - c.taxHi) < 0.001 ? '' : `~${fmtAmtExact(bidMan + c.taxHi + knownExtra)}`);
-          const tax = Math.abs(c.taxLo - c.taxHi) < 0.001
-            ? fmtAmtExact(c.taxLo) : `${fmtAmtExact(c.taxLo)}~${fmtAmtExact(c.taxHi)}`;
-          return `<tr><td>${esc(s.t)}</td><td style="text-align:right;">${fmtAmtExact(bidMan)}</td>`
+          return { ...s, bidMan, taxLo: c.taxLo, taxHi: c.taxHi,
+            totLo: bidMan + c.taxLo + knownExtra, totHi: bidMan + c.taxHi + knownExtra };
+        }).filter(Boolean);
+        const rows = scens2.map((s) => {
+          const same = Math.abs(s.taxLo - s.taxHi) < 0.001;
+          const tot = `${fmtAmtExact(s.totLo)}` + (same ? '' : `~${fmtAmtExact(s.totHi)}`);
+          const tax = same ? fmtAmtExact(s.taxLo) : `${fmtAmtExact(s.taxLo)}~${fmtAmtExact(s.taxHi)}`;
+          return `<tr><td>${esc(s.t)}</td><td style="text-align:right;">${fmtAmtExact(s.bidMan)}</td>`
             + `<td style="text-align:right;">${tax}</td><td style="text-align:right;">${insCell}</td>`
             + `<td style="text-align:right;"><b>${tot}</b></td></tr>`;
         }).join('');
+        let condLine = '';
+        if (cond.h === 'multi') notes.push('다주택·법인은 취득세 중과가 있을 수 있습니다 — 세무사 확인 필요.');
+        if (cond.b > 0) {
+          const bMan = cond.b * 10000;
+          const lbl = `당신 조건(${cond.h === '1' ? '1주택' : cond.h === 'multi' ? '다주택·법인' : '주택 수 미선택'}·예산 ${fmtAmtExact(bMan)})`;
+          condLine = `<div style="margin-top:4px;"><b>${lbl}:</b> ` + scens2.map((s) => {
+            const v = s.totHi <= bMan ? '예산 안에 듭니다'
+              : s.totLo > bMan ? `${fmtAmtExact(s.totLo - bMan)} 초과합니다`
+              : `${fmtAmtExact(s.totHi - bMan)}까지 초과할 수 있습니다`;
+            return `${esc(s.t)} 합계가 ${v}`;
+          }).join(' · ') + `</div>`;
+        }
         const notes = ['선순위 근저당권 등의 채권액은 명세서에서 확인하십시오 — 이 합계에 없습니다.',
           '집행비용·당해세는 별도입니다.'];
         if (assumeUnknown > 0) notes.push(`보증금 미상 ${assumeUnknown}명은 합계에 빠졌습니다.`);
@@ -7096,6 +7122,7 @@
         return `<div class="auc-doc-h">낙찰 시뮬레이터 — 얼마를 더 내나</div>`
           + `<table class="rp-deals" style="width:100%;"><thead><tr><th>시나리오</th><th>입찰가</th>`
           + `<th>취득세 등</th><th>인수액</th><th>합계</th></tr></thead><tbody>${rows}</tbody></table>`
+          + condLine
           + `<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">${notes.join(' ')}</div>`;
       }
       
@@ -7129,6 +7156,20 @@
       
       
       
+      const AUCT_COND_LS = 'land_auction_cond';
+      function aucCondLoad() {
+        try {
+          const c = JSON.parse(localStorage.getItem(AUCT_COND_LS) || '{}');
+          return { h: (c && (c.h === '1' || c.h === 'multi')) ? c.h : '', b: Math.max(0, Number(c && c.b) || 0) };
+        } catch (e) { return { h: '', b: 0 }; }
+      }
+      function aucCondSave(h, b) {
+        try { localStorage.setItem(AUCT_COND_LS, JSON.stringify({ h, b })); } catch (e) {}
+      }
+      window.__aucCondSave = aucCondSave;   
+      
+      
+      
       
       function aucGuide(d) {
         const a = aucApprEok(d), l = aucLowEok(d);
@@ -7140,8 +7181,79 @@
           ['4. 총액', `입찰가+취득세+인수액이 진짜 나가는 돈입니다. 합계는 위 표에 있습니다.`],
           ['5. 입찰', `보증금(최저가의 10% 이상)을 준비해 기일에 입찰하십시오. 위 '입찰표 사전작성'을 복사하십시오.`],
         ];
-        return `<div class="auc-doc-h">경매 5분 가이드</div>`
+        
+        const cond = aucCondLoad();
+        const opt = (v, t) => `<option value="${v}"${cond.h === v ? ' selected' : ''}>${t}</option>`;
+        const condRow = `<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap;">`
+          + `<span style="color:var(--c-muted);font-size:12px;">내 조건</span>`
+          + `<select class="auc-cond-h" style="font:inherit;font-size:12px;padding:5px 7px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text);">`
+          + opt('', '주택 수') + opt('1', '1주택') + opt('multi', '다주택·법인') + `</select>`
+          + `<input class="auc-cond-b" type="number" min="0" step="0.1" placeholder="예산(억원)" value="${cond.b > 0 ? cond.b : ''}"`
+          + ` style="width:96px;font:inherit;font-size:12px;padding:5px 7px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text);">`
+          + `</div>`;
+        return `<div class="auc-doc-h">경매 5분 가이드</div>` + condRow
           + steps.map(([k, v]) => `<div class="auc-doc-p"><span>${k}</span><div>${v}</div></div>`).join('');
+      }
+      
+      
+      
+      function aucHitRate(d) {
+        if (!_aucSold || !_aucSold.length) return '';
+        const saNo = d.detail && d.detail.base && d.detail.base.saNo;
+        if (!saNo) return '';
+        const rows = _aucSold.filter((x) => String(x.sa || '') === String(saNo) && Number(x.sold) > 0);
+        if (!rows.length) return '';
+        const sr = (typeof aucSoldRate === 'function') ? aucSoldRate(d) : null;
+        const dot = (v) => (/^\d{8}$/.test(v || '') ? v.slice(0, 4) + '.' + v.slice(4, 6) + '.' + v.slice(6) : (v || ''));
+        const lines = rows.map((x) => {
+          const soldMan = Number(x.sold) / 1e4, apprMan = Number(x.appr) / 1e4;
+          const pct = apprMan > 0 ? Math.round(soldMan / apprMan * 100) : null;
+          let s = `낙찰 ${fmtAmtExact(soldMan)}${pct != null ? ` (감정가의 ${pct}%)` : ''} · ${esc(dot(x.ymd))}`;
+          if (x.fail != null && String(x.fail) !== '') s += ` · 유찰 ${esc(String(x.fail))}회`;
+          if (sr && apprMan > 0) s += ` — 현재 중앙값 ${sr.mid}%로는 ${fmtAmtExact(apprMan * sr.mid / 100)}`;
+          if (x.bigo) s += `<br><span style="color:var(--c-muted);">${esc(String(x.bigo).slice(0, 90))}</span>`;
+          return `<div style="margin-top:3px;">${s}</div>`;
+        }).join('');
+        return `<div class="auc-doc-h">과거 낙찰 — 예상과 실제</div>${lines}`
+          + `<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">매각결과 실측과의 대조입니다.</div>`;
+      }
+      
+      
+      
+      function aucQuiz(d) {
+        const r = aucRights(d);
+        if (!r || !r.senior || r.conflict) return '';
+        const les = (d.detail && d.detail.curst && d.detail.curst.dlt_ordTsLserLtn) || [];
+        const norm = (v) => { const m = String(v || '').match(/(\d{4})[.\-](\d{1,2})[.\-](\d{1,2})/); return m ? `${m[1]}.${String(m[2]).padStart(2, '0')}.${String(m[3]).padStart(2, '0')}` : ''; };
+        const cands = [];
+        les.forEach((L) => {
+          const mv = norm(L.mvinDtlCtt);
+          if (!mv) return;
+          const dep = Number(String((L && L.lesDposDts) || '').replace(/[^\d]/g, '')) / 1e4;
+          cands.push({ mv, dep, risky: mv < r.senior });
+        });
+        if (!cands.length) return '';
+        const pick = [];
+        const rk = cands.find((c) => c.risky), sf = cands.find((c) => !c.risky);
+        if (rk) pick.push(rk);
+        if (sf && pick.indexOf(sf) < 0 && pick.length < 2) pick.push(sf);
+        while (pick.length < Math.min(2, cands.length)) {
+          const nx = cands.find((c) => pick.indexOf(c) < 0);
+          if (!nx) break;
+          pick.push(nx);
+        }
+        const items = pick.map((c) => {
+          const depTxt = c.dep > 0 ? `보증금 ${fmtAmtExact(c.dep)}` : '보증금 미상';
+          return `<div class="auc-quiz" style="margin-top:5px;padding:7px 9px;border:1px solid var(--line);border-radius:8px;">`
+            + `<div>전입 ${esc(c.mv)} · ${depTxt} 임차인 — 대항력이 있을까요?</div>`
+            + `<div style="display:flex;gap:6px;margin-top:5px;">`
+            + `<button type="button" class="auc-quiz-btn pc-btn pc-btn-outline" data-a="${c.risky ? 1 : 0}" data-v="1" style="padding:6px 10px;font-size:12px;">있음</button>`
+            + `<button type="button" class="auc-quiz-btn pc-btn pc-btn-outline" data-a="${c.risky ? 1 : 0}" data-v="0" style="padding:6px 10px;font-size:12px;">없음</button></div>`
+            + `<div class="auc-quiz-why" style="display:none;margin-top:5px;font-size:12px;">`
+            + `정답: ${c.risky ? '있음' : '없음'} — 전입 ${esc(c.mv)} vs 말소기준 ${esc(r.senior)}</div>`
+            + `</div>`;
+        }).join('');
+        return `<div class="auc-doc-h">대항력 자가퀴즈</div>${items}`;
       }
       function aucInvestHtml(d, sumHtml, rowsHtml, goBtns) {
         const det = d.detail || {};
@@ -7173,8 +7285,10 @@
               + ` 그 날짜는 매각물건명세서에 있습니다 — 이 표만으로 판단하지 마십시오.</div>`
             : '')
           + aucDivdSim(d)
+          + aucHitRate(d)
           + aucBidSheet(d)
           + aucGuide(d)
+          + aucQuiz(d)
           + (nd ? `<div class="auc-doc-h">고지사항 전문</div><div class="apd-note">${esc(nd)}</div>` : '')
           + `<div class="auc-doc-h">원문·전체</div>${goBtns}`
           + `<div style="font-size:11px;color:var(--c-muted);margin-top:4px;">`
@@ -9554,8 +9668,10 @@
             
             
             if (pc.dataset.kind === 'auc') {
-              const html = (window.__aucInvest && window.__aucInvest(pc.dataset.i)) || '';
-              if (html) {
+              
+              const renderInvest = () => {
+                const html = (window.__aucInvest && window.__aucInvest(pc.dataset.i)) || '';
+                if (!html) return false;
                 title.textContent = (pc.dataset.ptitle
                   || (pc.querySelector('.pc-head') && pc.querySelector('.pc-head').textContent.trim())
                   || '경매 투자 정보');
@@ -9573,10 +9689,32 @@
                     }).catch(() => { });
                   };
                 }
+                
+                body.querySelectorAll('.auc-cond-h, .auc-cond-b').forEach((el) => {
+                  el.onchange = () => {
+                    const h = (body.querySelector('.auc-cond-h') || {}).value || '';
+                    const b = Number((body.querySelector('.auc-cond-b') || {}).value) || 0;
+                    if (window.__aucCondSave) window.__aucCondSave((h === '1' || h === 'multi') ? h : '', Math.max(0, b));
+                    renderInvest();
+                  };
+                });
+                
+                body.querySelectorAll('.auc-quiz-btn').forEach((b) => {
+                  b.onclick = () => {
+                    const box = b.closest('.auc-quiz');
+                    if (!box || b.disabled) return;
+                    const ok = b.dataset.v === b.dataset.a;
+                    box.querySelectorAll('.auc-quiz-btn').forEach((x) => { x.disabled = true; });
+                    b.textContent = (ok ? '정답 ✓ ' : '오답 ✗ ') + b.textContent;
+                    const why = box.querySelector('.auc-quiz-why');
+                    if (why) why.style.display = '';
+                  };
+                });
                 panel.hidden = false;
                 if (panel.classList.contains('collapsed') && window.__dpTab) window.__dpTab.toggle();
-                return;
-              }
+                return true;
+              };
+              if (renderInvest()) return;
             }
             const head = pc.querySelector('.pc-head');
             
