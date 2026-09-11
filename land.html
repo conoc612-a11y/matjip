@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=b01de046"></script>
+  <script src="js/auth-guard.js?v=080ffd92"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -36,12 +36,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=b01de046" />
+  <link rel="stylesheet" href="css/buttons.css?v=080ffd92" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=b01de046" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=080ffd92" />
   <style>
     :root {
       --c-primary:#1971c2; --c-primary-soft:#e7f0fb; --c-price:#d9480f;
@@ -1421,7 +1421,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=b01de046"></script>
+  <script src="js/ie-guard.js?v=080ffd92"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1638,22 +1638,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-11 16:37 · b01de046</span></span>
+          · <span class="build-tag">build 2026-09-11 17:05 · 080ffd92</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=b01de046"></script>
+  <script src="js/joinkey.js?v=080ffd92"></script>
   
-  <script src="js/identity.js?v=b01de046"></script>
-  <script src="js/common.js?v=b01de046"></script>
-  <script src="js/ui-resize.js?v=b01de046"></script>
-  <script src="js/footer-resize.js?v=b01de046"></script>
-  <script src="js/route-line.js?v=b01de046"></script>
-  <script src="js/route-api.js?v=b01de046"></script>
-  <script src="js/footer-stats.js?v=b01de046"></script>
+  <script src="js/identity.js?v=080ffd92"></script>
+  <script src="js/common.js?v=080ffd92"></script>
+  <script src="js/ui-resize.js?v=080ffd92"></script>
+  <script src="js/footer-resize.js?v=080ffd92"></script>
+  <script src="js/route-line.js?v=080ffd92"></script>
+  <script src="js/route-api.js?v=080ffd92"></script>
+  <script src="js/footer-stats.js?v=080ffd92"></script>
   <script>
     
     
@@ -8465,12 +8465,59 @@
       
       
       let _aucFavRev = 0;
+      
+      
+      
+      
+      
+      async function aucFavWho() {
+        try {
+          const sb = typeof ensureSb === 'function' ? await ensureSb() : null;
+          if (!sb) return null;
+          const r = await sb.auth.getSession();
+          const u = r && r.data && r.data.session && r.data.session.user;
+          return u ? { sb, uid: u.id } : null;
+        } catch (e) { return null; }
+      }
+      function aucFavPush() {   
+        (async () => {
+          const a = await aucFavWho();
+          if (!a) return;
+          try {
+            const local = auctionFavLoad();
+            const rq = await a.sb.from('auction_favs').select('fav_key');
+            const server = new Set(((rq && rq.data) || []).map((x) => x.fav_key));
+            const adds = local.filter((k) => !server.has(k))
+              .map((fav_key) => ({ user_id: a.uid, fav_key }));
+            if (adds.length) await a.sb.from('auction_favs').upsert(adds, { onConflict: 'user_id,fav_key' });
+            const gone = [...server].filter((k) => local.indexOf(k) < 0);
+            if (gone.length) await a.sb.from('auction_favs').delete().eq('user_id', a.uid).in_('fav_key', gone);
+          } catch (e) {  }
+        })();
+      }
+      async function aucFavPull() {   
+        const a = await aucFavWho();
+        if (!a) return false;
+        try {
+          const rq = await a.sb.from('auction_favs').select('fav_key');
+          const server = ((rq && rq.data) || []).map((x) => x.fav_key).filter(Boolean);
+          if (!server.length) return false;
+          const local = auctionFavLoad();
+          const merged = [...new Set([...local, ...server])];
+          if (merged.length === local.length) return false;
+          localStorage.setItem(AUCT_FAV_KEY, JSON.stringify(merged));
+          _aucFavRev++;
+          return true;
+        } catch (e) { return false; }
+      }
+      window.__aucFavPull = aucFavPull;   
       function auctionFavToggle(key) {
         const list = auctionFavLoad();
         const i = list.indexOf(key);
         if (i >= 0) list.splice(i, 1); else list.push(key);
         localStorage.setItem(AUCT_FAV_KEY, JSON.stringify(list));
         _aucFavRev++;
+        aucFavPush();
         
         
         if (i < 0 && auctionRows) {
@@ -22199,6 +22246,11 @@
         $('who').textContent = user.email;
         $('logout').style.display = '';
         $('delete-account').style.display = '';
+        
+        if (window.__aucFavPull) {
+          window.__aucFavPull().then((changed) => { if (changed) { try { refreshStatBar(); } catch (e) {} } })
+            .catch(() => { });
+        }
       }
       loadFooterStats('land');
       render();
