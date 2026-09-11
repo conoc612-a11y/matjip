@@ -1002,7 +1002,9 @@
     
 
     .pc { width:100%; min-width:200px; padding:16px; box-sizing:border-box; }
-    .pc-head { font-weight:700; font-size:15px; margin-bottom:8px; display:flex; align-items:center; gap:6px; flex-wrap:wrap; line-height:1.35; color:var(--text); }
+    
+
+    .pc-head { font-weight:700; font-size:15px; margin-bottom:8px; display:flex; align-items:center; gap:6px; flex-wrap:wrap; line-height:1.35; color:var(--text); padding-right:56px; }
     .pc-body { font-size:13px; color:var(--muted); margin-bottom:12px; line-height:1.6; }
     .pc-body b { color:var(--text); }
     
@@ -1075,7 +1077,7 @@
     body .svc-pin .fi { margin:0; color:#fff; line-height:1; }
 
     .cctv-pc { width:100%; min-width:320px; max-width:100%; padding:0; box-sizing:border-box; overflow:hidden; display:flex; flex-direction:column; height:100%; }
-    .cctv-pc-head { display:flex; align-items:center; justify-content:space-between; padding:11px 13px; border-bottom:1px solid var(--line); font-weight:700; font-size:14px; flex:none; }
+    .cctv-pc-head { display:flex; align-items:center; justify-content:space-between; padding:11px 60px 11px 13px; border-bottom:1px solid var(--line); font-weight:700; font-size:14px; flex:none; }
     .cctv-pc-video { position:relative; flex:1 1 auto; min-height:180px; height:180px; background:#12151b; display:flex; align-items:center; justify-content:center; color:#9aa3af; font-size:13px; }
     .cctv-pc-video video, .cctv-pc-video img { width:100%; height:100%; object-fit:cover; display:block; }
     .cctv-pc-live { position:absolute; top:8px; left:8px; background:var(--c-danger); color:#fff; font-size:12px; font-weight:700; padding:2px 7px; border-radius:4px; display:flex; align-items:center; gap:4px; }
@@ -1315,7 +1317,9 @@
 
 
 
-    .leaflet-popup .leaflet-popup-content-wrapper { padding-top: 28px; padding-bottom: 28px; }
+
+
+    .leaflet-popup .leaflet-popup-content-wrapper { padding-top: 8px; padding-bottom: 12px; }
     
 
 
@@ -2859,7 +2863,7 @@
       const reserve = row ? Math.round(row.getBoundingClientRect().height) + 18 : 0;
       
       
-      const avail = Math.max(150, Math.round(Math.min(h - reserve - 90, POPUP_H_CAP) * popupZoomFactor()));
+      const avail = Math.max(150, Math.round(Math.min(h - reserve - 55, POPUP_H_CAP) * popupZoomFactor()));
       document.documentElement.style.setProperty('--popup-max-h', avail + 'px');
       
       
@@ -9807,7 +9811,7 @@
         const linkBtns = (d.rc || d.cafe) ? `<div class="pc-btn-row">${d.rc ? `<a href="https://urban.seoul.go.kr/view/map/mapPopup.html?recordCode=${encodeURIComponent(d.rc)}" target="_blank" rel="noopener" class="pc-btn pc-btn-outline" style="border-color:var(--line) !important;color:#7048e8;">경계지도</a>` : ''}${d.cafe ? `<a href="https://cleanup.seoul.go.kr/cafe/mainIndx.do?cafeUrl=${encodeURIComponent(d.cafe)}" target="_blank" rel="noopener" class="pc-btn pc-btn-outline" style="border-color:var(--line) !important;color:var(--c-primary);">정보공개</a>` : ''}</div>` : '';
         
         const tlHtml = jbCuHtml(d) + jbTlHtml(d);
-        return `<div class="pc"><div class="pc-head">${badgeLink(`<span style="display:inline-block;background:${c};color:#fff;font-size:12px;padding:2px 8px;border-radius:999px;">${g}</span>`)}${badgeLink(stageBadge)}</div><div class="pc-body"><div style="font-weight:700;font-size:15px;margin-bottom:2px;color:var(--c-text);">${esc(d.name)}</div><div>${esc(d.gu)} ${esc(d.jibun)}${areaTxt}${d.approx ? ' <span style="color:var(--c-price);">(동 근사위치)</span>' : ''}</div><div style="font-size:12px;color:var(--c-muted);margin-top:3px;">사업구분: ${esc(d.gubun)}</div>${meta.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:8px;border-top:1px solid var(--line);padding-top:8px;">${meta.join('')}</div>` : ''}<div style="margin:8px 0 4px;"><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--c-muted);margin-bottom:3px;"><span>진행단계</span><span>${jbPct(es)}%</span></div><div style="height:5px;background:var(--line);border-radius:4px;overflow:hidden;"><div style="height:100%;width:${jbPct(es)}%;background:${stageColor(es)};border-radius:4px;transition:width .3s;"></div></div></div>${tlHtml}${cmpHtml}<div class="jb-rp-stat rp-stat" style="display:none;padding:5px 0;border-top:1px solid var(--c-border);"></div><div class="jb-community" style="display:none;margin-top:6px;"></div></div><div class="pc-actions">${linkBtns}<button class="jb-rp-filter pc-btn pc-btn-outline" style="border-color:var(--line) !important;color:var(--c-price);"><i class="fi fi-rr-search"></i>이 구역 실거래 보기</button><button class="jb-community-btn pc-btn pc-btn-outline" style="border-color:var(--line) !important;color:#2f9e44;"><i class="fi fi-rr-comments"></i>커뮤니티</button><button class="jb-cmp pc-btn pc-btn-outline" style="border-color:var(--line) !important;color:var(--c-primary);"><i class="fi fi-rr-plus"></i>비교</button><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline" style="border-color:var(--line) !important;color:var(--c-success);"><i class="fi fi-rr-flag"></i>출발</button><button class="rt-end pc-btn pc-btn-outline" style="border-color:var(--line) !important;color:var(--c-danger);"><i class="fi fi-rr-marker"></i>도착</button></div><button class="sv-btn pc-btn pc-btn-outline"><i class="fi fi-rr-video-camera"></i>거리뷰</button></div></div>`;
+        return `<div class="pc"><div class="pc-head">${badgeLink(`<span style="display:inline-block;background:${c};color:#fff;font-size:12px;padding:2px 8px;border-radius:999px;">${g}</span>`)}${badgeLink(stageBadge)}<span class="rp-name">${esc(d.name)}</span></div><div class="pc-body"><div>${esc(d.gu)} ${esc(d.jibun)}${areaTxt}${d.approx ? ' <span style="color:var(--c-price);">(동 근사위치)</span>' : ''}</div><div style="font-size:12px;color:var(--c-muted);margin-top:3px;">사업구분: ${esc(d.gubun)}</div>${meta.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:8px;border-top:1px solid var(--line);padding-top:8px;">${meta.join('')}</div>` : ''}<div style="margin:8px 0 4px;"><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--c-muted);margin-bottom:3px;"><span>진행단계</span><span>${jbPct(es)}%</span></div><div style="height:5px;background:var(--line);border-radius:4px;overflow:hidden;"><div style="height:100%;width:${jbPct(es)}%;background:${stageColor(es)};border-radius:4px;transition:width .3s;"></div></div></div>${tlHtml}${cmpHtml}<div class="jb-rp-stat rp-stat" style="display:none;padding:5px 0;border-top:1px solid var(--c-border);"></div><div class="jb-community" style="display:none;margin-top:6px;"></div></div><div class="pc-actions">${linkBtns}<button class="jb-rp-filter pc-btn pc-btn-outline" style="border-color:var(--line) !important;color:var(--c-price);"><i class="fi fi-rr-search"></i>이 구역 실거래 보기</button><button class="jb-community-btn pc-btn pc-btn-outline" style="border-color:var(--line) !important;color:#2f9e44;"><i class="fi fi-rr-comments"></i>커뮤니티</button><button class="jb-cmp pc-btn pc-btn-outline" style="border-color:var(--line) !important;color:var(--c-primary);"><i class="fi fi-rr-plus"></i>비교</button><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline" style="border-color:var(--line) !important;color:var(--c-success);"><i class="fi fi-rr-flag"></i>출발</button><button class="rt-end pc-btn pc-btn-outline" style="border-color:var(--line) !important;color:var(--c-danger);"><i class="fi fi-rr-marker"></i>도착</button></div><button class="sv-btn pc-btn pc-btn-outline"><i class="fi fi-rr-video-camera"></i>거리뷰</button></div></div>`;
       }
       window.jbPopupHtml = jbPopupHtml;   
       
@@ -10946,7 +10950,8 @@
       }
       function pubrentUnitPopupHtml(g) {
         const areas = g.us.map((u) => u.area).filter((x) => x > 0);
-        const rows = [`<div style="margin-bottom:4px;">${esc(g.addr)}</div>`];
+        
+        const rows = [];
         rows.push(`<div class="pc-price">${fmtCnt(g.us.length, '세대')}</div>`);
         if (areas.length) {
           const lo = Math.min(...areas), hi = Math.max(...areas);
@@ -10958,8 +10963,8 @@
         
         rows.push('<div style="margin-top:6px;font-size:12px;color:var(--c-muted);">'
           + `출처: ${esc(g.ntc || '')} 첨부 「공급대상주택목록」</div>`);
-        return `<div class="pc"><div class="pc-head"><span style="display:inline-block;background:${PUBRENT_COLOR[g.ty] || '#0b7285'};color:#fff;font-size:12px;padding:2px 8px;border-radius:999px;">${esc(g.ty || '매입임대')}</span></div>`
-          + `<div class="pc-body"><div style="font-weight:700;font-size:15px;margin-bottom:2px;color:var(--c-text);">${esc(g.inst || 'LH')} 공급물건</div>${rows.join('')}</div></div>`;
+        return `<div class="pc"><div class="pc-head"><span style="display:inline-block;background:${PUBRENT_COLOR[g.ty] || '#0b7285'};color:#fff;font-size:12px;padding:2px 8px;border-radius:999px;">${esc(g.ty || '매입임대')}</span><span class="rp-name">${esc(g.addr || '(주소 없음)')}</span></div>`
+          + `<div class="pc-body"><div style="margin-bottom:4px;">${esc(g.inst || 'LH')} 공급물건</div>${rows.join('')}</div></div>`;
       }
 
       viewSearchAdd(() => map.hasLayer(pubrentCluster) && !!pubrentData, () => pubrentBuild());
