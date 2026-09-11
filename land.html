@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=b6da01c7"></script>
+  <script src="js/auth-guard.js?v=f6369482"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -36,12 +36,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=b6da01c7" />
+  <link rel="stylesheet" href="css/buttons.css?v=f6369482" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=b6da01c7" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=f6369482" />
   <style>
     :root {
       --c-primary:#1971c2; --c-primary-soft:#e7f0fb; --c-price:#d9480f;
@@ -1437,7 +1437,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=b6da01c7"></script>
+  <script src="js/ie-guard.js?v=f6369482"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1654,22 +1654,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-11 18:16 · b6da01c7</span></span>
+          · <span class="build-tag">build 2026-09-11 19:07 · f6369482</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=b6da01c7"></script>
+  <script src="js/joinkey.js?v=f6369482"></script>
   
-  <script src="js/identity.js?v=b6da01c7"></script>
-  <script src="js/common.js?v=b6da01c7"></script>
-  <script src="js/ui-resize.js?v=b6da01c7"></script>
-  <script src="js/footer-resize.js?v=b6da01c7"></script>
-  <script src="js/route-line.js?v=b6da01c7"></script>
-  <script src="js/route-api.js?v=b6da01c7"></script>
-  <script src="js/footer-stats.js?v=b6da01c7"></script>
+  <script src="js/identity.js?v=f6369482"></script>
+  <script src="js/common.js?v=f6369482"></script>
+  <script src="js/ui-resize.js?v=f6369482"></script>
+  <script src="js/footer-resize.js?v=f6369482"></script>
+  <script src="js/route-line.js?v=f6369482"></script>
+  <script src="js/route-api.js?v=f6369482"></script>
+  <script src="js/footer-stats.js?v=f6369482"></script>
   <script>
     
     
@@ -6389,6 +6389,11 @@
         }
         if (!r.n) return '';
         
+        if (aucIsShop(d)) {
+          return `상가 임차인 ${r.n}명은 전입일이 아니라 사업자등록일+인도로 대항력이 정해집니다.`
+            + ` 등록일이 자료에 없어 인도명령 대상인지 판단할 수 없습니다. 사업자등록증명과 확정일자를 확인하십시오.` + term;
+        }
+        
         
         if (!r.risky) {
           return `임차인 ${r.n}명 전원이 대항력이 없어 인도명령 대상입니다 — 명도소송이 필요 없습니다.` + term;
@@ -7073,7 +7078,8 @@
         const les = (d.detail && d.detail.curst && d.detail.curst.dlt_ordTsLserLtn) || [];
         const norm = (v) => { const m = String(v || '').match(/(\d{4})[.\-](\d{1,2})[.\-](\d{1,2})/); return m ? `${m[1]}.${String(m[2]).padStart(2, '0')}.${String(m[3]).padStart(2, '0')}` : ''; };
         let assumeMan = 0, assumeUnknown = 0, assumeKnown = false;
-        if (r && !r.conflict && !r.noTenant) {
+        const shop = aucIsShop(d);
+        if (r && !r.conflict && !r.noTenant && !shop) {
           les.forEach((L) => {
             const mv = norm(L.mvinDtlCtt);
             if (mv && mv < r.senior) {
@@ -7097,7 +7103,7 @@
           if (assumeUnknown > 0) insParts.push(`보증금 미상 ${assumeUnknown}명`);
         }
         if (mgmtMan > 0) insParts.push(`공용관리비 ${fmtAmtExact(mgmtMan)}`);
-        if (!insParts.length) insParts.push(r && r.noTenant ? '없음(임차내역 없음)' : '없음');
+        if (!insParts.length) insParts.push(!r ? '판정 불가(말소기준 없음)' : r.noTenant ? '없음(임차내역 없음)' : shop ? '판정 보류(상가)' : '없음');
         const insCell = esc(insParts.join(' + '));
         const knownExtra = (r ? assumeMan : 0) + mgmtMan;
         
@@ -7132,6 +7138,7 @@
         const notes = ['선순위 근저당권 등의 채권액은 명세서에서 확인하십시오 — 이 합계에 없습니다.',
           '집행비용·당해세는 별도입니다.'];
         if (assumeUnknown > 0) notes.push(`보증금 미상 ${assumeUnknown}명은 합계에 빠졌습니다.`);
+        if (shop && les.length) notes.push('상가 임차보증금 인수는 사업자등록일 확인 후에 합산합니다 — 위 금액에 없습니다.');
         if (r && r.conflict) notes.push('임차내역 조사 충돌 — 합계를 믿기 전 현장을 확인하십시오.');
         if (r && r.demandEnd) notes.push(`배당요구종기 ${esc(r.demandEnd)} — 넘기면 배당을 못 받습니다.`);
         if (mg && mg.amt && !mg.pub) notes.push('전유부분 체납관리비는 원칙적으로 전 소유자 몫이라 합계에 넣지 않았습니다.');
@@ -7202,10 +7209,11 @@
         const opt = (v, t) => `<option value="${v}"${cond.h === v ? ' selected' : ''}>${t}</option>`;
         const condRow = `<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap;">`
           + `<span style="color:var(--c-muted);font-size:12px;">내 조건</span>`
-          + `<select class="auc-cond-h" style="font:inherit;font-size:12px;padding:5px 7px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text);">`
+          + `<select class="auc-cond-h" aria-label="주택 수" style="font:inherit;font-size:12px;padding:5px 7px;min-height:44px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text);">`
           + opt('', '주택 수') + opt('1', '1주택') + opt('multi', '다주택·법인') + `</select>`
-          + `<input class="auc-cond-b" type="number" min="0" step="0.1" placeholder="예산(억원)" value="${cond.b > 0 ? cond.b : ''}"`
-          + ` style="width:96px;font:inherit;font-size:12px;padding:5px 7px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text);">`
+          + `<label style="font-size:12px;color:var(--c-muted);">예산(억원)</label>`
+          + `<input class="auc-cond-b" type="number" min="0" step="0.1" placeholder="예: 5" value="${cond.b > 0 ? cond.b : ''}" aria-label="예산(억원)"`
+          + ` style="width:96px;font:inherit;font-size:12px;padding:5px 7px;min-height:44px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text);">`
           + `</div>`;
         return `<div class="auc-doc-h">경매 5분 가이드</div>` + condRow
           + steps.map(([k, v]) => `<div class="auc-doc-p"><span>${k}</span><div>${v}</div></div>`).join('');
@@ -7239,6 +7247,7 @@
       function aucQuiz(d) {
         const r = aucRights(d);
         if (!r || !r.senior || r.conflict) return '';
+        if (aucIsShop(d)) return '';   
         const les = (d.detail && d.detail.curst && d.detail.curst.dlt_ordTsLserLtn) || [];
         const norm = (v) => { const m = String(v || '').match(/(\d{4})[.\-](\d{1,2})[.\-](\d{1,2})/); return m ? `${m[1]}.${String(m[2]).padStart(2, '0')}.${String(m[3]).padStart(2, '0')}` : ''; };
         const cands = [];
@@ -7263,13 +7272,64 @@
           return `<div class="auc-quiz" style="margin-top:5px;padding:7px 9px;border:1px solid var(--line);border-radius:8px;">`
             + `<div>전입 ${esc(c.mv)} · ${depTxt} 임차인 — 대항력이 있을까요?</div>`
             + `<div style="display:flex;gap:6px;margin-top:5px;">`
-            + `<button type="button" class="auc-quiz-btn pc-btn pc-btn-outline" data-a="${c.risky ? 1 : 0}" data-v="1" style="padding:6px 10px;font-size:12px;">있음</button>`
-            + `<button type="button" class="auc-quiz-btn pc-btn pc-btn-outline" data-a="${c.risky ? 1 : 0}" data-v="0" style="padding:6px 10px;font-size:12px;">없음</button></div>`
+            + `<button type="button" class="auc-quiz-btn pc-btn pc-btn-outline" data-a="${c.risky ? 1 : 0}" data-v="1" style="padding:6px 10px;font-size:12px;min-height:44px;">있음</button>`
+            + `<button type="button" class="auc-quiz-btn pc-btn pc-btn-outline" data-a="${c.risky ? 1 : 0}" data-v="0" style="padding:6px 10px;font-size:12px;min-height:44px;">없음</button></div>`
             + `<div class="auc-quiz-why" style="display:none;margin-top:5px;font-size:12px;">`
             + `정답: ${c.risky ? '있음' : '없음'} — 전입 ${esc(c.mv)} vs 말소기준 ${esc(r.senior)}</div>`
             + `</div>`;
         }).join('');
         return `<div class="auc-doc-h">대항력 자가퀴즈</div>${items}`;
+      }
+      
+      
+      
+      
+      function aucIsShop(d) {
+        const use = String((d && d.use) || '');
+        if (/상가|근린|점포/.test(use)) return true;
+        const br = d && d._br;
+        return !!(br && br.purps && /근린생활|판매|도매/.test(br.purps));
+      }
+      
+      
+      
+      
+      
+      
+      
+      function aucScore(d) {
+        const r = aucRights(d);
+        if (!r) return { score: null, why: ['말소기준 없음 — 판정 불가'] };
+        const out = { score: 100, why: [] };
+        const cut = (n, t) => { out.score = Math.max(0, out.score - n); out.why.push(`-${n} ${t}`); };
+        const shop = aucIsShop(d);
+        if (r.conflict) cut(30, '임차내역 조사 충돌');
+        const riskyKnown = Math.max(0, r.risky - r.unknownDep);
+        if (shop && (riskyKnown > 0 || r.unknownDep > 0)) {
+          cut(15, '상가 대항력 미확인(사업자등록일 필요)');
+        } else {
+          if (riskyKnown > 0) cut(Math.min(30, riskyKnown * 10), `대항력 인수 ${riskyKnown}명`);
+          if (r.unknownDep > 0) cut(Math.min(20, r.unknownDep * 10), `보증금 미상 ${r.unknownDep}명`);
+          if (r.risky > 0 && !r.conflict) cut(15, '명도소송 또는 보증금 인수');
+        }
+        if (r.assume) cut(10, '인수되는 권리 있음');
+        const burdens = (d.idx && d.idx.t) || [];
+        if (burdens.length) cut(Math.min(15, burdens.length * 5), `확인할 부담 ${burdens.length}건`);
+        const g = out.score >= 85 ? 'A' : out.score >= 70 ? 'B' : out.score >= 50 ? 'C' : out.score >= 30 ? 'D' : 'E';
+        out.grade = g;
+        return out;
+      }
+      function aucVerdictHtml(d) {
+        const v = aucScore(d);
+        if (!v) return '';
+        if (v.score == null) return `<div class="auc-doc-h">종합점수</div><div>판정 불가 — ${esc(v.why[0])}</div>`;
+        const col = v.grade === 'A' ? '#2f9e44' : v.grade === 'B' ? '#1971c2' : v.grade === 'C' ? '#f08c00' : '#e03131';
+        return `<div class="auc-doc-h">종합점수</div>`
+          + `<div style="display:flex;align-items:baseline;gap:8px;"><b style="font-size:22px;">${v.score}점</b>`
+          + `<span style="font-size:12px;background:${col};color:#fff;padding:1px 8px;border-radius:999px;">${v.grade}</span></div>`
+          + (v.why.length
+            ? `<div style="font-size:12px;color:var(--c-muted);margin-top:3px;">${esc(v.why.join(' · '))}</div>`
+            : `<div style="font-size:12px;color:var(--c-muted);margin-top:3px;">감점 없음</div>`);
       }
       function aucInvestHtml(d, sumHtml, rowsHtml, goBtns) {
         const det = d.detail || {};
@@ -7291,7 +7351,7 @@
         const poss = String((((det.curst && det.curst.dlt_ordTsRlet) || [])[0] || {}).gdsPossCtt || '')
           .replace(/<br\s*\/?>/gi, '\n').trim();
         const nd = aucNdstrc(d);
-        return `<div class="auc-inv">${sumHtml}${rowsHtml}`
+        return `<div class="auc-inv">${sumHtml}${aucVerdictHtml(d)}${rowsHtml}`
           + (poss || lesTbl
             ? `<div class="auc-doc-h">현황조사서 — 누가 살고 있나</div>`
               + (poss ? `<div class="apd-note">${esc(poss)}</div>` : '')
@@ -7433,6 +7493,9 @@
             }
             if (r.noTenant) return `${head} — 조사된 임차내역이 없습니다(인수할 임차보증금 없음)`;
             if (!r.n) return head;
+            
+            if (aucIsShop(d)) return `${head} — 상가 물건은 전입일이 아니라 사업자등록일로 판단합니다.`
+              + ` 등록일이 자료에 없어 대항력 판정을 보류합니다${r.n ? ` (임차인 ${r.n}명)` : ''}`;
             
             if (!r.risky) return `${head} — 임차인 ${r.n}명 전원이 최선순위보다 늦어 매각으로 소멸합니다`;
             return `${head} — 임차인 ${r.n}명 중 ${r.risky}명이 최선순위보다 빠릅니다 (대항력 있음 → 낙찰자 인수 가능)`
@@ -8921,6 +8984,32 @@
             ? '가까운 ' + capped.length + '건 / 전체 ' + shown.length + '건'
             : shown.length + '건');
         auctionList.innerHTML = capped.map((x) => auctionRowHtml(x.d, x.fav, x.i, x.key === auctionPinnedKey)).join('');
+        
+        
+        if (!capped.length && auctionRows && (q || auctionFavOnly || aucFiltOn())) {
+          auctionList.innerHTML = `<div style="padding:26px 16px;text-align:center;color:var(--c-muted);font-size:13px;">`
+            + `조건에 맞는 물건이 없습니다.<br>필터를 풀고 다시 보십시오.</div>`
+            + `<div style="padding:0 16px;"><button type="button" class="auc-empty-clear pc-btn pc-btn-outline">필터 해제</button></div>`;
+          const b = auctionList.querySelector('.auc-empty-clear');
+          if (b) b.onclick = () => auctionFilterReset();
+        }
+      }
+      
+      function auctionFilterReset() {
+        auctionQuery = '';
+        const si = $('ap-search');
+        if (si) si.value = '';
+        auctionFavOnly = false;
+        const fb = $('ap-fav');
+        if (fb) { fb.classList.remove('on'); fb.setAttribute('aria-pressed', 'false'); fb.textContent = '☆즐겨찾기'; }
+        [['ap-f-price', 'price'], ['ap-f-dday', 'dday'], ['ap-f-use', 'use']].forEach(([id, key]) => {
+          aucFilt[key] = '';
+          const el = $(id);
+          if (el) { el.value = ''; el.classList.remove('on'); }
+        });
+        auctionRenderList();
+        auctionFitFiltered(auctionBuild());
+        auctionList.scrollTop = 0;
       }
       
       function auctionPinToTop(d) {
