@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=6c68ae88"></script>
+  <script src="js/auth-guard.js?v=16767b43"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -36,12 +36,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=6c68ae88" />
+  <link rel="stylesheet" href="css/buttons.css?v=16767b43" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=6c68ae88" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=16767b43" />
   <style>
     :root {
       --c-primary:#1971c2; --c-primary-soft:#e7f0fb; --c-price:#d9480f;
@@ -1421,7 +1421,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=6c68ae88"></script>
+  <script src="js/ie-guard.js?v=16767b43"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1638,22 +1638,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-11 16:09 · 6c68ae88</span></span>
+          · <span class="build-tag">build 2026-09-11 16:24 · 16767b43</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=6c68ae88"></script>
+  <script src="js/joinkey.js?v=16767b43"></script>
   
-  <script src="js/identity.js?v=6c68ae88"></script>
-  <script src="js/common.js?v=6c68ae88"></script>
-  <script src="js/ui-resize.js?v=6c68ae88"></script>
-  <script src="js/footer-resize.js?v=6c68ae88"></script>
-  <script src="js/route-line.js?v=6c68ae88"></script>
-  <script src="js/route-api.js?v=6c68ae88"></script>
-  <script src="js/footer-stats.js?v=6c68ae88"></script>
+  <script src="js/identity.js?v=16767b43"></script>
+  <script src="js/common.js?v=16767b43"></script>
+  <script src="js/ui-resize.js?v=16767b43"></script>
+  <script src="js/footer-resize.js?v=16767b43"></script>
+  <script src="js/route-line.js?v=16767b43"></script>
+  <script src="js/route-api.js?v=16767b43"></script>
+  <script src="js/footer-stats.js?v=16767b43"></script>
   <script>
     
     
@@ -7098,6 +7098,34 @@
           + `<th>취득세 등</th><th>인수액</th><th>합계</th></tr></thead><tbody>${rows}</tbody></table>`
           + `<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">${notes.join(' ')}</div>`;
       }
+      
+      
+      
+      
+      
+      function aucBidSheet(d) {
+        const lowEok = aucLowEok(d);
+        if (!lowEok || !d.cn) return '';
+        const lowMan = lowEok * 10000;
+        const depMan = lowMan * 0.1;   
+        const dy = (/^\d{8}$/.test((d.idx && d.idx.dy) || '')
+          ? d.idx.dy.slice(0, 4) + '.' + d.idx.dy.slice(4, 6) + '.' + d.idx.dy.slice(6, 8) : '');
+        const cell = (k, v) => `<div style="display:flex;justify-content:space-between;gap:10px;">`
+          + `<span style="color:var(--c-muted);flex-shrink:0;">${k}</span>`
+          + `<b class="auc-bid-val" data-k="${k}" style="text-align:right;">${v}</b></div>`;
+        return `<div class="auc-doc-h">입찰표 사전작성</div>`
+          + `<div class="auc-bid-slip">`
+          + cell('사건번호', esc(d.cn))
+          + cell('법원', esc(d.court || '확인 필요'))
+          + cell('매각기일', esc(dy || '법원 확인 필요'))
+          + cell('물건', esc(d.addr || ''))
+          + cell('최저가', fmtAmtExact(lowMan))
+          + cell('입찰보증금(10%)', fmtAmtExact(depMan))
+          + cell('입찰가(시작점)', fmtAmtExact(lowMan))
+          + `</div><button type="button" class="auc-bid-copy pc-btn pc-btn-outline" style="margin-top:6px;">입찰표 복사</button>`
+          + `<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">`
+          + `입찰가는 최저가에서 시작한 것입니다 — 전략에 맞게 고치십시오. 보증금은 최저가의 10% 이상을 준비하십시오.</div>`;
+      }
       function aucInvestHtml(d, sumHtml, rowsHtml, goBtns) {
         const det = d.detail || {};
         
@@ -7128,6 +7156,7 @@
               + ` 그 날짜는 매각물건명세서에 있습니다 — 이 표만으로 판단하지 마십시오.</div>`
             : '')
           + aucDivdSim(d)
+          + aucBidSheet(d)
           + (nd ? `<div class="auc-doc-h">고지사항 전문</div><div class="apd-note">${esc(nd)}</div>` : '')
           + `<div class="auc-doc-h">원문·전체</div>${goBtns}`
           + `<div style="font-size:11px;color:var(--c-muted);margin-top:4px;">`
@@ -9466,6 +9495,19 @@
                   || (pc.querySelector('.pc-head') && pc.querySelector('.pc-head').textContent.trim())
                   || '경매 투자 정보');
                 body.innerHTML = html;
+                
+                const cp = body.querySelector('.auc-bid-copy');
+                if (cp && navigator.clipboard) {
+                  cp.onclick = () => {
+                    const lines = [...body.querySelectorAll('.auc-bid-slip .auc-bid-val')]
+                      .map((el) => `${el.dataset.k}: ${el.textContent.trim()}`);
+                    if (!lines.length) return;
+                    navigator.clipboard.writeText(lines.join('\n')).then(() => {
+                      const t = cp.textContent; cp.textContent = '복사됨 ✓';
+                      setTimeout(() => { cp.textContent = t; }, 1200);
+                    }).catch(() => { });
+                  };
+                }
                 panel.hidden = false;
                 if (panel.classList.contains('collapsed') && window.__dpTab) window.__dpTab.toggle();
                 return;
