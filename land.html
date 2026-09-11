@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=f6369482"></script>
+  <script src="js/auth-guard.js?v=ab82dd67"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -36,12 +36,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=f6369482" />
+  <link rel="stylesheet" href="css/buttons.css?v=ab82dd67" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=f6369482" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=ab82dd67" />
   <style>
     :root {
       --c-primary:#1971c2; --c-primary-soft:#e7f0fb; --c-price:#d9480f;
@@ -1437,7 +1437,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=f6369482"></script>
+  <script src="js/ie-guard.js?v=ab82dd67"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1654,22 +1654,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-11 19:07 · f6369482</span></span>
+          · <span class="build-tag">build 2026-09-11 19:49 · ab82dd67</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=f6369482"></script>
+  <script src="js/joinkey.js?v=ab82dd67"></script>
   
-  <script src="js/identity.js?v=f6369482"></script>
-  <script src="js/common.js?v=f6369482"></script>
-  <script src="js/ui-resize.js?v=f6369482"></script>
-  <script src="js/footer-resize.js?v=f6369482"></script>
-  <script src="js/route-line.js?v=f6369482"></script>
-  <script src="js/route-api.js?v=f6369482"></script>
-  <script src="js/footer-stats.js?v=f6369482"></script>
+  <script src="js/identity.js?v=ab82dd67"></script>
+  <script src="js/common.js?v=ab82dd67"></script>
+  <script src="js/ui-resize.js?v=ab82dd67"></script>
+  <script src="js/footer-resize.js?v=ab82dd67"></script>
+  <script src="js/route-line.js?v=ab82dd67"></script>
+  <script src="js/route-api.js?v=ab82dd67"></script>
+  <script src="js/footer-stats.js?v=ab82dd67"></script>
   <script>
     
     
@@ -7319,11 +7319,15 @@
         out.grade = g;
         return out;
       }
+      
+      function aucGradeCol(g) {
+        return g === 'A' ? '#2f9e44' : g === 'B' ? '#1971c2' : g === 'C' ? '#f08c00' : '#e03131';
+      }
       function aucVerdictHtml(d) {
         const v = aucScore(d);
         if (!v) return '';
         if (v.score == null) return `<div class="auc-doc-h">종합점수</div><div>판정 불가 — ${esc(v.why[0])}</div>`;
-        const col = v.grade === 'A' ? '#2f9e44' : v.grade === 'B' ? '#1971c2' : v.grade === 'C' ? '#f08c00' : '#e03131';
+        const col = aucGradeCol(v.grade);
         return `<div class="auc-doc-h">종합점수</div>`
           + `<div style="display:flex;align-items:baseline;gap:8px;"><b style="font-size:22px;">${v.score}점</b>`
           + `<span style="font-size:12px;background:${col};color:#fff;padding:1px 8px;border-radius:999px;">${v.grade}</span></div>`
@@ -8924,6 +8928,18 @@
               <b class="ap-addr">${esc(d.addr)}</b>
               <button type="button" class="ap-star${fav ? ' on' : ''}" title="즐겨찾기">${fav ? '★' : '☆'}</button>
             </div>
+            ${(() => {
+              
+              
+              
+              
+              const v = (d.detail && d.detail.objctDoc) ? aucScore(d) : null;
+              if (!v || v.score == null) return '';
+              const first = v.why.length ? ` · ${esc(v.why[0])}` : '';
+              return `<div style="margin-top:2px;font-size:11px;color:var(--c-muted);">`
+                + `<span style="font-weight:800;color:#fff;background:${aucGradeCol(v.grade)};padding:0 7px;border-radius:999px;">${v.grade}</span>`
+                + ` ${v.score}점${first}</div>`;
+            })()}
             <div class="ap-row-mid" style="margin-top:3px;"><button type="button" class="ap-cn" title="법원 사이트 사건검색에서 조회">${esc((d.cn || '').replace(d.court || '', '').trim())}</button> <span class="ap-court">${esc(d.court)} · 물건${esc(d.no)}</span></div>
             ${rows ? `<div class="ap-meta">${rows}</div>` : ''}
             ${(() => {
