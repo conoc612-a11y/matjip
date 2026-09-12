@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=0a956f62"></script>
+  <script src="js/auth-guard.js?v=018eea46"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -36,12 +36,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=0a956f62" />
+  <link rel="stylesheet" href="css/buttons.css?v=018eea46" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=0a956f62" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=018eea46" />
   <style>
     :root {
       --c-primary:#1971c2; --c-primary-soft:#e7f0fb; --c-price:#d9480f;
@@ -1437,7 +1437,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=0a956f62"></script>
+  <script src="js/ie-guard.js?v=018eea46"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1655,22 +1655,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-12 21:50 · 0a956f62</span></span>
+          · <span class="build-tag">build 2026-09-13 04:34 · 018eea46</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=0a956f62"></script>
+  <script src="js/joinkey.js?v=018eea46"></script>
   
-  <script src="js/identity.js?v=0a956f62"></script>
-  <script src="js/common.js?v=0a956f62"></script>
-  <script src="js/ui-resize.js?v=0a956f62"></script>
-  <script src="js/footer-resize.js?v=0a956f62"></script>
-  <script src="js/route-line.js?v=0a956f62"></script>
-  <script src="js/route-api.js?v=0a956f62"></script>
-  <script src="js/footer-stats.js?v=0a956f62"></script>
+  <script src="js/identity.js?v=018eea46"></script>
+  <script src="js/common.js?v=018eea46"></script>
+  <script src="js/ui-resize.js?v=018eea46"></script>
+  <script src="js/footer-resize.js?v=018eea46"></script>
+  <script src="js/route-line.js?v=018eea46"></script>
+  <script src="js/route-api.js?v=018eea46"></script>
+  <script src="js/footer-stats.js?v=018eea46"></script>
   <script>
     
     
@@ -4798,21 +4798,27 @@
       
       
       
-      const TAGO_POS_EP = SUPABASE_URL + '/functions/v1/tago-buspos';
+      
+      
+      const TAGO_SRC = { ep: SUPABASE_URL + '/functions/v1/tago-buspos', param: 'routeId',
+        note: 'TAGO 전국버스위치정보', color: '#0c8599' };
+      const ULTRA_SRC = { ep: SUPABASE_URL + '/functions/v1/ultra-buspos', param: 'rteId',
+        note: '초정밀버스 위치정보(13개 지자체)', color: '#7048e8' };
       const tagoPosLayer = L.layerGroup();
-      let tagoPosKey = '', tagoPosLabel = '';
+      let tagoPosKey = '', tagoPosLabel = '', tagoPosSrc = TAGO_SRC;
       let tagoPosTimer = null;
       function tagoPosStop() {
         if (tagoPosTimer) { clearInterval(tagoPosTimer); tagoPosTimer = null; }
-        tagoPosKey = ''; tagoPosLabel = '';
+        tagoPosKey = ''; tagoPosLabel = ''; tagoPosSrc = TAGO_SRC;
         tagoPosLayer.clearLayers();
         if (map.hasLayer(tagoPosLayer)) map.removeLayer(tagoPosLayer);
       }
       function tagoPosDraw(buses, label) {
+        const C = tagoPosSrc;
         tagoPosLayer.clearLayers();
         for (const b of buses) {
           if (!b.lat || !b.lng) continue;
-          const m = L.marker([b.lat, b.lng], { icon: svcIcon('fi-rr-bus', '#0c8599', 30), zIndexOffset: 800 });
+          const m = L.marker([b.lat, b.lng], { icon: svcIcon('fi-rr-bus', C.color, 30), zIndexOffset: 800 });
           m.bindTooltip(esc(label) + ' ' + esc(b.no), { direction: 'top' });
           m.bindPopup('<div class="pc"><div class="pc-head"><span class="rp-name">'
             + esc(label) + ' <span style="font-weight:400;">' + esc(b.no) + '</span></span></div>'
@@ -4820,16 +4826,25 @@
             + '<div style="font-size:12px;">' + '운행 중</div>'
             + (b.ord ? '<div style="font-size:12px;margin-top:2px;">' + b.ord + '번째 정류소 구간</div>' : '')
             + (b.stop ? '<div style="font-size:12px;margin-top:2px;">현 위치 ' + esc(b.stop) + '</div>' : '')
-            + '<div style="font-size:11px;color:var(--c-muted);margin-top:4px;">TAGO 전국버스위치정보</div>'
+            + (b.at ? '<div style="font-size:11px;color:var(--c-muted);margin-top:2px;">' + esc(String(b.at).slice(0, 16)) + ' 기준</div>' : '')
+            + '<div style="font-size:11px;color:var(--c-muted);margin-top:4px;">' + C.note + '</div>'
             + '</div></div>');
           tagoPosLayer.addLayer(m);
         }
       }
-      function tagoPosLoad(cc, rid, label, quiet) {
+      function tagoPosLoad(cc, rid, label, quiet, src) {
         const key = cc + '/' + rid;
         tagoPosKey = key; tagoPosLabel = label;
+        
+        
+        if (src) tagoPosSrc = src;
         if (!map.hasLayer(tagoPosLayer)) tagoPosLayer.addTo(map);
-        return fetch(TAGO_POS_EP + '?cityCode=' + encodeURIComponent(cc) + '&routeId=' + encodeURIComponent(rid))
+        const ep = tagoPosSrc.ep, pm = tagoPosSrc.param;
+        
+        const qs = pm === 'rteId'
+          ? 'rteId=' + encodeURIComponent(rid)
+          : 'cityCode=' + encodeURIComponent(cc) + '&routeId=' + encodeURIComponent(rid);
+        return fetch(ep + '?' + qs)
           .then(okJson)
           .then((j) => {
             if (tagoPosKey !== key) return;          
@@ -4847,9 +4862,9 @@
           })
           .catch(() => { if (!quiet) toast('실시간 위치를 불러오지 못했습니다.'); });
       }
-      function tagoPosStart(cc, rid, label) {
+      function tagoPosStart(cc, rid, label, src) {
         tagoPosStop();
-        tagoPosLoad(cc, rid, label, false);
+        tagoPosLoad(cc, rid, label, false, src);
         tagoPosTimer = setInterval(() => {
           if (!map.hasLayer(tagoPosLayer) || !tagoPosKey) { tagoPosStop(); return; }
           const [c2, r2] = tagoPosKey.split('/');
@@ -4872,7 +4887,20 @@
       });
       
       
+      
       let _tagoRoutes = null, _tagoRoutesP = null;
+      let _chomilRoutes = null, _chomilRoutesP = null;
+      function matchRouteList(rows, nq, src, out, cap) {
+        
+        
+        for (const r of rows) {
+          const nn = String(r.n || r.no || '').replace(/\s+/g, '').toLowerCase();
+          if (!nn) continue;
+          if (nn.includes(nq) || (nq.includes(nn) && nn.length >= 2)) out.push(Object.assign({ src }, r));
+          if (out.length >= cap) break;
+        }
+        return out;
+      }
       function tagoRouteMatch(q) {
         if (!_tagoRoutesP) {
           _tagoRoutesP = fetch('tago_routes.json')
@@ -4880,23 +4908,28 @@
             .then((j) => { _tagoRoutes = (j && j.rows) || []; })
             .catch(() => { _tagoRoutes = []; });
         }
-        if (!_tagoRoutes || !_tagoRoutes.length) return [];
+        if (!_chomilRoutesP) {
+          _chomilRoutesP = fetch('chomil_routes.json')
+            .then((r) => (r.ok ? r.json() : null))
+            .then((j) => { _chomilRoutes = (j && j.rows) || []; })
+            .catch(() => { _chomilRoutes = []; });
+        }
         const nq = String(q || '').replace(/\s+/g, '').toLowerCase();
         if (nq.length < 2) return [];
         const out = [];
-        for (const r of _tagoRoutes) {
-          const nn = String(r.n || '').replace(/\s+/g, '').toLowerCase();
-          if (!nn) continue;
-          if (nn.includes(nq) || (nq.includes(nn) && nn.length >= 2)) out.push(r);
-          if (out.length >= 4) break;
-        }
+        
+        if (_tagoRoutes && _tagoRoutes.length) matchRouteList(_tagoRoutes, nq, 'tago', out, 3);
+        if (out.length < 4 && _chomilRoutes && _chomilRoutes.length) matchRouteList(_chomilRoutes, nq, 'ultra', out, 4);
         return out;
       }
       function openTagoRoute(r) {
         if (!r) return;
-        tagoPosStart(r.cc, r.id, r.n + '번(' + r.c + ')');
+        
+        if (r.src === 'ultra') tagoPosStart('', r.id, (r.n || r.no) + '번(' + (r.c || r.city) + '·정밀)', ULTRA_SRC);
+        else tagoPosStart(r.cc, r.id, r.n + '번(' + r.c + ')', TAGO_SRC);
       }
-      const _busArrSeen = new WeakSet();      function fillBusArrival(root) {
+      const _busArrSeen = new WeakSet();
+      function fillBusArrival(root) {
         const box = root && root.querySelector && root.querySelector('.bus-arr');
         if (!box || _busArrSeen.has(box)) return;
         _busArrSeen.add(box);
@@ -5056,8 +5089,32 @@
             .then(okJson)
             .then((j) => { subRows = j.rows || []; subMeta = j; subStations = subRows; return subRows; })
             .catch((e) => { _subPromise = null; console.error('지하철 로드 실패:', e); return null; });
+          loadTransfer();
         }
         return _subPromise;
+      }
+      
+      
+      
+      
+      let _transferMap = null, _transferAt = '';
+      function transferKey(nm) {
+        return String(nm || '').replace(/\(.*/, '').replace(/역$/, '');
+      }
+      function loadTransfer() {
+        fetch('transit_transfer.json').then(okJson).then((j) => {
+          _transferAt = (j && j.at) || '';
+          _transferMap = {};
+          const rows = (j && j.rows) || {};
+          for (const k of Object.keys(rows)) {
+            const nk = transferKey(k);
+            if (nk && rows[k]) _transferMap[nk] = rows[k];
+          }
+        }).catch(() => { _transferMap = {}; });
+      }
+      function transferOf(nm) {
+        if (!_transferMap) return null;
+        return _transferMap[transferKey(nm)] || null;
       }
       
       
@@ -5093,6 +5150,15 @@
           rows.push('<div style="margin-top:3px;font-size:12px;">일평균 <b>' + tot.toLocaleString('ko-KR') + '명</b>'
             + ' <span style="color:var(--c-muted);">승차 ' + (d.on || 0).toLocaleString('ko-KR')
             + ' · 하차 ' + (d.off || 0).toLocaleString('ko-KR') + '</span></div>');
+        }
+        
+        
+        const tr = transferOf(d.nm);
+        if (tr) {
+          rows.push('<div style="margin-top:3px;font-size:12px;">환승 평일 <b>'
+            + Number(tr[0]).toLocaleString('ko-KR') + '명</b>'
+            + ' <span style="color:var(--c-muted);">토 ' + Number(tr[1]).toLocaleString('ko-KR')
+            + ' · 일 ' + Number(tr[2]).toLocaleString('ko-KR') + '</span></div>');
         }
         if (bars) {
           rows.push('<div style="margin-top:3px;height:26px;line-height:0;">' + bars + '</div>');
@@ -13399,6 +13465,7 @@
               '15157254': 'dgk',   
               '15157348': 'dgk',   
               '15157413': 'dgk',   
+              '15157601': 'dgk',   
               '15158701': 'dgk',   
               '15158915': 'dgk',   
               '3035683': 'dgk',   
@@ -13871,7 +13938,7 @@
           {"t": "국토교통부_오피스텔 전월세 실거래가 자료", "pk": "15126475", "u": 1, "n": 1, "o": ["getRTMSDataSvcOffiRent"], "w": "단독·다가구 매매 (동 단위) · 단독·다가구 전월세 (동 단위) · 아파트 분양권·입주권 전매 · 아파트 실거래가·노후도 · 연립·다세대 실거래가 · 오피스텔"},
           {"t": "국토교통부_정류장별 경유노선별 이용량", "pk": "15142065", "u": 2, "n": 2, "o": ["getDailyStopbyRouteTripVolume", "getMonthlyStopbyRouteTripVolume"], "w": ""},
           {"t": "국토교통부_키스콘 건설업체정보 서비스", "pk": "15061362", "u": 2, "n": 2, "o": ["ConAdminInfoSvc1", "GongsiReg"], "w": "건설업체 (키스콘)"},
-          {"t": "국토안전관리원_노후화된 공공시설물현황", "pk": "15017291", "u": 2, "n": 2, "o": ["OldFacilService", "getFacil30YearsOldList"], "w": "노후 공공시설물 (안전등급) · 전기차 충전소"},
+          {"t": "국토안전관리원_노후화된 공공시설물현황", "pk": "15017291", "u": 2, "n": 2, "o": ["OldFacilService", "getFacil30YearsOldList"], "w": "노후 공공시설물 (안전등급) · 병원·의원 (심평원) · 전기차 충전소"},
           {"t": "예금보험공사 파산금융회사 매물현황(정보)", "pk": "3035683", "u": 2, "n": 2, "o": ["GetBankruptcyEstatesGoodsService2020081", "getRealEstateDetail2020081"], "w": "건축 인허가 이력 · 공공데이터 더보기 · 공매 (온비드 · 압류재산) · 공중화장실 (동 단위) · 공중화장실 (비상벨·CCTV) · 국민연금 가입현황 (자치구"},
           {"t": "한국부동산원_공동주택 단지 식별정보 조회 서비스", "pk": "15106817", "u": 3, "n": 3, "o": ["getAptInfo", "getDongInfo", "getHistInfo"], "w": "아파트 실거래가·노후도 · 연립·다세대 실거래가"},
           {"t": "한국부동산원_녹색건축 인증현황 조회 서비스", "pk": "15099344", "u": 1, "n": 1, "o": ["getGreenBuildCertify"], "w": "건축 인허가 이력 · 공공데이터 더보기 · 공중화장실 (동 단위) · 공중화장실 (비상벨·CCTV) · 국민연금 가입현황 (자치구) · 녹색건축 인증 (G-SEE"},
@@ -13905,7 +13972,8 @@
           {"t": "서울교통공사_지하철알림정보", "pk": "15144070", "u": 1, "n": 1, "o": ["getNtceList"], "w": ""},
           {"t": "서울교통공사_최단경로이동정보", "pk": "15143842", "u": 1, "n": 1, "o": ["getShtrmPath2"], "w": ""},
           {"t": "한국교통안전공단_주차정보 제공 API", "pk": "15099883", "u": 2, "n": 2, "o": ["Parking", "PrkSttusInfo"], "w": "국가자산 (매각·대부) · 주차장 (실제 시설)"},
-          {"t": "행정안전부_CCTV정보 조회서비스", "pk": "15155042", "u": 2, "n": 2, "o": ["info", "history"], "w": ""},
+          {"t": "행정안전부 한국지역정보개발원_(전국 통합데이터) 초정밀버스 위치 실시간 정보", "pk": "15157601", "u": 2, "n": 3, "o": ["mst_info", "rtm_loc_info"], "w": ""},
+          {"t": "행정안전부_CCTV정보 조회서비스", "pk": "15155042", "u": 2, "n": 2, "o": ["info", "history"], "w": "건축 인허가 이력 · 공공데이터 더보기 · 공매 (온비드 · 압류재산) · 공중화장실 (동 단위) · 공중화장실 (비상벨·CCTV) · 국민연금 가입현황 (자치구"},
           {"t": "행정안전부_공공데이터 제공표준 조회 서비스", "pk": "15156266", "u": 2, "n": 2, "o": ["retrievePrvdStdInfo", "retrievePrvdStdList"], "w": ""},
           {"t": "행정안전부_공중화장실정보 조회서비스", "pk": "15155058", "u": 2, "n": 2, "o": ["info_v2", "history_v2"], "w": "건축 인허가 이력 · 공공데이터 더보기 · 공매 (온비드 · 압류재산) · 공중화장실 (동 단위) · 공중화장실 (비상벨·CCTV) · 국민연금 가입현황 (자치구"},
         ]],
@@ -13932,7 +14000,7 @@
           {"t": "한국예탁결제원_주식정보서비스_GW", "pk": "15157413", "u": 8, "n": 20, "o": ["getKDRSecnInfo", "getVctfDivRankInfo", "getTotIssuStkQty", "getKDRIssuLmtDetailsN1"], "w": ""},
         ]],
         ['그 외', [
-          {"t": "국립중앙의료원_전국 응급의료기관 정보 조회 서비스", "pk": "15000563", "u": 1, "n": 9, "o": ["getEgytListInfoInqire"], "w": ""},
+          {"t": "국립중앙의료원_전국 응급의료기관 정보 조회 서비스", "pk": "15000563", "u": 1, "n": 9, "o": ["getEgytListInfoInqire"], "w": "따릉이 대여소 · 병원·의원 (심평원) · 상권 (매출·유동인구) · 응급의료기관 · 전기차 충전소 · 지하철역 (역세권 강도) · 학교 (초·중·고)"},
           {"t": "법무부_마을변호사 지역별 현황", "pk": "15121954", "u": 1, "n": 1, "o": ["mabyun"], "w": ""},
           {"t": "보건복지부_보건·복지현황_의료서비스 이용률", "pk": "15098808", "u": 2, "n": 2, "o": ["ODMS_STAT_12", "callStat12Api"], "w": ""},
           {"t": "소상공인시장진흥공단_상가(상권)정보_API", "pk": "15012005", "u": 19, "n": 19, "o": ["storeZoneOne", "storeListInDong", "baroApi", "storeZoneInRadius"], "w": "건축 인허가 이력 · 공공데이터 더보기 · 공중화장실 (동 단위) · 공중화장실 (비상벨·CCTV) · 국민연금 가입현황 (자치구) · 녹색건축 인증 (G-SEE"},
@@ -13974,7 +14042,7 @@
           {"t": "한국토지주택공사 (LH청약플러스)", "pk": "", "u": 0, "n": 0, "o": [], "d": "입주자모집공고 첨부 「공급대상주택목록」 — 매입임대·든든전세 **물건별 주소**(광역 공고는 공고 본문에 주소가 없어 이 첨부가 유일한 위치 자료다)", "cat": "공개 웹 수집"},
         ]],
       ];
-      const UA_SERVICES_N = 123;   
+      const UA_SERVICES_N = 124;   
       
       
       
@@ -14547,6 +14615,40 @@
     
     function geocodeText(q, cb) {
       if (!q || !cb) return;
+      geocodeStages(q, cb, true);
+    }
+    
+    
+    
+    
+    
+    
+    
+    
+    function geocodeNorm(q) {
+      let t = String(q || '');
+      
+      
+      const sido = [[/^서울(특별시)?(?=\s|$)/, '서울특별시'], [/^부산(광역시)?(?=\s|$)/, '부산광역시'],
+        [/^대구(광역시)?(?=\s|$)/, '대구광역시'], [/^인천(광역시)?(?=\s|$)/, '인천광역시'],
+        [/^광주(광역시)?(?=\s|$)/, '광주광역시'], [/^울산(광역시)?(?=\s|$)/, '울산광역시'],
+        [/^충남(?=\s|$)/, '충청남도'], [/^강원(특별자치도)?(?=\s|$)/, '강원특별자치도'],
+        [/^경기(도)?(?=\s|$)/, '경기도']];
+      for (const [re, full] of sido) { if (re.test(t)) { t = t.replace(re, full); break; } }
+      if (/^(종로구|중구|용산구|성동구|광진구|동대문구|중랑구|성북구|강북구|도봉구|노원구|은평구|서대문구|마포구|양천구|강서구|구로구|금천구|영등포구|동작구|관악구|서초구|강남구|송파구|강동구)(?=\s|$)/.test(t)) t = '서울특별시 ' + t;
+      t = t.replace(/\([^)]*\)/g, ' ').replace(/（[^）]*）/g, ' ');   
+      t = t.replace(/(\d[\d-]*)번지/g, '$1');                          
+      t = t.replace(/\s+\S*\d+층.*$/g, '').replace(/\s+\d+호\s*$/g, ''); 
+      
+      
+      
+      t = t.replace(/^(.*?[동리]\s*\d+(?:-\d+)?)\s+\S.*$/, '$1');
+      
+      t = t.replace(/([가-힣]+?)\d+(동)(?=\s|$)/g, '$1$2');
+      return t.replace(/\s+/g, ' ').trim();
+    }
+    function geocodeStages(q, cb, retry) {
+      if (!q || !cb) return;
       const looksRoad = /(로|길)\s?\d/.test(q);
       const looksParcel = /(동|리|가)\s?\d+(-\d+)?/.test(q);
       const order = looksRoad
@@ -14555,7 +14657,14 @@
           ? [['address', 'parcel'], ['address', 'road'], ['place', '']]
           : [['place', ''], ['address', 'road'], ['address', 'parcel']];
       const step = (i) => {
-        if (i >= order.length) { cb(null); return; }
+        
+        if (i >= order.length) {
+          if (retry) {
+            const nq = geocodeNorm(q);
+            if (nq && nq !== q) { geocodeStages(nq, cb, false); return; }
+          }
+          cb(null); return;
+        }
         const type = order[i][0];
         const cat = order[i][1];
         const name = '__vwgeo_' + Date.now() + '_' + (++_vwRevSeq);
@@ -22842,7 +22951,7 @@
       const jbItems = jb.map((d, i) => `<div class="ac-item" data-jb="${i}"><span style="opacity:.7;">▣</span>${esc(d.name)}<span class="t">정비구역</span></div>`).join('');
       
       const busRt = tagoRouteMatch(q);
-      const busItems = busRt.map((d, i) => `<div class="ac-item" data-bus="${i}"><span style="opacity:.7;">🚌</span>${esc(d.n)} · ${esc(d.c)}<span class="t">버스노선</span></div>`).join('');
+      const busItems = busRt.map((d, i) => `<div class="ac-item" data-bus="${i}"><span style="opacity:.7;">🚌</span>${esc(d.n || d.no)} · ${esc(d.c || d.city || '')}${d.src === 'ultra' ? '(정밀)' : ''}<span class="t">버스노선</span></div>`).join('');
       ac.innerHTML = placeItem + aptItems + jbItems + busItems;
       ac.className = 'ac on';
       ac.querySelector('.ac-item[data-place="1"]').addEventListener('mousedown', (ev) => { ev.preventDefault(); runSearch(); ac.className = 'ac'; });
