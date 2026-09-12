@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=04952dfb"></script>
+  <script src="js/auth-guard.js?v=0a956f62"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -36,12 +36,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=04952dfb" />
+  <link rel="stylesheet" href="css/buttons.css?v=0a956f62" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=04952dfb" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=0a956f62" />
   <style>
     :root {
       --c-primary:#1971c2; --c-primary-soft:#e7f0fb; --c-price:#d9480f;
@@ -1437,7 +1437,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=04952dfb"></script>
+  <script src="js/ie-guard.js?v=0a956f62"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1655,22 +1655,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-12 21:22 · 04952dfb</span></span>
+          · <span class="build-tag">build 2026-09-12 21:50 · 0a956f62</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=04952dfb"></script>
+  <script src="js/joinkey.js?v=0a956f62"></script>
   
-  <script src="js/identity.js?v=04952dfb"></script>
-  <script src="js/common.js?v=04952dfb"></script>
-  <script src="js/ui-resize.js?v=04952dfb"></script>
-  <script src="js/footer-resize.js?v=04952dfb"></script>
-  <script src="js/route-line.js?v=04952dfb"></script>
-  <script src="js/route-api.js?v=04952dfb"></script>
-  <script src="js/footer-stats.js?v=04952dfb"></script>
+  <script src="js/identity.js?v=0a956f62"></script>
+  <script src="js/common.js?v=0a956f62"></script>
+  <script src="js/ui-resize.js?v=0a956f62"></script>
+  <script src="js/footer-resize.js?v=0a956f62"></script>
+  <script src="js/route-line.js?v=0a956f62"></script>
+  <script src="js/route-api.js?v=0a956f62"></script>
+  <script src="js/footer-stats.js?v=0a956f62"></script>
   <script>
     
     
@@ -2298,7 +2298,11 @@
                       nm: pick(el, 'ENT_NAME'),
                       asset: Number(pick(el, 'TOT_JAE_JS')) || 0,
                       debt: Number(pick(el, 'TOT_JAE_BU')) || 0,
-                      profit: Number(pick(el, 'TOT_GYE_YI')) || 0,
+                      
+                      
+                      
+                      
+                      profit: Number(pick(el, 'TOT_GYE_DI')) || 0,
                     }))
                     .filter((x) => {
                       const k = nokey(x.nm);
@@ -4789,8 +4793,110 @@
         }
       });
 
-      const _busArrSeen = new WeakSet();
-      function fillBusArrival(root) {
+      
+      
+      
+      
+      
+      const TAGO_POS_EP = SUPABASE_URL + '/functions/v1/tago-buspos';
+      const tagoPosLayer = L.layerGroup();
+      let tagoPosKey = '', tagoPosLabel = '';
+      let tagoPosTimer = null;
+      function tagoPosStop() {
+        if (tagoPosTimer) { clearInterval(tagoPosTimer); tagoPosTimer = null; }
+        tagoPosKey = ''; tagoPosLabel = '';
+        tagoPosLayer.clearLayers();
+        if (map.hasLayer(tagoPosLayer)) map.removeLayer(tagoPosLayer);
+      }
+      function tagoPosDraw(buses, label) {
+        tagoPosLayer.clearLayers();
+        for (const b of buses) {
+          if (!b.lat || !b.lng) continue;
+          const m = L.marker([b.lat, b.lng], { icon: svcIcon('fi-rr-bus', '#0c8599', 30), zIndexOffset: 800 });
+          m.bindTooltip(esc(label) + ' ' + esc(b.no), { direction: 'top' });
+          m.bindPopup('<div class="pc"><div class="pc-head"><span class="rp-name">'
+            + esc(label) + ' <span style="font-weight:400;">' + esc(b.no) + '</span></span></div>'
+            + '<div class="pc-body">'
+            + '<div style="font-size:12px;">' + '운행 중</div>'
+            + (b.ord ? '<div style="font-size:12px;margin-top:2px;">' + b.ord + '번째 정류소 구간</div>' : '')
+            + (b.stop ? '<div style="font-size:12px;margin-top:2px;">현 위치 ' + esc(b.stop) + '</div>' : '')
+            + '<div style="font-size:11px;color:var(--c-muted);margin-top:4px;">TAGO 전국버스위치정보</div>'
+            + '</div></div>');
+          tagoPosLayer.addLayer(m);
+        }
+      }
+      function tagoPosLoad(cc, rid, label, quiet) {
+        const key = cc + '/' + rid;
+        tagoPosKey = key; tagoPosLabel = label;
+        if (!map.hasLayer(tagoPosLayer)) tagoPosLayer.addTo(map);
+        return fetch(TAGO_POS_EP + '?cityCode=' + encodeURIComponent(cc) + '&routeId=' + encodeURIComponent(rid))
+          .then(okJson)
+          .then((j) => {
+            if (tagoPosKey !== key) return;          
+            const buses = (j && j.buses) || [];
+            tagoPosDraw(buses, label);
+            if (!buses.length) {
+              if (!quiet) toast(label + ' — ' + (j && j.msg ? j.msg : '지금 운행 중인 차량이 없습니다.'));
+              return;
+            }
+            if (!quiet) {
+              toast(label + ' 실시간 ' + buses.length + '대 — 30초마다 갱신됩니다(레이어를 끄면 멈춥니다)');
+              const g = L.featureGroup(tagoPosLayer.getLayers());
+              try { map.fitBounds(g.getBounds().pad(0.15)); } catch (e) {  }
+            }
+          })
+          .catch(() => { if (!quiet) toast('실시간 위치를 불러오지 못했습니다.'); });
+      }
+      function tagoPosStart(cc, rid, label) {
+        tagoPosStop();
+        tagoPosLoad(cc, rid, label, false);
+        tagoPosTimer = setInterval(() => {
+          if (!map.hasLayer(tagoPosLayer) || !tagoPosKey) { tagoPosStop(); return; }
+          const [c2, r2] = tagoPosKey.split('/');
+          tagoPosLoad(c2, r2, tagoPosLabel, true);
+        }, 30000);
+      }
+      map.on('overlayremove', (e) => { if (e.layer === tagoPosLayer) tagoPosStop(); });
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+          if (tagoPosTimer) { clearInterval(tagoPosTimer); tagoPosTimer = null; }
+        } else if (tagoPosKey && map.hasLayer(tagoPosLayer) && !tagoPosTimer) {
+          const [c2, r2] = tagoPosKey.split('/');
+          tagoPosLoad(c2, r2, tagoPosLabel, true);
+          tagoPosTimer = setInterval(() => {
+            if (!map.hasLayer(tagoPosLayer) || !tagoPosKey) { tagoPosStop(); return; }
+            const [c3, r3] = tagoPosKey.split('/');
+            tagoPosLoad(c3, r3, tagoPosLabel, true);
+          }, 30000);
+        }
+      });
+      
+      
+      let _tagoRoutes = null, _tagoRoutesP = null;
+      function tagoRouteMatch(q) {
+        if (!_tagoRoutesP) {
+          _tagoRoutesP = fetch('tago_routes.json')
+            .then((r) => (r.ok ? r.json() : null))
+            .then((j) => { _tagoRoutes = (j && j.rows) || []; })
+            .catch(() => { _tagoRoutes = []; });
+        }
+        if (!_tagoRoutes || !_tagoRoutes.length) return [];
+        const nq = String(q || '').replace(/\s+/g, '').toLowerCase();
+        if (nq.length < 2) return [];
+        const out = [];
+        for (const r of _tagoRoutes) {
+          const nn = String(r.n || '').replace(/\s+/g, '').toLowerCase();
+          if (!nn) continue;
+          if (nn.includes(nq) || (nq.includes(nn) && nn.length >= 2)) out.push(r);
+          if (out.length >= 4) break;
+        }
+        return out;
+      }
+      function openTagoRoute(r) {
+        if (!r) return;
+        tagoPosStart(r.cc, r.id, r.n + '번(' + r.c + ')');
+      }
+      const _busArrSeen = new WeakSet();      function fillBusArrival(root) {
         const box = root && root.querySelector && root.querySelector('.bus-arr');
         if (!box || _busArrSeen.has(box)) return;
         _busArrSeen.add(box);
@@ -12594,6 +12700,8 @@
           { name: '버스정류소 (11,239곳)', layer: busCluster },
           
           { name: '실시간 버스 위치 (노선별)', layer: busPosLayer },
+          
+          { name: '전국 버스 위치 (노선 검색)', layer: tagoPosLayer },
         ]],
         
         
@@ -22732,7 +22840,10 @@
       const placeItem = `<div class="ac-item" data-place="1"><span style="opacity:.7;">⌖</span>'${esc(raw)}' 위치로 이동<span class="t">지명</span></div>`;
       const aptItems = apts.map((d, i) => `<div class="ac-item" data-apt="${i}"><span style="opacity:.7;">●</span>${esc(d.name)}<span class="t">아파트</span></div>`).join('');
       const jbItems = jb.map((d, i) => `<div class="ac-item" data-jb="${i}"><span style="opacity:.7;">▣</span>${esc(d.name)}<span class="t">정비구역</span></div>`).join('');
-      ac.innerHTML = placeItem + aptItems + jbItems;
+      
+      const busRt = tagoRouteMatch(q);
+      const busItems = busRt.map((d, i) => `<div class="ac-item" data-bus="${i}"><span style="opacity:.7;">🚌</span>${esc(d.n)} · ${esc(d.c)}<span class="t">버스노선</span></div>`).join('');
+      ac.innerHTML = placeItem + aptItems + jbItems + busItems;
       ac.className = 'ac on';
       ac.querySelector('.ac-item[data-place="1"]').addEventListener('mousedown', (ev) => { ev.preventDefault(); runSearch(); ac.className = 'ac'; });
       ac.querySelectorAll('.ac-item[data-apt]').forEach((el) => el.addEventListener('mousedown', (ev) => {
@@ -22750,6 +22861,12 @@
         vsMarker = L.marker([d.lat, d.lng]).addTo(map);
         vsMarker._jb = d;  
         vsMarker.bindPopup(() => window.jbPopupHtml(d)).openPopup();
+      }));
+      ac.querySelectorAll('.ac-item[data-bus]').forEach((el) => el.addEventListener('mousedown', (ev) => {
+        ev.preventDefault();
+        const d = busRt[Number(el.dataset.bus)];
+        $('ac').className = 'ac';
+        openTagoRoute(d);
       }));
     }
 
