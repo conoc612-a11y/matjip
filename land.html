@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=8e02bc67"></script>
+  <script src="js/auth-guard.js?v=04952dfb"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -36,12 +36,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=8e02bc67" />
+  <link rel="stylesheet" href="css/buttons.css?v=04952dfb" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=8e02bc67" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=04952dfb" />
   <style>
     :root {
       --c-primary:#1971c2; --c-primary-soft:#e7f0fb; --c-price:#d9480f;
@@ -1437,7 +1437,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=8e02bc67"></script>
+  <script src="js/ie-guard.js?v=04952dfb"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1655,22 +1655,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-12 14:13 · 8e02bc67</span></span>
+          · <span class="build-tag">build 2026-09-12 21:22 · 04952dfb</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=8e02bc67"></script>
+  <script src="js/joinkey.js?v=04952dfb"></script>
   
-  <script src="js/identity.js?v=8e02bc67"></script>
-  <script src="js/common.js?v=8e02bc67"></script>
-  <script src="js/ui-resize.js?v=8e02bc67"></script>
-  <script src="js/footer-resize.js?v=8e02bc67"></script>
-  <script src="js/route-line.js?v=8e02bc67"></script>
-  <script src="js/route-api.js?v=8e02bc67"></script>
-  <script src="js/footer-stats.js?v=8e02bc67"></script>
+  <script src="js/identity.js?v=04952dfb"></script>
+  <script src="js/common.js?v=04952dfb"></script>
+  <script src="js/ui-resize.js?v=04952dfb"></script>
+  <script src="js/footer-resize.js?v=04952dfb"></script>
+  <script src="js/route-line.js?v=04952dfb"></script>
+  <script src="js/route-api.js?v=04952dfb"></script>
+  <script src="js/footer-stats.js?v=04952dfb"></script>
   <script>
     
     
@@ -11943,6 +11943,17 @@
         
         
         
+        franchise: {
+          dir: 'franchise/', idx: 'franchise_index.json', icon: 'fi-rr-shop', color: '#d6336c',
+          title: (d) => d.nm, minZ: 16,
+          body: (d) => line('브랜드', d.brand) + line('가맹본부', d.corp) + line('업종', d.ind),
+          note: '공정위 가맹정보 브랜드 × 상가업소 상호 매칭 · 가맹점 수·평균매출은 건물 팝업의 가맹본부 절에',
+        },
+        
+        
+        
+        
+        
         
         goodrest: {
           dir: 'goodrest/', idx: 'goodrest_index.json', icon: 'fi-rr-utensils', color: '#0ca678',
@@ -12060,6 +12071,7 @@
       
       
       const sbizStdCluster = makeStdLayer('sbiz');
+      const franchiseCluster = makeStdLayer('franchise');
       const cctvStdCluster = makeStdLayer('cctv');
       const wifiCluster = makeStdLayer('wifi');
       const goodrestCluster = makeStdLayer('goodrest');
@@ -12552,6 +12564,8 @@
           
           
           { name: '상가업소 (상호·업종)', layer: sbizStdCluster },
+          
+          { name: '프랜차이즈 (브랜드 매장)', layer: franchiseCluster },
           
           
           { name: '방범 CCTV (전국)', layer: cctvStdCluster },
@@ -13222,6 +13236,7 @@
               '15093666': 'dgk',   
               '15094808': 'dgk',   
               '15098529': 'dgk',   
+              '15098533': 'dgk',   
               '15098547': 'dgk',   
               '15098808': 'dgk',   
               '15098905': 'dgk',   
@@ -13713,6 +13728,7 @@
       const UA_SERVICES = [
         ['부동산·건축', [
           {"t": "국토교통부_(TAGO)_버스노선정보", "pk": "15098529", "u": 2, "n": 2, "o": ["BusRouteInfoInqireService", "getRouteInfoIem"], "w": ""},
+          {"t": "국토교통부_(TAGO)_버스위치정보", "pk": "15098533", "u": 2, "n": 2, "o": ["BusLcInfoInqireService", "getRouteAcctoBusLcList"], "w": ""},
           {"t": "국토교통부_(도시계획)개발행위허가정보서비스", "pk": "15058480", "u": 1, "n": 1, "o": ["selectPrmisnPrjct"], "w": ""},
           {"t": "국토교통부_건축HUB_건물에너지정보 서비스", "pk": "15135963", "u": 2, "n": 2, "o": ["getBeElctyUsgInfo", "getBeGasUsgInfo"], "w": "에너지 사용량 (전기·가스)"},
           {"t": "국토교통부_건축HUB_건축물대장정보 서비스", "pk": "15134735", "u": 10, "n": 10, "o": ["getBrTitleInfo", "getBrBasisOulnInfo", "getBrFlrOulnInfo", "getBrExposPubuseAreaInfo"], "w": "건축 인허가 이력"},
@@ -13850,7 +13866,7 @@
           {"t": "한국토지주택공사 (LH청약플러스)", "pk": "", "u": 0, "n": 0, "o": [], "d": "입주자모집공고 첨부 「공급대상주택목록」 — 매입임대·든든전세 **물건별 주소**(광역 공고는 공고 본문에 주소가 없어 이 첨부가 유일한 위치 자료다)", "cat": "공개 웹 수집"},
         ]],
       ];
-      const UA_SERVICES_N = 122;   
+      const UA_SERVICES_N = 123;   
       
       
       
