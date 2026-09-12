@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=c49e48ae"></script>
+  <script src="js/auth-guard.js?v=8e02bc67"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -36,12 +36,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=c49e48ae" />
+  <link rel="stylesheet" href="css/buttons.css?v=8e02bc67" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=c49e48ae" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=8e02bc67" />
   <style>
     :root {
       --c-primary:#1971c2; --c-primary-soft:#e7f0fb; --c-price:#d9480f;
@@ -1437,7 +1437,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=c49e48ae"></script>
+  <script src="js/ie-guard.js?v=8e02bc67"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1655,22 +1655,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-12 08:02 · c49e48ae</span></span>
+          · <span class="build-tag">build 2026-09-12 14:13 · 8e02bc67</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=c49e48ae"></script>
+  <script src="js/joinkey.js?v=8e02bc67"></script>
   
-  <script src="js/identity.js?v=c49e48ae"></script>
-  <script src="js/common.js?v=c49e48ae"></script>
-  <script src="js/ui-resize.js?v=c49e48ae"></script>
-  <script src="js/footer-resize.js?v=c49e48ae"></script>
-  <script src="js/route-line.js?v=c49e48ae"></script>
-  <script src="js/route-api.js?v=c49e48ae"></script>
-  <script src="js/footer-stats.js?v=c49e48ae"></script>
+  <script src="js/identity.js?v=8e02bc67"></script>
+  <script src="js/common.js?v=8e02bc67"></script>
+  <script src="js/ui-resize.js?v=8e02bc67"></script>
+  <script src="js/footer-resize.js?v=8e02bc67"></script>
+  <script src="js/route-line.js?v=8e02bc67"></script>
+  <script src="js/route-api.js?v=8e02bc67"></script>
+  <script src="js/footer-stats.js?v=8e02bc67"></script>
   <script>
     
     
@@ -9302,13 +9302,19 @@
       }
       function apdGosHtml(d) {
         const cs = apdGsNo(d);
+        
+        
+        
+        const AUC_DOC_WINDOW = { '감정평가서': 14, '현황조사서': 14, '매각물건명세서': 7 };
         return AUC_GO_LABELS.map((l) => {
           const doc = aucGoDocUrl(d, l);
           const local = !doc && aucLocalData(d, l);
           
           
+          const winDays = AUC_DOC_WINDOW[l];
+          const winTip = doc && winDays ? ` · 원문은 기일 ${winDays}일 전부터 열람(법원 정책)` : '';
           return `<button type="button" class="apd-go${doc ? ' has-doc' : local ? ' has-local' : ''}" data-go="${esc(l)}"`
-            + ` title="${doc ? '법원 원문 문서 열기 (새 탭)' : local ? '앱에서 바로 보기 (법원 사이트 이동 없음)' : '사건번호 ' + esc(cs) + ' 복사 + 법원 사이트 사건검색 열기 (복사 후 사건번호 붙여넣기)'}">`
+            + ` title="${doc ? '법원 원문 문서 열기 (새 탭)' + winTip : local ? '앱에서 바로 보기 (법원 사이트 이동 없음)' : '사건번호 ' + esc(cs) + ' 복사 + 법원 사이트 사건검색 열기 (복사 후 사건번호 붙여넣기)'}">`
             + `${esc(l)}${doc ? '<span class="apd-go-dot" aria-hidden="true">↗</span>'
               : local ? '<span class="apd-go-dot" aria-hidden="true">●</span>' : ''}</button>`;
         }).join('');
@@ -13819,12 +13825,14 @@
           {"t": "SH 서울주택도시공사", "pk": "", "u": 0, "n": 0, "o": [], "d": "공고·공지 RSS (정비 관련 새 소식 피드)", "cat": "제공기관 자체 서비스"},
           {"t": "교육부 (유치원알리미)", "pk": "", "u": 0, "n": 0, "o": [], "d": "유치원 일반현황 — 원명·주소·설립유형·정원·위경도 (서울+경기 2,816곳, kinder.json)", "cat": "제공기관 자체 서비스"},
           {"t": "국가교통정보센터 (ITS)", "pk": "", "u": 0, "n": 0, "o": [], "d": "고속도로·국도 실시간 CCTV 정보", "cat": "제공기관 자체 서비스"},
+          {"t": "국토교통부 (토지이음)", "pk": "", "u": 0, "n": 0, "o": [], "d": "토지이용규제·지구단위계획 조회 링크 (본문을 우리가 저장하지 않는다)", "cat": "제공기관 자체 서비스"},
           {"t": "국토지리정보원 (V-World)", "pk": "", "u": 0, "n": 0, "o": [], "d": "지적도·용도지역·건물·행정경계·배경지도, 주소→좌표 변환", "cat": "제공기관 자체 서비스"},
           {"t": "서울특별시 (TOPIS 교통정보)", "pk": "", "u": 0, "n": 0, "o": [], "d": "시내 도로 실시간 CCTV 영상", "cat": "제공기관 자체 서비스"},
           {"t": "서울특별시 (UPIS 도시계획정보)", "pk": "", "u": 0, "n": 0, "o": [], "d": "도시계획시설·용도지구·지구단위계획·주제도", "cat": "제공기관 자체 서비스"},
           {"t": "서울특별시 (버스정보시스템 BIS)", "pk": "", "u": 0, "n": 0, "o": [], "d": "정류소별 버스 실시간 도착정보(노선·도착예정·정류소 순번)", "cat": "제공기관 자체 서비스"},
           {"t": "서울특별시 (서울 열린데이터광장)", "pk": "", "u": 0, "n": 0, "o": [], "d": "버스정류소 위치·정류장 이용량, 지하철역 위치·시간대별 승하차, 따릉이 대여소, 학교 기본정보, 상권분석(영역·매출·유동인구·직장인구), 행정동 생활인구", "cat": "제공기관 자체 서비스"},
           {"t": "서울특별시 (정비사업 정보몽땅)", "pk": "", "u": 0, "n": 0, "o": [], "d": "재개발·재건축 등 정비사업 구역·진행단계", "cat": "제공기관 자체 서비스"},
+          {"t": "아실 (아파트실거래가)", "pk": "", "u": 0, "n": 0, "o": [], "d": "단지별 실거래가 조회 링크 (본문을 우리가 저장하지 않는다)", "cat": "제공기관 자체 서비스"},
           {"t": "한국감정평가사협회", "pk": "", "u": 0, "n": 0, "o": [], "d": "법원경매 감정평가서 원문 열람 링크 (본문을 우리가 저장하지 않는다)", "cat": "제공기관 자체 서비스"},
           {"t": "한국부동산원 (부동산통계정보 R-ONE)", "pk": "", "u": 0, "n": 0, "o": [], "d": "지역별 지가변동률·지가지수(법정동 단위)", "cat": "제공기관 자체 서비스"},
           {"t": "한국자산관리공사 (온비드)", "pk": "", "u": 0, "n": 0, "o": [], "d": "공매 물건 썸네일 이미지 · 물건 상세 링크", "cat": "제공기관 자체 서비스"},
@@ -13842,7 +13850,7 @@
           {"t": "한국토지주택공사 (LH청약플러스)", "pk": "", "u": 0, "n": 0, "o": [], "d": "입주자모집공고 첨부 「공급대상주택목록」 — 매입임대·든든전세 **물건별 주소**(광역 공고는 공고 본문에 주소가 없어 이 첨부가 유일한 위치 자료다)", "cat": "공개 웹 수집"},
         ]],
       ];
-      const UA_SERVICES_N = 120;   
+      const UA_SERVICES_N = 122;   
       
       
       
