@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=018eea46"></script>
+  <script src="js/auth-guard.js?v=8001b9e4"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -36,12 +36,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=018eea46" />
+  <link rel="stylesheet" href="css/buttons.css?v=8001b9e4" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=018eea46" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=8001b9e4" />
   <style>
     :root {
       --c-primary:#1971c2; --c-primary-soft:#e7f0fb; --c-price:#d9480f;
@@ -1437,7 +1437,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=018eea46"></script>
+  <script src="js/ie-guard.js?v=8001b9e4"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1655,22 +1655,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-13 04:34 · 018eea46</span></span>
+          · <span class="build-tag">build 2026-09-13 05:21 · 8001b9e4</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=018eea46"></script>
+  <script src="js/joinkey.js?v=8001b9e4"></script>
   
-  <script src="js/identity.js?v=018eea46"></script>
-  <script src="js/common.js?v=018eea46"></script>
-  <script src="js/ui-resize.js?v=018eea46"></script>
-  <script src="js/footer-resize.js?v=018eea46"></script>
-  <script src="js/route-line.js?v=018eea46"></script>
-  <script src="js/route-api.js?v=018eea46"></script>
-  <script src="js/footer-stats.js?v=018eea46"></script>
+  <script src="js/identity.js?v=8001b9e4"></script>
+  <script src="js/common.js?v=8001b9e4"></script>
+  <script src="js/ui-resize.js?v=8001b9e4"></script>
+  <script src="js/footer-resize.js?v=8001b9e4"></script>
+  <script src="js/route-line.js?v=8001b9e4"></script>
+  <script src="js/route-api.js?v=8001b9e4"></script>
+  <script src="js/footer-stats.js?v=8001b9e4"></script>
   <script>
     
     
@@ -12142,6 +12142,16 @@
             + line('설치', d.ym) + line('주소', d.addr),
           note: '행정안전부 무료와이파이정보(공공데이터 제공표준)',
         },
+        
+        
+        
+        goodprice: {
+          dir: 'goodprice/', idx: 'goodprice_index.json', icon: 'fi-rr-coins', color: '#e67700',
+          title: (d) => d.nm, minZ: 15,
+          body: (d) => line('업종', d.kind) + line('전화', d.tel) + line('주소', d.addr),
+          note: '행정안전부 착한가격업소(공공데이터 제공표준) · 지자체가 지정합니다'
+            + '<br>좌표는 주소를 지오코딩한 값이라 실제 위치와 다를 수 있습니다',
+        },
       };
       const line = (k, v) => (v ? '<div class="pc-row"><span class="pc-k">' + k + '</span>'
         + '<span class="pc-v">' + esc(String(v)) + '</span></div>' : '');
@@ -12196,6 +12206,10 @@
             const rows = cache.get(a.area);
             if (!rows) continue;
             for (const d of rows) {
+              
+              
+              
+              if (!Number.isFinite(d.lat) || !Number.isFinite(d.lng)) continue;
               if (!b.contains([d.lat, d.lng])) continue;   
               const m = L.marker([d.lat, d.lng], { icon: svcIcon(C.icon, C.color, 26) });
               m._pop = (() => '<div class="pc"><div class="pc-head"><span class="rp-name">'
@@ -12244,6 +12258,7 @@
       
       const sbizStdCluster = makeStdLayer('sbiz');
       const franchiseCluster = makeStdLayer('franchise');
+      const goodpriceCluster = makeStdLayer('goodprice');
       const cctvStdCluster = makeStdLayer('cctv');
       const wifiCluster = makeStdLayer('wifi');
       const goodrestCluster = makeStdLayer('goodrest');
@@ -12738,6 +12753,7 @@
           { name: '상가업소 (상호·업종)', layer: sbizStdCluster },
           
           { name: '프랜차이즈 (브랜드 매장)', layer: franchiseCluster },
+          { name: '착한가격업소', layer: goodpriceCluster },
           
           
           { name: '방범 CCTV (전국)', layer: cctvStdCluster },
@@ -21988,6 +22004,51 @@
       const o = routeOrigin, d = routeDest;
       try {
         if (routeMode === 'transit') {
+          
+          
+          
+          
+          const seoulFirst = await fetch(SUPABASE_URL + '/functions/v1/seoul-transit-path'
+            + `?mode=mix&sx=${o.lng}&sy=${o.lat}&ex=${d.lng}&ey=${d.lat}`)
+            .then((x) => (x.ok ? x.json() : null)).catch(() => null);
+          const sp0 = seoulFirst && Array.isArray(seoulFirst.paths) && seoulFirst.paths[0];
+          if (sp0 && sp0.legs && sp0.legs.length) {
+            const nm = (t) => String(t || '').replace(/역$/, '');
+            const stCo = (nm_) => {
+              if (!subStations) return null;
+              const hit = subStations.find((y) => y.nm === nm_)
+                || subStations.find((y) => y.nm && (y.nm.includes(nm_) || nm_.includes(y.nm)));
+              return hit ? [hit.lat, hit.lng] : null;
+            };
+            const segs = [{ type: 'walk', coords: [[o.lat, o.lng]] }];
+            for (const l of sp0.legs.filter((x) => x.fy && x.fx && x.ty && x.tx)) {
+              if (l.kind !== 'bus') {
+                const r = await new Promise((res) => loadShortPath(nm(l.from), nm(l.to), res));
+                let co = null;
+                if (r && r.stops && r.stops.length >= 2 && subStations) {
+                  co = r.stops.map(stCo).filter(Boolean);
+                }
+                if (!co || co.length < 2) {
+                  const a = stCo(nm(l.from)), b = stCo(nm(l.to));
+                  co = (a && b) ? [a, b] : [[l.fy, l.fx], [l.ty, l.tx]];
+                }
+                segs.push({ type: 'subway', coords: co });
+              } else {
+                const rt = await RouteAPI.osrm('car',
+                  { lat: l.fy, lng: l.fx }, { lat: l.ty, lng: l.tx }).catch(() => null);
+                segs.push({ type: 'bus',
+                  coords: (rt && rt.coords && rt.coords.length > 1) ? rt.coords : [[l.fy, l.fx], [l.ty, l.tx]] });
+              }
+            }
+            const last = sp0.legs[sp0.legs.length - 1];
+            segs.push({ type: 'walk', coords: [[last.ty, last.tx], [d.lat, d.lng]] });
+            routeRender(segs);
+            const legs = sp0.legs.map((l) => (l.kind === 'subway' ? '🚇' + l.name : '🚌' + l.name)).join(' › ');
+            if (info) info.innerHTML = `<div style="font-weight:700;margin-bottom:4px;">총 ${sp0.min}분 · 환승 ${Math.max(0, sp0.legs.length - 1)}회 · 요금 미제공</div>`
+              + `<div style="font-size:12px;">${esc(legs)}</div>`
+              + `<div style="font-size:11px;color:var(--c-muted);margin-top:2px;">서울시 대중교통환승경로</div>`;
+            return;
+          }
           const r = await RouteAPI.transit(o, d);
           if (!r || !r.segments.length) { if (info) info.textContent = '대중교통 경로를 찾지 못했어요.'; return; }
           routeRender(r.segments);
