@@ -467,9 +467,9 @@ function render() {
   if (panelMode === 'favorites') {
     $('banner').textContent = user ? '⭐ 저장한 식당 목록이에요.' : '로그인하면 즐겨찾기를 쓸 수 있어요.';
   } else if (!user) {
-    $('banner').innerHTML = '📍 지도 중심 인근 추천이에요. 로그인하면 취향까지 반영돼요. <a href="onboarding.html">로그인 →</a>';
+    $('banner').innerHTML = '📍 지도 중심 인근 추천이에요. <a href="onboarding.html">로그인 →</a>';
   } else if (!taste) {
-    $('banner').innerHTML = '📍 내 위치 인근 추천. <a href="onboarding.html">취향 입력하면 더 정확 →</a>';
+    $('banner').textContent = '📍 내 위치 인근 추천.';
   } else {
     $('banner').textContent = `📍 ${user.email} 님 취향 + 내 위치 인근 추천.`;
   }
