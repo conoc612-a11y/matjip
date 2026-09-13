@@ -4025,7 +4025,10 @@
         const fillHo = () => {
           const us = units.filter((u) => u.flr === Number(flrSel.value));
           hoSel.innerHTML = us.map((u) => `<option value="${esc(u.ho)}">${esc(u.ho)}호 · ${uAreaTxt(u.area)}</option>`).join('');
-          vuList(body.querySelector('.vu-list'), us[0]);
+          
+          const first = us.find((u) => u.t.length + u.r.length) || us[0];
+          hoSel.value = first.ho;
+          vuList(body.querySelector('.vu-list'), first);
         };
         flrSel.onchange = fillHo;
         hoSel.onchange = () => {
