@@ -3953,11 +3953,13 @@
         const lat = Number(det.dataset.lat), lng = Number(det.dataset.lng);
         if (!isFinite(lat) || !isFinite(lng)) { say('좌표가 없어 조회할 수 없습니다.'); return; }
         say('조회 중…');
-        nearestBuilding(lat, lng, (hit) => {
-          const pp = pnuParts(hit && hit.bld && hit.bld.pnu);
+        
+        
+        vworldFeature('LP_PA_CBND_BUBUN', lat, lng, (ps) => {
+          const pp = pnuParts(ps && ps[0] && ps[0].pnu);
           if (!pp) { say('필지를 확인하지 못했습니다.'); return; }
           const jb = String(Number(pp.bun)) + (pp.ji === '0000' ? '' : '-' + String(Number(pp.ji)));
-          ledgerOp('getBrExposPubuseAreaInfo', hit.bld.pnu, (arr) => {
+          ledgerOp('getBrExposPubuseAreaInfo', ps[0].pnu, (arr) => {
             const units = (arr || []).filter((x) => x.exposPubuseGbCdNm === '전유')
               .map((x) => {
                 const digits = Number(String(x.flrNo || '').replace(/[^0-9]/g, '')) || 0;
