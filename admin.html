@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>관리자 모드</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<link rel="stylesheet" href="css/buttons.css?v=694b5801" />
+<link rel="stylesheet" href="css/buttons.css?v=6aa6d85c" />
 <style>
   :root { --bg:#0f1520; --card:#1a2332; --line:#2a3564; --text:#e8eef7; --muted:#8b9bb4; --accent:#4da3ff; }
   * { margin:0; }
@@ -163,12 +163,12 @@
       
       <div id="view-loc" class="hidden">
         <div class="row">
-          <div class="sub" style="margin:0;">IP 위치는 ipwho.is 로 조회한 값입니다. IP는 개인정보 보호를 위해 앞 3옥텟만 표시합니다.</div>
+          <div class="sub" style="margin:0;">IP 위치는 ipwho.is 로 조회한 값입니다. IP는 개인정보 보호를 위해 앞 3옥텟만 표시합니다. 시간은 한국시간, 브라우저는 당일 첫 방문 기준입니다.</div>
           <button class="btn" onclick="exportLocations()">위치 CSV</button>
         </div>
         <div class="tablebox">
           <table>
-            <thead><tr><th>방문일</th><th>IP</th><th>국가</th><th>지역</th><th>도시</th><th>회원</th></tr></thead>
+            <thead><tr><th>방문일</th><th>시간</th><th>IP</th><th>국가</th><th>지역</th><th>도시</th><th>브라우저</th><th>회원</th></tr></thead>
             <tbody id="loc-rows"></tbody>
           </table>
         </div>
@@ -184,7 +184,7 @@
     </div>
   </div>
 
-<script src="js/common.js?v=694b5801"></script>
+<script src="js/common.js?v=6aa6d85c"></script>
 <script>
 const FN = SUPABASE_URL + '/functions/v1';
 let token = sessionStorage.getItem('admin_token');
@@ -326,12 +326,14 @@ function renderLocations() {
   $('loc-rows').innerHTML = (data.locations || []).map((l) => `
     <tr>
       <td>${(l.date || '').slice(0, 10)}</td>
+      <td>${l.time || '—'}</td>
       <td>${l.ip || '—'}</td>
       <td>${l.country || '—'}</td>
       <td>${l.region || '—'}</td>
       <td>${l.city || '—'}</td>
+      <td>${esc(l.ua || '—')}</td>
       <td>${l.email || '—'}</td>
-    </tr>`).join('') || '<tr><td colspan="6" style="color:var(--muted);text-align:center;">위치 정보가 아직 없습니다. 방문이 쌓이면 표시됩니다.</td></tr>';
+    </tr>`).join('') || '<tr><td colspan="8" style="color:var(--muted);text-align:center;">위치 정보가 아직 없습니다. 방문이 쌓이면 표시됩니다.</td></tr>';
 }
 
 
@@ -427,8 +429,8 @@ function exportStats() {
 }
 function exportLocations() {
   const d = new Date().toISOString().slice(0, 10);
-  download('방문자위치_' + d + '.csv', csv([['방문일', 'IP', '국가', '지역', '도시', '회원']]
-    .concat((data.locations || []).map((l) => [(l.date || '').slice(0, 10), l.ip, l.country, l.region, l.city, l.email]))));
+  download('방문자위치_' + d + '.csv', csv([['방문일', '시간', 'IP', '국가', '지역', '도시', '브라우저', '회원']]
+    .concat((data.locations || []).map((l) => [(l.date || '').slice(0, 10), l.time || '', l.ip, l.country, l.region, l.city, l.ua || '', l.email]))));
 }
 
 
