@@ -14,7 +14,7 @@
   if (!sb) return;
   const { data: { session } } = await sb.auth.getSession();
   if (!session) {
-    const page = location.pathname.split('/').pop() || 'main.html';
+    const page = location.pathname.split('/').pop() || 'land.html';
     location.replace('onboarding.html?next=' + encodeURIComponent(page + location.search + location.hash));
   } else {
     // 실제 접속 시각 기록 — last_sign_in_at은 비밀번호 재로그인 시에만 갱신되므로 별도로 저장.

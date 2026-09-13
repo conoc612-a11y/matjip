@@ -1,8 +1,8 @@
 // 공용 경로선 렌더러 — 테두리 + 진행방향 꺾쇠 (js/route-line.js, 2026-09-03)
 //
-// 왜 만들었나: 길찾기 선이 세 페이지(land.html·detail.html·main.html)에 각자 복붙돼
-// 있었고, 셋 다 L.polyline / naver.maps.Polyline 한 줄짜리 민선이었다. 특히 대중교통은
-// 출발→도착을 **직선 점선 하나로** 이어 놓고 있었다(실제 노선을 안 그렸다).
+// 왜 만들었나: 길찾기 선이 페이지마다 복붙돼 있었고, 전부 L.polyline / naver.maps.Polyline
+// 한 줄짜리 민선이었다. 특히 대중교통은 출발→도착을 **직선 점선 하나로** 이어 놓고
+// 있었다(실제 노선을 안 그렸다).
 //
 // 설계 요점
 // - 3겹 구조: ①흰 테두리(casing) ②구간색 본선 ③흰 꺾쇠(진행방향).
@@ -71,7 +71,7 @@
   }
 
   // 흐르는 점선 애니메이션 — Leaflet 은 polyline 에 className 을 줄 수 있어서 CSS 로 붙인다.
-  // (네이버 Polyline 은 className 을 못 받는다 → main.html 은 정적 점선으로 떨어진다.)
+  // (네이버 Polyline 은 className 을 못 받는다 → 네이버 지도는 정적 점선으로 떨어진다.)
   function injectCSS() {
     if (document.getElementById('mj-rl-css')) return;
     var s = document.createElement('style');

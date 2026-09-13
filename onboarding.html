@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>맛집 탐방 — 온보딩</title>
-  <link rel="stylesheet" href="css/buttons.css?v=8ca5a5e7" />
+  <title>로그인 — 부동산 all in one</title>
+  <link rel="stylesheet" href="css/buttons.css?v=22dcc9be" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <style>
     :root {
@@ -36,7 +36,6 @@
     .chip.on { background:var(--accent); color:#fff; border-color:var(--accent); }
     .row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
     input[type=range] { width:70%; accent-color:var(--accent); }
-    .spicy-val { font-weight:700; color:var(--accent); }
     .topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
     .logout { background:none; border:1px solid var(--line); border-radius:8px; padding:6px 12px; font-size:13px; cursor:pointer; color:var(--muted); }
     .agree-fld { display:flex; flex-direction:column; gap:6px; font-size:13px; margin:12px 0 4px; }
@@ -61,18 +60,17 @@
   </style>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=8ca5a5e7"></script>
+  <script src="js/ie-guard.js?v=22dcc9be"></script>
   <div class="app">
     <div style="display:flex;gap:6px;margin-bottom:18px;">
-      <a href="main.html" class="nav-tab">🍜 맛집</a>
-      <a href="land.html" class="nav-tab">🏙️ 부동산</a>
+      <a href="land.html" class="nav-tab">🏙️ 부동산 지도</a>
       <span class="nav-tab active">👤 내 정보</span>
     </div>
 
     
     <div id="auth-view">
-      <h1>맛집 탐방 🍜</h1>
-        <p class="sub">서울 맛집 저장·관심 기능을 쓰려면 로그인해 주세요.</p>
+        <h1>부동산 all in one</h1>
+        <p class="sub">경매 상세·관심 동기화를 쓰려면 로그인해 주세요.</p>
       <div class="card">
         <h2 id="auth-title" style="margin:0 0 4px;font-size:18px;">로그인</h2>
         <p class="notice">회원가입 시 실명이 필수이며, 허가 외 인원은 가입·탈퇴가 적용됩니다.</p>
@@ -141,7 +139,7 @@
 
   </div>
 
-  <script src="js/common.js?v=8ca5a5e7"></script>
+  <script src="js/common.js?v=22dcc9be"></script>
   <script>
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -228,7 +226,7 @@
     function showOnboarding(user) {
       const nxt = sessionStorage.getItem('mj_next');
       if (nxt) { sessionStorage.removeItem('mj_next'); location.href = nxt; return; }
-      location.href = 'main.html';
+      location.href = 'land.html';
     }
 
     
