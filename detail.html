@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="js/auth-guard.js"></script>
+  <title>맛집 탐방 — 상세</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="css/buttons.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    :root { --bg:#f4f5f7; --card:#fff; --line:#e6e8eb; --text:#1c1e21; --muted:#8a9099; --accent:#e8590c; --ok:#2f9e44; }
+    body { margin:0; background:var(--bg); color:var(--text);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic",sans-serif; }
+    header { display:flex; justify-content:space-between; align-items:center; padding:12px 16px;
+      background:var(--card); border-bottom:1px solid var(--line); }
+    header a { color:var(--accent); text-decoration:none; font-size:14px; }
+    .nav-tab { color:var(--muted); padding:6px 10px; border-radius:7px; text-decoration:none; font-size:14px; }
+    .nav-tab:hover { background:#f1f3f5; }
+    .nav-tab.active { background:var(--accent); color:#fff; }
+    .wrap { max-width:720px; margin:0 auto; padding:16px; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:14px; }
+    h1 { font-size:24px; margin:0 0 4px; }
+    .meta { color:var(--muted); font-size:13px; }
+    .tags { margin:10px 0; display:flex; flex-wrap:wrap; gap:6px; }
+    .tag { font-size:12px; background:#f1f3f5; border-radius:12px; padding:4px 10px; }
+    #map { height:320px; border-radius:12px; margin-bottom:14px; }
+    .btn { font:inherit; font-weight:600; padding:11px 14px; border:none; border-radius:8px; background:var(--accent); color:#fff; cursor:pointer; }
+    .btn.sec { background:#fff; color:var(--text); border:1px solid var(--line); }
+    .btn:disabled { opacity:.5; }
+    .btn-row { display:flex; flex-wrap:wrap; gap:8px; }
+    .route h3 { font-size:15px; margin:0 0 10px; }
+    .route a.route-btn, .route button.route-btn { display:inline-flex; align-items:center; gap:6px; text-decoration:none;
+      padding:11px 14px; border-radius:8px; border:1px solid var(--line); background:#fff; color:var(--text); font-size:14px; }
+    .route a.route-btn:hover, .route button.route-btn:hover { border-color:var(--accent); color:var(--accent); }
+    .dist { font-size:13px; color:var(--muted); margin-top:10px; }
+    .msg { font-size:13px; margin-top:10px; min-height:16px; }
+    .msg.ok { color:var(--ok); } .msg.err { color:#e03131; }
+  </style>
+</head>
+<body>
+  <script src="js/ie-guard.js"></script>
+  <header>
+    <a href="main.html" style="color:inherit;font-weight:700;font-size:16px;">맛집 탐방 🍜</a>
+    <div style="display:flex;gap:5px;align-items:center;">
+      <a href="main.html" class="nav-tab active">🍜 맛집</a>
+      <a href="land.html" class="nav-tab">🏙️ 부동산</a>
+      <a href="onboarding.html" class="nav-tab">👤 내 정보</a>
+    </div>
+  </header>
+
+  <div class="wrap" id="wrap">
+    <div class="card">불러오는 중…</div>
+  </div>
+
+  <script src="js/common.js"></script>
+  <script>
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const id = new URLSearchParams(location.search).get('id');
+    let user = null, r = null, map = null, destMarker = null, userMarker = null, line = null;
+    let me = null; // 현재 위치 [lat,lng] (한 번 받으면 재사용)
+
+    function haversine(a, b) { // km
+      const R = 6371, toRad = (d) => d * Math.PI / 180;
+      const dLat = toRad(b[0] - a[0]), dLng = toRad(b[1] - a[1]);
+      const s = Math.sin(dLat/2)**2 + Math.cos(toRad(a[0]))*Math.cos(toRad(b[0]))*Math.sin(dLng/2)**2;
+      return R * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1-s));
+    }
+
+    // GPS로 현재 위치 확보 (재사용). 실패 시 null
+    const meIcon = L.divIcon({
+      className: '',
+      html: '<div style="width:16px;height:16px;background:#1a73e8;border:3px solid #fff;border-radius:50%;box-shadow:0 0 0 2px #1a73e8,0 2px 6px rgba(0,0,0,.35);"></div>',
+      iconSize: [22, 22],
+      iconAnchor: [11, 11],
+      popupAnchor: [0, -14],
+    });
+    function getPos() {
+      return new Promise((resolve) => {
+        if (me) {
+          if (!userMarker) showMeMarker();
+          resolve(me); return;
+        }
+        if (!navigator.geolocation) { $('dist').textContent = '이 브라우저는 위치를 지원하지 않아요.'; resolve(null); return; }
+        $('dist').textContent = '위치 확인 중…';
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            me = [pos.coords.latitude, pos.coords.longitude];
+            showMeMarker();
+            resolve(me);
+          },
+          () => { $('dist').textContent = '위치 권한이 거부되었어요. (브라우저 주소창 위치 허용 필요)'; resolve(null); }
+        );
+      });
+    }
+    function showMeMarker() {
+      if (userMarker) map.removeLayer(userMarker);
+      userMarker = L.marker(me, { icon: meIcon }).addTo(map).bindPopup('현재 위치').openPopup();
+    }
+
+    // ODsay 대중교통 상세 경로 (현재위치 → 맛집). origin=[lat,lng]
+    async function showOdsay(origin) {
+      const box = $('odsay'); if (!box) return;
+      box.textContent = '🚌 대중교통 경로 불러오는 중…';
+      try {
+        const url = `https://api.odsay.com/v1/api/searchPubTransPathT?SX=${origin[1]}&SY=${origin[0]}&EX=${r.lng}&EY=${r.lat}&apiKey=${encodeURIComponent(ODSAY_KEY)}`;
+        const j = await (await fetch(url)).json();
+        if (j.error || !j.result || !(j.result.path || []).length) {
+          box.textContent = j.error ? ('대중교통 경로 없음: ' + (j.error.msg || '')) : '가까운 거리라 대중교통 경로가 없어요(도보 권장).';
+          return;
+        }
+        const best = j.result.path[0], info = best.info, ICON = { 1: '🚇', 2: '🚌', 3: '🚶' };
+        const steps = best.subPath
+          .filter((s) => s.trafficType !== 3 || s.sectionTime > 0)
+          .map((s) => {
+            if (s.trafficType === 3) return `🚶 도보 ${s.sectionTime}분`;
+            const lane = (s.lane && s.lane[0]) || {};
+            const name = s.trafficType === 1 ? (lane.name || '지하철') : (lane.busNo ? lane.busNo + '번' : '버스');
+            return `${ICON[s.trafficType]} ${esc(name)} · ${esc(s.startName)}→${esc(s.endName)} (${s.stationCount}정거장)`;
+          });
+        box.innerHTML =
+          `<div style="font-weight:700;color:var(--text);margin-bottom:6px;">🚌 대중교통 약 ${info.totalTime}분 · ${info.payment.toLocaleString()}원 · 환승 ${info.busTransitCount + info.subwayTransitCount}회</div>`
+          + '<ol style="margin:0;padding-left:18px;line-height:1.7;color:var(--text);">' + steps.map((x) => `<li>${x}</li>`).join('') + '</ol>';
+      } catch (e) {
+        box.textContent = '대중교통 경로 조회 실패(잠시 후 다시 시도).';
+      }
+    }
+
+    // ── 앱 내부 도보/자차 경로 (OSRM 무료 라우팅, 실제 도로 따라감). origin=[lat,lng] ──
+    async function drawRoute(me, mode) {
+      if (line) { map.removeLayer(line); line = null; }
+      const profile = mode === 'walk' ? 'foot' : 'driving';
+      const label = mode === 'walk' ? '🚶 도보' : '🚗 자차';
+      $('dist').textContent = label + ' 경로 계산 중…';
+      const url = `https://router.project-osrm.org/route/v1/${profile}/${me[1]},${me[0]};${r.lng},${r.lat}?overview=full&geometries=geojson`;
+      try {
+        const j = await (await fetch(url)).json();
+        if (j.code === 'Ok' && j.routes && j.routes[0]) {
+          const rt = j.routes[0];
+          const latlngs = rt.geometry.coordinates.map((c) => [c[1], c[0]]);
+          line = L.polyline(latlngs, { color: mode === 'walk' ? '#2f9e44' : '#1c6dd0', weight: 5, opacity: 0.85 }).addTo(map);
+          map.fitBounds(line.getBounds().pad(0.2));
+          if (mode === 'walk') {
+            $('dist').innerHTML = `🚶 도보 약 <b>${Math.round(rt.duration / 60)}분</b> · ${(rt.distance / 1000).toFixed(1)}km · 직선 ${haversine(me, [r.lat, r.lng]).toFixed(1)}km`;
+          } else {
+            $('dist').innerHTML = `🚗 자차 약 <b>${(rt.distance / 1000).toFixed(1)}km · ${Math.round(rt.duration / 60)}분</b> · 직선 ${haversine(me, [r.lat, r.lng]).toFixed(1)}km`;
+          }
+          return;
+        }
+      } catch (e) { /* 폴백으로 */ }
+      line = L.polyline([me, [r.lat, r.lng]], { color: '#e8590c', dashArray: '6' }).addTo(map);
+      map.fitBounds(line.getBounds().pad(0.3));
+      $('dist').textContent = `직선 거리 약 ${haversine(me, [r.lat, r.lng]).toFixed(1)}km (경로 응답 없음)`;
+    }
+
+    async function init() {
+      const { data: { session } } = await sb.auth.getSession();
+      user = session ? session.user : null;
+
+      if (!id) { $('wrap').innerHTML = '<div class="card">잘못된 접근입니다. <a href="main.html">목록으로</a></div>'; return; }
+      const { data, error } = await sb.from('mj_restaurants').select('*').eq('id', id).maybeSingle();
+      if (error || !data) { $('wrap').innerHTML = '<div class="card">맛집을 찾을 수 없어요. <a href="main.html">목록으로</a></div>'; return; }
+      r = data;
+
+      $('wrap').innerHTML = `
+        <div class="card">
+          <h1>${esc(r.name)}</h1>
+          <div class="meta">${esc(r.category || '')} · ${esc(r.address || '')}</div>
+          <div class="tags">${(r.tags||[]).map((t)=>`<span class="tag">${esc(t)}</span>`).join('')}</div>
+          <div class="btn-row" style="margin-top:8px;">
+            <button class="btn" id="save">저장</button>
+            <button class="btn sec" id="like">가보고 싶어요 ♡</button>
+          </div>
+          <div class="msg" id="msg"></div>
+        </div>
+
+        <div id="map"></div>
+
+        <div class="card route">
+          <h3>길찾기</h3>
+          <div class="btn-row">
+            <button class="route-btn" id="r-transit">🚇 대중교통</button>
+            <button class="route-btn" id="r-walk">🚶 도보</button>
+            <button class="route-btn" id="r-car">🚗 자차</button>
+            <a class="route-btn" id="r-kakao" target="_blank" rel="noopener">🗺️ 카카오맵</a>
+          </div>
+          <button class="btn sec" id="gps" style="margin-top:12px;">📍 현재 위치 표시</button>
+          <div class="dist" id="dist"></div>
+          <div class="dist" id="odsay"></div>
+        </div>`;
+
+      // 지도
+      map = L.map('map').setView([r.lat, r.lng], 15);
+      (function addBaseLayer() {
+        const osm = () => L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+          { maxZoom:19, attribution:'© OpenStreetMap' }).addTo(map);
+        if (!VWORLD_KEY) { osm(); return; }
+        const vw = L.tileLayer(`https://api.vworld.kr/req/wmts/1.0.0/${VWORLD_KEY}/Base/{z}/{y}/{x}.png`,
+          { maxZoom:19, attribution:'© VWorld' });
+        let fell = false;
+        vw.on('tileerror', () => { if (!fell) { fell = true; map.removeLayer(vw); osm(); } });
+        vw.addTo(map);
+      })();
+      destMarker = L.marker([r.lat, r.lng]).addTo(map).bindPopup(`<b>${esc(r.name)}</b>`).openPopup();
+
+      // 길찾기 버튼 (현재 위치에서 경로 계산 — GPS 재사용)
+      $('r-kakao').href = `https://map.kakao.com/link/to/${encodeURIComponent(r.name)},${r.lat},${r.lng}`;
+      $('r-transit').addEventListener('click', async () => { const p = await getPos(); if (p) showOdsay(p); });
+      $('r-walk').addEventListener('click', async () => { const p = await getPos(); if (p) drawRoute(p, 'walk'); });
+      $('r-car').addEventListener('click', async () => { const p = await getPos(); if (p) drawRoute(p, 'driving'); });
+
+      // 저장
+      $('save').addEventListener('click', async () => {
+        if (!user) { alert('로그인 후 저장할 수 있어요.'); location.href = 'onboarding.html'; return; }
+        $('save').disabled = true;
+        const { error } = await sb.from('saved_restaurants')
+          .upsert({ user_id: user.id, restaurant_id: r.id }, { onConflict: 'user_id,restaurant_id' });
+        $('msg').textContent = error ? ('저장 실패: ' + error.message) : '저장되었습니다 ✓';
+        $('msg').className = error ? 'msg err' : 'msg ok';
+        $('save').textContent = error ? '저장' : '저장됨 ✓';
+        $('save').disabled = !!error;
+      });
+
+      // 관심(feedbacks: like)
+      $('like').addEventListener('click', async () => {
+        if (!user) { alert('로그인 후 이용할 수 있어요.'); location.href = 'onboarding.html'; return; }
+        const { error } = await sb.from('feedbacks').insert({ user_id: user.id, restaurant_id: r.id, action: 'like' });
+        $('msg').textContent = error ? ('실패: ' + error.message) : '관심 목록에 기록했어요 ♥';
+        $('msg').className = error ? 'msg err' : 'msg ok';
+      });
+
+      // GPS 버튼: 현재 위치만 표시 (길찾기는 위 버튼에서)
+      $('gps').addEventListener('click', () => getPos());
+
+      // 조회 로그 (feedbacks: view) — 로그인 시
+      if (user) sb.from('feedbacks').insert({ user_id: user.id, restaurant_id: r.id, action: 'view' });
+    }
+
+    init();
+  </script>
+</body>
+</html>

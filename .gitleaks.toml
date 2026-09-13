@@ -1,0 +1,78 @@
+# gitleaks 설정 — matjip
+#
+# 왜 필요한가: 이 저장소에는 **의도적으로 공개된 키**가 들어 있다. 도메인 잠금
+# publishable 키라 브라우저에 있어야 동작한다. allowlist 없이 gitleaks 를 붙이면
+# `land.html` 을 건드리는 커밋이 매번 막힌다(TODO 3-H 에서 미뤄 둔 이유가 이것이다).
+#
+# 🔴 절대 allowlist 에 넣지 말 것 — 프론트에 나타나면 **진짜 사고**다:
+#      MOLIT_KEY · DGK · SUPABASE_SERVICE_ROLE_KEY · CHUNGAK_API_KEY · NTS_API_KEY
+#      SEOUL_* · NAVER_CLIENT_SECRET · EXCHANGE_RATE_KEY · LOAN_RATE_KEY · INT_RATE_KEY
+#    (MOLIT_KEY 노출 사고가 이 훅을 만든 계기다. 그 셋은 Edge Function 에만 있어야 한다)
+#
+# 🔴 `keys.env` 를 allowlist 에 넣지 않는다. `.gitignore` 로 막혀 있지만,
+#    실수로 `git add -f` 되는 순간 gitleaks 가 **잡아야** 한다. 넣으면 그 방어가 사라진다.
+#
+# 기준선 (2026-08-26 실측): `gitleaks detect --no-git` 27건 → 아래 allowlist 적용 후 0건.
+#   내역: keys.env 11(gitignore) · land.backup-* 7(추적 안 됨) · js/common.js 3 ·
+#         _local_check.html 2 · land.html 2 · js/auth-guard.js 1 · diag-vworld.yml 1
+#   ⚠️ 진짜 유출은 **없었다.** 전부 의도적 공개 키이거나 오탐이었다.
+
+title = "matjip gitleaks config"
+
+[extend]
+# 기본 규칙 150여 개를 그대로 쓰고 예외만 얹는다.
+useDefault = true
+
+# ── ① 브라우저에 있어야 동작하는 publishable 키 ────────────────────────────
+# 도메인 잠금이라 노출돼도 설계상 안전하다(V-World·카카오·네이버는 등록 도메인 밖에서
+# INCORRECT_KEY 를 준다 — TROUBLESHOOTING §1·§19 실측). Supabase anon 키는 RLS 로 보호된다.
+# ODSAY·ITS 는 서버 경유가 불가능해 다른 선택지가 없다(land.html 주석 참고).
+[[allowlists]]
+description = "도메인 잠금 publishable 키 — 프론트에 있어야 동작한다"
+# 🔴 **`paths` 를 쓰지 않는다.** 전역 allowlist 의 `paths` 는 그 파일을 **스캔에서 통째로
+#    제외**한다 — `regexes` 와 AND 로 묶이지 않는다(`matchCondition = "AND"` 를 넣어도 그렇다).
+#    실측(2026-08-26): `paths = ['land\.html$']` 로 두고 `land.html` 에 MOLIT_KEY 와
+#    service_role JWT 를 넣었더니 **둘 다 통과**했다. allowlist 없이 스캔하면 3건 탐지,
+#    이 설정으로 스캔하면 0건 — 즉 파일 전체가 면제되고 있었다.
+#    → **키 이름 정규식만** 남긴다. 허용 대상이 "이 줄"로 좁혀지고, 새 키 이름은 잡힌다.
+#    ⛔ `paths` 를 되살리지 말 것.
+regexTarget = "line"
+regexes = [
+  '''SUPABASE_KEY\s*=''',           # anon 키 — RLS 로 보호. service_role 이 아니다
+  '''SUPABASE_URL\s*=''',           # 공개 프로젝트 URL
+  '''VWORLD_KEY\s*[=:]''',          # 도메인 잠금 (yml 의 `VWORLD_KEY:` 도 포함)
+  '''KAKAO_JS_KEY\s*=''',           # 도메인 잠금
+  '''NAVER_MAPS_KEY\s*=''',         # 도메인 잠금
+  '''NAVER_KEY\s*=''',
+  '''ODSAY_KEY\s*=''',              # 도메인 잠금(로컬 curl 은 ApiKeyAuthFailed)
+  '''ITS_KEY\s*=''',                # 서버 경유 불가 — land.html 주석에 근거 있음
+]
+
+# ── ③ 시크릿이 아닌 것 (오탐) ─────────────────────────────────────────────
+# `CHUNGAK_CACHE_KEY` 에 담기는 값은 `mj_chungak_v1` — **localStorage 키 이름**이다.
+# ⚠️ 이 주석에서 등호와 인용부호를 붙여 쓰지 말 것. 전역 pre-commit 훅의 정규식이
+#    `_key = "…"` 형태를 시크릿으로 오탐해 커밋을 막는다(실측 2026-08-26).
+# 이름에 KEY 가 들어갔을 뿐이라 generic-api-key 규칙이 잡는다.
+[[allowlists]]
+description = "이름에 KEY 가 들어간 상수 — 실제 비밀이 아니다"
+regexTarget = "line"
+regexes = [
+  '''_CACHE_KEY\s*=\s*['"]mj_''',   # localStorage 접두사 mj_ 를 쓰는 캐시 키
+  '''LS_[A-Z_]*\s*=\s*['"]mj_''',   # 같은 계열(LS_LANDMODE 등)
+  '''"(page_key|rows_key)":\s*"(pageNo|numOfRows)"''',  # data.go.kr 페이지네이션 파라미터명 — 공개 명세 용어다 (collect_agent.py docstring)
+  '''VAPID_PUBLIC\s*=\s*['"]''',  # 푸시 공개키 — 설계상 공개값이다(구독 때 브라우저에 넘긴다). 비밀키는 keys.env에만 있다
+  # 아래 6종은 localStorage 칸 이름이다(값이 'mj_*'·'bizno_history' 같은 식별자).
+  # 2026-08-21 스냅샷에만 있는 옛 표기라 현행 코드에는 없다 — decoy 브랜치용.
+  '''(RECENT_KEY|BIZNO_HIST_KEY|APT_MISS_KEY|AUCT_FAV_KEY|PROP_KEY|AGENT_KEY)\s*=''',
+]
+
+# ── ④ 추적하지 않는 작업 사본·백업 ────────────────────────────────────────
+# `git` 이 추적하지 않으므로 커밋될 수 없다. `detect --no-git` 전수 스캔에서만 잡혀
+# 잡음이 된다. ⚠️ 추적되기 시작하면 이 예외가 위험해지므로 **경로 패턴을 좁게** 둔다.
+[[allowlists]]
+description = "추적 안 되는 백업·작업 사본 (deploy_public 의 EXCLUDE_RE 와 같은 대상)"
+paths = [
+  '''land\.backup-\d{8}\.html$''',
+  '''js/main\.backup-\d{8}\.js$''',
+  '''^_[A-Za-z0-9_]*\.html$''',
+]
