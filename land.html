@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=22dcc9be"></script>
+  <script src="js/auth-guard.js?v=e5bcea14"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -36,12 +36,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=22dcc9be" />
+  <link rel="stylesheet" href="css/buttons.css?v=e5bcea14" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=22dcc9be" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=e5bcea14" />
   <style>
     :root {
       --c-primary:#1971c2; --c-primary-soft:#e7f0fb; --c-price:#d9480f;
@@ -1437,7 +1437,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=22dcc9be"></script>
+  <script src="js/ie-guard.js?v=e5bcea14"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1461,6 +1461,7 @@
         <button id="profile-btn" class="nav-tab profile-tab">내 정보 <span style="opacity:.6;">▾</span></button>
         <div id="profile-menu" class="profile-menu">
           <a href="#" id="who" style="color:var(--muted);font-size:12px;pointer-events:none;">로그인 안 됨</a>
+          <a href="onboarding.html" id="login-link">로그인</a>
           <button id="logout" style="display:none;">로그아웃</button>
           <button id="delete-account" style="display:none;color:var(--c-danger);">회원 탈퇴</button>
         </div>
@@ -1653,22 +1654,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-13 12:26 · 22dcc9be</span></span>
+          · <span class="build-tag">build 2026-09-13 15:44 · e5bcea14</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=22dcc9be"></script>
+  <script src="js/joinkey.js?v=e5bcea14"></script>
   
-  <script src="js/identity.js?v=22dcc9be"></script>
-  <script src="js/common.js?v=22dcc9be"></script>
-  <script src="js/ui-resize.js?v=22dcc9be"></script>
-  <script src="js/footer-resize.js?v=22dcc9be"></script>
-  <script src="js/route-line.js?v=22dcc9be"></script>
-  <script src="js/route-api.js?v=22dcc9be"></script>
-  <script src="js/footer-stats.js?v=22dcc9be"></script>
+  <script src="js/identity.js?v=e5bcea14"></script>
+  <script src="js/common.js?v=e5bcea14"></script>
+  <script src="js/ui-resize.js?v=e5bcea14"></script>
+  <script src="js/footer-resize.js?v=e5bcea14"></script>
+  <script src="js/route-line.js?v=e5bcea14"></script>
+  <script src="js/route-api.js?v=e5bcea14"></script>
+  <script src="js/footer-stats.js?v=e5bcea14"></script>
   <script>
     
     
@@ -16210,29 +16211,6 @@
       });
     }
     
-    
-    
-    let _bkrtLoading = null, _bkrtRows = null;
-    function loadBankruptcy(cb) {
-      if (_bkrtRows) { cb(_bkrtRows); return; }
-      if (_bkrtLoading) { _bkrtLoading.then(() => cb(_bkrtRows)); return; }
-      _bkrtLoading = new Promise((done) => {
-        dgkFetch('GetBankruptcyEstatesGoodsService202606', 'getRealEstateList202606',
-          { numOfRows: 200, pageNo: 1, resultType: 'json' }, (j) => {
-            const box = j && j.getRealEstateList202606;
-            const it = box && (box.item || box.items);
-            const arr = asArr(it);
-          
-          
-          
-            if (j) _bkrtRows = arr.filter((x) => Number(x.lttdVal) && Number(x.lgtdVal));
-            else _bkrtLoading = null;
-            done();
-          });
-      });
-      _bkrtLoading.then(() => cb(_bkrtRows));
-    }
-    
     let _wrnLoading = null, _wrnText = null;
     function loadWthrWrn(cb) {
       if (_wrnText !== null) { cb(_wrnText); return; }
@@ -17572,8 +17550,6 @@
         .then((j) => { if (j) _kcrCache.set(ck, j); done(j); })
         .catch(() => { cb(null); });
     }
-    
-    function loadKcrHo(addr, cb) { loadKcr('ho', addr, cb); }
 
     
     
@@ -21932,53 +21908,6 @@
       });
     }
     let routeOrigin = null, routeDest = null, routeLine = null, routeMode = 'car', originMarker = null, destMarker = null, routeCtrl = null;
-    function ensureRouteCtrl() {
-      if (routeCtrl) {
-        
-        const c = routeCtrl.getContainer && routeCtrl.getContainer();
-        if (c) c.style.display = '';
-        return;
-      }
-      routeCtrl = L.control({ position: 'topleft' });
-      routeCtrl.onAdd = () => {
-        const div = L.DomUtil.create('div');
-        div.className = 'lc ui-scroll';
-        div.style.minWidth = '170px';
-        div.style.position = 'relative';   
-        div.style.paddingBottom = '28px';  
-        const mbtn = (m, t) => `<button type="button" class="rt-mode" data-m="${m}">${t}</button>`;
-        div.innerHTML = '<div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;">'
-          + '<div class="lc-title" style="flex:1;margin:0;"><i class="fi fi-rr-route"></i>길찾기</div>'
-          + '<button id="rt-close" type="button" class="ui-pop-btn" title="패널 닫기 (경로선은 유지)" aria-label="길찾기 패널 닫기">✕</button></div>'
-          + '<div id="rt-pts" style="font-size:12px;color:var(--muted);margin-bottom:6px;"></div>'
-          + `<div style="display:flex;gap:4px;margin-bottom:6px;">${mbtn('walk', '도보')}${mbtn('transit', '대중교통')}${mbtn('car', '자차')}</div>`
-          + '<div id="rt-info" style="font-size:12px;color:var(--text);min-height:16px;"></div>'
-          + '<button id="rt-clear" type="button" class="btn-mini" style="margin-top:5px;width:100%;">초기화</button>';
-        L.DomEvent.disableClickPropagation(div);
-        
-        
-        L.DomEvent.disableScrollPropagation(div);
-        
-        const grip = L.DomUtil.create('div', 'ui-grip ui-grip-corner', div);
-        grip.title = '드래그하여 크기 조절';
-        makeResizable(grip, div, {
-          minW: 170, minH: 120,
-          maxW: () => Math.max(200, window.innerWidth - 40),
-          maxH: () => Math.max(160, window.innerHeight - 120),
-          
-          
-          onResize: (w, h) => { div.style.maxWidth = w + 'px'; div.style.maxHeight = h + 'px'; },
-        });
-        return div;
-      };
-      routeCtrl.addTo(map);
-      setTimeout(() => {
-        document.querySelectorAll('.rt-mode').forEach((b) => b.addEventListener('click', () => { routeMode = b.dataset.m; highlightMode(); drawRoute(); }));
-        const c = document.getElementById('rt-clear'); if (c) c.addEventListener('click', clearRoute);
-        const x = document.getElementById('rt-close'); if (x) x.addEventListener('click', () => { const el = routeCtrl && routeCtrl.getContainer && routeCtrl.getContainer(); if (el) el.style.display = 'none'; });
-        highlightMode(); updatePts();
-      }, 50);
-    }
     function highlightMode() { document.querySelectorAll('.rt-mode').forEach((b) => b.classList.toggle('on', b.dataset.m === routeMode)); }
     function updatePts() { const el = document.getElementById('rt-pts'); if (el) el.innerHTML = `출발 ${routeOrigin ? '✓' : '미지정'} · 도착 ${routeDest ? '✓' : '미지정'}`; }
     
@@ -22896,6 +22825,7 @@
         $('who').textContent = user.email;
         $('logout').style.display = '';
         $('delete-account').style.display = '';
+        $('login-link').style.display = 'none';
         
         if (window.__aucFavPull) {
           window.__aucFavPull().then((changed) => { if (changed) { try { refreshStatBar(); } catch (e) {} } })

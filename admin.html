@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>관리자 모드</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<link rel="stylesheet" href="css/buttons.css?v=22dcc9be" />
+<link rel="stylesheet" href="css/buttons.css?v=e5bcea14" />
 <style>
   :root { --bg:#0f1520; --card:#1a2332; --line:#2a3564; --text:#e8eef7; --muted:#8b9bb4; --accent:#4da3ff; }
   * { margin:0; }
@@ -35,10 +35,6 @@
   .card .v { font-size:24px; font-weight:700; margin-top:4px; }
 
   
-  .chips { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
-  .chip { background:var(--card); border:1px solid var(--line); color:var(--muted); border-radius:20px; padding:5px 12px; font-size:12px; cursor:pointer; }
-  .chip.on { border-color:var(--accent); color:var(--accent); }
-  .chip b { color:var(--text); }
   .tablebox { background:var(--card); border:1px solid var(--line); border-radius:10px; overflow:auto; max-height:520px; }
   table { width:100%; border-collapse:collapse; font-size:13px; }
   th, td { padding:9px 12px; text-align:left; border-bottom:1px solid var(--line); white-space:nowrap; }
@@ -139,7 +135,6 @@
       
       <div id="view-member">
         <div class="row">
-          <div class="chips" id="member-chips"></div>
           <button class="btn" onclick="exportMembers()">회원 CSV</button>
         </div>
         <div class="tablebox">
@@ -189,7 +184,7 @@
     </div>
   </div>
 
-<script src="js/common.js?v=22dcc9be"></script>
+<script src="js/common.js?v=e5bcea14"></script>
 <script>
 const FN = SUPABASE_URL + '/functions/v1';
 let token = sessionStorage.getItem('admin_token');
@@ -282,7 +277,6 @@ function render() {
   $('c-total').textContent = data.total.toLocaleString();
   $('c-ip').textContent = data.uniqueIps.toLocaleString();
   $('c-member').textContent = data.memberCount.toLocaleString();
-  renderChips();
   renderMembers();
   renderLocations();
   renderCharts();
@@ -341,19 +335,8 @@ function renderLocations() {
 }
 
 
-let segFilter = '전체';
-const SEGS = [
-  ['전체',       (m) => true],
-]; 
-function renderChips() {
-  $('member-chips').innerHTML = SEGS.map(([name, fn]) => {
-    const n = data.members.filter(fn).length;
-    return `<button class="chip${name === segFilter ? ' on' : ''}" onclick="segFilter='${name}';renderChips();renderMembers();">${name} <b>${n}</b></button>`;
-  }).join('');
-}
 function renderMembers() {
-  const fn = SEGS.find(([n]) => n === segFilter)[1];
-  const rows = data.members.filter(fn);
+  const rows = data.members;
   $('member-rows').innerHTML = rows.map((m) => `
     <tr>
       <td>${(m.joined_at || '').slice(0, 10)}</td>
@@ -361,7 +344,7 @@ function renderMembers() {
       <td>${(m.last_login_at || '').slice(0, 10) || '—'}</td>
       <td>${m.email || '—'}</td>
       <td><button class="btn del" onclick="deleteMember('${m.id}', '${(m.name || m.email || '').replace(/'/g, "\\'")}')">탈퇴</button></td>
-    </tr>`).join('') || '<tr><td colspan="5" style="color:var(--muted);text-align:center;">해당 세그먼트 회원이 없습니다.</td></tr>';
+    </tr>`).join('') || '<tr><td colspan="5" style="color:var(--muted);text-align:center;">회원이 없습니다.</td></tr>';
 }
 
 
