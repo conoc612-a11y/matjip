@@ -3924,7 +3924,129 @@
             + ` <span style="color:var(--c-muted);">·</span> 대지지분당 <b>${fmtUnit(d.lup)}/㎡</b>`
             + `<div style="font-size:11px;color:var(--c-muted);">재개발·재건축은 전용면적이 아니라 대지지분으로 값을 매깁니다.</div></div>`
           : '';
-        return `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};flex-shrink:0;"></span><span class="rp-name">${esc(d.name)}</span><span style="font-size:12px;background:var(--c-primary);color:#fff;padding:1px 8px;border-radius:999px;">${esc(d.type)}</span></div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div>${rpFlagsHtml(d)}<div class="pc-price">매매 ${uPriceMain(d)} <span style="font-size:12px;font-weight:400;color:var(--c-muted);">${esc(fmtYm(d.ymd))} 거래</span></div>${uPriceSub(d) ? `<div style="margin-top:3px;">${uPriceSub(d)}</div>` : ''}<div class="rp-radius-stat rp-stat" style="display:none;"></div><div style="margin-top:3px;">전용 ${uAreaTxt(d.area)} · ${esc(d.floor)}층</div>${lshare}<div style="margin-top:3px;">${esc(d.build)}년 건축${oldTag}</div>${jeonseHtml(d, '건물 기준 참고')}${range}</div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline" style="border-color:var(--line) !important;color:var(--c-price);"><i class="fi fi-rr-bookmark"></i>저장</button><a href="${naverSearchUrl(d.name + ' ' + (d.dong || d.gu || ''), d.lat, d.lng)}" target="_blank" rel="noopener" class="pc-btn pc-btn-primary rp-naver">네이버 부동산</a><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline"><i class="fi fi-rr-flag"></i>출발</button><button class="rt-end pc-btn pc-btn-outline"><i class="fi fi-rr-marker"></i>도착</button></div><button class="sv-btn pc-btn pc-btn-outline"><i class="fi fi-rr-video-camera"></i>거리뷰</button></div></div>`;
+        return `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};flex-shrink:0;"></span><span class="rp-name">${esc(d.name)}</span><span style="font-size:12px;background:var(--c-primary);color:#fff;padding:1px 8px;border-radius:999px;">${esc(d.type)}</span></div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div>${rpFlagsHtml(d)}<div class="pc-price">매매 ${uPriceMain(d)} <span style="font-size:12px;font-weight:400;color:var(--c-muted);">${esc(fmtYm(d.ymd))} 거래</span></div>${uPriceSub(d) ? `<div style="margin-top:3px;">${uPriceSub(d)}</div>` : ''}<div class="rp-radius-stat rp-stat" style="display:none;"></div><div style="margin-top:3px;">전용 ${uAreaTxt(d.area)} · ${esc(d.floor)}층</div>${lshare}<div style="margin-top:3px;">${esc(d.build)}년 건축${oldTag}</div>${jeonseHtml(d, '건물 기준 참고')}${range}<details class="vu-det" data-lat="${d.lat}" data-lng="${d.lng}" data-dong="${esc(d.dong)}" style="margin-top:4px;"><summary style="font-size:12px;cursor:pointer;color:var(--c-primary);">층·호별 시세</summary><div class="vu-body" style="font-size:12px;line-height:1.6;max-height:220px;overflow:auto;margin-top:4px;">펼치면 조회합니다.</div></details></div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline" style="border-color:var(--line) !important;color:var(--c-price);"><i class="fi fi-rr-bookmark"></i>저장</button><a href="${naverSearchUrl(d.name + ' ' + (d.dong || d.gu || ''), d.lat, d.lng)}" target="_blank" rel="noopener" class="pc-btn pc-btn-primary rp-naver">네이버 부동산</a><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline"><i class="fi fi-rr-flag"></i>출발</button><button class="rt-end pc-btn pc-btn-outline"><i class="fi fi-rr-marker"></i>도착</button></div><button class="sv-btn pc-btn pc-btn-outline"><i class="fi fi-rr-video-camera"></i>거리뷰</button></div></div>`;
+      }
+
+      
+      
+      
+      
+      if (typeof document !== 'undefined' && document.addEventListener) {
+        document.addEventListener('toggle', (ev) => {
+          const det = ev && ev.target;
+          if (!det || !det.classList || !det.classList.contains('vu-det') || !det.open || det.dataset.done) return;
+          det.dataset.done = '1';
+          vuUnits(det);
+        }, true);
+      }
+      function vuYms() {
+        const out = [], now = new Date();
+        for (let k = 12; k >= 1; k--) {
+          const t = new Date(now.getFullYear(), now.getMonth() - k, 1);
+          out.push(t.getFullYear() + String(t.getMonth() + 1).padStart(2, '0'));
+        }
+        return out;
+      }
+      function vuUnits(det) {
+        const body = det.querySelector('.vu-body');
+        const say = (t) => { if (body) body.innerHTML = t; };
+        const lat = Number(det.dataset.lat), lng = Number(det.dataset.lng);
+        if (!isFinite(lat) || !isFinite(lng)) { say('좌표가 없어 조회할 수 없습니다.'); return; }
+        say('조회 중…');
+        nearestBuilding(lat, lng, (hit) => {
+          const pp = pnuParts(hit && hit.bld && hit.bld.pnu);
+          if (!pp) { say('필지를 확인하지 못했습니다.'); return; }
+          const jb = String(Number(pp.bun)) + (pp.ji === '0000' ? '' : '-' + String(Number(pp.ji)));
+          ledgerOp('getBrExposPubuseAreaInfo', hit.bld.pnu, (arr) => {
+            const units = (arr || []).filter((x) => x.exposPubuseGbCdNm === '전유')
+              .map((x) => {
+                const digits = Number(String(x.flrNo || '').replace(/[^0-9]/g, '')) || 0;
+                return { ho: String(x.hoNm || '').trim(), flr: (/b/i.test(String(x.flrNo || '')) ? -1 : 1) * digits, area: Number(x.area) || 0 };
+              })
+              .filter((u) => u.ho && u.area > 0 && u.flr > 0);
+            if (!units.length) { say('대장에 전유부 기록이 없습니다.'); return; }
+            vuDeals(pp.sigunguCd, jb, det.dataset.dong || '', (res) => vuRender(det, body, units, res));
+          });
+        });
+      }
+      function vuDeals(lawd, jb, dong, cb) {
+        const out = { trade: [], rent: [], ok: 0 };
+        const jobs = [];
+        vuYms().forEach((ym) => {
+          jobs.push(['RTMSDataSvcRHTrade', 'getRTMSDataSvcRHTrade', ym, 'trade']);
+          jobs.push(['RTMSDataSvcRHRent', 'getRTMSDataSvcRHRent', ym, 'rent']);
+        });
+        const num = (v) => Number(String(v || '').replace(/,/g, '')) || 0;
+        const next = (k) => {
+          if (k >= jobs.length) { cb(out); return; }
+          const jb2 = jobs[k];
+          dgkFetch(jb2[0], jb2[1], { LAWD_CD: lawd, DEAL_YMD: jb2[2], numOfRows: 2000, pageNo: 1 }, (doc) => {
+            if (doc) {
+              out.ok += 1;
+              const els = doc.getElementsByTagName('item');
+              for (let q = 0; q < els.length; q++) {
+                const el = els[q];
+                if (_xt(el, 'umdNm') !== dong || String(_xt(el, 'jibun')).replace(/\s/g, '') !== jb) continue;
+                out[jb2[3]].push({
+                  a: num(_xt(el, 'excluUseAr')), f: num(_xt(el, 'floor')),
+                  amt: num(_xt(el, 'dealAmount')), dep: num(_xt(el, 'deposit')), fee: num(_xt(el, 'monthlyRent')),
+                  ym: _xt(el, 'dealYear') + '.' + _xt(el, 'dealMonth'),
+                  cancel: _xt(el, 'cdealType') ? 1 : 0,
+                  direct: (_xt(el, 'dealingGbn') || '').indexOf('직거래') >= 0,
+                  ctype: _xt(el, 'contractType'),
+                });
+              }
+            }
+            setTimeout(() => next(k + 1), 120);
+          }, true);
+        };
+        next(0);
+      }
+      function vuCnt(units, f) {
+        return units.filter((u) => u.flr === f).reduce((s, u) => s + u.t.length + u.r.length, 0);
+      }
+      function vuRender(det, body, units, res) {
+        const hit = (x, u) => Math.abs(x.a - u.area) < 0.005 && x.f === u.flr && u.flr > 0;
+        units.forEach((u) => {
+          u.t = res.trade.filter((x) => hit(x, u)).sort((a, b) => (a.ym < b.ym ? 1 : -1));
+          u.r = res.rent.filter((x) => hit(x, u)).sort((a, b) => (a.ym < b.ym ? 1 : -1));
+          u.o = res.trade.concat(res.rent).filter((x) => Math.abs(x.a - u.area) < 0.005 && x.f !== u.flr).length;
+        });
+        const flrs = [...new Set(units.map((u) => u.flr))].sort((a, b) => vuCnt(units, b) - vuCnt(units, a));
+        const sum = det.querySelector('summary');
+        if (sum && !sum.dataset.n) { sum.dataset.n = '1'; sum.textContent += ` (${units.length}호)`; }
+        body.innerHTML = `<div style="display:flex;gap:4px;margin-bottom:4px;"><select class="vu-flr" aria-label="층 선택" style="font-size:12px;max-width:45%;">`
+          + flrs.map((f) => `<option value="${f}">${f}층</option>`).join('') + `</select>`
+          + `<select class="vu-ho" aria-label="호 선택" style="font-size:12px;max-width:55%;"></select></div><div class="vu-list"></div>`
+          + (res.ok < 24 ? `<div style="font-size:11px;color:var(--c-muted);">실거래 일부 조회 실패 — 잠시 후 다시 펼치세요.</div>` : '');
+        const flrSel = body.querySelector('.vu-flr'), hoSel = body.querySelector('.vu-ho');
+        const fillHo = () => {
+          const us = units.filter((u) => u.flr === Number(flrSel.value));
+          hoSel.innerHTML = us.map((u) => `<option value="${esc(u.ho)}">${esc(u.ho)}호 · ${uAreaTxt(u.area)}</option>`).join('');
+          vuList(body.querySelector('.vu-list'), us[0]);
+        };
+        flrSel.onchange = fillHo;
+        hoSel.onchange = () => {
+          const u = units.find((x) => x.flr === Number(flrSel.value) && x.ho === hoSel.value);
+          if (u) vuList(body.querySelector('.vu-list'), u);
+        };
+        fillHo();
+      }
+      function vuList(box, u) {
+        if (!box || !u) return;
+        const badge = (t, c) => ` <span style="background:${c};color:#fff;font-size:11px;padding:1px 6px;border-radius:999px;">${t}</span>`;
+        let s = `<div style="margin-bottom:2px;">${u.flr}층 ${esc(u.ho)}호 · 전용 ${uAreaTxt(u.area)}</div>`;
+        u.t.forEach((x) => {
+          s += `<div style="margin-top:2px;">${esc(fmtYm(x.ym))} · 매매 <b>${fmtAmtExact(x.amt)}</b>`
+            + (x.cancel ? badge('계약해제', 'var(--c-danger)') : (!x.direct ? '' : badge('직거래', '#f08c00'))) + `</div>`;
+        });
+        u.r.forEach((x) => {
+          s += `<div style="margin-top:2px;">${esc(fmtYm(x.ym))} · ${x.fee > 0 ? '월세' : '전세'} <b>${fmtAmtExact(x.dep)}${x.fee > 0 ? ' / ' + fmtAmtExact(x.fee) : ''}</b>`
+            + (x.ctype ? ` <span style="font-size:11px;color:var(--c-muted);">${esc(x.ctype)}</span>` : '') + `</div>`;
+        });
+        if (!u.t.length && !u.r.length) s += `<div style="margin-top:2px;color:var(--c-muted);">최근 12개월 이 호실 거래 없음</div>`;
+        if (u.o) s += `<div style="margin-top:3px;font-size:11px;color:var(--c-muted);">같은 면적 다른 층 ${u.o}건 — 이 호실 값 아님</div>`;
+        box.innerHTML = s;
       }
 
       let villaRows = null, _villaPromise = null;
