@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
+  <link rel="stylesheet" href="css/tokens.css?v=fdbcddf2" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="js/auth-guard.js?v=fdbcddf2"></script>
   <title>부동산 all in one</title>
@@ -10144,15 +10145,15 @@
       }
       
       const RAIL_W = 22;
-      makeSlideTab($('ap-resizer'), auctionPanel, {
+      window.__apTab = makeSlideTab($('ap-resizer'), auctionPanel, {
         side: 'left', defaultWidth: 340, collapsedWidth: RAIL_W,
         resize: { minW: 200, maxW: 640, bodyClass: 'ap-resizing', gripClass: 'dragging' },
       });
-      makeSlideTab($('rp-panel-resizer'), $('rp-panel'), {
+      window.__rpTab = makeSlideTab($('rp-panel-resizer'), $('rp-panel'), {
         side: 'left', defaultWidth: 300, collapsedWidth: RAIL_W,
         resize: { minW: 220, maxW: 520, bodyClass: 'ap-resizing', gripClass: 'dragging' },
       });
-      makeSlideTab($('jb-panel-resizer'), $('jb-panel'), {
+      window.__jbTab = makeSlideTab($('jb-panel-resizer'), $('jb-panel'), {
         side: 'left', defaultWidth: 300, collapsedWidth: RAIL_W,
         resize: { minW: 220, maxW: 520, bodyClass: 'ap-resizing', gripClass: 'dragging' },
       });
@@ -10164,6 +10165,18 @@
         side: 'left', defaultWidth: 360, collapsedWidth: RAIL_W,
         resize: { minW: 260, maxW: 640, bodyClass: 'ap-resizing', gripClass: 'dragging' },
       });
+      
+      
+      
+      try {
+        if (window.innerWidth <= 1100) {
+          [['__apTab', auctionPanel], ['__rpTab', 'rp-panel'], ['__jbTab', 'jb-panel'], ['__spTab', 'sp-panel'], ['__dpTab', 'dp-panel']].forEach(([k, p]) => {
+            const t = window[k];
+            const el = typeof p === 'string' ? $(p) : p;
+            if (t && t.toggle && el && !el.classList.contains('collapsed')) t.toggle();
+          });
+        }
+      } catch (e) {}
       
       
       
