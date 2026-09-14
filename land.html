@@ -1498,6 +1498,9 @@
             <option value="view">거리순</option>
             <option value="dday">마감임박순</option>
             <option value="disc">할인율순</option>
+            <option value="loAsc">금액낮은순</option>
+            <option value="loDesc">금액높은순</option>
+            <option value="fail">유찰많은순</option>
           </select>
           <div class="ap-links">
             <a href="https://www.courtauction.go.kr/pgj/index.on?pgjId=159M01&w2xPath=%2Fpgj%2Fui%2Fpgj100%2FPGJ159M00.xml" target="_blank" rel="noopener" title="courtauction.go.kr 사건검색 — 사건번호로 검색">사건검색</a>
@@ -1552,6 +1555,37 @@
             <option value="3">3회 이상</option>
           </select>
         </div>
+        
+
+        <details class="ap-adv" style="margin:0 12px 7px;font-size:12px;">
+          <summary style="cursor:pointer;color:var(--c-primary);">상세검색 (법원·기일·금액·상태·특수조건)</summary>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;">
+            <label>법원<br><select id="ap-a-court" style="width:100%;font-size:12px;"><option value="">전체</option></select></label>
+            <label>사건종류<br><select id="ap-a-kind" style="width:100%;font-size:12px;"><option value="">전체</option><option value="타경">타경</option><option value="타채">타채</option></select></label>
+            <label>매각기일 ~부터<br><input type="date" id="ap-a-from" style="width:100%;font-size:12px;"></label>
+            <label>~까지<br><input type="date" id="ap-a-to" style="width:100%;font-size:12px;"></label>
+            <label>감정가(억) ~<br><input type="number" id="ap-a-applo" min="0" step="0.1" style="width:100%;font-size:12px;"></label>
+            <label>~<br><input type="number" id="ap-a-apphi" min="0" step="0.1" style="width:100%;font-size:12px;"></label>
+            <label>최저가(억) ~<br><input type="number" id="ap-a-lowlo" min="0" step="0.1" style="width:100%;font-size:12px;"></label>
+            <label>~<br><input type="number" id="ap-a-lowhi" min="0" step="0.1" style="width:100%;font-size:12px;"></label>
+            <label>진행상태<br><select id="ap-a-st" style="width:100%;font-size:12px;"><option value="">전체</option><option value="new">신건만</option><option value="fail">유찰만</option></select></label>
+            <div style="align-self:end;"><button type="button" id="ap-a-clear" class="pc-btn pc-btn-outline" style="width:100%;">조건 지우기</button></div>
+          </div>
+          <div style="margin-top:6px;">특수조건<br>
+            <label style="margin-right:8px;"><input type="checkbox" class="ap-a-tag" value="제시외"> 제시외</label>
+            <label style="margin-right:8px;"><input type="checkbox" class="ap-a-tag" value="위반건축물"> 위반건축물</label>
+            <label style="margin-right:8px;"><input type="checkbox" class="ap-a-tag" value="이행강제금"> 이행강제금</label>
+            <label style="margin-right:8px;"><input type="checkbox" class="ap-a-tag" value="유치권"> 유치권</label>
+            <label style="margin-right:8px;"><input type="checkbox" class="ap-a-tag" value="법정지상권"> 법정지상권</label>
+            <label style="margin-right:8px;"><input type="checkbox" class="ap-a-tag" value="지분매각"> 지분매각</label>
+            <label style="margin-right:8px;"><input type="checkbox" class="ap-a-tag" value="무허가"> 무허가</label>
+            <label style="margin-right:8px;"><input type="checkbox" class="ap-a-tag" value="맹지"> 맹지</label>
+            <label style="margin-right:8px;"><input type="checkbox" class="ap-a-tag" value="분묘"> 분묘</label>
+            <label style="margin-right:8px;"><input type="checkbox" class="ap-a-tag" value="임차인"> 임차인</label>
+            <label style="margin-right:8px;"><input type="checkbox" class="ap-a-tag" value="내부미확인"> 내부미확인</label>
+            <label style="margin-right:8px;"><input type="checkbox" class="ap-a-tag" value="미등기"> 미등기</label>
+          </div>
+        </details>
         
 
         <div class="ap-alert" id="ap-alert" hidden></div>
@@ -6409,6 +6443,13 @@
             }));
             
             if (window.__mjHdrUpdate) window.__mjHdrUpdate();
+            
+            try {
+              const cs = document.getElementById('ap-a-court');
+              if (cs && cs.options.length <= 1 && j.courts) j.courts.forEach((c) => {
+                const o = document.createElement('option'); o.value = c; o.textContent = c; cs.appendChild(o);
+              });
+            } catch (e) {}
             return auctionRows;
           
           
@@ -8119,7 +8160,7 @@
         const vsig = filtered ? '' : (() => { const c = map.getCenter();
           return c.lat.toFixed(3) + ',' + c.lng.toFixed(3) + '@' + map.getZoom(); })();
         const sig = auctionQuery.trim().toLowerCase() + '\u0000' + auctionFavOnly + '\u0000' + _aucFavRev
-          + '\u0000' + aucFilt.price + '\u0000' + aucFilt.dday + '\u0000' + aucFilt.use + '\u0000' + aucFilt.disc + '\u0000' + aucFilt.fail
+          + '\u0000' + aucFilt.price + '\u0000' + aucFilt.dday + '\u0000' + aucFilt.use + '\u0000' + aucFilt.disc + '\u0000' + aucFilt.fail + '\u0000' + JSON.stringify(aucAdv)
           + '\u0000' + vsig;
         if (!force && sig === _aucBuiltSig) return picked;
         _aucBuiltSig = sig;
@@ -8985,7 +9026,19 @@
       
       
       const aucFilt = { price: '', dday: '', use: '', disc: '', fail: '' };
-      const aucFiltOn = () => !!(aucFilt.price || aucFilt.dday || aucFilt.use || aucFilt.disc || aucFilt.fail);
+      
+      
+      
+      const aucAdv = { court: '', kind: '', from: '', to: '', applo: '', apphi: '', lowlo: '', lowhi: '', st: '', tags: [] };
+      const aucAdvOn = () => !!(aucAdv.court || aucAdv.kind || aucAdv.from || aucAdv.to || aucAdv.applo || aucAdv.apphi || aucAdv.lowlo || aucAdv.lowhi || aucAdv.st || aucAdv.tags.length);
+      const aucFiltOn = () => !!(aucFilt.price || aucFilt.dday || aucFilt.use || aucFilt.disc || aucFilt.fail || aucAdvOn());
+      
+      const aucSaleYmd = (d) => {
+        const y = d && d.idx && d.idx.dy;
+        if (y && /^\d{8}$/.test(y)) return y;
+        const m = String((d && d.sale) || '').match(/(\d{4})\.(\d{2})\.(\d{2})/);
+        return m ? m[1] + m[2] + m[3] : '';
+      };
       
       
       let auctionSort = 'view';
@@ -9024,7 +9077,33 @@
           if ((1 - lo2 / ap) * 100 < +aucFilt.disc) return false;
         }
         if (aucFilt.fail) {
-          if ((Number(d.fail) || 0) < +aucFilt.fail) return false;
+          if (aucFailCnt(d) < +aucFilt.fail) return false;
+        }
+        if (aucAdv.court && String(d.court || '') !== aucAdv.court) return false;
+        if (aucAdv.kind && String(d.cn || '').indexOf(aucAdv.kind) < 0) return false;
+        if (aucAdv.from || aucAdv.to) {
+          const y = aucSaleYmd(d);
+          if (!y) return false;
+          if (aucAdv.from && y < aucAdv.from.replace(/-/g, '')) return false;
+          if (aucAdv.to && y > aucAdv.to.replace(/-/g, '')) return false;
+        }
+        if (aucAdv.applo !== '' || aucAdv.apphi !== '') {
+          const ap = aucApprEok(d);
+          if (!(ap > 0)) return false;
+          if (aucAdv.applo !== '' && ap < +aucAdv.applo) return false;
+          if (aucAdv.apphi !== '' && ap > +aucAdv.apphi) return false;
+        }
+        if (aucAdv.lowlo !== '' || aucAdv.lowhi !== '') {
+          const lo = aucLowEok(d);
+          if (!(lo > 0)) return false;
+          if (aucAdv.lowlo !== '' && lo < +aucAdv.lowlo) return false;
+          if (aucAdv.lowhi !== '' && lo > +aucAdv.lowhi) return false;
+        }
+        if (aucAdv.st === 'new' && aucFailCnt(d) !== 0) return false;
+        if (aucAdv.st === 'fail' && aucFailCnt(d) <= 0) return false;
+        if (aucAdv.tags.length) {
+          const has = (d.idx && d.idx.t) || [];
+          if (!aucAdv.tags.every((t) => has.indexOf(t) >= 0)) return false;
         }
         const q = auctionQuery.trim().toLowerCase();
         if (!q) return true;
@@ -9355,6 +9434,14 @@
         const days = Math.round((t - new Date(now.getFullYear(), now.getMonth(), now.getDate())) / 86400000);
         return Number.isFinite(days) ? days : null;
       }
+      
+      
+      
+      function aucFailCnt(d) {
+        if (d && d.idx && d.idx.n != null) return Number(d.idx.n) || 0;
+        const m = String((d && d.status) || '').match(/유찰\s*(\d+)/);
+        return m ? Number(m[1]) : 0;
+      }
       function aucBadges(d) {
         const out = [];
         
@@ -9442,6 +9529,14 @@
           
           shown.forEach((x) => { const ap = aucApprEok(x.d), lo = aucLowEok(x.d); x._s = (ap > 0 && lo > 0) ? -(1 - lo / ap) : 1e9; });
           shown.sort((p, r) => p._s - r._s);
+        } else if (auctionSort === 'loAsc' || auctionSort === 'loDesc') {
+          
+          shown.forEach((x) => { const lo = aucLowEok(x.d); x._s = lo > 0 ? lo : 1e15; });
+          shown.sort((p, r) => auctionSort === 'loAsc' ? p._s - r._s : r._s - p._s);
+        } else if (auctionSort === 'fail') {
+          
+          shown.forEach((x) => { x._s = -aucFailCnt(x.d); });
+          shown.sort((p, r) => p._s - r._s);
         } else if (auctionSortByView) {
           const c = map.getCenter();
           const b = map.getBounds();
@@ -9505,6 +9600,7 @@
           const el = $(id);
           if (el) { el.value = ''; el.classList.remove('on'); }
         });
+        if (typeof clearAdv === 'function') clearAdv();
         auctionRenderList();
         auctionFitFiltered(auctionBuild());
         auctionList.scrollTop = 0;
@@ -9552,6 +9648,32 @@
       if (sortEl) sortEl.onchange = () => {
         auctionSort = sortEl.value || 'view';
         auctionRenderList();
+        auctionList.scrollTop = 0;
+      };
+      
+      function clearAdv() {
+        Object.keys(aucAdv).forEach((k) => { aucAdv[k] = k === 'tags' ? [] : ''; });
+        ['ap-a-court', 'ap-a-kind', 'ap-a-from', 'ap-a-to', 'ap-a-applo', 'ap-a-apphi', 'ap-a-lowlo', 'ap-a-lowhi', 'ap-a-st'].forEach((id) => { const el = $(id); if (el) el.value = ''; });
+        [...document.querySelectorAll('.ap-a-tag')].forEach((c) => { c.checked = false; });
+      }
+      const advBox = document.querySelector('.ap-adv');
+      if (advBox) advBox.addEventListener('change', () => {
+        const v = (id) => { const el = $(id); return el ? el.value : ''; };
+        aucAdv.court = v('ap-a-court'); aucAdv.kind = v('ap-a-kind');
+        aucAdv.from = v('ap-a-from'); aucAdv.to = v('ap-a-to');
+        aucAdv.applo = v('ap-a-applo'); aucAdv.apphi = v('ap-a-apphi');
+        aucAdv.lowlo = v('ap-a-lowlo'); aucAdv.lowhi = v('ap-a-lowhi');
+        aucAdv.st = v('ap-a-st');
+        aucAdv.tags = [...document.querySelectorAll('.ap-a-tag')].filter((c) => c.checked).map((c) => c.value);
+        auctionRenderList();
+        auctionFitFiltered(auctionBuild());
+        auctionList.scrollTop = 0;
+      });
+      const advClear = $('ap-a-clear');
+      if (advClear) advClear.onclick = () => {
+        clearAdv();
+        auctionRenderList();
+        auctionFitFiltered(auctionBuild());
         auctionList.scrollTop = 0;
       };
       
