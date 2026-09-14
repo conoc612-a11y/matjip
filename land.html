@@ -3983,7 +3983,10 @@
           if (!pp) { say('필지를 확인하지 못했습니다.'); return; }
           const jb = String(Number(pp.bun)) + (pp.ji === '0000' ? '' : '-' + String(Number(pp.ji)));
           ledgerOp('getBrExposPubuseAreaInfo', pnu, (arr) => {
-            const units = (arr || []).filter((x) => x.exposPubuseGbCdNm === '전유')
+            
+            
+            if (!arr) { say('조회 실패 — 접었다 다시 펼치세요.'); det.dataset.done = ''; return; }
+            const units = arr.filter((x) => x.exposPubuseGbCdNm === '전유')
               .map((x) => ({ ho: String(x.hoNm || '').trim(), flr: vuFlr(x.flrNo), area: Number(x.area) || 0 }))
               .filter((u) => u.ho && u.area > 0 && u.flr !== 0);
             if (!units.length) { say('대장에 전유부 기록이 없습니다.'); return; }
