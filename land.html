@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
-  <link rel="stylesheet" href="css/tokens.css?v=e8423a54" />
+  <link rel="stylesheet" href="css/tokens.css?v=a5ba2e7a" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=e8423a54"></script>
+  <script src="js/auth-guard.js?v=a5ba2e7a"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -37,12 +37,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=e8423a54" />
+  <link rel="stylesheet" href="css/buttons.css?v=a5ba2e7a" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=e8423a54" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=a5ba2e7a" />
   <style>
     :root {
       --c-primary:#1971c2; --c-primary-soft:#e7f0fb; --c-price:#d9480f;
@@ -1449,7 +1449,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=e8423a54"></script>
+  <script src="js/ie-guard.js?v=a5ba2e7a"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1494,6 +1494,11 @@
         <div class="ap-head">
           <b class="ap-title">법원경매</b>
           <span class="ap-count" id="ap-count"></span>
+          <select id="ap-sort" aria-label="목록 정렬" style="font-size:12px;max-width:110px;">
+            <option value="view">거리순</option>
+            <option value="dday">마감임박순</option>
+            <option value="disc">할인율순</option>
+          </select>
           <div class="ap-links">
             <a href="https://www.courtauction.go.kr/pgj/index.on?pgjId=159M01&w2xPath=%2Fpgj%2Fui%2Fpgj100%2FPGJ159M00.xml" target="_blank" rel="noopener" title="courtauction.go.kr 사건검색 — 사건번호로 검색">사건검색</a>
             <a href="https://www.courtauction.go.kr/pgj/index.on?pgjId=151F01&w2xPath=/pgj/ui/pgj100/PGJ151F00.xml" target="_blank" rel="noopener" title="courtauction.go.kr 물건상세검색 — 주소·지역으로 검색">물건검색</a>
@@ -1678,22 +1683,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-14 10:38 · e8423a54</span></span>
+          · <span class="build-tag">build 2026-09-14 11:33 · a5ba2e7a</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=e8423a54"></script>
+  <script src="js/joinkey.js?v=a5ba2e7a"></script>
   
-  <script src="js/identity.js?v=e8423a54"></script>
-  <script src="js/common.js?v=e8423a54"></script>
-  <script src="js/ui-resize.js?v=e8423a54"></script>
-  <script src="js/footer-resize.js?v=e8423a54"></script>
-  <script src="js/route-line.js?v=e8423a54"></script>
-  <script src="js/route-api.js?v=e8423a54"></script>
-  <script src="js/footer-stats.js?v=e8423a54"></script>
+  <script src="js/identity.js?v=a5ba2e7a"></script>
+  <script src="js/common.js?v=a5ba2e7a"></script>
+  <script src="js/ui-resize.js?v=a5ba2e7a"></script>
+  <script src="js/footer-resize.js?v=a5ba2e7a"></script>
+  <script src="js/route-line.js?v=a5ba2e7a"></script>
+  <script src="js/route-api.js?v=a5ba2e7a"></script>
+  <script src="js/footer-stats.js?v=a5ba2e7a"></script>
   <script>
     
     
@@ -8982,6 +8987,9 @@
       const aucFilt = { price: '', dday: '', use: '', disc: '', fail: '' };
       const aucFiltOn = () => !!(aucFilt.price || aucFilt.dday || aucFilt.use || aucFilt.disc || aucFilt.fail);
       
+      
+      let auctionSort = 'view';
+      
       const AUC_USE_RE = {
         아파트: /아파트/, 빌라: /연립|다세대|빌라/, 오피스텔: /오피스텔/,
         상가: /상가|근린/, 토지: /토지|대지|임야|전답|과수원/,
@@ -9068,10 +9076,23 @@
           if (!server.length) return false;
           const local = auctionFavLoad();
           const merged = [...new Set([...local, ...server])];
-          if (merged.length === local.length) return false;
-          localStorage.setItem(AUCT_FAV_KEY, JSON.stringify(merged));
-          _aucFavRev++;
-          return true;
+          const favChanged = merged.length !== local.length;
+          if (favChanged) {
+            localStorage.setItem(AUCT_FAV_KEY, JSON.stringify(merged));
+            _aucFavRev++;
+          }
+          
+          
+          let watchChanged = false;
+          try {
+            const wq = await a.sb.from('auction_watch').select('fav_key,snap');
+            const wmap = aucWatchLoad();
+            for (const w of ((wq && wq.data) || [])) {
+              if (w.fav_key && w.snap && !wmap[w.fav_key]) { wmap[w.fav_key] = w.snap; watchChanged = true; }
+            }
+            if (watchChanged) aucWatchSave(wmap, true);
+          } catch (e) {}
+          return favChanged || watchChanged;
         } catch (e) { return false; }
       }
       window.__aucFavPull = aucFavPull;   
@@ -9170,8 +9191,20 @@
       function aucWatchLoad() {
         try { return JSON.parse(localStorage.getItem(AUCT_WATCH_LS) || '{}') || {}; } catch (e) { return {}; }
       }
-      function aucWatchSave(m) {
+      function aucWatchSave(m, skipPush) {
         try { localStorage.setItem(AUCT_WATCH_LS, JSON.stringify(m)); } catch (e) {  }
+        
+        
+        if (skipPush || typeof aucFavWho !== 'function') return;
+        (async () => {
+          const a = await aucFavWho();
+          if (!a) return;
+          try {
+            const rows = Object.entries(m || {}).filter(([, s]) => s && typeof s === 'object')
+              .map(([fav_key, snap]) => ({ user_id: a.uid, fav_key, snap }));
+            if (rows.length) await a.sb.from('auction_watch').upsert(rows, { onConflict: 'user_id,fav_key' });
+          } catch (e) {}
+        })();
       }
       
       
@@ -9346,9 +9379,15 @@
         return out.join('');
       }
       function auctionRowHtml(d, fav, idx, pinned) {
-        const rows = [
+        const rowPairs = [
           ['감정', wonEok(aucApprEok(d))], ['최저', wonEok(aucLowEok(d))], ['용도', d.use], ['매각기일', d.sale],
-        ].filter(([, v]) => v != null && v !== '').map(([k, v]) => `${k} ${esc(v)}`).join(' · ');
+        ];
+        
+        
+        const _sr = (typeof aucSoldRate === 'function') ? aucSoldRate(d) : null;
+        const _ap = aucApprEok(d);
+        if (_sr && _ap > 0) rowPairs.push(['예상', `${fmtAmtExact(_ap * 10000 * _sr.mid / 100)} (${_sr.mid}%·${_sr.n}건)`]);
+        const rows = rowPairs.filter(([, v]) => v != null && v !== '').map(([k, v]) => `${k} ${esc(v)}`).join(' · ');
         const thumb = d.photos && d.photos.length ? `<img class="ap-thumb" src="${esc(photoUrl(d.photos[0]))}" alt="" loading="lazy">` : '<span class="ap-thumb ap-thumb-ph">📷</span>';
         return `<div class="ap-row${pinned ? ' pinned' : ''}" data-i="${idx}">
           ${thumb}
@@ -9364,9 +9403,11 @@
               
               
               
+              
               const v = (d.detail && d.detail.objctDoc) ? aucScore(d) : null;
               if (!v || v.score == null) return '';
-              const first = v.why.length ? ` · ${esc(v.why[0])}` : '';
+              const chain = v.why.map((w) => String(w).replace(/^-\d+\s*/, '')).filter(Boolean).join(' · ');
+              const first = chain ? ` · ${esc(chain)}` : '';
               return `<div style="margin-top:2px;font-size:11px;color:var(--c-muted);">`
                 + `<span style="font-weight:800;color:#fff;background:${aucGradeCol(v.grade)};padding:0 7px;border-radius:999px;">${v.grade}</span>`
                 + ` ${v.score}점${first}</div>`;
@@ -9393,7 +9434,15 @@
         
         
         
-        if (auctionSortByView) {
+        if (auctionSort === 'dday') {
+          
+          shown.forEach((x) => { const dd = aucDday(x.d); x._s = (dd == null || dd < 0) ? 1e9 : dd; });
+          shown.sort((p, r) => p._s - r._s);
+        } else if (auctionSort === 'disc') {
+          
+          shown.forEach((x) => { const ap = aucApprEok(x.d), lo = aucLowEok(x.d); x._s = (ap > 0 && lo > 0) ? -(1 - lo / ap) : 1e9; });
+          shown.sort((p, r) => p._s - r._s);
+        } else if (auctionSortByView) {
           const c = map.getCenter();
           const b = map.getBounds();
           shown.forEach((x) => {
@@ -9422,13 +9471,15 @@
         
         
         
-        const capped = (auctionSortByView && !q && !auctionFavOnly && !aucFiltOn() && shown.length > AUC_RENDER_CAP)
+        const capped = ((auctionSort !== 'view' || auctionSortByView) && !q && !auctionFavOnly && !aucFiltOn() && shown.length > AUC_RENDER_CAP)
           ? shown.slice(0, AUC_RENDER_CAP) : shown;
         
+        
+        const capWord = auctionSort === 'dday' ? '마감임박 ' : auctionSort === 'disc' ? '할인율순 ' : '가까운 ';
         $('ap-count').textContent = q || auctionFavOnly || aucFiltOn()
           ? shown.length + '/' + auctionRows.length + '건 · 지도도 같은 결과'
           : (capped.length < shown.length
-            ? '가까운 ' + capped.length + '건 / 전체 ' + shown.length + '건'
+            ? capWord + capped.length + '건 / 전체 ' + shown.length + '건'
             : shown.length + '건');
         auctionList.innerHTML = capped.map((x) => auctionRowHtml(x.d, x.fav, x.i, x.key === auctionPinnedKey)).join('');
         
@@ -9495,6 +9546,19 @@
           auctionFitFiltered(auctionBuild());
           auctionList.scrollTop = 0;
         };
+      });
+      
+      const sortEl = $('ap-sort');
+      if (sortEl) sortEl.onchange = () => {
+        auctionSort = sortEl.value || 'view';
+        auctionRenderList();
+        auctionList.scrollTop = 0;
+      };
+      
+      let _srListed = false;
+      if (typeof aucSoldEnsure === 'function') aucSoldEnsure().then(() => {
+        if (_srListed) return; _srListed = true;
+        try { if (auctionRows && typeof auctionPanel !== 'undefined' && auctionPanel && !auctionPanel.hidden && typeof auctionRenderList === 'function') auctionRenderList(); } catch (e) {}
       });
       
       let _aucQTimer = null;
