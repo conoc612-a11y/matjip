@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
-  <link rel="stylesheet" href="css/tokens.css?v=fdbcddf2" />
+  <link rel="stylesheet" href="css/tokens.css?v=0187458d" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=fdbcddf2"></script>
+  <script src="js/auth-guard.js?v=0187458d"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -37,12 +37,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=fdbcddf2" />
+  <link rel="stylesheet" href="css/buttons.css?v=0187458d" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=fdbcddf2" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=0187458d" />
   <style>
     :root {
       --c-primary:#1971c2; --c-primary-soft:#e7f0fb; --c-price:#d9480f;
@@ -1449,7 +1449,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=fdbcddf2"></script>
+  <script src="js/ie-guard.js?v=0187458d"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1678,22 +1678,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-14 05:36 · fdbcddf2</span></span>
+          · <span class="build-tag">build 2026-09-14 08:26 · 0187458d</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=fdbcddf2"></script>
+  <script src="js/joinkey.js?v=0187458d"></script>
   
-  <script src="js/identity.js?v=fdbcddf2"></script>
-  <script src="js/common.js?v=fdbcddf2"></script>
-  <script src="js/ui-resize.js?v=fdbcddf2"></script>
-  <script src="js/footer-resize.js?v=fdbcddf2"></script>
-  <script src="js/route-line.js?v=fdbcddf2"></script>
-  <script src="js/route-api.js?v=fdbcddf2"></script>
-  <script src="js/footer-stats.js?v=fdbcddf2"></script>
+  <script src="js/identity.js?v=0187458d"></script>
+  <script src="js/common.js?v=0187458d"></script>
+  <script src="js/ui-resize.js?v=0187458d"></script>
+  <script src="js/footer-resize.js?v=0187458d"></script>
+  <script src="js/route-line.js?v=0187458d"></script>
+  <script src="js/route-api.js?v=0187458d"></script>
+  <script src="js/footer-stats.js?v=0187458d"></script>
   <script>
     
     
@@ -3132,7 +3132,7 @@
       const el = document.createElement('button');
       el.id = 'view-search';
       el.type = 'button';
-      el.innerHTML = '<span class="vs-ico">⟳</span><span>현 지도에서 검색</span>';
+      el.innerHTML = '<span class="vs-ico">⟳</span><span>현 위치 검색</span>';
       document.getElementById('map').appendChild(el);
       L.DomEvent.disableClickPropagation(el);
       L.DomEvent.disableScrollPropagation(el);
@@ -3960,6 +3960,15 @@
         }
         return out;
       }
+      
+      
+      
+      function vuFlr(v) {
+        const s = String(v || '');
+        const digits = Number(s.replace(/[^0-9]/g, '')) || 0;
+        if (!digits) return 0;
+        return (/b|지하|^지/i.test(s) ? -1 : 1) * digits;
+      }
       function vuUnits(det) {
         const body = det.querySelector('.vu-body');
         const say = (t) => { if (body) body.innerHTML = t; };
@@ -3968,21 +3977,21 @@
         say('조회 중…');
         
         
-        vworldFeature('LP_PA_CBND_BUBUN', lat, lng, (ps) => {
-          const pp = pnuParts(ps && ps[0] && ps[0].pnu);
+        
+        const goVu = (pnu) => {
+          const pp = pnuParts(pnu);
           if (!pp) { say('필지를 확인하지 못했습니다.'); return; }
           const jb = String(Number(pp.bun)) + (pp.ji === '0000' ? '' : '-' + String(Number(pp.ji)));
-          ledgerOp('getBrExposPubuseAreaInfo', ps[0].pnu, (arr) => {
+          ledgerOp('getBrExposPubuseAreaInfo', pnu, (arr) => {
             const units = (arr || []).filter((x) => x.exposPubuseGbCdNm === '전유')
-              .map((x) => {
-                const digits = Number(String(x.flrNo || '').replace(/[^0-9]/g, '')) || 0;
-                return { ho: String(x.hoNm || '').trim(), flr: (/b/i.test(String(x.flrNo || '')) ? -1 : 1) * digits, area: Number(x.area) || 0 };
-              })
-              .filter((u) => u.ho && u.area > 0 && u.flr > 0);
+              .map((x) => ({ ho: String(x.hoNm || '').trim(), flr: vuFlr(x.flrNo), area: Number(x.area) || 0 }))
+              .filter((u) => u.ho && u.area > 0 && u.flr !== 0);
             if (!units.length) { say('대장에 전유부 기록이 없습니다.'); return; }
             vuDeals(pp.sigunguCd, jb, det.dataset.dong || '', (res) => vuRender(det, body, units, res));
           });
-        });
+        };
+        if (det.dataset.pnu) goVu(det.dataset.pnu);
+        else vworldFeature('LP_PA_CBND_BUBUN', lat, lng, (ps) => goVu(ps && ps[0] && ps[0].pnu));
       }
       function vuDeals(lawd, jb, dong, cb) {
         const out = { trade: [], rent: [], ok: 0 };
@@ -4003,7 +4012,7 @@
                 const el = els[q];
                 if (_xt(el, 'umdNm') !== dong || String(_xt(el, 'jibun')).replace(/\s/g, '') !== jb) continue;
                 out[jb2[3]].push({
-                  a: num(_xt(el, 'excluUseAr')), f: num(_xt(el, 'floor')),
+                  a: num(_xt(el, 'excluUseAr')), f: vuFlr(_xt(el, 'floor')),
                   amt: num(_xt(el, 'dealAmount')), dep: num(_xt(el, 'deposit')), fee: num(_xt(el, 'monthlyRent')),
                   ym: _xt(el, 'dealYear') + '.' + _xt(el, 'dealMonth'),
                   cancel: _xt(el, 'cdealType') ? 1 : 0,
@@ -4017,11 +4026,12 @@
         };
         next(0);
       }
+      function vuFlrTxt(f) { return f < 0 ? `지하${-f}층` : `${f}층`; }
       function vuCnt(units, f) {
         return units.filter((u) => u.flr === f).reduce((s, u) => s + u.t.length + u.r.length, 0);
       }
       function vuRender(det, body, units, res) {
-        const hit = (x, u) => Math.abs(x.a - u.area) < 0.005 && x.f === u.flr && u.flr > 0;
+        const hit = (x, u) => x.f !== 0 && u.flr !== 0 && Math.abs(x.a - u.area) < 0.005 && x.f === u.flr;
         units.forEach((u) => {
           u.t = res.trade.filter((x) => hit(x, u)).sort((a, b) => (a.ym < b.ym ? 1 : -1));
           u.r = res.rent.filter((x) => hit(x, u)).sort((a, b) => (a.ym < b.ym ? 1 : -1));
@@ -4031,7 +4041,7 @@
         const sum = det.querySelector('summary');
         if (sum && !sum.dataset.n) { sum.dataset.n = '1'; sum.textContent += ` (${units.length}호)`; }
         body.innerHTML = `<div style="display:flex;gap:4px;margin-bottom:4px;"><select class="vu-flr" aria-label="층 선택" style="font-size:12px;max-width:45%;">`
-          + flrs.map((f) => `<option value="${f}">${f}층</option>`).join('') + `</select>`
+          + flrs.map((f) => `<option value="${f}">${vuFlrTxt(f)}</option>`).join('') + `</select>`
           + `<select class="vu-ho" aria-label="호 선택" style="font-size:12px;max-width:55%;"></select></div><div class="vu-list"></div>`
           + (res.ok < 24 ? `<div style="font-size:11px;color:var(--c-muted);">실거래 일부 조회 실패 — 잠시 후 다시 펼치세요.</div>` : '');
         const flrSel = body.querySelector('.vu-flr'), hoSel = body.querySelector('.vu-ho');
@@ -4053,7 +4063,7 @@
       function vuList(box, u) {
         if (!box || !u) return;
         const badge = (t, c) => ` <span style="background:${c};color:#fff;font-size:11px;padding:1px 6px;border-radius:999px;">${t}</span>`;
-        let s = `<div style="margin-bottom:2px;">${u.flr}층 ${esc(u.ho)}호 · 전용 ${uAreaTxt(u.area)}</div>`;
+        let s = `<div style="margin-bottom:2px;">${vuFlrTxt(u.flr)} ${esc(u.ho)}호 · 전용 ${uAreaTxt(u.area)}</div>`;
         u.t.forEach((x) => {
           s += `<div style="margin-top:2px;">${esc(fmtYm(x.ym))} · 매매 <b>${fmtAmtExact(x.amt)}</b>`
             + (x.cancel ? badge('계약해제', 'var(--c-danger)') : (!x.direct ? '' : badge('직거래', '#f08c00'))) + `</div>`;
@@ -18942,7 +18952,7 @@
     
     
     
-    function landInfoHtml(st, noDetail) {
+    function landInfoHtml(st, noDetail, lat, lng) {
       if (!st) return '';
       const rows = [];
       let badge = '';
@@ -20478,11 +20488,19 @@
       
       
       
+      
+      
+      const vuPnu = st.addrPnu || (st.bld && st.bld.pnu) || (st.parcel && st.parcel.pnu) || '';
+      const vuDm = String((st.parcel && st.parcel.addr) || '').match(/(\S+구)\s+(\S+?[동가])(?:\s|$)/);
+      const vuLat = Number(lat), vuLng = Number(lng);
+      const vuHtml = (vuPnu || (isFinite(vuLat) && isFinite(vuLng)))
+        ? `<details class="vu-det"${vuPnu ? ` data-pnu="${vuPnu}"` : ''} data-lat="${isFinite(vuLat) ? vuLat : ''}" data-lng="${isFinite(vuLng) ? vuLng : ''}" data-dong="${vuDm ? esc(vuDm[2]) : ''}" style="margin-top:4px;"><summary style="font-size:12px;cursor:pointer;color:var(--c-primary);">층·호별 시세</summary><div class="vu-body" style="font-size:12px;line-height:1.6;max-height:220px;overflow:auto;margin-top:4px;">펼치면 조회합니다.</div></details>`
+        : '';
       const _blocks = [
         ['부동산 정보', '',
           
           
-          [detailHtml, luHtml, histHtml, shtHtml, pmsHtml, hpmsHtml, kcrHtml, mtnHtml, bidHtml, engyHtml, grnHtml]],
+          [detailHtml, luHtml, histHtml, shtHtml, pmsHtml, hpmsHtml, kcrHtml, mtnHtml, bidHtml, engyHtml, grnHtml, vuHtml]],
         ['투자정보', '',
           
           
@@ -20772,7 +20790,7 @@
         if (_pb) _pb.remove();
         if (_fb) _fb.remove();
         if (_ap) _ap.remove();
-        slot.innerHTML = landInfoHtml(st, noDetail);
+        slot.innerHTML = landInfoHtml(st, noDetail, lat, lng);
         
         try {
           
