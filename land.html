@@ -14820,9 +14820,11 @@
     
     
     
+    
+    
     map.on('popupopen', (ev) => {
       try {
-        if (vsMarker && ev.popup && ev.popup._source && ev.popup._source !== vsMarker) {
+        if (vsMarker && ev.popup && ev.popup._source !== vsMarker) {
           map.removeLayer(vsMarker);
           vsMarker = null;
         }
