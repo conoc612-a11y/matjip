@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
-  <link rel="stylesheet" href="css/tokens.css?v=24e1436e" />
+  <link rel="stylesheet" href="css/tokens.css?v=3d8f8fa4" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=24e1436e"></script>
+  <script src="js/auth-guard.js?v=3d8f8fa4"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -37,12 +37,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=24e1436e" />
+  <link rel="stylesheet" href="css/buttons.css?v=3d8f8fa4" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=24e1436e" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=3d8f8fa4" />
   <style>
     :root {
       --c-primary:#1971c2; --c-primary-soft:#e7f0fb; --c-price:#d9480f;
@@ -1449,7 +1449,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=24e1436e"></script>
+  <script src="js/ie-guard.js?v=3d8f8fa4"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1717,22 +1717,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-14 16:03 · 24e1436e</span></span>
+          · <span class="build-tag">build 2026-09-14 23:13 · 3d8f8fa4</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=24e1436e"></script>
+  <script src="js/joinkey.js?v=3d8f8fa4"></script>
   
-  <script src="js/identity.js?v=24e1436e"></script>
-  <script src="js/common.js?v=24e1436e"></script>
-  <script src="js/ui-resize.js?v=24e1436e"></script>
-  <script src="js/footer-resize.js?v=24e1436e"></script>
-  <script src="js/route-line.js?v=24e1436e"></script>
-  <script src="js/route-api.js?v=24e1436e"></script>
-  <script src="js/footer-stats.js?v=24e1436e"></script>
+  <script src="js/identity.js?v=3d8f8fa4"></script>
+  <script src="js/common.js?v=3d8f8fa4"></script>
+  <script src="js/ui-resize.js?v=3d8f8fa4"></script>
+  <script src="js/footer-resize.js?v=3d8f8fa4"></script>
+  <script src="js/route-line.js?v=3d8f8fa4"></script>
+  <script src="js/route-api.js?v=3d8f8fa4"></script>
+  <script src="js/footer-stats.js?v=3d8f8fa4"></script>
   <script>
     
     
@@ -9770,16 +9770,6 @@
       
       
       
-      function aucAeeDocUrl(det) {
-        const A = det && det.aee, B = det && det.base;
-        if (!A || !B || !A.cortCd || !B.saNo || A.ordTs == null || !A.no || !A.wrtYmd) return '';
-        return 'https://ca.kapanet.or.kr/view/' + String(A.cortCd).replace(/^B/, '')
-          + '/' + B.saNo + '/' + A.ordTs + '/' + A.no + '/' + A.wrtYmd;
-      }
-      
-      
-      
-      
       
       const aucObjctDocUrl = (det) => (det && det.objctUrl) || '';
       const AUC_GO_LABELS = ['사건내역', '기일내역', '문건/송달', '감정평가서', '현황조사서', '매각물건명세서'];
@@ -9799,7 +9789,9 @@
       const APD_LOCAL_GO = {
         '사건내역': ['apd-sec-sajeon'],
         '기일내역': ['apd-sec-gihui'],
-        '감정평가서': ['apd-sec-evlt'],
+        
+        
+        '감정평가서': ['apd-sec-aee', 'apd-sec-evlt'],
         '매각물건명세서': ['apd-sec-objct', 'apd-sec-ndstrc'],
         
         '현황조사서': ['apd-sec-curst'],
@@ -9824,7 +9816,9 @@
         switch (label) {
           case '사건내역': return !!det.base;
           case '기일내역': return !!(det.gihui && det.gihui.length);
-          case '감정평가서': return !!(det.evlt && det.evlt.length);
+          
+          
+          case '감정평가서': return !!((det.evlt && det.evlt.length) || det.aee);
           
           case '매각물건명세서': return !!((det.objct && det.objct.length) || (det.dspsl && det.dspsl.ndstrc));
           case '현황조사서': return !!det.curst;
@@ -9995,26 +9989,34 @@
           
           
           
-          if (det.aee) {
-            const A = det.aee;
+          
+          
+          
+          
+          
+          
+          
+          if (det.aee || (det.evlt && det.evlt.length)) {
+            const A = det.aee || {};
+            
             const aeeRows = [
+              ['감정평가액', (det.dspsl && det.dspsl.appr) ? eok(det.dspsl.appr) : ''],
               ['가격시점', ymd(A.crtrYmd)], ['조사일', ymd(A.exmnYmd)], ['작성일', ymd(A.wrtYmd)],
               ['감정평가 담당', A.examr], ['심사', A.jdgr], ['평가서번호', A.no],
             ].filter(([, v]) => v != null && v !== '')
               .map(([k, v]) => `<div class="apd-grid-row"><span>${k}</span><b style="text-align:right;">${esc(v)}</b></div>`).join('');
             
             
-            
-            const _aeeUrl = aucAeeDocUrl(det);
-            const _aeeLink = _aeeUrl
-              ? `<div style="margin-top:6px;"><a href="${safeUrl(_aeeUrl)}" target="_blank" rel="noopener"`
-                + ` class="pc-btn pc-btn-primary" style="display:inline-block;">감정평가서 원문 열기</a>`
-                + `<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">`
-                + `한국감정평가사협회(매각기일 2주 전후만 열림)</div></div>`
+            const evltHtml = (det.evlt && det.evlt.length)
+              ? `<div style="font-size:12px;color:var(--c-muted);margin:8px 0 2px;">감정평가 요항표</div>`
+                + `<div class="apd-note">${esc(det.evlt.join('\n'))}</div>`
               : '';
-            if (aeeRows || _aeeLink) {
-              sections += sec('apd-sec-aee', '감정평가 정보', `<div class="apd-grid">${aeeRows}</div>${_aeeLink}`);
-            }
+            
+            const aeeNote = `<div style="font-size:11px;color:var(--c-muted);margin-top:6px;">`
+              + `원문 PDF 는 한국감정평가사협회 뷰어가 구형 플러그인 전용이라 어느 브라우저에서도 열리지 않습니다.`
+              + ` 위 내용은 법원이 제공하는 감정평가 항목 전문입니다.</div>`;
+            sections += sec('apd-sec-aee', '감정평가서',
+              `${aeeRows ? `<div class="apd-grid">${aeeRows}</div>` : ''}${evltHtml}${aeeNote}`);
           }
           
           
@@ -10037,9 +10039,8 @@
             sections += sec('apd-sec-notsugt', '제시외목록', det.notsugt.map((o) =>
               `<div class="apd-muted">· ${esc(o.nm)}${o.ar ? ' ' + esc(o.ar) : ''}${o.struc ? ' (' + esc(o.struc) + ')' : ''}${o.amt ? ' · 감정 ' + eok(o.amt) : ''}</div>`).join(''));
           }
-          if (det.evlt && det.evlt.length) {
-            sections += sec('apd-sec-evlt', '감정요약', `<div class="apd-note">${esc(det.evlt.join('\n'))}</div>`);
-          }
+          
+          
           
           
           
@@ -10085,7 +10086,7 @@
         
         sections = (() => {
           const ORDER = ['apd-sec-ndstrc', 'apd-sec-curst', 'apd-sec-objct', 'apd-sec-notsugt',
-            'apd-sec-evlt', 'apd-sec-aee', 'apd-sec-gihui', 'apd-sec-intrps', 'apd-sec-sajeon'];
+            'apd-sec-aee', 'apd-sec-evlt', 'apd-sec-gihui', 'apd-sec-intrps', 'apd-sec-sajeon'];
           const box = document.createElement('div');
           box.innerHTML = sections;
           const kids = [...box.children];
@@ -14418,7 +14419,6 @@
           {"t": "서울특별시 (서울 열린데이터광장)", "pk": "", "u": 0, "n": 0, "o": [], "d": "버스정류소 위치·정류장 이용량, 지하철역 위치·시간대별 승하차, 따릉이 대여소, 학교 기본정보, 상권분석(영역·매출·유동인구·직장인구), 행정동 생활인구", "cat": "제공기관 자체 서비스"},
           {"t": "서울특별시 (정비사업 정보몽땅)", "pk": "", "u": 0, "n": 0, "o": [], "d": "재개발·재건축 등 정비사업 구역·진행단계", "cat": "제공기관 자체 서비스"},
           {"t": "아실 (아파트실거래가)", "pk": "", "u": 0, "n": 0, "o": [], "d": "단지별 실거래가 조회 링크 (본문을 우리가 저장하지 않는다)", "cat": "제공기관 자체 서비스"},
-          {"t": "한국감정평가사협회", "pk": "", "u": 0, "n": 0, "o": [], "d": "법원경매 감정평가서 원문 열람 링크 (본문을 우리가 저장하지 않는다)", "cat": "제공기관 자체 서비스"},
           {"t": "한국부동산원 (부동산통계정보 R-ONE)", "pk": "", "u": 0, "n": 0, "o": [], "d": "지역별 지가변동률·지가지수(법정동 단위)", "cat": "제공기관 자체 서비스"},
           {"t": "한국자산관리공사 (온비드)", "pk": "", "u": 0, "n": 0, "o": [], "d": "공매 물건 썸네일 이미지 · 물건 상세 링크", "cat": "제공기관 자체 서비스"},
           {"t": "행정안전부 (공공데이터 제공표준)", "pk": "", "u": 0, "n": 0, "o": [], "d": "전국 CCTV정보(37만) · 무료와이파이정보(9.4만) · 모범음식점정보 — 지자체 취합 CSV", "cat": "제공기관 자체 서비스"},
@@ -14435,7 +14435,7 @@
           {"t": "한국토지주택공사 (LH청약플러스)", "pk": "", "u": 0, "n": 0, "o": [], "d": "입주자모집공고 첨부 「공급대상주택목록」 — 매입임대·든든전세 **물건별 주소**(광역 공고는 공고 본문에 주소가 없어 이 첨부가 유일한 위치 자료다)", "cat": "공개 웹 수집"},
         ]],
       ];
-      const UA_SERVICES_N = 124;   
+      const UA_SERVICES_N = 123;   
       
       
       
