@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
-  <link rel="stylesheet" href="css/tokens.css?v=0187458d" />
+  <link rel="stylesheet" href="css/tokens.css?v=e8423a54" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=0187458d"></script>
+  <script src="js/auth-guard.js?v=e8423a54"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -37,12 +37,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=0187458d" />
+  <link rel="stylesheet" href="css/buttons.css?v=e8423a54" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=0187458d" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=e8423a54" />
   <style>
     :root {
       --c-primary:#1971c2; --c-primary-soft:#e7f0fb; --c-price:#d9480f;
@@ -1449,7 +1449,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=0187458d"></script>
+  <script src="js/ie-guard.js?v=e8423a54"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1678,22 +1678,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-14 08:26 · 0187458d</span></span>
+          · <span class="build-tag">build 2026-09-14 10:38 · e8423a54</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=0187458d"></script>
+  <script src="js/joinkey.js?v=e8423a54"></script>
   
-  <script src="js/identity.js?v=0187458d"></script>
-  <script src="js/common.js?v=0187458d"></script>
-  <script src="js/ui-resize.js?v=0187458d"></script>
-  <script src="js/footer-resize.js?v=0187458d"></script>
-  <script src="js/route-line.js?v=0187458d"></script>
-  <script src="js/route-api.js?v=0187458d"></script>
-  <script src="js/footer-stats.js?v=0187458d"></script>
+  <script src="js/identity.js?v=e8423a54"></script>
+  <script src="js/common.js?v=e8423a54"></script>
+  <script src="js/ui-resize.js?v=e8423a54"></script>
+  <script src="js/footer-resize.js?v=e8423a54"></script>
+  <script src="js/route-line.js?v=e8423a54"></script>
+  <script src="js/route-api.js?v=e8423a54"></script>
+  <script src="js/footer-stats.js?v=e8423a54"></script>
   <script>
     
     
@@ -14816,6 +14816,18 @@
         vsMarker = L.marker([g.lat, g.lng]).addTo(map).bindPopup(`<b>${esc(g.label || q)}</b>`).openPopup();
       });
     }
+    
+    
+    
+    
+    map.on('popupopen', (ev) => {
+      try {
+        if (vsMarker && ev.popup && ev.popup._source && ev.popup._source !== vsMarker) {
+          map.removeLayer(vsMarker);
+          vsMarker = null;
+        }
+      } catch (e) {}
+    });
     
     
     
