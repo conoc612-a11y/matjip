@@ -163,7 +163,7 @@
     const rows = res.matchedByBizno ? res.sameBizno : res.rows;
     const s = scoreOf(rows);
     if (s.level === 'none' && !s.ces) return '';
-    const color = { high: '#c92a2a', mid: '#e8590c', low: '#868e96', none: '#868e96' }[s.level];
+    const color = { high: '#D92A14', mid: '#e8590c', low: '#868e96', none: '#868e96' }[s.level];
     const label = s.ces && !s.pen ? `폐업 공시 ${s.ces}건`
       : `행정처분 ${s.pen}건${s.recent ? ` (최근 3년 ${s.recent}건)` : ''}${s.ces ? ` · 폐업 ${s.ces}건` : ''}`;
     return `<span class="mj-risk" style="display:inline-block;font-size:11px;padding:1px 6px;`
