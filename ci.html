@@ -8,14 +8,20 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kaushan+Script&display=swap" />
-<link rel="stylesheet" href="css/tokens.css?v=f4b2b438" />
+<link rel="stylesheet" href="css/tokens.css?v=b2ae1849" />
 <style>
   
 
 
 
+
+
+
+
+
+
   :root {
-    --navy:#D92A14;   
+    --navy:#053259;   
     --teal:#0E7482;   
     --gold:#E4B33C;   
     --tang:#E69240;   
@@ -66,11 +72,11 @@
   .files a { display:inline-block; padding:9px 14px; border:1px solid var(--line); border-radius:8px;
              text-decoration:none; color:var(--ink); font-size:13.5px; font-weight:600; margin:0 8px 8px 0;
              transition:transform .08s ease, border-color .15s; }
-  .files a:hover { border-color:var(--navy); }
+  .files a:hover { border-color:var(--brand); }
   .files a:active { transform:translateY(1px); }
-  .note { background:#FFF8E8; border:1px solid var(--gold); border-radius:8px; padding:14px 16px;
+  .note { background:var(--paper); border:1px solid var(--line); border-left:3px solid var(--brand); border-radius:8px; padding:14px 16px;
           font-size:13.5px; }
-  .note b { color:var(--navy); }
+  .note b { color:var(--brand); }
   footer { padding:34px 0 56px; color:var(--muted); font-size:13px; }
   footer a { color:var(--muted); }
   
@@ -88,7 +94,7 @@
   .cs code { display:block; margin-top:10px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
              font-size:13px; font-weight:700; }
   .script { font-family:'Kaushan Script',cursive; font-weight:400; color:var(--tang); }
-  :focus-visible { outline:2px solid var(--navy); outline-offset:2px; }
+  :focus-visible { outline:2px solid var(--brand); outline-offset:2px; }
   @media (prefers-reduced-motion: reduce) { .files a { transition:none; } .files a:active { transform:none; } }
 </style>
 </head>
@@ -175,14 +181,16 @@
     <h3>로고 색</h3>
     <p class="lede">로고는 손그림 원본을 그대로 씁니다. 아래 네 색은 <b>로고 안에서만</b> 살고,
       화면 UI 는 위의 레드·블랙·화이트로 갑니다. <b>글자로 쓰지 마십시오.</b></p>
+    
+
     <div class="sw">
-      <div><i style="background:#E4B33C;"></i><p><code>#E4B33C</code> Gold
+      <div><i style="background:var(--gold);"></i><p><code>#E4B33C</code> Gold
         <small>C0 M21 Y74 K11 · R228 G179 B60 · 해</small></p></div>
-      <div><i style="background:#E69240;"></i><p><code>#E69240</code> Tangerine
+      <div><i style="background:var(--tang);"></i><p><code>#E69240</code> Tangerine
         <small>C0 M37 Y72 K10 · R230 G146 B64 · all in one</small></p></div>
-      <div><i style="background:#053259;"></i><p><code>#053259</code> Navy
+      <div><i style="background:var(--navy);"></i><p><code>#053259</code> Navy
         <small>C94 M44 Y0 K65 · R5 G50 B89 · 부동산 글자</small></p></div>
-      <div><i style="background:#0E7482;"></i><p><code>#0E7482</code> Teal
+      <div><i style="background:var(--teal);"></i><p><code>#0E7482</code> Teal
         <small>C89 M11 Y0 K49 · R14 G116 B130 · 집</small></p></div>
     </div>
 
@@ -203,7 +211,7 @@
       <tr><th>어두운 바탕</th><td>레드는 <b>4.29</b> 로 떨어집니다 →
         <code>#FF7A66</code>(8.23) 으로 바꿔 씁니다. 색상(hue)은 그대로 둡니다.</td></tr>
       <tr><th>로고 네 색</th><td>흰 바탕에서 남색 13.07 · 청록 5.47 은 읽히지만
-        금색 1.89 · 주황 2.46 은 못 읽습니다. 로고 안에서는 면으로만 쓰이므로 문제되지 않습니다.</td></tr>
+        금색 1.94 · 주황 2.46 은 못 읽습니다. 로고 안에서는 면으로만 쓰이므로 문제되지 않습니다.</td></tr>
       <tr><th>측정 기준</th><td>흰 바탕 #FFFFFF · 어두운 바탕 #000000, WCAG 2.1 상대휘도.
         CMYK 는 화면 RGB 에서 환산한 근사값이라 인쇄 교정이 필요합니다.</td></tr>
     </table>
