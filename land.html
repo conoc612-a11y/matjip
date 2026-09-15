@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
-  <link rel="stylesheet" href="css/tokens.css?v=9fa41c9e" />
+  <link rel="stylesheet" href="css/tokens.css?v=b665ac23" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=9fa41c9e"></script>
+  <script src="js/auth-guard.js?v=b665ac23"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -37,12 +37,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=9fa41c9e" />
+  <link rel="stylesheet" href="css/buttons.css?v=b665ac23" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=9fa41c9e" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=b665ac23" />
   <style>
     :root {
       --c-primary:#1971c2; --c-primary-soft:#e7f0fb; --c-price:#d9480f;
@@ -1449,7 +1449,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=9fa41c9e"></script>
+  <script src="js/ie-guard.js?v=b665ac23"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1717,22 +1717,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-15 15:33 · 9fa41c9e</span></span>
+          · <span class="build-tag">build 2026-09-15 15:43 · b665ac23</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=9fa41c9e"></script>
+  <script src="js/joinkey.js?v=b665ac23"></script>
   
-  <script src="js/identity.js?v=9fa41c9e"></script>
-  <script src="js/common.js?v=9fa41c9e"></script>
-  <script src="js/ui-resize.js?v=9fa41c9e"></script>
-  <script src="js/footer-resize.js?v=9fa41c9e"></script>
-  <script src="js/route-line.js?v=9fa41c9e"></script>
-  <script src="js/route-api.js?v=9fa41c9e"></script>
-  <script src="js/footer-stats.js?v=9fa41c9e"></script>
+  <script src="js/identity.js?v=b665ac23"></script>
+  <script src="js/common.js?v=b665ac23"></script>
+  <script src="js/ui-resize.js?v=b665ac23"></script>
+  <script src="js/footer-resize.js?v=b665ac23"></script>
+  <script src="js/route-line.js?v=b665ac23"></script>
+  <script src="js/route-api.js?v=b665ac23"></script>
+  <script src="js/footer-stats.js?v=b665ac23"></script>
   <script>
     
     
@@ -6626,12 +6626,31 @@
           
           const m = x.match(/^(.*?[가-힣]+(?:동|가|리))\s*(산\s+)?(\d+(?:-\d+)?)/);
           if (m) return (m[1] + ' ' + (m[2] ? '산 ' : '') + m[3]).replace(/\s+/g, ' ');
-          
-          const r = x.match(/^(.*?[가-힣0-9]+(?:로|길))\s*(\d+(?:-\d+)?)/);
-          if (r) return r[1] + ' ' + r[2];
           return '';
         };
-        return pick(d && d.addr) || pick(o0(d).addr) || '';
+        
+        const road = (t) => {
+          const x = String(t || '').replace(/\s+/g, ' ').trim();
+          const r = x && x.match(/^(.*?[가-힣0-9]+(?:로|길))\s*(\d+(?:-\d+)?)/);
+          return r ? r[1] + ' ' + r[2] : '';
+        };
+        
+        
+        
+        const rlet = () => {
+          const r = ((((d || {}).detail || {}).curst || {}).dlt_ordTsRlet || [])[0] || {};
+          if (!r.adongEmdNm || !r.rprsLtnoAddr) return '';
+          return [r.adongSdNm, r.adongSggNm, r.adongEmdNm, r.adongRiNm, r.rprsLtnoAddr]
+            .filter(Boolean).join(' ');
+        };
+        
+        
+        
+        
+        
+        
+        return pick(d && d.addr) || pick(o0(d).addr) || rlet()
+          || road(d && d.addr) || road(o0(d).addr) || '';
       }
       const o0 = (d) => ((d && d.detail && d.detail.objct) || [])[0] || {};
       function aucBrEnsure(d) {
@@ -6706,10 +6725,14 @@
       const aucAgreeTxt = (x, unit) => {
         if (!x) return '';
         const v = unit === '㎡' ? fmtArea(x.v) : (Math.round(x.v * 100) / 100 + '㎡');
+        
+        
+        
+        const one = (n) => (unit === '㎡' ? fmtArea(n) : Math.round(n * 100) / 100 + '㎡');
         if (x.only) return `${v} (${x.srcs[0]} 단독 — 대조할 다른 출처가 없습니다)`;
         if (x.agree) return `${v} (${x.srcs.join('·')} 일치)`
-          + (x.others && x.others.length ? ` ⚠ ${x.others.map((o) => o[0] + ' ' + o[1] + '㎡').join(', ')} 는 다릅니다` : '');
-        return `${v} ⚠ 출처가 어긋납니다 — ${x.conflict.map((c) => c[0] + ' ' + c[1] + '㎡').join(' / ')}`;
+          + (x.others && x.others.length ? ` ⚠ ${x.others.map((o) => o[0] + ' ' + one(o[1])).join(', ')} 는 다릅니다` : '');
+        return `${v} ⚠ 출처가 어긋납니다 — ${x.conflict.map((c) => c[0] + ' ' + one(c[1])).join(' / ')}`;
       };
 
       
