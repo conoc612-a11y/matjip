@@ -1,4 +1,4 @@
-// 푸터 위아래 세로 크기 조절 — 상단 손잡이를 드래그. 크기는 localStorage에 저장.
+// 푸터·헤더 세로 크기 조절 — 손잡이를 드래그. 크기는 localStorage에 저장.
 // 드래그 로직은 js/ui-resize.js 의 공용 makeResizable() 을 쓴다 (리사이즈 버그 수정 지점 통일).
 (function () {
   var footer = document.getElementById('site-footer');
@@ -15,6 +15,29 @@
     maxH: function () { return window.innerHeight * 0.6; },
     onEnd: function () {
       try { localStorage.setItem(KEY, String(footer.offsetHeight)); } catch (e) {}
+    }
+  });
+})();
+
+// 헤더 세로 크기 조절 — 푸터와 같은 부품을 위아래만 뒤집은 것(2026-09-16 사용자 지시).
+// 손잡이가 **아래쪽**에 있으므로 reverseH 를 쓰지 않는다 — 아래로 끌면 커진다.
+(function () {
+  var header = document.querySelector('header');
+  var handle = document.getElementById('header-resize');
+  if (!header || !handle) return;
+  var KEY = 'mj-header-height';
+  // ⛔ 모바일(≤640px)에서는 건드리지 않는다 — 거기선 header 가 height:auto 로 두 줄이 되고,
+  //    인라인 height 를 박으면 내용이 잘린다. 손잡이도 CSS 에서 숨겨 둔다.
+  var wide = function () { return window.matchMedia('(min-width:641px)').matches; };
+  var saved = parseInt(localStorage.getItem(KEY), 10);
+  if (wide() && saved >= 44 && saved <= 160) header.style.height = saved + 'px';
+
+  makeResizable(handle, header, {
+    axis: 'h',
+    minH: 44,              // 34px 아이콘 버튼 + 상하 여백이 들어가는 최소값
+    maxH: 160,
+    onEnd: function () {
+      try { localStorage.setItem(KEY, String(header.offsetHeight)); } catch (e) {}
     }
   });
 })();
