@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
-  <link rel="stylesheet" href="css/tokens.css?v=b665ac23" />
+  <link rel="stylesheet" href="css/tokens.css?v=1d9926c8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=b665ac23"></script>
+  <script src="js/auth-guard.js?v=1d9926c8"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -37,12 +37,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=b665ac23" />
+  <link rel="stylesheet" href="css/buttons.css?v=1d9926c8" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=b665ac23" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=1d9926c8" />
   <style>
     :root {
       --c-primary:#1971c2; --c-primary-soft:#e7f0fb; --c-price:#d9480f;
@@ -1449,7 +1449,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=b665ac23"></script>
+  <script src="js/ie-guard.js?v=1d9926c8"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1717,22 +1717,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-15 15:43 · b665ac23</span></span>
+          · <span class="build-tag">build 2026-09-15 15:55 · 1d9926c8</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=b665ac23"></script>
+  <script src="js/joinkey.js?v=1d9926c8"></script>
   
-  <script src="js/identity.js?v=b665ac23"></script>
-  <script src="js/common.js?v=b665ac23"></script>
-  <script src="js/ui-resize.js?v=b665ac23"></script>
-  <script src="js/footer-resize.js?v=b665ac23"></script>
-  <script src="js/route-line.js?v=b665ac23"></script>
-  <script src="js/route-api.js?v=b665ac23"></script>
-  <script src="js/footer-stats.js?v=b665ac23"></script>
+  <script src="js/identity.js?v=1d9926c8"></script>
+  <script src="js/common.js?v=1d9926c8"></script>
+  <script src="js/ui-resize.js?v=1d9926c8"></script>
+  <script src="js/footer-resize.js?v=1d9926c8"></script>
+  <script src="js/route-line.js?v=1d9926c8"></script>
+  <script src="js/route-api.js?v=1d9926c8"></script>
+  <script src="js/footer-stats.js?v=1d9926c8"></script>
   <script>
     
     
@@ -7771,7 +7771,7 @@
         const nd = aucNdstrc(d);
         return `<div class="auc-inv">${sumHtml}${aucVerdictHtml(d)}${rowsHtml}`
           + (poss || lesTbl
-            ? `<div class="auc-doc-h">현황조사서 — 누가 살고 있나</div>`
+            ? `<div class="auc-doc-h">현황조사서</div>`
               + (poss ? `<div class="apd-note">${esc(poss)}</div>` : '')
               + lesTbl
               + `<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">`
@@ -7845,10 +7845,10 @@
         })();
         const rows = [
           
-          ['##', '한 줄로'],
+          ['##', 'AI 한줄요약'],
           ['요약', aucSummaryText(d)],
 
-          ['##', '얼마인가'],
+          ['##', 'AI 입찰가격 추정'],
           ['최저매각가격', wonEok(aucLowEok(d)) + (_pct != null ? ' (감정가의 ' + _pct + '%)' : '')],
           ['실거래 대비', _nearTxt],
           
@@ -7865,11 +7865,11 @@
               + (appr ? ` — 감정가 기준 예상 낙찰가 ${fmtAmtExact(appr * 10000 * r.mid / 100)}` : '');
           })()],
 
-          ['##', '언제인가'],
+          ['##', '기일 정보'],
           ['매각기일', d.sale ? esc(d.sale) + (() => { const dd = aucDday(d); return dd != null && dd >= 0 ? ` (D-${dd})` : ''; })() : ''],
           ['진행상태', d.status],
 
-          ['##', '무엇인가'],
+          ['##', '매각물건정보'],
           ['용도', d.use],
           ['건물명', ((_det.objct || [])[0] || {}).bld || ''],
           ['전용면적', (() => { const x = aucAreaX(d); return x ? aucAgreeTxt(x, '㎡') : _areaTxt; })()],
@@ -7899,7 +7899,7 @@
             return z.map((x) => `${x.name}${x.stage ? '(' + x.stage + ')' : ''} ${x.dist}km`).join(' · ');
           })()],
 
-          ['##', '무엇을 떠안나'],
+          ['##', 'AI 물건분석'],
           
           ['권리분석', (() => {
             const r = aucRights(d);
@@ -10009,7 +10009,11 @@
         };
         const _dp = _dt.dspsl || {};
         const rows = [
-          ['사건번호', d.cn], ['법원', d.court], ['물건번호', d.no], ['용도', d.use],
+          
+          
+          
+          ['사건번호', [d.cn, d.no ? '물건 ' + d.no : '', d.dept].filter(Boolean).join(' · ')],
+          ['용도', d.use],
           ['건물명', ((_dt.objct || [])[0] || {}).bld || ''],
           
           ['전용면적', (() => { const x = aucAreaX(d); return x ? aucAgreeTxt(x, '㎡') : ''; })()],
@@ -10019,16 +10023,27 @@
             return aucAgreeTxt(x, '㎡') + (L.whole ? ` / 전체 ${fmtArea(L.whole)}` : '');
           })()],
           ['지분매각', (() => { const k = aucStake(_dt); return k ? `${k.n}/${k.d} (${k.pct}%) — 물건 전체가 아니라 이 지분만 낙찰됩니다` : ''; })()],
-          ['소유자', _who('소유자')], ['채무자', _who('채무자')],
-          ['진행상태', d.status], ['담당계', d.dept], ['매각기일', d.sale],
+          
+          
+          
+          ...((() => {
+            const o = _who('소유자'), b = _who('채무자');
+            if (o && o === b) return [['소유자·채무자', o]];
+            return [['소유자', o], ['채무자', b]];
+          })()),
+          ['진행상태', d.status], ['매각기일', d.sale],
           
           ['입찰보증금', _dp.depositRate
             ? (_dp.low ? fmtAmtExact(_dp.low * _dp.depositRate / 100 / 1e4) + ' ' : '')
               + '(최저가의 ' + _dp.depositRate + '%)'
             : ''],
           ['비고', d.note],
-          ['낙찰가율', _sr ? `${_sr.scope} 중앙 ${_sr.mid}% (사분위 ${_sr.lo}~${_sr.hi}% · ${_sr.n}건)` : ''],
-          ['예상 낙찰가', (_sr && _srAppr) ? fmtAmtExact(_srAppr * 10000 * _sr.mid / 100) + ' (감정가 기준)' : ''],
+          
+          
+          
+          
+          ['낙찰가율', _sr ? `${_sr.scope} 중앙 ${_sr.mid}% (사분위 ${_sr.lo}~${_sr.hi}% · ${_sr.n}건)`
+            + (_srAppr ? ` → 예상 ${fmtAmtExact(_srAppr * 10000 * _sr.mid / 100)}` : '') : ''],
         ].filter(([, v]) => v != null && v !== '')
           .map(([k, v]) => `<tr><th>${k}</th><td>${esc(v)}</td></tr>`).join('');
         const favKey = auctionFavKey(d);
@@ -10053,10 +10068,11 @@
           const sajeonRows = [
             ['접수일', ymd(_b.rcptYmd)], ['사건종류', _b.nm], ['법원 내부번호', _b.saNo],
             ['채권액', _b.clmAmt ? eok(_b.clmAmt) : ''],
-            ['담당계', _b.jdbn ? _b.jdbn + (_b.jdbnTel ? ' (' + _b.jdbnTel + ')' : '') : ''],
-            ['집행관사무소', _b.execTel],
-            ['매각결정기일', _ds.dcsnYmd ? ymd(_ds.dcsnYmd) + (_ds.dcsnHm ? ' ' + hm(_ds.dcsnHm) : '') : ''],
-            ['매각결정기일 장소', _ds.dcsnPlc],
+            
+            
+            ['연락처', [_b.jdbnTel, _b.execTel ? '집행관 ' + _b.execTel : ''].filter(Boolean).join(' · ')],
+            
+            
             
             
             ['비고', _ds.rmk],
@@ -10122,10 +10138,16 @@
           if (det.aee || (det.evlt && det.evlt.length)) {
             const A = det.aee || {};
             
+            
+            
+            
+            const _j = (...xs) => xs.filter(Boolean).join(' · ');
             const aeeRows = [
-              ['감정평가액', (det.dspsl && det.dspsl.appr) ? eok(det.dspsl.appr) : ''],
-              ['가격시점', ymd(A.crtrYmd)], ['조사일', ymd(A.exmnYmd)], ['작성일', ymd(A.wrtYmd)],
-              ['감정평가 담당', A.examr], ['심사', A.jdgr], ['평가서번호', A.no],
+              ['감정평가액', _j((det.dspsl && det.dspsl.appr) ? eok(det.dspsl.appr) : '',
+                ymd(A.crtrYmd) ? ymd(A.crtrYmd) + ' 가격시점' : '')],
+              ['조사·작성', _j(ymd(A.exmnYmd) ? ymd(A.exmnYmd) + ' 조사' : '',
+                ymd(A.wrtYmd) ? ymd(A.wrtYmd) + ' 작성' : '')],
+              ['평가', _j(A.examr, A.jdgr ? '심사 ' + A.jdgr : '', A.no)],
             ].filter(([, v]) => v != null && v !== '')
               .map(([k, v]) => `<tr><th>${k}</th><td>${esc(v)}</td></tr>`).join('');
             
@@ -10180,8 +10202,14 @@
               + `대법원 전자문서(ECFS) · 점유자·보증금·확정일자·<b>최선순위 설정일</b>이 여기 있습니다.</div></div>`
             : '';
           if ((det.objct && det.objct.length) || _objLink) {
+            
+            
+            
+            
+            const _multi = (det.objct || []).length > 1;
             sections += sec('apd-sec-objct', '물건명세', (det.objct || []).map((o) =>
-              `<div class="apd-muted">${esc(o.ar || o.addr || '')}${o.use ? '<br>용도코드 ' + esc(o.use) : ''}${o.evl ? ' · 감정 ' + eok(o.evl) : ''}</div>`).join('') + _objLink);
+              `<div class="apd-muted">${esc(o.ar || o.addr || '')}`
+              + `${_multi && o.evl ? ' · 감정 ' + eok(o.evl) : ''}</div>`).join('') + _objLink);
           }
           if (det.notsugt && det.notsugt.length) {
             sections += sec('apd-sec-notsugt', '제시외목록', det.notsugt.map((o) =>
@@ -10260,6 +10288,9 @@
         
         
         sections = (() => {
+          
+          
+          
           const ORDER = ['apd-sec-ndstrc', 'apd-sec-curst', 'apd-sec-objct', 'apd-sec-notsugt',
             'apd-sec-aee', 'apd-sec-evlt', 'apd-sec-gihui', 'apd-sec-intrps', 'apd-sec-sajeon'];
           const box = document.createElement('div');
@@ -10271,11 +10302,21 @@
             return i < 0 ? ORDER.length : i;
           };
           kids.sort((a, b) => at(a) - at(b));
-          const HEAD = { 'apd-sec-ndstrc': '무엇을 떠안나', 'apd-sec-objct': '물건 상태', 'apd-sec-gihui': '일정·행정' };
-          let out = '';
+          
+          
+          
+          
+          const GROUPS = [
+            ['AI 물건분석', ['apd-sec-ndstrc', 'apd-sec-curst']],
+            ['매각물건정보', ['apd-sec-objct', 'apd-sec-notsugt']],
+            ['감정평가', ['apd-sec-aee', 'apd-sec-evlt']],
+            ['기일 정보', ['apd-sec-gihui', 'apd-sec-intrps', 'apd-sec-sajeon']],
+          ];
+          const grpOf = (id) => GROUPS.findIndex(([, ids]) => ids.indexOf(id) >= 0);
+          let out = '', shown = -1;
           kids.forEach((k) => {
-            const h = HEAD[k.id];
-            if (h) out += `<div class="auc-doc-h">${h}</div>`;
+            const g = grpOf(k.id);
+            if (g >= 0 && g !== shown) { out += `<div class="auc-doc-h">${GROUPS[g][0]}</div>`; shown = g; }
             out += k.outerHTML;
           });
           return out;
