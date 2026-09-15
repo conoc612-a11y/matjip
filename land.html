@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
-  <link rel="stylesheet" href="css/tokens.css?v=9c00f5b2" />
+  <link rel="stylesheet" href="css/tokens.css?v=6e343821" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=9c00f5b2"></script>
+  <script src="js/auth-guard.js?v=6e343821"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -37,12 +37,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=9c00f5b2" />
+  <link rel="stylesheet" href="css/buttons.css?v=6e343821" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=9c00f5b2" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=6e343821" />
   <style>
     :root {
       --c-primary:#1971c2; --c-primary-soft:#e7f0fb; --c-price:#d9480f;
@@ -1462,7 +1462,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=9c00f5b2"></script>
+  <script src="js/ie-guard.js?v=6e343821"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1730,22 +1730,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-15 16:29 · 9c00f5b2</span></span>
+          · <span class="build-tag">build 2026-09-15 16:50 · 6e343821</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=9c00f5b2"></script>
+  <script src="js/joinkey.js?v=6e343821"></script>
   
-  <script src="js/identity.js?v=9c00f5b2"></script>
-  <script src="js/common.js?v=9c00f5b2"></script>
-  <script src="js/ui-resize.js?v=9c00f5b2"></script>
-  <script src="js/footer-resize.js?v=9c00f5b2"></script>
-  <script src="js/route-line.js?v=9c00f5b2"></script>
-  <script src="js/route-api.js?v=9c00f5b2"></script>
-  <script src="js/footer-stats.js?v=9c00f5b2"></script>
+  <script src="js/identity.js?v=6e343821"></script>
+  <script src="js/common.js?v=6e343821"></script>
+  <script src="js/ui-resize.js?v=6e343821"></script>
+  <script src="js/footer-resize.js?v=6e343821"></script>
+  <script src="js/route-line.js?v=6e343821"></script>
+  <script src="js/route-api.js?v=6e343821"></script>
+  <script src="js/footer-stats.js?v=6e343821"></script>
   <script>
     
     
@@ -6670,18 +6670,39 @@
         if (!d || d._br !== undefined) return Promise.resolve();   
         const needArea = !aucArea(d.detail);
         const needUse = !aucNearKind(d.use);
-        if (!needArea && !needUse) { d._br = null; return Promise.resolve(); }
+        
+        
+        
         const addr = aucJibunAddr(d);
         const { ho } = aucDongHo(d && d.addr);
-        if (!addr || !ho) { d._br = null; return Promise.resolve(); }   
+        if (!addr) { d._br = null; return Promise.resolve(); }
         return new Promise((res) => {
           let fin = false;
           const done = (v) => { if (fin) return; fin = true; d._br = v || null; res(); };
-          setTimeout(() => done(null), 9000);        
+          setTimeout(() => done(null), 12000);       
           try {
             vworldAddrToPnu(addr, (r) => {
               if (!r || !r.pnu) return done(null);
-              ledgerOp('getBrExposPubuseAreaInfo', r.pnu, (arr) => done(aucBrPick(arr, d.addr)));
+              
+              
+              
+              
+              
+              
+              buildingRegister(r.pnu, (t) => {
+                const title = t ? {
+                  apr: String(t.useAprDay || ''), hhld: Number(t.hhldCnt) || Number(t.fmlyCnt) || 0,
+                  plat: Number(t.platArea) || 0, tot: Number(t.totArea) || 0,
+                  up: Number(t.grndFlrCnt) || 0, down: Number(t.ugrndFlrCnt) || 0,
+                  strct: t.strctCdNm || '', bldNm: t.bldNm || '', purps: t.mainPurpsCdNm || '',
+                } : null;
+                
+                if (!ho || (!needArea && !needUse)) return done(title ? { title } : null);
+                ledgerOp('getBrExposPubuseAreaInfo', r.pnu, (arr) => {
+                  const v = Object.assign({}, aucBrPick(arr, d.addr) || {}, title ? { title } : {});
+                  done(Object.keys(v).length ? v : null);
+                });
+              });
             });
           } catch (e) { done(null); }
         });
@@ -7859,7 +7880,9 @@
         const rows = [
           
           ['##', 'AI 한줄요약'],
-          ['요약', aucSummaryText(d)],
+          
+          
+          ['', aucSummaryText(d)],
 
           ['##', 'AI 입찰가격 추정'],
           ['최저매각가격', wonEok(aucLowEok(d)) + (_pct != null ? ' (감정가의 ' + _pct + '%)' : '')],
@@ -7878,9 +7901,14 @@
               + (appr ? ` — 감정가 기준 예상 낙찰가 ${fmtAmtExact(appr * 10000 * r.mid / 100)}` : '');
           })()],
 
-          ['##', '기일 정보'],
-          ['매각기일', d.sale ? esc(d.sale) + (() => { const dd = aucDday(d); return dd != null && dd >= 0 ? ` (D-${dd})` : ''; })() : ''],
-          ['진행상태', d.status],
+          
+          
+          
+          
+          ['##', '법원 및 기일 정보'],
+          ['사건번호', d.cn],
+          ['매각기일', [d.status, d.sale ? d.sale + (() => { const dd = aucDday(d); return dd != null && dd >= 0 ? ` (D-${dd})` : ''; })() : '']
+            .filter(Boolean).join(' · ')],
 
           ['##', '매각물건정보'],
           ['용도', d.use],
@@ -7896,6 +7924,7 @@
               + (u ? ` · 인근 대지지분 단가 ${fmtUnit(u)}/㎡ 환산 ${fmtAmt(x.v * u)} (재개발 관점 참고치)` : '');
           })()],
           ['물건번호', d.no],
+          ['비고', d.note],
           
           ['건축물대장', (() => {
             const b = d && d._br;
@@ -7948,14 +7977,18 @@
           ['지분매각', (() => { const k = aucStake(_det); return k ? `${k.n}/${k.d} (${k.pct}%) — 물건 전체가 아니라 이 지분만 낙찰됩니다` : ''; })()],
           ['사건종류', (_det.base && _det.base.nm) || ''],
 
-          ['##', '행정'],
-          ['법원', d.court], ['사건번호', d.cn], ['비고', d.note],
+          
+          
+          
         ].filter(([k, v]) => k === '##' ? true : (v != null && v !== ''));
         
         const _kept = rows.filter((r, i) => r[0] !== '##' || rows.slice(i + 1).some((x) => x[0] !== '##'));
         const rowsHtml = _kept.map(([k, v], i) => {
           if (k === '##') return `<div class="auc-doc-h${i ? '' : ' first'}">${esc(v)}</div>`;
           const long = String(v).length > 60;
+          
+          
+          if (!k) return `<div class="auc-doc-p"><div>${esc(v)}</div></div>`;
           return long
             ? `<div class="auc-doc-p"><span>${k}</span><div>${esc(v)}</div></div>`
             : `<div style="display:flex;justify-content:space-between;gap:10px;"><span style="color:var(--c-muted);flex-shrink:0;">${k}</span><b style="text-align:right;">${esc(v)}</b></div>`;
@@ -10059,13 +10092,49 @@
           ['용도', d.use],
           ['건물명', ((_dt.objct || [])[0] || {}).bld || ''],
           
-          ['전용면적', (() => { const x = aucAreaX(d); return x ? aucAgreeTxt(x, '㎡') : ''; })()],
-          ['대지지분', (() => {
-            const x = aucLandX(d); if (!x) return '';
+          
+          
+          
+          
+          
+          
+          ['면적', (() => {
+            const ax = aucAreaX(d), lx = aucLandX(d);
             const L = aucLandShare(_dt);
-            return aucAgreeTxt(x, '㎡') + (L.whole ? ` / 전체 ${fmtArea(L.whole)}` : '');
+            const one = (x, nm) => !x ? '' : (x.agree || x.only
+              ? `${nm} ${fmtArea(x.v)}` : aucAgreeTxt(x, '㎡').replace(/^/, nm + ' '));
+            return [one(ax, '전용'), one(lx, '대지지분'),
+              (lx && L.whole) ? `전체 ${fmtArea(L.whole)}` : ''].filter(Boolean).join(' · ');
           })()],
           ['지분매각', (() => { const k = aucStake(_dt); return k ? `${k.n}/${k.d} (${k.pct}%) — 물건 전체가 아니라 이 지분만 낙찰됩니다` : ''; })()],
+          
+          
+          
+          
+          
+          
+          
+          
+          ['준공', (() => {
+            const t = d._br && d._br.title;
+            if (!t || !/^\d{8}$/.test(t.apr)) return '';
+            const age = new Date().getFullYear() - Number(t.apr.slice(0, 4)) + 1;
+            return `${t.apr.slice(0, 4)}.${t.apr.slice(4, 6)} (${age}년차)`;
+          })()],
+          ['세대수', (() => {
+            const t = d._br && d._br.title;
+            if (!t || !(t.hhld > 0)) return '';
+            
+            const bld = ((_dt.objct || [])[0] || {}).bld || '';
+            const same = bld && _aucNorm(t.bldNm).indexOf(_aucNorm(bld)) >= 0;
+            return `${t.hhld}세대` + (!same && t.bldNm ? ` (${t.bldNm})` : '');
+          })()],
+          ['건물규모', (() => {
+            const t = d._br && d._br.title;
+            if (!t) return '';
+            return [t.up ? `지상 ${t.up}층` : '', t.down ? `지하 ${t.down}층` : '',
+              t.tot ? `연면적 ${fmtArea(t.tot)}` : '', t.strct].filter(Boolean).join(' · ');
+          })()],
           
           
           
@@ -10256,9 +10325,9 @@
             const _aeePdf = aucAeePdfUrl(det);
             const _aeeLink = _aeePdf
               ? `<div style="margin-top:8px;"><a href="${safeUrl(_aeePdf)}" target="_blank" rel="noopener"`
-                + ` class="pc-btn pc-btn-primary" style="display:inline-block;">감정평가서 원문(PDF) 열기</a>`
-                + `<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">`
-                + `한국감정평가사협회 서버의 PDF 파일을 새 탭에서 엽니다.</div></div>`
+                
+                
+                + ` class="pc-btn pc-btn-primary" style="display:inline-block;">감정평가서 원문(PDF) 열기</a></div>`
               : `<div style="margin-top:8px;">`
                 + `<button type="button" class="pc-btn pc-btn-outline" id="apd-aee-court" style="display:inline-block;">`
                 + `법원에서 감정평가서 원문 보기</button>`
@@ -10288,7 +10357,7 @@
             
             
             const _multi = (det.objct || []).length > 1;
-            sections += sec('apd-sec-objct', '물건명세', (det.objct || []).map((o) =>
+            sections += sec('apd-sec-objct', '매각물건명세', (det.objct || []).map((o) =>
               `<div class="apd-muted">${esc(o.ar || o.addr || '')}`
               + `${_multi && o.evl ? ' · 감정 ' + eok(o.evl) : ''}</div>`).join('') + _objLink);
           }
@@ -10394,10 +10463,22 @@
             ['기일 정보', ['apd-sec-gihui', 'apd-sec-intrps', 'apd-sec-sajeon']],
           ];
           const grpOf = (id) => GROUPS.findIndex(([, ids]) => ids.indexOf(id) >= 0);
+          
+          
+          
+          
+          const cnt = {};
+          kids.forEach((k) => { const g = grpOf(k.id); if (g >= 0) cnt[g] = (cnt[g] || 0) + 1; });
+          
+          
+          const DROP_T = { 'apd-sec-gihui': 1 };
           let out = '', shown = -1;
           kids.forEach((k) => {
             const g = grpOf(k.id);
-            if (g >= 0 && g !== shown) { out += `<div class="auc-doc-h">${GROUPS[g][0]}</div>`; shown = g; }
+            if (g >= 0 && g !== shown && cnt[g] >= 2) {
+              out += `<div class="auc-doc-h">${GROUPS[g][0]}</div>`; shown = g;
+              if (DROP_T[k.id]) { const t0 = k.querySelector('.apd-sec-t'); if (t0) t0.remove(); }
+            }
             out += k.outerHTML;
           });
           return out;
