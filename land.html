@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
-  <link rel="stylesheet" href="css/tokens.css?v=6ad3178b" />
+  <link rel="stylesheet" href="css/tokens.css?v=b5af7057" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=6ad3178b"></script>
+  <script src="js/auth-guard.js?v=b5af7057"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -37,12 +37,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=6ad3178b" />
+  <link rel="stylesheet" href="css/buttons.css?v=b5af7057" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=6ad3178b" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=b5af7057" />
   <style>
     :root {
       
@@ -491,7 +491,9 @@
 
     .ap-badge { flex-shrink:0; font-size:11px; padding:0 7px; border-radius:999px; margin-top:1px;
       background:#fff !important; color:var(--c-muted); border:1px solid var(--c-line); line-height:1.5; }
-    .ap-badge.fail { color:var(--c-primary); border-color:var(--c-primary); font-weight:700; }
+    
+
+    .ap-badge.fail { color:var(--c-text); border-color:var(--c-line); font-weight:700; }
     .ap-addr { flex:1; min-width:0; font-weight:600; overflow-wrap:anywhere; }
     
 
@@ -516,7 +518,10 @@
       background:var(--card); color:var(--text); border-radius:8px; cursor:pointer; white-space:nowrap; }
     .auc-pop-go:hover { border-color:#D92A14; color:#D92A14; }
     .auc-pop-go:active { background:#D92A14; color:#fff; }
-    .ap-cn { text-align:left; border:none; background:none; color:var(--c-primary); cursor:pointer; font-size:12px; padding:0; text-decoration:underline; }
+    
+
+    .ap-cn { text-align:left; border:none; background:none; color:var(--c-text); cursor:pointer; font-size:12px; padding:0; text-decoration:underline; text-underline-offset:2px; }
+    .ap-cn:hover { color:var(--c-primary); }
     .ap-court { color:var(--muted); font-size:12px; }
     .ap-meta { margin-top:3px; color:var(--muted); font-size:12px; overflow-wrap:anywhere; }
     
@@ -1620,7 +1625,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=6ad3178b"></script>
+  <script src="js/ie-guard.js?v=b5af7057"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1889,22 +1894,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-15 23:19 · 6ad3178b</span></span>
+          · <span class="build-tag">build 2026-09-15 23:25 · b5af7057</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=6ad3178b"></script>
+  <script src="js/joinkey.js?v=b5af7057"></script>
   
-  <script src="js/identity.js?v=6ad3178b"></script>
-  <script src="js/common.js?v=6ad3178b"></script>
-  <script src="js/ui-resize.js?v=6ad3178b"></script>
-  <script src="js/footer-resize.js?v=6ad3178b"></script>
-  <script src="js/route-line.js?v=6ad3178b"></script>
-  <script src="js/route-api.js?v=6ad3178b"></script>
-  <script src="js/footer-stats.js?v=6ad3178b"></script>
+  <script src="js/identity.js?v=b5af7057"></script>
+  <script src="js/common.js?v=b5af7057"></script>
+  <script src="js/ui-resize.js?v=b5af7057"></script>
+  <script src="js/footer-resize.js?v=b5af7057"></script>
+  <script src="js/route-line.js?v=b5af7057"></script>
+  <script src="js/route-api.js?v=b5af7057"></script>
+  <script src="js/footer-stats.js?v=b5af7057"></script>
   <script>
     
     
@@ -9725,7 +9730,7 @@
         
         const dd = aucDday(d);
         if (dd != null && dd >= 0 && dd <= 60) {
-          out.push('<span class="ap-tag ap-tag-d' + (dd <= 7 ? ' urgent' : '') + '" title="매각기일까지 남은 날">D-' + dd + '</span>');
+          out.push('<span class="ap-tag ap-tag-d' + (dd <= 2 ? ' urgent' : '')    + '" title="매각기일까지 남은 날">D-' + dd + '</span>');
         }
         const tags = (d.idx && d.idx.t) || [];
         tags.forEach((nm) => {
