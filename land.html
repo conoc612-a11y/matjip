@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
-  <link rel="stylesheet" href="css/tokens.css?v=b86a75f9" />
+  <link rel="stylesheet" href="css/tokens.css?v=6ad3178b" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=b86a75f9"></script>
+  <script src="js/auth-guard.js?v=6ad3178b"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -37,12 +37,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=b86a75f9" />
+  <link rel="stylesheet" href="css/buttons.css?v=6ad3178b" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=b86a75f9" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=6ad3178b" />
   <style>
     :root {
       
@@ -485,7 +485,13 @@
     .ap-thumb-ph { background:var(--c-hover); font-size:18px; }
     .ap-row-main { flex:1; min-width:0; }
     .ap-row-top { display:flex; align-items:flex-start; gap:6px; }
-    .ap-badge { flex-shrink:0; font-size:11px; color:#fff; padding:1px 7px; border-radius:999px; margin-top:1px; }
+    
+
+
+
+    .ap-badge { flex-shrink:0; font-size:11px; padding:0 7px; border-radius:999px; margin-top:1px;
+      background:#fff !important; color:var(--c-muted); border:1px solid var(--c-line); line-height:1.5; }
+    .ap-badge.fail { color:var(--c-primary); border-color:var(--c-primary); font-weight:700; }
     .ap-addr { flex:1; min-width:0; font-weight:600; overflow-wrap:anywhere; }
     
 
@@ -519,14 +525,22 @@
     .ap-tags { margin-top:4px; display:flex; flex-wrap:wrap; gap:3px; }
     .ap-tag { font-size:11px; line-height:1.5; padding:0 6px; border-radius:999px; white-space:nowrap;
       border:1px solid transparent; cursor:help; }
-    .ap-tag-cut  { background:#e7f5ff; color:#1864ab; border-color:#a5d8ff; }  
-    .ap-tag-fail { background:#fff4e6; color:#d9480f; border-color:#ffd8a8; }  
-    .ap-tag-d    { background:#f1f3f5; color:#495057; border-color:#dee2e6; }
-    .ap-tag-d.urgent { background:#fff5f5; color:#D92A14; border-color:#ffc9c9; font-weight:700; } 
     
-    .ap-tag-chg  { background:#e7f5ff; color:#1864ab; border-color:#a5d8ff; font-weight:600; }
-    .ap-tag-risk { background:#fff9db; color:#8f6b00; border-color:#ffe066; }  
-    .ap-tag-risk.danger { background:#fff0f0; color:#b02525; border-color:#ffa8a8; font-weight:600; }
+
+
+
+
+
+    .ap-tag-cut  { background:#fff; color:var(--c-muted); border-color:var(--c-line); }
+    .ap-tag-fail { background:#fff; color:var(--c-muted); border-color:var(--c-line); }
+    .ap-tag-d    { background:#fff; color:var(--c-muted); border-color:var(--c-line); }
+    
+    .ap-tag-d.urgent { background:#fff; color:var(--c-primary); border-color:var(--c-primary); font-weight:700; }
+    
+    .ap-tag-chg  { background:#fff; color:var(--c-muted); border-color:var(--c-line); font-weight:600; }
+    
+    .ap-tag-risk { background:#fff; color:var(--c-warn); border-color:var(--c-warn); }
+    .ap-tag-risk.danger { background:#fff; color:var(--c-primary); border-color:var(--c-primary); font-weight:600; }
     
 
     .ap-resizer { position:absolute; right:-4px; top:0; bottom:0; width:8px; z-index:2001; background:transparent; pointer-events:none; }
@@ -1606,7 +1620,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=b86a75f9"></script>
+  <script src="js/ie-guard.js?v=6ad3178b"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1875,22 +1889,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-15 23:08 · b86a75f9</span></span>
+          · <span class="build-tag">build 2026-09-15 23:19 · 6ad3178b</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=b86a75f9"></script>
+  <script src="js/joinkey.js?v=6ad3178b"></script>
   
-  <script src="js/identity.js?v=b86a75f9"></script>
-  <script src="js/common.js?v=b86a75f9"></script>
-  <script src="js/ui-resize.js?v=b86a75f9"></script>
-  <script src="js/footer-resize.js?v=b86a75f9"></script>
-  <script src="js/route-line.js?v=b86a75f9"></script>
-  <script src="js/route-api.js?v=b86a75f9"></script>
-  <script src="js/footer-stats.js?v=b86a75f9"></script>
+  <script src="js/identity.js?v=6ad3178b"></script>
+  <script src="js/common.js?v=6ad3178b"></script>
+  <script src="js/ui-resize.js?v=6ad3178b"></script>
+  <script src="js/footer-resize.js?v=6ad3178b"></script>
+  <script src="js/route-line.js?v=6ad3178b"></script>
+  <script src="js/route-api.js?v=6ad3178b"></script>
+  <script src="js/footer-stats.js?v=6ad3178b"></script>
   <script>
     
     
@@ -9736,7 +9750,7 @@
           <div class="ap-row-main">
             <div class="ap-row-top">
               ${pinned ? '<span class="ap-pin-tag">지도 선택</span>' : ''}
-              <span class="ap-badge" style="background:${aucColor(d.status)};">${esc(aucStatusText(d))}</span>
+              <span class="ap-badge${String(d.status||'').includes('유찰') ? ' fail' : ''}">${esc(aucStatusText(d))}</span>
               <b class="ap-addr">${esc(d.addr)}</b>
               <button type="button" class="ap-star${fav ? ' on' : ''}" title="즐겨찾기">${fav ? '★' : '☆'}</button>
             </div>
