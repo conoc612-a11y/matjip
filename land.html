@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
-  <link rel="stylesheet" href="css/tokens.css?v=7ebc9ae9" />
+  <link rel="stylesheet" href="css/tokens.css?v=a82809ce" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=7ebc9ae9"></script>
+  <script src="js/auth-guard.js?v=a82809ce"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -37,12 +37,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=7ebc9ae9" />
+  <link rel="stylesheet" href="css/buttons.css?v=a82809ce" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=7ebc9ae9" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=a82809ce" />
   <style>
     :root {
       --c-primary:#1971c2; --c-primary-soft:#e7f0fb; --c-price:#d9480f;
@@ -547,16 +547,9 @@
     
 
 
-    .apd-g-row { display:flex; flex-wrap:wrap; align-items:center; gap:4px 8px; font-size:12px; padding:5px 0; border-bottom:1px dashed var(--line); }
-    .apd-g-row:last-child { border-bottom:none; }
-    .apd-g-date { font-weight:700; width:72px; flex-shrink:0; }
-    .apd-g-time { color:var(--muted); width:38px; flex-shrink:0; }
     
 
 
-
-    .apd-g-knd { color:var(--muted); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .apd-g-low { margin-left:auto; text-align:right; flex-shrink:0; }
     .apd-rslt { font-size:11px; color:#fff; padding:1px 8px; border-radius:999px; flex-shrink:0; }
     .apd-sec .dday { color:var(--c-primary); font-weight:800; flex-shrink:0; }
     .apd-note { font-size:12px; line-height:1.6; color:var(--text); white-space:pre-wrap; word-break:break-all; }
@@ -1356,16 +1349,22 @@
 
     
     
-    .leaflet-popup .pc table.rp-deals { width:100%; border-collapse:collapse; font-size:12px; }
-    .leaflet-popup .pc table.rp-deals th { text-align:left; font-weight:600; color:var(--c-muted); padding:3px 4px 3px 0; border-bottom:1px solid var(--line); white-space:nowrap; }
-    .leaflet-popup .pc table.rp-deals td { padding:3px 4px 3px 0; border-bottom:1px solid var(--line); white-space:nowrap; }
     
-    .leaflet-popup .pc table.rp-deals th:nth-child(2), .leaflet-popup .pc table.rp-deals td:nth-child(2),
-    .leaflet-popup .pc table.rp-deals th:nth-child(3), .leaflet-popup .pc table.rp-deals td:nth-child(3) {
+
+
+
+    table.rp-deals { width:100%; border-collapse:collapse; font-size:12px; }
+    table.rp-deals th { text-align:left; font-weight:600; color:var(--c-muted); padding:3px 4px 3px 0; border-bottom:1px solid var(--line); white-space:nowrap; }
+    table.rp-deals td { padding:3px 4px 3px 0; border-bottom:1px solid var(--line); white-space:nowrap; }
+    
+    table.rp-deals th:nth-child(2), table.rp-deals td:nth-child(2),
+    table.rp-deals th:nth-child(3), table.rp-deals td:nth-child(3) {
       text-align:right; font-variant-numeric:tabular-nums; }
     
     .ls-tbl td { font-variant-numeric:tabular-nums; }
-    .leaflet-popup .pc table.rp-deals tr:last-child td { border-bottom:none; }
+    table.rp-deals tr:last-child td { border-bottom:none; }
+    
+    table.rp-deals tr.rp-past td { color:var(--c-muted); text-decoration:line-through; }
     
 
 
@@ -1449,7 +1448,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=7ebc9ae9"></script>
+  <script src="js/ie-guard.js?v=a82809ce"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1717,22 +1716,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-15 01:58 · 7ebc9ae9</span></span>
+          · <span class="build-tag">build 2026-09-15 12:37 · a82809ce</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=7ebc9ae9"></script>
+  <script src="js/joinkey.js?v=a82809ce"></script>
   
-  <script src="js/identity.js?v=7ebc9ae9"></script>
-  <script src="js/common.js?v=7ebc9ae9"></script>
-  <script src="js/ui-resize.js?v=7ebc9ae9"></script>
-  <script src="js/footer-resize.js?v=7ebc9ae9"></script>
-  <script src="js/route-line.js?v=7ebc9ae9"></script>
-  <script src="js/route-api.js?v=7ebc9ae9"></script>
-  <script src="js/footer-stats.js?v=7ebc9ae9"></script>
+  <script src="js/identity.js?v=a82809ce"></script>
+  <script src="js/common.js?v=a82809ce"></script>
+  <script src="js/ui-resize.js?v=a82809ce"></script>
+  <script src="js/footer-resize.js?v=a82809ce"></script>
+  <script src="js/route-line.js?v=a82809ce"></script>
+  <script src="js/route-api.js?v=a82809ce"></script>
+  <script src="js/footer-stats.js?v=a82809ce"></script>
   <script>
     
     
@@ -10012,16 +10011,23 @@
               const rslt = nm
                 ? `<span class="apd-rslt" style="background:${col};"${unk ? ' title="법원 코드 · 이름 미확인"' : ''}>${esc(nm)}${unk ? ' (미확인)' : ''}</span>`
                 : '';
-              return `<div class="apd-g-row">
-                <span class="apd-g-date">${esc(ymd(g.y))}</span>
-                <span class="apd-g-time">${esc(hm(g.hm))}</span>
-                <span class="apd-g-knd">${esc(AUC_KND_NM[String(g.knd || '')] || g.kndNm || '')}${g.place ? ' · ' + esc(g.place) : ''}</span>
-                ${g.low ? `<b class="apd-g-low">${eok(g.low)}</b>` : ''}
-                ${g.y ? `<span class="dday">${esc(aucDDay(ymd(g.y)))}</span>` : ''}
-                ${rslt}
-              </div>`;
+              
+              const dd = g.y ? aucDDay(ymd(g.y)) : '';
+              const past = dd === '기일 지남';
+              
+              const memo = [rslt, (dd && !past) ? `<span class="dday">${esc(dd)}</span>` : ''].filter(Boolean).join(' ');
+              return `<tr${past ? ' class="rp-past"' : ''}>`
+                + `<td>${esc(AUC_KND_NM[String(g.knd || '')] || g.kndNm || '')}${g.place ? '<br><span style="color:var(--c-muted);">' + esc(g.place) + '</span>' : ''}</td>`
+                + `<td>${esc(ymd(g.y))}${g.hm ? ' ' + esc(hm(g.hm)) : ''}</td>`
+                + `<td>${g.low ? eok(g.low) : ''}</td>`
+                + `<td style="white-space:normal;">${memo}</td></tr>`;
             }).join('');
-            sections += sec('apd-sec-gihui', '기일내역', gRows);
+            
+            
+            
+            sections += sec('apd-sec-gihui', '기일내역',
+              '<table class="rp-deals"><thead><tr><th>구분</th><th>날짜</th><th>최저매각가</th><th>비고</th></tr></thead>'
+              + `<tbody>${gRows}</tbody></table>`);
           }
           
           
