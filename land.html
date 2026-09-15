@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
-  <link rel="stylesheet" href="css/tokens.css?v=7d027a86" />
+  <link rel="stylesheet" href="css/tokens.css?v=d835e878" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=7d027a86"></script>
+  <script src="js/auth-guard.js?v=d835e878"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -37,12 +37,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=7d027a86" />
+  <link rel="stylesheet" href="css/buttons.css?v=d835e878" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=7d027a86" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=d835e878" />
   <style>
     :root {
       
@@ -440,8 +440,15 @@
     .ap-row-top { display:flex; align-items:flex-start; gap:6px; }
     .ap-badge { flex-shrink:0; font-size:11px; color:#fff; padding:1px 7px; border-radius:999px; margin-top:1px; }
     .ap-addr { flex:1; min-width:0; font-weight:600; overflow-wrap:anywhere; }
-    .ap-star { flex-shrink:0; border:none; background:none; cursor:pointer; color:var(--muted); font-size:15px; line-height:1; padding:2px 0 0 2px; }
-    .ap-star.on { color:#f08c00; }
+    
+
+
+
+
+
+    .ap-star { position:relative; flex-shrink:0; border:none; background:none; cursor:pointer; color:var(--muted); font-size:15px; line-height:1; padding:2px 0 0 2px; }
+    .ap-star::before { content:''; position:absolute; inset:-7px -8px; }
+    .ap-star.on { color:var(--c-warn); }
     
 
     .ap-row.pinned { border:1px solid var(--c-primary); background:var(--c-primary-soft); }
@@ -514,6 +521,12 @@
       color:var(--muted); display:flex; align-items:center; justify-content:center; font-size:15px;
       line-height:1; cursor:pointer; z-index:2002; box-shadow:var(--c-shadow); padding:0;
       pointer-events:auto; touch-action:none; transition:opacity .15s; }
+    
+
+
+
+
+    .panel-slide-tab::before { content:''; position:absolute; inset:0 -7px; }
     
 
     .panel-slide-tab:hover { color:#C83C52; border-color:#C83C52; }
@@ -1544,7 +1557,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=7d027a86"></script>
+  <script src="js/ie-guard.js?v=d835e878"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1812,22 +1825,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-15 18:11 · 7d027a86</span></span>
+          · <span class="build-tag">build 2026-09-15 19:04 · d835e878</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=7d027a86"></script>
+  <script src="js/joinkey.js?v=d835e878"></script>
   
-  <script src="js/identity.js?v=7d027a86"></script>
-  <script src="js/common.js?v=7d027a86"></script>
-  <script src="js/ui-resize.js?v=7d027a86"></script>
-  <script src="js/footer-resize.js?v=7d027a86"></script>
-  <script src="js/route-line.js?v=7d027a86"></script>
-  <script src="js/route-api.js?v=7d027a86"></script>
-  <script src="js/footer-stats.js?v=7d027a86"></script>
+  <script src="js/identity.js?v=d835e878"></script>
+  <script src="js/common.js?v=d835e878"></script>
+  <script src="js/ui-resize.js?v=d835e878"></script>
+  <script src="js/footer-resize.js?v=d835e878"></script>
+  <script src="js/route-line.js?v=d835e878"></script>
+  <script src="js/route-api.js?v=d835e878"></script>
+  <script src="js/footer-stats.js?v=d835e878"></script>
   <script>
     
     
@@ -2667,7 +2680,7 @@
                         const cv = num(_xt(g2, 'curYearCaplAmount'));
                         const d = pv ? Math.round(((cv - pv) / pv) * 1000) / 10 : 0;
                         h4 += '<div style="margin-top:3px;">집단 자본금 <b>' + eok4(_xt(g2, 'curYearCaplAmount')) + '</b>'
-                          + (d ? ' <span style="color:' + (d > 0 ? '#e8590c' : '#C83C52') + ';">'
+                          + (d ? ' <span style="color:' + (d > 0 ? '#e8590c' : '#2260C3') + ';">'
                             + (d > 0 ? '+' : '') + d + '%</span>' : '')
                           + ' <span style="color:var(--muted);">전년 ' + eok4(_xt(g2, 'prvYearCaplAmount')) + '</span></div>';
                         if (_xt(g2, 'smerNm')) {
@@ -2842,7 +2855,7 @@
     };
 
     
-    const SCHOOL_COLOR = { '고': '#f59f00', '중': '#C83C52', '초': '#c2255c' };
+    const SCHOOL_COLOR = { '고': '#f59f00', '중': '#2260C3', '초': '#c2255c' };
     
     
     const SCHOOL_CAT = [
@@ -3460,7 +3473,7 @@
       const r = rpMoveRate(d);
       if (r == null) return '#868e96';
       if (r >= 2) return '#e03131';
-      if (r <= -2) return '#C83C52';
+      if (r <= -2) return '#2260C3';
       return '#868e96';
     };
     
@@ -3522,7 +3535,7 @@
         const u = a ? Math.round(r.priceEok * 10000 / a).toLocaleString() : null;
         let c = '';
         if (rpNewHigh(r)) c += chip('신고', '#c92a2a');
-        else if (rpNewLow(r)) c += chip('최저', '#C83C52');
+        else if (rpNewLow(r)) c += chip('최저', '#2260C3');
         if (r.cancel) c += chip('해제', '#e03131');
         if (r.gbn && r.gbn.indexOf('직거래') >= 0) c += chip('직거래', '#f08c00');
         if (r.lease) c += chip('임대', '#7048e8');
@@ -3839,7 +3852,7 @@
         if (rpColorMode.v === 'move') {
           L.innerHTML = '마커 색 (가격변동률)'
             + '<div class="lc-dot" style="background:#e03131;"></div>상승 +2%↑<br>'
-            + '<div class="lc-dot" style="background:#C83C52;"></div>하락 -2%↓<br>'
+            + '<div class="lc-dot" style="background:#2260C3;"></div>하락 -2%↓<br>'
             + '<div class="lc-dot" style="background:#868e96;"></div>보합/거래 부족';
         } else {
           L.innerHTML = '건축년도 (노후도)'
@@ -4951,7 +4964,7 @@
           + ' <span style="color:#748ffc;">■</span> 출퇴근(7~9·18~20)</div>';
       }
       
-      const BUS_COLOR = { 중앙차로: '#C83C52', 한강선착장: '#0ca678', 마을버스: '#f59f00' };
+      const BUS_COLOR = { 중앙차로: '#2260C3', 한강선착장: '#0ca678', 마을버스: '#f59f00' };
       function busPopupHtml(d) {
         const isPier = d.ty === '한강선착장';
         return '<div class="pc"><div class="pc-head">'
@@ -5020,7 +5033,7 @@
         for (const b of buses) {
           if (!b.lat || !b.lng) continue;
           
-          const color = b.last ? '#c92a2a' : (b.full ? '#e8590c' : '#C83C52');
+          const color = b.last ? '#c92a2a' : (b.full ? '#e8590c' : '#2260C3');
           const m = L.marker([b.lat, b.lng], { icon: svcIcon('fi-rr-bus', color, 30), zIndexOffset: 800 });
           const t = String(b.at || '').replace(/^\d{8}(\d{2})(\d{2})(\d{2})$/, '$1:$2:$3');
           m.bindTooltip(esc(busPosNo) + ' ' + esc(b.no), { direction: 'top' });
@@ -5504,7 +5517,7 @@
       
       
       
-      const TRDAR_SE_COLOR = { 골목상권: '#C83C52', 발달상권: '#e8590c', 전통시장: '#7048e8', 관광특구: '#0ca678' };
+      const TRDAR_SE_COLOR = { 골목상권: '#2260C3', 발달상권: '#e8590c', 전통시장: '#7048e8', 관광특구: '#0ca678' };
       const trdarCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 50 });
       
       trdarCluster.on('click', (e) => {
@@ -5579,7 +5592,7 @@
             rows.push('<div style="margin-top:2px;height:18px;line-height:0;">'
               + R.age.map((v, i) => '<span title="' + AGE[i] + ' ' + nf(v) + '명" style="display:inline-block;'
                 + 'width:15.5%;height:' + Math.max(3, Math.round(v / amx * 100)) + '%;background:'
-                + (i === apk ? '#C83C52' : '#ced4da') + ';vertical-align:bottom;margin-right:1%;"></span>').join('')
+                + (i === apk ? '#2260C3' : '#ced4da') + ';vertical-align:bottom;margin-right:1%;"></span>').join('')
               + '</div><div style="font-size:11px;color:var(--c-muted);">연령 최다 ' + AGE[apk] + '</div>');
           }
         }
@@ -7851,7 +7864,7 @@
       }
       
       function aucGradeCol(g) {
-        return g === 'A' ? '#2f9e44' : g === 'B' ? '#C83C52' : g === 'C' ? '#f08c00' : '#e03131';
+        return g === 'A' ? '#2f9e44' : g === 'B' ? '#2260C3' : g === 'C' ? '#f08c00' : '#e03131';
       }
       function aucVerdictHtml(d) {
         const v = aucScore(d);
@@ -11925,7 +11938,7 @@
         rpRows.forEach((r) => {
           if (r.lat == null) return;
           if (!rings.some((ring) => pointInRing(r.lat, r.lng, ring))) return;
-          const m = L.circleMarker([r.lat, r.lng], { radius: 10, color: '#000', weight: 2, fillColor: '#C83C52', fillOpacity: 0.85 });
+          const m = L.circleMarker([r.lat, r.lng], { radius: 10, color: '#000', weight: 2, fillColor: '#2260C3', fillOpacity: 0.85 });
           m._rp = r;
           m._pop = (() => `<b>${esc(r.name)}</b><br>매매 ${r.priceEok == null ? '-' : fmtAmtExact(r.priceEok * 1e4)} · ${esc(r.gu)} ${esc(r.dong)}<br><a href="https://map.naver.com/p/search/${encodeURIComponent(r.name + ' ' + (r.dong || r.gu || ''))}" target="_blank" rel="noopener">네이버 부동산</a>`);
           ms.push(m);
@@ -12875,11 +12888,11 @@
           const m = L.circleMarker([d.lat, d.lng], {
             renderer: L.svg({ padding: 0.4 }),
             radius: r / 2, color: '#ffffff', weight: 2,
-            fillColor: '#C83C52', fillOpacity: 0.55, interactive: true,
+            fillColor: '#2260C3', fillOpacity: 0.55, interactive: true,
           });
           const won = (v) => Number(v || 0).toLocaleString('ko-KR');
           m.bindPopup('<div class="pc"><div class="pc-head">'
-            + '<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#C83C52;flex-shrink:0;"></span>'
+            + '<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#2260C3;flex-shrink:0;"></span>'
             + '<span class="rp-name">국민연금 가입현황</span></div><div class="pc-body">'
             + '<div><b>' + esc(d.nm) + '</b></div>'
             + '<div class="pc-price">가입자 ' + won(cnt) + '명</div>'
@@ -12980,7 +12993,7 @@
             + '<br>좌표는 주소를 지오코딩한 값이라 실제 위치와 다를 수 있습니다',
         },
         wifi: {
-          dir: 'wifi/', idx: 'wifi_index.json', icon: 'fi-rr-wifi', color: '#C83C52',
+          dir: 'wifi/', idx: 'wifi_index.json', icon: 'fi-rr-wifi', color: '#2260C3',
           title: (d) => d.nm, minZ: 15,
           body: (d) => line('SSID', d.ssid) + line('시설', d.kind) + line('제공', d.isp)
             + line('설치', d.ym) + line('주소', d.addr),
@@ -13136,7 +13149,7 @@
           '상ㆍ하수도설비공사업', '철강구조물공사업', '수중ㆍ준설공사업', '조경식재ㆍ시설물공사업',
           '기계설비ㆍ가스공사업', '가스ㆍ난방공사업', '승강기ㆍ삭도공사업', '시설물유지관리업'],
       };
-      const KIS_COLOR = { '종합건설업': '#C83C52', '전문건설업': '#e8590c' };
+      const KIS_COLOR = { '종합건설업': '#2260C3', '전문건설업': '#e8590c' };
 
       
       
@@ -13525,7 +13538,7 @@
         return '<div style="font-size:12px;margin-top:3px;">'
           + '<b style="color:var(--c-danger);">' + esc(r.pn || '행정처분') + '</b>' + many
           
-          + (r.pd ? ' <span style="color:#C83C52;">(가처분으로 효력 정지)</span>' : '')
+          + (r.pd ? ' <span style="color:#2260C3;">(가처분으로 효력 정지)</span>' : '')
           + ' <span style="color:var(--muted);">' + esc(d) + '</span>' + stop + fine
           + (r.pw ? '<div style="color:var(--muted);padding-left:2px;">' + esc(r.pw) + '</div>' : '')
           + '</div>';
@@ -16277,7 +16290,7 @@
     const _trdarCache = new Map();
     
     const TRDAR_COLORS = {
-      음식: '#e8590c', 소매: '#C83C52', '수리·개인': '#7048e8', 보건의료: '#0ca678',
+      음식: '#e8590c', 소매: '#2260C3', '수리·개인': '#7048e8', 보건의료: '#0ca678',
       '과학·기술': '#495057', 교육: '#f08c00', 부동산: '#c2255c', '시설관리·임대': '#5c940d',
       숙박: '#1098ad', '예술·스포츠': '#d6336c',
     };
@@ -17653,7 +17666,7 @@
               + '<b style="color:' + c + ';">' + esc(l.name) + '</b></span>';
           }
           return '<span style="display:inline-flex;align-items:center;gap:4px;">'
-            + '<span style="width:16px;height:16px;border-radius:4px;background:#C83C52;color:#fff;'
+            + '<span style="width:16px;height:16px;border-radius:4px;background:#2260C3;color:#fff;'
             + 'font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;">버</span>'
             + '<b>' + esc(l.name) + '</b></span>';
         };
@@ -19532,7 +19545,7 @@
       const last = (arr) => (arr.length ? arr[arr.length - 1] : null);
       const lb = last(s.buy), lj = last(s.jeonse);
       const dot = (d, c) => (d ? `<circle cx="${px(d.t).toFixed(1)}" cy="${py(d.v).toFixed(1)}" r="3" fill="#fff" stroke="${c}" stroke-width="2"/>` : '');
-      const CB = '#2f9e44', CJ = '#C83C52';
+      const CB = '#2f9e44', CJ = '#2260C3';
       
       const _fnSum = '<div class="ls-fn"><b>주변 시세</b>' + srcTier('deal')
         + ' <span style="font-size:12px;color:var(--c-muted);">반경 ' + PRICE_CHART_KM + 'km · '
@@ -20049,10 +20062,10 @@
               + (v > 0 ? '+' : '') + v.toLocaleString('ko-KR') + '명" style="display:inline-block;width:7.5%;'
               + 'height:26px;vertical-align:middle;position:relative;">'
               + '<span style="position:absolute;left:1px;right:1px;' + (up ? 'bottom:13px;' : 'top:13px;')
-              + 'height:' + pct + '%;background:' + (up ? '#C83C52' : '#e8590c') + ';"></span></span>';
+              + 'height:' + pct + '%;background:' + (up ? '#2260C3' : '#e8590c') + ';"></span></span>';
           }).join('');
           rows.push('<div style="font-size:12px;">12개월 순이동 <b style="color:'
-            + (sum >= 0 ? '#C83C52' : '#e8590c') + ';">' + (sum > 0 ? '+' : '')
+            + (sum >= 0 ? '#2260C3' : '#e8590c') + ';">' + (sum > 0 ? '+' : '')
             + sum.toLocaleString('ko-KR') + '명</b>'
             + (seoul && seoul.net12 != null ? ' <span style="color:var(--c-muted);">(서울 전체 '
                 + (seoul.net12 > 0 ? '+' : '') + seoul.net12.toLocaleString('ko-KR') + ')</span>' : '')
@@ -20060,7 +20073,7 @@
           rows.push('<div style="margin-top:2px;line-height:0;border-top:1px dashed var(--c-border);'
             + 'border-bottom:1px dashed var(--c-border);">' + bars + '</div>');
           rows.push('<div style="font-size:11px;color:var(--c-muted);">'
-            + '<span style="color:#C83C52;">■</span> 유입 <span style="color:#e8590c;">■</span> 유출 · 월별 12개월</div>');
+            + '<span style="color:#2260C3;">■</span> 유입 <span style="color:#e8590c;">■</span> 유출 · 월별 12개월</div>');
         }
         
         
@@ -20069,7 +20082,7 @@
           const t = String(G.idx.times[G.idx.times.length - 1] || '');
           const yoy = G.idxYoY;
           rows.push('<div style="margin-top:3px;font-size:12px;">아파트 매매지수 <b>' + v + '</b>'
-            + (yoy != null ? ' <span style="color:' + (yoy >= 0 ? '#c2255c' : '#C83C52') + ';">'
+            + (yoy != null ? ' <span style="color:' + (yoy >= 0 ? '#c2255c' : '#2260C3') + ';">'
                 + (yoy > 0 ? '+' : '') + yoy + '%</span> <span style="color:var(--c-muted);">전년 동기</span>' : '')
             + ' <span style="color:var(--c-muted);">(' + t.slice(0, 4) + '년 ' + t.slice(4) + '분기)</span></div>');
         }
@@ -20128,7 +20141,7 @@
         
         const last = (arr) => { for (let i = arr.length - 1; i >= 0; i--) if (arr[i] !== null && arr[i] !== undefined) return [i, arr[i]]; return null; };
         const sign = (v) => (v > 0 ? '+' : '') + v.toFixed(2) + '%';
-        const col = (v) => (v > 0 ? '#e03131' : v < 0 ? '#C83C52' : 'var(--c-muted)');
+        const col = (v) => (v > 0 ? '#e03131' : v < 0 ? '#2260C3' : 'var(--c-muted)');
         const m12 = compound(A.r.m.slice(-12));
         const lastM = last(A.r.m);
         const bits = [];
@@ -20165,7 +20178,7 @@
           const up = pts[pts.length - 1] >= pts[0];
           spark = '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" '
             + 'style="display:block;margin-top:3px;overflow:visible;" aria-hidden="true">'
-            + '<path d="' + d + '" fill="none" stroke="' + (up ? '#e03131' : '#C83C52') + '" stroke-width="1.6" stroke-linejoin="round"/></svg>';
+            + '<path d="' + d + '" fill="none" stroke="' + (up ? '#e03131' : '#2260C3') + '" stroke-width="1.6" stroke-linejoin="round"/></svg>';
         }
         
         const yv = [];
@@ -20200,7 +20213,7 @@
             const py2 = (v) => T2 + (1 - (v - lo2) / (hi2 - lo2)) * (H2 - T2 - B2);
             const dd = pts2.map((v, i) => (i ? 'L' : 'M') + px2(i).toFixed(1) + ' ' + py2(v).toFixed(1)).join(' ');
             const up2 = pts2[pts2.length - 1] >= pts2[0];
-            const cc = up2 ? '#e03131' : '#C83C52';
+            const cc = up2 ? '#e03131' : '#2260C3';
             const idx = (v) => (v).toFixed(1);
             const ticks2 = [lo2, (lo2 + hi2) / 2, hi2].map((v) => {
               const y = py2(v).toFixed(1);
@@ -20308,7 +20321,7 @@
                       
                       + (c.stk
                         ? `<div style="font-size:12px;margin-top:2px;">주가 <b>${Number(c.stk.clpr).toLocaleString('ko-KR')}원</b>`
-                          + (c.stk.fltRt != null ? ` <span style="color:${Number(c.stk.fltRt) >= 0 ? '#e03131' : '#C83C52'};">${c.stk.fltRt >= 0 ? '+' : ''}${esc(c.stk.fltRt)}%</span>` : '')
+                          + (c.stk.fltRt != null ? ` <span style="color:${Number(c.stk.fltRt) >= 0 ? '#e03131' : '#2260C3'};">${c.stk.fltRt >= 0 ? '+' : ''}${esc(c.stk.fltRt)}%</span>` : '')
                           + ` <span style="color:var(--c-muted);">(${esc(c.stk.basDt || '')})</span></div>`
                         : '')
                       
