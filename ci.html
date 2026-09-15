@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kaushan+Script&display=swap" />
-<link rel="stylesheet" href="css/tokens.css?v=b5af7057" />
+<link rel="stylesheet" href="css/tokens.css?v=f4b2b438" />
 <style>
   
 
@@ -19,7 +19,7 @@
     --teal:#0E7482;   
     --gold:#E4B33C;   
     --tang:#E69240;   
-    --paper:#FCFCFD; --ink:#111111; --line:#E4E4E7; --muted:#71717A;
+    --paper:#FFFFFF; --ink:#000000; --line:#E4E4E7; --muted:#71717A;
   }
   * { box-sizing:border-box; }
   body { margin:0; background:var(--paper); color:var(--ink);
@@ -156,14 +156,14 @@
         <dl><dt>R</dt><dd>217</dd><dt>G</dt><dd>42</dd><dt>B</dt><dd>20</dd></dl>
         <code>#D92A14</code>
       </div>
-      <div class="cs-b" style="background:#111111;color:#fff;">
+      <div class="cs-b" style="background:#000000;color:#fff;">
         <b>Secondary</b>
         <p>airealty Black</p>
-        <dl><dt>C</dt><dd>0</dd><dt>M</dt><dd>0</dd><dt>Y</dt><dd>0</dd><dt>K</dt><dd>93</dd></dl>
-        <dl><dt>R</dt><dd>17</dd><dt>G</dt><dd>17</dd><dt>B</dt><dd>17</dd></dl>
-        <code>#111111</code>
+        <dl><dt>C</dt><dd>0</dd><dt>M</dt><dd>0</dd><dt>Y</dt><dd>0</dd><dt>K</dt><dd>100</dd></dl>
+        <dl><dt>R</dt><dd>0</dd><dt>G</dt><dd>0</dd><dt>B</dt><dd>0</dd></dl>
+        <code>#000000</code>
       </div>
-      <div class="cs-c" style="background:#FFFFFF;color:#111111;border:1px solid var(--line);">
+      <div class="cs-c" style="background:#FFFFFF;color:#000000;border:1px solid var(--line);">
         <b>Base</b>
         <p>White</p>
         <dl><dt>C</dt><dd>0</dd><dt>M</dt><dd>0</dd><dt>Y</dt><dd>0</dd><dt>K</dt><dd>0</dd></dl>
@@ -190,7 +190,7 @@
     <table>
       <tr><th>배경</th><td><b>흰색</b>입니다. 카드·패널도 흰색으로 두고 구분은 1px 괘선이 합니다.</td></tr>
       <tr><th>레드</th><td>브랜드·버튼·링크·활성 상태, 그리고 <b>가격</b>. 화면에서 유일한 색입니다.</td></tr>
-      <tr><th>블랙</th><td>본문 글자. 순흑(#000000)이 아니라 #111111 입니다.</td></tr>
+      <tr><th>블랙</th><td>본문 글자. 순흑 <code>#000000</code> 입니다. 흰 바탕 대비 21.00 으로 최대치입니다.</td></tr>
       <tr><th>위험 표시</th><td>레드와 <b>같은 색</b>을 씁니다. 가격과 구분은 색이 아니라
         <b>형태</b>(칠한 칩)로 합니다. 색만으로 뜻을 전하지 않습니다.</td></tr>
       <tr><th>로고 네 색</th><td>로고 안에서만 씁니다. UI 요소에 끌어다 쓰지 마십시오.</td></tr>
@@ -198,13 +198,13 @@
 
     <h3>대비</h3>
     <table>
-      <tr><th>흰 바탕</th><td><b>레드 4.89</b> · <b>블랙 18.88</b>. 둘 다 WCAG AA(4.5) 를 넘습니다.
+      <tr><th>흰 바탕</th><td><b>레드 4.89</b> · <b>블랙 21.00</b>. 둘 다 WCAG AA(4.5) 를 넘습니다.
         RED ROAD 원본 <code>#E52E17</code> 은 4.44 로 미달이라 한 단계 어둡게 잡았습니다.</td></tr>
-      <tr><th>어두운 바탕</th><td>레드는 <b>3.86</b> 으로 떨어집니다 →
-        <code>#FF7A66</code>(7.40) 으로 바꿔 씁니다. 색상(hue)은 그대로 둡니다.</td></tr>
+      <tr><th>어두운 바탕</th><td>레드는 <b>4.29</b> 로 떨어집니다 →
+        <code>#FF7A66</code>(8.23) 으로 바꿔 씁니다. 색상(hue)은 그대로 둡니다.</td></tr>
       <tr><th>로고 네 색</th><td>흰 바탕에서 남색 13.07 · 청록 5.47 은 읽히지만
         금색 1.89 · 주황 2.46 은 못 읽습니다. 로고 안에서는 면으로만 쓰이므로 문제되지 않습니다.</td></tr>
-      <tr><th>측정 기준</th><td>흰 바탕 #FFFFFF · 어두운 바탕 #111111, WCAG 2.1 상대휘도.
+      <tr><th>측정 기준</th><td>흰 바탕 #FFFFFF · 어두운 바탕 #000000, WCAG 2.1 상대휘도.
         CMYK 는 화면 RGB 에서 환산한 근사값이라 인쇄 교정이 필요합니다.</td></tr>
     </table>
   </section>

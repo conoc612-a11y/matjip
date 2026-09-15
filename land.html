@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
-  <link rel="stylesheet" href="css/tokens.css?v=b5af7057" />
+  <link rel="stylesheet" href="css/tokens.css?v=f4b2b438" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=b5af7057"></script>
+  <script src="js/auth-guard.js?v=f4b2b438"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -37,12 +37,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=b5af7057" />
+  <link rel="stylesheet" href="css/buttons.css?v=f4b2b438" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=b5af7057" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=f4b2b438" />
   <style>
     :root {
       
@@ -58,14 +58,14 @@
 
 
 
-      --c-primary:#D92A14; --c-primary-soft:#FDEAE7; --c-price:#D92A14;
+      --c-primary:#D92A14; --c-primary-soft:#FFFFFF; --c-price:#D92A14;
       
       --c-success:#287F38; --c-danger:#D92A14; --c-warn:#AD5A1F;
-      --c-text:#111111; --c-muted:#71717A;
+      --c-text:#000000; --c-muted:#71717A;
       
 
-      --c-border:#E5E7EB; --c-bg:#FFFFFF; --c-card:#FFFFFF; --c-hover:#F5F5F5;
-      --c-shadow:0 1px 3px rgba(16,24,40,.06); --c-shadow-lg:0 10px 30px rgba(16,24,40,.14);
+      --c-border:#E5E7EB; --c-bg:#FFFFFF; --c-card:#FFFFFF; --c-hover:#FFFFFF;
+      --c-shadow:0 1px 3px rgba(0,0,0,.06); --c-shadow-lg:0 10px 30px rgba(0,0,0,.12);
       --bg:var(--c-bg); --card:var(--c-card); --line:var(--c-border);
       --text:var(--c-text); --muted:var(--c-muted); --accent:var(--c-primary); --ok:var(--c-success);
     }
@@ -201,9 +201,9 @@
 
 
       .leaflet-popup-content-wrapper, .leaflet-popup-tip, .lp-body, .lc, .stat-bar) {
-      --c-card:#FFFFFF; --c-hover:#F5F5F5; --c-bg:#FFFFFF;
+      --c-card:#FFFFFF; --c-hover:#FFFFFF; --c-bg:#FFFFFF;
       --c-border:#E5E7EB; --c-line:#E5E7EB;
-      --c-primary:#D92A14; --c-primary-soft:#FDEAE7;
+      --c-primary:#D92A14; --c-primary-soft:#FFFFFF;
       
 
 
@@ -215,7 +215,7 @@
       
 
 
-      --c-price:#D92A14; --c-text:#111111;
+      --c-price:#D92A14; --c-text:#000000;
       
 
       
@@ -227,7 +227,7 @@
 
 
       --card:#FFFFFF; --bg:#FFFFFF; --line:#E5E7EB;
-      --text:#111111; --accent:#D92A14;
+      --text:#000000; --accent:#D92A14;
     }
     
 
@@ -246,13 +246,13 @@
 
 
     html:not(.dark) body {
-      --c-card:#FFFFFF; --c-hover:#F5F5F5; --c-bg:#FFFFFF;
+      --c-card:#FFFFFF; --c-hover:#FFFFFF; --c-bg:#FFFFFF;
       --c-border:#E5E7EB; --c-line:#E5E7EB;
-      --c-primary:#D92A14; --c-primary-soft:#FDEAE7;
+      --c-primary:#D92A14; --c-primary-soft:#FFFFFF;
       
 
 
-      --c-price:#D92A14; --c-text:#111111;
+      --c-price:#D92A14; --c-text:#000000;
       
 
 
@@ -262,7 +262,7 @@
 
 
       --card:#FFFFFF; --bg:#FFFFFF; --line:#E5E7EB;
-      --text:#111111; --accent:#D92A14;
+      --text:#000000; --accent:#D92A14;
     }
     
 
@@ -270,14 +270,14 @@
     html:not(.dark) .search-row { background:#FFFFFF; }
     html:not(.dark) .search-inp { background:#fff; }
     
-    html:not(.dark) .list-tabs { background:#F5F5F5; }
-    html:not(.dark) .list-tab { color:#7A6A58; }
+    html:not(.dark) .list-tabs { background:#FFFFFF; }
+    html:not(.dark) .list-tab { color:var(--c-muted); }
     
     html:not(.dark) .list-tab.active { color:#fff; }
-    html:not(.dark) .rec { border-left:3px solid #FF7A66; }
+    html:not(.dark) .rec { border-left:3px solid var(--c-primary); }
     
 
-    html:not(.dark) .tag { background:#F5F5F5; color:#7A6A58; }
+    html:not(.dark) .tag { background:#FFFFFF; color:var(--c-muted); }
     html:not(.dark) .tag.hit { background:#D92A14; color:#fff; }
     
 
@@ -371,8 +371,13 @@
       align-items:stretch; max-width:100%; pointer-events:none; }
     .left-panels > * { pointer-events:auto; }
     
+
+
+
+
+    
     .auction-panel { position:relative; flex:none; width:340px; min-width:200px; max-width:640px;
-      background:var(--card); border-right:1px solid var(--line); box-shadow:var(--c-shadow-lg);
+      background:var(--card); border-right:1px solid var(--line);
       display:flex; flex-direction:column; font-size:13px; }
     
 
@@ -410,16 +415,16 @@
     .ap-title { font-size:14px; }
     .ap-count { color:var(--muted); font-size:12px; }
     
-    .ap-alert { margin:0 10px 6px; padding:7px 9px; border:1px solid #ffd8a8; background:#fff4e6;
-      color:#8f4700; border-radius:8px; font-size:12px; line-height:1.55; }
-    .ap-alert b { color:#d9480f; }
+    .ap-alert { margin:0 10px 6px; padding:7px 9px; border:1px solid var(--c-line); background:#FFFFFF;
+      color:var(--c-text); border-radius:8px; font-size:12px; line-height:1.55; }
+    .ap-alert b { color:var(--c-primary); }
     .ap-alert ul { margin:4px 0 0; padding-left:15px; }
     .ap-alert li { margin:1px 0; }
     .ap-alert-btns { margin-top:6px; display:flex; gap:6px; }
-    .ap-alert-btns button { border:1px solid #ffc078; background:var(--card); color:#8f4700;
+    .ap-alert-btns button { border:1px solid var(--c-line); background:var(--card); color:var(--c-text);
       border-radius:8px; padding:2px 10px; font-size:12px; cursor:pointer; }
-    .ap-alert-btns button:hover { background:#ffe8cc; }
-    .ap-alert-note { margin-top:5px; color:#a16207; font-size:11px; }
+    .ap-alert-btns button:hover { background:#FFFFFF; }
+    .ap-alert-note { margin-top:5px; color:var(--c-muted); font-size:11px; }
     .ap-links { display:flex; gap:4px; margin-left:auto; }
     .ap-links a { font-size:12px; color:#D92A14; text-decoration:none; padding:3px 12px; border:1px solid var(--line); border-radius:8px; white-space:nowrap; }
     .ap-links a:hover { background:var(--c-hover); }
@@ -480,7 +485,13 @@
 
 
 
-    .ap-row:hover { background:color-mix(in srgb, var(--c-primary) 10%, transparent); }
+
+
+
+
+
+    .ap-row:hover { background:color-mix(in srgb, var(--c-primary) 20%, transparent);
+      box-shadow:inset 3px 0 0 var(--c-primary); }
     .ap-thumb { flex-shrink:0; width:64px; height:48px; border-radius:8px; object-fit:cover; border:1px solid var(--line); display:flex; align-items:center; justify-content:center; }
     .ap-thumb-ph { background:var(--c-hover); font-size:18px; }
     .ap-row-main { flex:1; min-width:0; }
@@ -557,7 +568,7 @@
 
 
     .side-panel { position:relative; flex:none; width:20vw; min-width:300px; max-width:520px;
-      background:var(--card); border-right:1px solid var(--line); box-shadow:var(--c-shadow-lg);
+      background:var(--card); border-right:1px solid var(--line);
       display:flex; flex-direction:column; font-size:13px; }
     .side-panel[hidden] { display:none; }
     
@@ -836,7 +847,7 @@
     .rec { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:14px 16px; margin-bottom:10px; cursor:pointer; transition:border-color .15s; }
     
 
-    .rec:hover { border-color:var(--c-primary); background:color-mix(in srgb, var(--c-primary) 10%, transparent); }
+    .rec:hover { border-color:var(--c-primary); background:color-mix(in srgb, var(--c-primary) 20%, transparent); }
     .rec h3 { margin:0 0 5px; font-size:16px; font-weight:600; letter-spacing:-.2px; }
     .rec .meta { font-size:13px; color:var(--muted); }
     .rec .tags { margin:9px 0; display:flex; flex-wrap:wrap; gap:6px; }
@@ -1447,7 +1458,7 @@
     .rt-mode.on { background:#D92A14; color:#fff; border-color:#D92A14; }
     .pc-price { font-size:16px; font-weight:700; color:var(--c-price); margin-top:2px; }
     .unit-row { display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%; padding:6px 8px; margin-top:4px; background:var(--card); border:1px solid var(--line); border-radius:8px; cursor:pointer; font:inherit; font-size:13px; color:var(--text); text-align:left; box-sizing:border-box; }
-    .unit-row:hover { border-color:var(--c-primary); background:color-mix(in srgb, var(--c-primary) 10%, transparent); }
+    .unit-row:hover { border-color:var(--c-primary); background:color-mix(in srgb, var(--c-primary) 20%, transparent); }
     .unit-row b { color:var(--text); }
     .unit-row .ur-chev { color:var(--muted); font-size:11px; transition:transform .15s; flex-shrink:0; }
     .unit-row.open .ur-chev { transform:rotate(90deg); }
@@ -1625,7 +1636,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=b5af7057"></script>
+  <script src="js/ie-guard.js?v=f4b2b438"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1894,22 +1905,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-15 23:25 · b5af7057</span></span>
+          · <span class="build-tag">build 2026-09-16 07:01 · f4b2b438</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=b5af7057"></script>
+  <script src="js/joinkey.js?v=f4b2b438"></script>
   
-  <script src="js/identity.js?v=b5af7057"></script>
-  <script src="js/common.js?v=b5af7057"></script>
-  <script src="js/ui-resize.js?v=b5af7057"></script>
-  <script src="js/footer-resize.js?v=b5af7057"></script>
-  <script src="js/route-line.js?v=b5af7057"></script>
-  <script src="js/route-api.js?v=b5af7057"></script>
-  <script src="js/footer-stats.js?v=b5af7057"></script>
+  <script src="js/identity.js?v=f4b2b438"></script>
+  <script src="js/common.js?v=f4b2b438"></script>
+  <script src="js/ui-resize.js?v=f4b2b438"></script>
+  <script src="js/footer-resize.js?v=f4b2b438"></script>
+  <script src="js/route-line.js?v=f4b2b438"></script>
+  <script src="js/route-api.js?v=f4b2b438"></script>
+  <script src="js/footer-stats.js?v=f4b2b438"></script>
   <script>
     
     
