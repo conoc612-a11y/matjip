@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
-  <link rel="stylesheet" href="css/tokens.css?v=d835e878" />
+  <link rel="stylesheet" href="css/tokens.css?v=a9283de5" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=d835e878"></script>
+  <script src="js/auth-guard.js?v=a9283de5"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -37,12 +37,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=d835e878" />
+  <link rel="stylesheet" href="css/buttons.css?v=a9283de5" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=d835e878" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=a9283de5" />
   <style>
     :root {
       
@@ -1557,7 +1557,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=d835e878"></script>
+  <script src="js/ie-guard.js?v=a9283de5"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1825,22 +1825,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-15 19:04 · d835e878</span></span>
+          · <span class="build-tag">build 2026-09-15 19:33 · a9283de5</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=d835e878"></script>
+  <script src="js/joinkey.js?v=a9283de5"></script>
   
-  <script src="js/identity.js?v=d835e878"></script>
-  <script src="js/common.js?v=d835e878"></script>
-  <script src="js/ui-resize.js?v=d835e878"></script>
-  <script src="js/footer-resize.js?v=d835e878"></script>
-  <script src="js/route-line.js?v=d835e878"></script>
-  <script src="js/route-api.js?v=d835e878"></script>
-  <script src="js/footer-stats.js?v=d835e878"></script>
+  <script src="js/identity.js?v=a9283de5"></script>
+  <script src="js/common.js?v=a9283de5"></script>
+  <script src="js/ui-resize.js?v=a9283de5"></script>
+  <script src="js/footer-resize.js?v=a9283de5"></script>
+  <script src="js/route-line.js?v=a9283de5"></script>
+  <script src="js/route-api.js?v=a9283de5"></script>
+  <script src="js/footer-stats.js?v=a9283de5"></script>
   <script>
     
     
@@ -14392,6 +14392,26 @@
             newSecs.push(sec);
             return sec;
           };
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          const ORG_LOGO = [
+            ['법원행정처 (법원경매)', 'icons/org/court-auction.gif', '대한민국 법원 법원경매정보'],
+            ['법원행정처', 'icons/org/court.png', '대한민국 법원'],
+            ['국토교통부', 'icons/org/molit.png', '국토교통부'],
+            ['서울특별시 (서울 열린데이터광장)', 'icons/org/seoul-data.png', '서울 열린데이터광장'],
+            ['경찰청', 'icons/org/npa.png', '경찰청'],
+          ];
+          const orgLogoOf = (t) => {
+            const hit = ORG_LOGO.find(([k]) => String(t || '').indexOf(k) === 0);
+            return hit || null;
+          };
           const addRow = (kids, it) => {
             const row = L.DomUtil.create('div', '', kids);
             const btn = L.DomUtil.create('div', '', row);
@@ -14399,9 +14419,15 @@
             btn.style.cssText = 'padding:3px 8px 3px 14px;font-size:12px;cursor:pointer;'
               + 'border-radius:8px;display:flex;align-items:flex-start;gap:6px;';
             const wTxt = it.pk ? '필지 팝업' : '지도 기반 — 끌 수 없음';
+            
+            
+            const _lg = orgLogoOf(it.t);
             btn.innerHTML = (wKey ? '<input type="checkbox" class="lp-cb" style="margin-top:3px;">'
                                   : '<span style="width:13px;flex-shrink:0;"></span>')
-              + '<span style="flex:1;min-width:0;">' + esc(it.t)
+              + '<span style="flex:1;min-width:0;">'
+              + (_lg ? `<img src="${esc(_lg[1])}" alt="${esc(_lg[2])}" loading="lazy"`
+                     + ` style="height:13px;width:auto;vertical-align:-2px;margin-right:5px;">` : '')
+              + esc(it.t)
               + (it.n ? ` <span style="color:var(--muted);font-size:11px;">op ${it.u}/${it.n}</span>` : '')
               + `<div style="font-size:11px;color:var(--muted);">↳ ${esc(wTxt)}</div>`
               + '</span>';

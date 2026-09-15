@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>브랜드 가이드 — 부동산 all in one</title>
+<meta name="description" content="부동산 all in one 의 로고·색·서체 사용 기준.">
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kaushan+Script&display=swap" />
+<link rel="stylesheet" href="css/tokens.css?v=a9283de5" />
+<style>
+  
+
+
+
+  :root {
+    --navy:#053259;   
+    --teal:#0E7482;   
+    --gold:#E4B33C;   
+    --tang:#E69240;   
+    --paper:#FCFCFD; --ink:#18181B; --line:#E4E4E7; --muted:#71717A;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--paper); color:var(--ink);
+    font-family:"Pretendard",-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR","Malgun Gothic",sans-serif;
+    font-size:15px; line-height:1.6; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:980px; margin:0 auto; padding:0 24px; }
+  
+  .hero { padding:64px 0 40px; border-bottom:1px solid var(--line); }
+  .hero img { display:block; width:min(560px,100%); height:auto; }
+  .hero p { max-width:52ch; margin:28px 0 0; color:var(--muted); font-size:16px; }
+  h1 { font-size:13px; font-weight:700; letter-spacing:.04em; color:var(--teal);
+       margin:0 0 28px; text-transform:none; }
+  section { padding:44px 0; border-bottom:1px solid var(--line); }
+  section:last-of-type { border-bottom:0; }
+  h2 { font-size:21px; font-weight:800; letter-spacing:-.4px; margin:0 0 6px; }
+  .lede { color:var(--muted); margin:0 0 24px; max-width:60ch; }
+  h3 { font-size:14px; font-weight:700; margin:24px 0 8px; }
+  
+  .lockups { display:grid; gap:16px; grid-template-columns:1fr; }
+  @media (min-width:760px) { .lockups { grid-template-columns:1.1fr 1fr 1fr; align-items:end; } }
+  .lk { border:1px solid var(--line); border-radius:8px; padding:20px; background:#fff; }
+  .lk img { display:block; width:100%; height:auto; }
+  .lk b { display:block; margin-top:14px; font-size:13px; }
+  .lk span { display:block; color:var(--muted); font-size:12.5px; }
+  
+  .sw { display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(196px,1fr)); }
+  .sw div { border-radius:8px; overflow:hidden; border:1px solid var(--line); }
+  .sw i { display:block; height:92px; }
+  .sw p { margin:0; padding:11px 13px 13px; font-style:normal; }
+  .sw code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:13px; font-weight:700;
+             font-variant-numeric:tabular-nums; }
+  .sw small { display:block; color:var(--muted); font-size:12px; margin-top:3px;
+              font-variant-numeric:tabular-nums; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th, td { text-align:left; padding:9px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { width:34%; font-weight:600; color:var(--muted); font-size:13px; }
+  td { font-variant-numeric:tabular-nums; }
+  
+  .no { display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); }
+  .no > div { border:1px solid var(--line); border-left:3px solid var(--tang); border-radius:8px;
+              padding:13px 15px; }
+  .no b { display:block; font-size:13.5px; margin-bottom:3px; }
+  .no span { color:var(--muted); font-size:13px; }
+  .files a { display:inline-block; padding:9px 14px; border:1px solid var(--line); border-radius:8px;
+             text-decoration:none; color:var(--ink); font-size:13.5px; font-weight:600; margin:0 8px 8px 0;
+             transition:transform .08s ease, border-color .15s; }
+  .files a:hover { border-color:var(--navy); }
+  .files a:active { transform:translateY(1px); }
+  .note { background:#FFF8E8; border:1px solid var(--gold); border-radius:8px; padding:14px 16px;
+          font-size:13.5px; }
+  .note b { color:var(--navy); }
+  footer { padding:34px 0 56px; color:var(--muted); font-size:13px; }
+  footer a { color:var(--muted); }
+  .script { font-family:'Kaushan Script',cursive; font-weight:400; color:var(--tang); }
+  :focus-visible { outline:2px solid var(--navy); outline-offset:2px; }
+  @media (prefers-reduced-motion: reduce) { .files a { transition:none; } .files a:active { transform:none; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <div class="hero">
+    <img src="icons/logo-horizontal.png" alt="부동산 all in one">
+    <p>공공데이터를 한 화면에 모아 부동산을 원격으로 살펴보는 도구입니다.
+       이 문서는 로고와 색을 어떻게 쓰는지 정한 것입니다.</p>
+  </div>
+
+  <section>
+    <h1>브랜드 가이드</h1>
+    <h2>이름</h2>
+    <p class="lede">한글 <b>부동산</b> 과 필기체 <b class="script">all in one</b> 이 한 덩어리입니다.</p>
+    <table>
+      <tr><th>정식 표기</th><td>부동산 all in one</td></tr>
+      <tr><th>영문 표기</th><td>airealty</td></tr>
+      <tr><th>도메인</th><td>airealty.co.kr</td></tr>
+      <tr><th>줄임말</th><td>쓰지 않습니다. “부동산올인원”, “AIO” 같은 형태로 줄이지 마십시오.</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>로고 세 벌</h2>
+    <p class="lede">가로 공간이 얼마나 있는지로 고릅니다. 가장 넓은 것부터 좁은 것 순입니다.</p>
+    <div class="lockups">
+      <div class="lk">
+        <img src="icons/logo-horizontal.png" alt="가로형 로고">
+        <b>가로형</b>
+        <span>기본. 머리글·명함·문서 상단처럼 가로가 넉넉할 때.</span>
+      </div>
+      <div class="lk">
+        <img src="icons/logo-full.png" alt="세로형 로고">
+        <b>세로형</b>
+        <span>가로가 좁고 세로가 남을 때. 포스터·배너·앱 시작 화면.</span>
+      </div>
+      <div class="lk">
+        <img src="icons/logo-mark.png" alt="심벌">
+        <b>심벌</b>
+        <span>글자가 들어갈 수 없는 작은 자리. 파비콘·앱 아이콘·프로필 사진.</span>
+      </div>
+    </div>
+    <h3>최소 크기와 여백</h3>
+    <table>
+      <tr><th>가로형 최소 너비</th><td>120px (인쇄 32mm). 그보다 작으면 필기체가 뭉개집니다.</td></tr>
+      <tr><th>세로형 최소 너비</th><td>84px (인쇄 22mm)</td></tr>
+      <tr><th>심벌 최소 크기</th><td>24px</td></tr>
+      <tr><th>보호 여백</th><td>사방으로 <b>해의 지름</b>만큼 비웁니다. 그 안에 다른 요소를 넣지 않습니다.</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>색</h2>
+    <p class="lede">로고 파일의 픽셀을 세어 얻은 값입니다. 눈으로 고쳐 잡지 마십시오.</p>
+    <div class="sw">
+      <div><i style="background:#053259;"></i><p><code>#053259</code> 남색
+        <small>H208 S89 L18 · 부동산 글자</small></p></div>
+      <div><i style="background:#0E7482;"></i><p><code>#0E7482</code> 청록
+        <small>H187 S81 L28 · 집</small></p></div>
+      <div><i style="background:#E4B33C;"></i><p><code>#E4B33C</code> 금색
+        <small>H42 S76 L56 · 해</small></p></div>
+      <div><i style="background:#E69240;"></i><p><code>#E69240</code> 주황
+        <small>H30 S77 L58 · all in one</small></p></div>
+    </div>
+    <h3>글자로 쓸 때</h3>
+    <table>
+      <tr><th>흰 바탕 본문</th><td><b>남색 12.75</b> · <b>청록 5.33</b>. 둘 다 WCAG AA(4.5) 를 넘습니다.</td></tr>
+      <tr><th>금색·주황</th><td>흰 바탕에서 <b>1.89</b> 와 <b>2.40</b> 입니다. 큰 글자 기준(3.0)에도 못 미치므로
+        <b>글자로 쓰지 마십시오.</b> 면·선·강조 도형의 자리입니다.</td></tr>
+      <tr><th>어두운 바탕</th><td>거꾸로입니다. 금색 9.12 · 주황 7.21 은 잘 읽히고,
+        <b>남색은 1.36 이라 사라집니다.</b> 어두운 바탕에서는 로고를 흰색 한 벌로 바꿔 씁니다.</td></tr>
+      <tr><th>측정 기준</th><td>흰 바탕 #FCFCFD · 먹 바탕 #18181B, WCAG 2.1 상대휘도. 2026-09-15 계산.</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>서체</h2>
+    <table>
+      <tr><th>한글·숫자</th><td><b>Pretendard</b>. 없으면 system-ui, Noto Sans KR, 맑은 고딕 순.</td></tr>
+      <tr><th>필기체</th><td><b>Kaushan Script</b>. <b>“all in one” 에만</b> 씁니다. 본문이나 제목에 쓰지 마십시오.</td></tr>
+      <tr><th>숫자</th><td>표와 금액은 <code>font-variant-numeric: tabular-nums</code>. 자릿수가 세로로 맞아야 훑을 수 있습니다.</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>하지 말 것</h2>
+    <div class="no">
+      <div><b>색 바꾸기</b><span>네 색은 로고의 일부입니다. 한 가지 색으로 칠하는 것은 어두운 바탕용 흰색 한 벌만 허용합니다.</span></div>
+      <div><b>비율 바꾸기</b><span>가로세로를 따로 늘이거나 기울이지 마십시오.</span></div>
+      <div><b>손그림 질감 지우기</b><span>붓 자국과 고르지 않은 선이 이 로고의 정체입니다. 매끈한 도형으로 다시 그리지 마십시오.</span></div>
+      <div><b>글자 다시 짜기</b><span>“부동산” 과 “all in one” 의 간격은 고정입니다. 따로 떼어 배치하지 마십시오.</span></div>
+      <div><b>테두리·그림자</b><span>로고에 외곽선이나 드롭섀도를 더하지 마십시오.</span></div>
+      <div><b>어수선한 바탕에 얹기</b><span>사진 위에 올려야 하면 흰 면을 깔고 그 위에 둡니다.</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>기관 로고를 다룰 때</h2>
+    <div class="note">
+      <b>출처 표시이지 제휴 표시가 아닙니다.</b>
+      화면에 보이는 정부·공공기관 로고는 그 기관의 데이터를 쓴다는 <b>출처</b>입니다.
+      로고만 모아 늘어놓으면 보는 사람이 “이 기관들이 승인한 서비스” 로 읽습니다.
+      기관 로고는 해당 데이터 항목 옆에만 두고, 별도의 로고 모음을 만들지 마십시오.
+    </div>
+  </section>
+
+  <section>
+    <h2>파일</h2>
+    <p class="lede">투명 배경 PNG 입니다.</p>
+    <p class="files">
+      <a href="icons/logo-horizontal.png" download>가로형</a>
+      <a href="icons/logo-full.png" download>세로형</a>
+      <a href="icons/logo-mark.png" download>심벌</a>
+    </p>
+  </section>
+
+  <footer>
+    부동산 <span style="font-family:'Kaushan Script',cursive;">all in one</span> ·
+    <a href="land.html">지도로 돌아가기</a> ·
+    <a href="terms.html">이용약관</a>
+  </footer>
+
+</div>
+</body>
+</html>
