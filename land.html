@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
-  <link rel="stylesheet" href="css/tokens.css?v=bdf7aedd" />
+  <link rel="stylesheet" href="css/tokens.css?v=2b2fbd64" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=bdf7aedd"></script>
+  <script src="js/auth-guard.js?v=2b2fbd64"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -37,12 +37,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=bdf7aedd" />
+  <link rel="stylesheet" href="css/buttons.css?v=2b2fbd64" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=bdf7aedd" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=2b2fbd64" />
   <style>
     :root {
       
@@ -1570,7 +1570,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=bdf7aedd"></script>
+  <script src="js/ie-guard.js?v=2b2fbd64"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1839,22 +1839,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-15 21:08 · bdf7aedd</span></span>
+          · <span class="build-tag">build 2026-09-15 21:23 · 2b2fbd64</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=bdf7aedd"></script>
+  <script src="js/joinkey.js?v=2b2fbd64"></script>
   
-  <script src="js/identity.js?v=bdf7aedd"></script>
-  <script src="js/common.js?v=bdf7aedd"></script>
-  <script src="js/ui-resize.js?v=bdf7aedd"></script>
-  <script src="js/footer-resize.js?v=bdf7aedd"></script>
-  <script src="js/route-line.js?v=bdf7aedd"></script>
-  <script src="js/route-api.js?v=bdf7aedd"></script>
-  <script src="js/footer-stats.js?v=bdf7aedd"></script>
+  <script src="js/identity.js?v=2b2fbd64"></script>
+  <script src="js/common.js?v=2b2fbd64"></script>
+  <script src="js/ui-resize.js?v=2b2fbd64"></script>
+  <script src="js/footer-resize.js?v=2b2fbd64"></script>
+  <script src="js/route-line.js?v=2b2fbd64"></script>
+  <script src="js/route-api.js?v=2b2fbd64"></script>
+  <script src="js/footer-stats.js?v=2b2fbd64"></script>
   <script>
     
     
@@ -4560,6 +4560,48 @@
           });
         }
         return window._svcIconCache[k];
+      };
+      
+      
+      
+      
+      
+      window.orgPin = function (src, px) {
+        px = Math.max(22, Math.round(px || 26));
+        const k = 'org|' + src + '|' + px;
+        if (!window._svcIconCache) window._svcIconCache = {};
+        if (!window._svcIconCache[k]) {
+          window._svcIconCache[k] = L.divIcon({
+            className: 'svc-pin-wrap',
+            html: `<span class="svc-pin" style="background:#fff;width:${px}px;height:${px}px;padding:3px;">`
+              + `<img src="${src}" alt="" style="max-width:100%;max-height:100%;object-fit:contain;display:block;">`
+              + `</span>`,
+            iconSize: [px, px], iconAnchor: [Math.floor(px / 2), Math.floor(px / 2)],
+          });
+        }
+        return window._svcIconCache[k];
+      };
+      
+      
+      
+      
+      
+      
+      window.ORG_PIN = [
+        [/국립민속박물관/, 'icons/org/folk-museum.png', '국립민속박물관'],
+        [/국립현대미술관/, 'icons/org/mmca.png', '국립현대미술관'],
+        [/국립중앙도서관/, 'icons/org/library.png', '국립중앙도서관'],
+        [/국회의사당|^국회$|국회도서관/, 'icons/org/assembly.png', '국회'],
+        [/대법원/, 'icons/org/court.png', '대한민국 법원'],
+        [/경찰청|경찰서|지구대|파출소/, 'icons/org/npa.png', '경찰'],
+        [/지식재산처|특허청/, 'icons/org/kipo.png', '지식재산처'],
+        [/태국.?대사관|주한\s*태국/, 'icons/org/emb-thai.png', '주한 태국대사관'],
+        [/국토교통부/, 'icons/org/molit.png', '국토교통부'],
+      ];
+      window.orgPinOf = function (name) {
+        const n = String(name || '');
+        const hit = (window.ORG_PIN || []).find(([re]) => re.test(n));
+        return hit || null;
       };
       const natlCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 60 });
       
@@ -23514,7 +23556,10 @@
         }).join('');
         
         data.forEach((p, i) => {
-          const icon = L.divIcon({
+          
+          
+          const lg = window.orgPinOf && window.orgPinOf(p.place_name);
+          const icon = lg ? window.orgPin(lg[1], 28) : L.divIcon({
             className: '',
             html: '<div style="width:22px;height:22px;background:#0ca678;border:2.5px solid #fff;'
               + 'border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.45);display:flex;align-items:center;'
