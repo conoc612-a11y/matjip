@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
-  <link rel="stylesheet" href="css/tokens.css?v=819362aa" />
+  <link rel="stylesheet" href="css/tokens.css?v=2cbbdc3d" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=819362aa"></script>
+  <script src="js/auth-guard.js?v=2cbbdc3d"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -37,12 +37,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=819362aa" />
+  <link rel="stylesheet" href="css/buttons.css?v=2cbbdc3d" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=819362aa" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=2cbbdc3d" />
   <style>
     :root {
       --c-primary:#1971c2; --c-primary-soft:#e7f0fb; --c-price:#d9480f;
@@ -1365,6 +1365,8 @@
     
     table.rp-deals tr.rp-past td { color:var(--c-muted); text-decoration:line-through; }
     
+    table.rp-deals tr.rp-base td { background:var(--c-bg-alt); font-weight:700; }
+    
 
 
     .lp-min-btn { position:absolute; top:3px; right:30px; z-index:1100; }
@@ -1447,7 +1449,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=819362aa"></script>
+  <script src="js/ie-guard.js?v=2cbbdc3d"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1715,22 +1717,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-15 12:46 · 819362aa</span></span>
+          · <span class="build-tag">build 2026-09-15 13:16 · 2cbbdc3d</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=819362aa"></script>
+  <script src="js/joinkey.js?v=2cbbdc3d"></script>
   
-  <script src="js/identity.js?v=819362aa"></script>
-  <script src="js/common.js?v=819362aa"></script>
-  <script src="js/ui-resize.js?v=819362aa"></script>
-  <script src="js/footer-resize.js?v=819362aa"></script>
-  <script src="js/route-line.js?v=819362aa"></script>
-  <script src="js/route-api.js?v=819362aa"></script>
-  <script src="js/footer-stats.js?v=819362aa"></script>
+  <script src="js/identity.js?v=2cbbdc3d"></script>
+  <script src="js/common.js?v=2cbbdc3d"></script>
+  <script src="js/ui-resize.js?v=2cbbdc3d"></script>
+  <script src="js/footer-resize.js?v=2cbbdc3d"></script>
+  <script src="js/route-line.js?v=2cbbdc3d"></script>
+  <script src="js/route-api.js?v=2cbbdc3d"></script>
+  <script src="js/footer-stats.js?v=2cbbdc3d"></script>
   <script>
     
     
@@ -9740,6 +9742,15 @@
         
         
         
+        Promise.resolve(d.detail || ensureAucDetail(d))
+          .then(() => aucBrEnsure(d))
+          .then(() => { if (apdD === d) auctionRenderDetail(); })
+          .catch(() => {});
+        
+        
+        
+        
+        
         aucSoldEnsure().then(() => { if (apdD === d) auctionRenderDetail(); });
         
         if (noMove) return;
@@ -9964,6 +9975,9 @@
         
         
         
+        
+        
+        
         const _dt = d.detail || {};
         const _ip = _dt.intrps || [];
         const _who = (kw) => {
@@ -9973,6 +9987,15 @@
         const _dp = _dt.dspsl || {};
         const rows = [
           ['사건번호', d.cn], ['법원', d.court], ['물건번호', d.no], ['용도', d.use],
+          ['건물명', ((_dt.objct || [])[0] || {}).bld || ''],
+          
+          ['전용면적', (() => { const x = aucAreaX(d); return x ? aucAgreeTxt(x, '㎡') : ''; })()],
+          ['대지지분', (() => {
+            const x = aucLandX(d); if (!x) return '';
+            const L = aucLandShare(_dt);
+            return aucAgreeTxt(x, '㎡') + (L.whole ? ` / 전체 ${fmtArea(L.whole)}` : '');
+          })()],
+          ['지분매각', (() => { const k = aucStake(_dt); return k ? `${k.n}/${k.d} (${k.pct}%) — 물건 전체가 아니라 이 지분만 낙찰됩니다` : ''; })()],
           ['소유자', _who('소유자')], ['채무자', _who('채무자')],
           ['진행상태', d.status], ['담당계', d.dept], ['매각기일', d.sale],
           
@@ -10160,16 +10183,39 @@
             if (_les.length) {
               const _d = (v) => { const t = String(v || '').trim(); return t && t !== 'null' ? esc(t) : '-'; };
               const _amt = (v) => { const x = Number(String(v || '').replace(/[^\d]/g, '')); return x ? fmtAmtExact(x / 1e4) : '-'; };
+              
+              
+              
+              
+              
+              
+              
+              
+              const _rt = aucRights(d);
+              const _sen = _rt && _rt.senior ? _rt.senior : '';
+              const _nrm = (v) => { const m = String(v || '').match(/(\d{4})[.\-](\d{1,2})[.\-](\d{1,2})/); return m ? `${m[1]}.${String(m[2]).padStart(2, '0')}.${String(m[3]).padStart(2, '0')}` : ''; };
               _cuHtml += '<table class="rp-deals" style="width:100%;margin-top:6px;">'
-                + '<thead><tr><th>전입일자</th><th>확정일자</th><th>보증금</th><th>차임</th><th>점유부분</th></tr></thead><tbody>'
-                + _les.map((L) => `<tr><td>${_d(L.mvinDtlCtt)}</td><td>${_d(L.rgstryCrtcpCfmtnCtt)}</td>`
-                  + `<td style="text-align:right;">${_amt(L.lesDposDts)}</td>`
-                  + `<td style="text-align:right;">${_amt(L.mmrntAmtDts)}</td>`
-                  + `<td>${_d(L.lesPartCtt)}</td></tr>`).join('')
+                + '<thead><tr><th>전입일자</th><th>확정일자</th><th>보증금</th><th>차임</th><th>점유부분</th><th>결과</th></tr></thead><tbody>'
+                
+                + (_sen ? `<tr class="rp-base"><td>${esc(_sen)}</td><td colspan="4">말소기준권리`
+                  + `${_rt.right ? ' · ' + esc(_rt.right) : ''} (매각물건명세서 최선순위 설정일)</td><td>기준</td></tr>` : '')
+                + _les.map((L) => {
+                  const mv = _nrm(L.mvinDtlCtt);
+                  const before = (_sen && mv) ? mv < _sen : null;
+                  const res = before === null ? '-' : (before ? '인수' : '소멸');
+                  return `<tr><td>${_d(L.mvinDtlCtt)}</td><td>${_d(L.rgstryCrtcpCfmtnCtt)}</td>`
+                    + `<td style="text-align:right;">${_amt(L.lesDposDts)}</td>`
+                    + `<td style="text-align:right;">${_amt(L.mmrntAmtDts)}</td>`
+                    + `<td>${_d(L.lesPartCtt)}</td>`
+                    + `<td${before ? ' style="color:var(--c-danger);font-weight:700;"' : ''}>${res}</td></tr>`;
+                }).join('')
                 + '</tbody></table>'
                 + '<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">'
-                + '법원 집행관 현황조사 결과입니다. 대항력 유무는 <b>말소기준권리</b>와 비교해야 하며,'
-                + ' 그 날짜는 매각물건명세서에 있습니다 — 이 표만으로 판단하지 마십시오.</div>';
+                + '법원 집행관 현황조사서 + 매각물건명세서로 만든 표입니다. <b>등기부등본이 아닙니다</b> —'
+                + ' 근저당·가압류·가처분 등 등기 권리는 여기 없습니다.'
+                + (_sen ? ' 결과는 전입일자와 최선순위 설정일만 비교한 것이며, 확정일자·배당요구에 따른'
+                  + ' 실제 배당 결과는 다를 수 있습니다.' : ' 최선순위 설정일이 문서에 없어 인수 여부를 판정하지 않았습니다.')
+                + '</div>';
             }
             if (_cuHtml) {
               sections += sec('apd-sec-curst',
