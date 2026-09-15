@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
-  <link rel="stylesheet" href="css/tokens.css?v=a82809ce" />
+  <link rel="stylesheet" href="css/tokens.css?v=819362aa" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=a82809ce"></script>
+  <script src="js/auth-guard.js?v=819362aa"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -37,12 +37,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=a82809ce" />
+  <link rel="stylesheet" href="css/buttons.css?v=819362aa" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=a82809ce" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=819362aa" />
   <style>
     :root {
       --c-primary:#1971c2; --c-primary-soft:#e7f0fb; --c-price:#d9480f;
@@ -520,9 +520,8 @@
     .apd-card b { display:block; font-size:13px; margin-top:2px; }
     .apd-card span { font-size:11px; color:var(--muted); }
     .apd-card .dday { color:var(--c-primary); font-weight:800; }
-    .apd-grid { display:grid; gap:4px; margin-bottom:10px; }
-    .apd-grid-row { display:flex; justify-content:space-between; gap:10px; font-size:13px; }
-    .apd-grid-row span { color:var(--muted); flex-shrink:0; }
+    
+
     .apd-actions { display:flex; gap:6px; flex-wrap:wrap; }
     .apd-btn { flex:1 1 30%; font:inherit; font-size:13px; font-weight:600; padding:9px 8px; border:1px solid var(--line); background:var(--card); color:var(--text); border-radius:7px; cursor:pointer; }
     .apd-btn:hover { border-color:#8A6D1F; color:#8A6D1F; }
@@ -1448,7 +1447,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=a82809ce"></script>
+  <script src="js/ie-guard.js?v=819362aa"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1716,22 +1715,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-15 12:37 · a82809ce</span></span>
+          · <span class="build-tag">build 2026-09-15 12:46 · 819362aa</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=a82809ce"></script>
+  <script src="js/joinkey.js?v=819362aa"></script>
   
-  <script src="js/identity.js?v=a82809ce"></script>
-  <script src="js/common.js?v=a82809ce"></script>
-  <script src="js/ui-resize.js?v=a82809ce"></script>
-  <script src="js/footer-resize.js?v=a82809ce"></script>
-  <script src="js/route-line.js?v=a82809ce"></script>
-  <script src="js/route-api.js?v=a82809ce"></script>
-  <script src="js/footer-stats.js?v=a82809ce"></script>
+  <script src="js/identity.js?v=819362aa"></script>
+  <script src="js/common.js?v=819362aa"></script>
+  <script src="js/ui-resize.js?v=819362aa"></script>
+  <script src="js/footer-resize.js?v=819362aa"></script>
+  <script src="js/route-line.js?v=819362aa"></script>
+  <script src="js/route-api.js?v=819362aa"></script>
+  <script src="js/footer-stats.js?v=819362aa"></script>
   <script>
     
     
@@ -9959,12 +9958,33 @@
         
         const _sr = aucSoldRate(d);
         const _srAppr = aucApprEok(d);
+        
+        
+        
+        
+        
+        
+        const _dt = d.detail || {};
+        const _ip = _dt.intrps || [];
+        const _who = (kw) => {
+          const hit = _ip.filter((p) => String(p.dvs || '').includes(kw) && p.nm).map((p) => p.nm);
+          return hit.length ? [...new Set(hit)].join(', ') : '';
+        };
+        const _dp = _dt.dspsl || {};
         const rows = [
           ['사건번호', d.cn], ['법원', d.court], ['물건번호', d.no], ['용도', d.use],
-          ['진행상태', d.status], ['담당계', d.dept], ['매각기일', d.sale], ['비고', d.note],
+          ['소유자', _who('소유자')], ['채무자', _who('채무자')],
+          ['진행상태', d.status], ['담당계', d.dept], ['매각기일', d.sale],
+          
+          ['입찰보증금', _dp.depositRate
+            ? (_dp.low ? fmtAmtExact(_dp.low * _dp.depositRate / 100 / 1e4) + ' ' : '')
+              + '(최저가의 ' + _dp.depositRate + '%)'
+            : ''],
+          ['비고', d.note],
           ['낙찰가율', _sr ? `${_sr.scope} 중앙 ${_sr.mid}% (사분위 ${_sr.lo}~${_sr.hi}% · ${_sr.n}건)` : ''],
           ['예상 낙찰가', (_sr && _srAppr) ? fmtAmtExact(_srAppr * 10000 * _sr.mid / 100) + ' (감정가 기준)' : ''],
-        ].filter(([, v]) => v != null && v !== '').map(([k, v]) => `<div class="apd-grid-row"><span>${k}</span><b style="text-align:right;">${esc(v)}</b></div>`).join('');
+        ].filter(([, v]) => v != null && v !== '')
+          .map(([k, v]) => `<tr><th>${k}</th><td>${esc(v)}</td></tr>`).join('');
         const favKey = auctionFavKey(d);
         const fav = auctionFavLoad().includes(favKey);
         
@@ -9992,13 +10012,10 @@
             ['매각결정기일', _ds.dcsnYmd ? ymd(_ds.dcsnYmd) + (_ds.dcsnHm ? ' ' + hm(_ds.dcsnHm) : '') : ''],
             ['매각결정기일 장소', _ds.dcsnPlc],
             
-            ['입찰보증금', _ds.depositRate
-              ? (_ds.low ? fmtAmtExact(_ds.low * _ds.depositRate / 100 / 1e4) + ' ' : '')
-                + '(최저가의 ' + _ds.depositRate + '%)'
-              : ''],
+            
             ['비고', _ds.rmk],
-          ].filter(([, v]) => v != null && v !== '').map(([k, v]) => `<div class="apd-grid-row"><span>${k}</span><b style="text-align:right;">${esc(v)}</b></div>`).join('');
-          sections += sec('apd-sec-sajeon', '사건내역', `<div class="apd-grid">${sajeonRows}</div>`);
+          ].filter(([, v]) => v != null && v !== '').map(([k, v]) => `<tr><th>${k}</th><td>${esc(v)}</td></tr>`).join('');
+          sections += sec('apd-sec-sajeon', '사건내역', `<table class="ls-tbl">${sajeonRows}</table>`);
           if (det.gihui && det.gihui.length) {
             const gRows = det.gihui.map((g) => {
               
@@ -10040,10 +10057,10 @@
               if (p.nm) byDvs.get(k).push(p.nm);
             });
             const ipRows = [...byDvs.entries()].map(([dvs, names]) =>
-              `<div class="apd-grid-row"><span>${esc(dvs)}</span><b style="text-align:right;">${
-                names.length ? esc(names.join(', ')) : '-'}${names.length > 1 ? ` <span style="color:var(--muted);font-weight:400;">(${names.length}명)</span>` : ''}</b></div>`
+              `<tr><th>${esc(dvs)}</th><td>${
+                names.length ? esc(names.join(', ')) : '-'}${names.length > 1 ? ` <span style="color:var(--muted);">(${names.length}명)</span>` : ''}</td></tr>`
             ).join('');
-            sections += sec('apd-sec-intrps', '당사자내역', `<div class="apd-grid">${ipRows}</div>`);
+            sections += sec('apd-sec-intrps', '당사자내역', `<table class="ls-tbl">${ipRows}</table>`);
           }
           
           
@@ -10064,7 +10081,7 @@
               ['가격시점', ymd(A.crtrYmd)], ['조사일', ymd(A.exmnYmd)], ['작성일', ymd(A.wrtYmd)],
               ['감정평가 담당', A.examr], ['심사', A.jdgr], ['평가서번호', A.no],
             ].filter(([, v]) => v != null && v !== '')
-              .map(([k, v]) => `<div class="apd-grid-row"><span>${k}</span><b style="text-align:right;">${esc(v)}</b></div>`).join('');
+              .map(([k, v]) => `<tr><th>${k}</th><td>${esc(v)}</td></tr>`).join('');
             
             
             const evltHtml = (det.evlt && det.evlt.length)
@@ -10101,7 +10118,7 @@
                 + `사건검색을 엽니다 — 붙여넣고 검색한 뒤 <b>감정평가서</b> 버튼을 누르면 볼 수 있습니다.`
                 + `</div></div>`;
             sections += sec('apd-sec-aee', '감정평가서',
-              `${aeeRows ? `<div class="apd-grid">${aeeRows}</div>` : ''}${_aeeLink}${evltHtml}`);
+              `${aeeRows ? `<table class="ls-tbl">${aeeRows}</table>` : ''}${_aeeLink}${evltHtml}`);
           }
           
           
@@ -10205,7 +10222,7 @@
             })()}</div>
             <div class="apd-card"><span>매각기일</span><b>${esc(d.sale || '-')}</b>${d.sale ? `<span class="dday">${esc(aucDDay(d.sale))}</span>` : ''}</div>
           </div>
-          <div class="apd-grid">${rows}</div>
+          <table class="ls-tbl">${rows}</table>
           ${sections}
           <div class="apd-actions">
             <button type="button" class="apd-btn${fav ? ' on' : ''}" id="apd-fav">${fav ? '★ 즐겨찾기' : '☆ 즐겨찾기'}</button>
