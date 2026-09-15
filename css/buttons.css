@@ -76,7 +76,7 @@ button,
 .ui-grip:active::before, .ui-grip:active::after { border-color:#fff; }
 .ui-grip-corner { position:absolute; right:3px; bottom:3px; z-index:1200; }
 
-.ui-pop-btn { width:24px; height:24px; border-radius:7px; border:none; background:var(--c-hover); color:var(--muted); font-size:16px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; padding:0; }
+.ui-pop-btn { width:24px; height:24px; border-radius:8px; border:none; background:var(--c-hover); color:var(--muted); font-size:16px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; padding:0; }
 .ui-pop-btn:hover { background:var(--line); color:var(--text); }
 
 .footer-resize { position:absolute; top:-6px; left:0; right:0; height:12px; cursor:ns-resize; z-index:5; }
@@ -107,7 +107,7 @@ button,
 .footer-stats b { font-weight:600; color:var(--text); }
 .footer-stats .footer-note { color:var(--muted); font-size:11px; }
 .footer-admin { flex:none; font-size:12px; font-weight:600; color:var(--text); text-decoration:none;
-  border:1px solid var(--line); border-radius:7px; padding:2px 10px; margin-left:4px; white-space:nowrap; }
+  border:1px solid var(--line); border-radius:8px; padding:2px 10px; margin-left:4px; white-space:nowrap; }
 .footer-admin:hover { background:#C83C52; border-color:#C83C52; color:#fff; }
 .footer-contact { font-size:13px; color:var(--muted); white-space:nowrap; }
 /* 한 줄 고정(2026-09-13): 통계 실측값이 채워지며 1920px 에서 두 줄로 접혔다.

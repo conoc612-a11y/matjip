@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
-  <link rel="stylesheet" href="css/tokens.css?v=45adaef6" />
+  <link rel="stylesheet" href="css/tokens.css?v=cee9a3eb" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=45adaef6"></script>
+  <script src="js/auth-guard.js?v=cee9a3eb"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -37,23 +37,40 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=45adaef6" />
+  <link rel="stylesheet" href="css/buttons.css?v=cee9a3eb" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=45adaef6" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=cee9a3eb" />
   <style>
     :root {
-      --c-primary:#C83C52; --c-primary-soft:#e7f0fb; --c-price:#d9480f;
-      --c-success:#2f9e44; --c-danger:#e03131; --c-text:#1f2937; --c-muted:#6b7280;
-      --c-border:#E2D5C2; --c-bg:#f3f5f8; --c-card:#ffffff; --c-hover:#f5f7fa;
+      
+
+
+
+
+
+
+      --c-primary:#C83C52; --c-primary-soft:#FBE9EC; --c-price:#C83C52;
+      
+      --c-success:#287F38; --c-danger:#C83C52; --c-warn:#AD5A1F;
+      --c-text:#18181B; --c-muted:#71717A;
+      
+
+      --c-border:#D4D4D8; --c-bg:#E4E4E7; --c-card:#FCFCFD; --c-hover:#F4F4F5;
       --c-shadow:0 1px 3px rgba(16,24,40,.06); --c-shadow-lg:0 10px 30px rgba(16,24,40,.14);
       --bg:var(--c-bg); --card:var(--c-card); --line:var(--c-border);
       --text:var(--c-text); --muted:var(--c-muted); --accent:var(--c-primary); --ok:var(--c-success);
     }
     :root.dark {
-      --bg:#101216; --card:#1b1e25; --line:#2a2e37; --text:#e8ecf2; --muted:#8b93a3;
+      
+
+      --bg:#09090B; --card:#18181B; --line:#27272A; --text:#F4F4F5; --muted:#A1A1AA;
+      
+
+
+      --c-success:#51C866; --c-danger:#E2647A; --c-warn:#DF8749; --c-price:#E2647A;
       
 
 
@@ -160,8 +177,8 @@
 
 
       .leaflet-popup-content-wrapper, .leaflet-popup-tip, .lp-body, .lc, .stat-bar) {
-      --c-card:#FCFCFD; --c-hover:#F4F4F5; --c-bg:#F4F4F5;
-      --c-border:#E4E4E7; --c-line:#E4E4E7;
+      --c-card:#FCFCFD; --c-hover:#F4F4F5; --c-bg:#E4E4E7;
+      --c-border:#D4D4D8; --c-line:#D4D4D8;
       --c-primary:#C83C52; --c-primary-soft:#FBE9EC;
       
 
@@ -194,8 +211,8 @@
 
 
     html:not(.dark) body {
-      --c-card:#FCFCFD; --c-hover:#F4F4F5; --c-bg:#F4F4F5;
-      --c-border:#E4E4E7; --c-line:#E4E4E7;
+      --c-card:#FCFCFD; --c-hover:#F4F4F5; --c-bg:#E4E4E7;
+      --c-border:#D4D4D8; --c-line:#D4D4D8;
       --c-primary:#C83C52; --c-primary-soft:#FBE9EC;
       --c-price:#C83C52; --c-text:#18181B;
       --card:#FCFCFD; --bg:#F4F4F5; --line:#E4E4E7;
@@ -1521,7 +1538,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=45adaef6"></script>
+  <script src="js/ie-guard.js?v=cee9a3eb"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1789,22 +1806,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-15 17:56 · 45adaef6</span></span>
+          · <span class="build-tag">build 2026-09-15 18:07 · cee9a3eb</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=45adaef6"></script>
+  <script src="js/joinkey.js?v=cee9a3eb"></script>
   
-  <script src="js/identity.js?v=45adaef6"></script>
-  <script src="js/common.js?v=45adaef6"></script>
-  <script src="js/ui-resize.js?v=45adaef6"></script>
-  <script src="js/footer-resize.js?v=45adaef6"></script>
-  <script src="js/route-line.js?v=45adaef6"></script>
-  <script src="js/route-api.js?v=45adaef6"></script>
-  <script src="js/footer-stats.js?v=45adaef6"></script>
+  <script src="js/identity.js?v=cee9a3eb"></script>
+  <script src="js/common.js?v=cee9a3eb"></script>
+  <script src="js/ui-resize.js?v=cee9a3eb"></script>
+  <script src="js/footer-resize.js?v=cee9a3eb"></script>
+  <script src="js/route-line.js?v=cee9a3eb"></script>
+  <script src="js/route-api.js?v=cee9a3eb"></script>
+  <script src="js/footer-stats.js?v=cee9a3eb"></script>
   <script>
     
     
@@ -17207,9 +17224,9 @@
         + '<button type="button" class="rt-mode" data-m="subway">지하철</button>'
         + '<button type="button" class="rt-mode" data-m="mix">최단경로</button></div></div>'
         + '<div style="position:relative;margin-bottom:8px;">'
-        + `<input id="sp-from" class="search-inp" style="border-radius:8px 7px 0 0;border-bottom:none;" value="${esc(cur)}" placeholder="출발지 입력 · 지도에서 클릭" autocomplete="off">`
+        + `<input id="sp-from" class="search-inp" style="border-radius:8px 8px 0 0;border-bottom:none;" value="${esc(cur)}" placeholder="출발지 입력 · 지도에서 클릭" autocomplete="off">`
         + '<input id="sp-via" class="search-inp" style="border-radius:0;margin-top:-1px;" placeholder="경유지(선택) · 비워 두면 안 들릅니다">'
-        + `<input id="sp-to" class="search-inp" style="border-radius:0 0 7px 7px;margin-top:-1px;" placeholder="도착지 입력 · 지도에서 클릭" autocomplete="off">`
+        + `<input id="sp-to" class="search-inp" style="border-radius:0 0 8px 8px;margin-top:-1px;" placeholder="도착지 입력 · 지도에서 클릭" autocomplete="off">`
         + '<button type="button" id="sp-swap" title="출발·도착 바꾸기" aria-label="출발 도착 바꾸기" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:50%;background:var(--card);border:1px solid var(--line);color:#C83C52;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;"><i class="fi fi-rr-exchange fi-keep" style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;margin:0;padding:0;line-height:1;"></i></button></div>'
         
         
