@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
-  <link rel="stylesheet" href="css/tokens.css?v=2b2fbd64" />
+  <link rel="stylesheet" href="css/tokens.css?v=0716eb71" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=2b2fbd64"></script>
+  <script src="js/auth-guard.js?v=0716eb71"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -37,12 +37,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=2b2fbd64" />
+  <link rel="stylesheet" href="css/buttons.css?v=0716eb71" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=2b2fbd64" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=0716eb71" />
   <style>
     :root {
       
@@ -165,7 +165,14 @@
 
 
 
-    .stat-bar { display:flex; gap:16px; align-items:center; height:34px; padding:0 18px; background:var(--c-primary-soft); color:var(--c-primary); font-size:13px; font-weight:600; flex-shrink:0; }
+    
+
+
+
+
+    .stat-bar { display:flex; gap:16px; align-items:center; height:32px; padding:0 18px;
+      background:var(--c-card); color:var(--c-text); font-size:13px; font-weight:600;
+      flex-shrink:0; border-bottom:1px solid var(--c-primary); }
     .stat-bar b { font-weight:800; }
     
 
@@ -237,8 +244,10 @@
       --card:#FFFFFF; --bg:#F5F5F5; --line:#FFFFFF;
       --text:#111111; --accent:#D92A14;
     }
-    html:not(.dark) #panel { background:#F5F5F5; }
-    html:not(.dark) .search-row { background:#F5F5F5; }
+    
+
+    html:not(.dark) #panel { background:#FFFFFF; }
+    html:not(.dark) .search-row { background:#FFFFFF; }
     html:not(.dark) .search-inp { background:#fff; }
     
     html:not(.dark) .list-tabs { background:#F5F5F5; }
@@ -246,7 +255,8 @@
     
     html:not(.dark) .list-tab.active { color:#fff; }
     html:not(.dark) .rec { border-left:3px solid #FF7A66; }
-    html:not(.dark) .rec:hover { border-color:#ECA6A6; }
+    
+
     html:not(.dark) .tag { background:#F5F5F5; color:#7A6A58; }
     html:not(.dark) .tag.hit { background:#D92A14; color:#fff; }
     
@@ -446,7 +456,11 @@
 
     .ap-row { padding:8px 10px; border-radius:8px; cursor:pointer; margin-bottom:4px; display:flex; gap:10px; align-items:flex-start;
       content-visibility:auto; contain-intrinsic-size:0 68px; }
-    .ap-row:hover { background:var(--c-hover); }
+    
+
+
+
+    .ap-row:hover { background:color-mix(in srgb, var(--c-primary) 10%, transparent); }
     .ap-thumb { flex-shrink:0; width:64px; height:48px; border-radius:8px; object-fit:cover; border:1px solid var(--line); display:flex; align-items:center; justify-content:center; }
     .ap-thumb-ph { background:var(--c-hover); font-size:18px; }
     .ap-row-main { flex:1; min-width:0; }
@@ -781,7 +795,9 @@
     .kakao-back:hover { border-color:#D92A14; }
     
     .rec { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:14px 16px; margin-bottom:10px; cursor:pointer; transition:border-color .15s; }
-    .rec:hover { border-color:#D92A14; }
+    
+
+    .rec:hover { border-color:var(--c-primary); background:color-mix(in srgb, var(--c-primary) 10%, transparent); }
     .rec h3 { margin:0 0 5px; font-size:16px; font-weight:600; letter-spacing:-.2px; }
     .rec .meta { font-size:13px; color:var(--muted); }
     .rec .tags { margin:9px 0; display:flex; flex-wrap:wrap; gap:6px; }
@@ -1392,7 +1408,7 @@
     .rt-mode.on { background:#D92A14; color:#fff; border-color:#D92A14; }
     .pc-price { font-size:16px; font-weight:700; color:var(--c-price); margin-top:2px; }
     .unit-row { display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%; padding:6px 8px; margin-top:4px; background:var(--card); border:1px solid var(--line); border-radius:8px; cursor:pointer; font:inherit; font-size:13px; color:var(--text); text-align:left; box-sizing:border-box; }
-    .unit-row:hover { border-color:#D92A14; }
+    .unit-row:hover { border-color:var(--c-primary); background:color-mix(in srgb, var(--c-primary) 10%, transparent); }
     .unit-row b { color:var(--text); }
     .unit-row .ur-chev { color:var(--muted); font-size:11px; transition:transform .15s; flex-shrink:0; }
     .unit-row.open .ur-chev { transform:rotate(90deg); }
@@ -1570,7 +1586,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=2b2fbd64"></script>
+  <script src="js/ie-guard.js?v=0716eb71"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1839,22 +1855,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-15 21:23 · 2b2fbd64</span></span>
+          · <span class="build-tag">build 2026-09-15 21:40 · 0716eb71</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=2b2fbd64"></script>
+  <script src="js/joinkey.js?v=0716eb71"></script>
   
-  <script src="js/identity.js?v=2b2fbd64"></script>
-  <script src="js/common.js?v=2b2fbd64"></script>
-  <script src="js/ui-resize.js?v=2b2fbd64"></script>
-  <script src="js/footer-resize.js?v=2b2fbd64"></script>
-  <script src="js/route-line.js?v=2b2fbd64"></script>
-  <script src="js/route-api.js?v=2b2fbd64"></script>
-  <script src="js/footer-stats.js?v=2b2fbd64"></script>
+  <script src="js/identity.js?v=0716eb71"></script>
+  <script src="js/common.js?v=0716eb71"></script>
+  <script src="js/ui-resize.js?v=0716eb71"></script>
+  <script src="js/footer-resize.js?v=0716eb71"></script>
+  <script src="js/route-line.js?v=0716eb71"></script>
+  <script src="js/route-api.js?v=0716eb71"></script>
+  <script src="js/footer-stats.js?v=0716eb71"></script>
   <script>
     
     
