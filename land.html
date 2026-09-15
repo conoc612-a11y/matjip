@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
-  <link rel="stylesheet" href="css/tokens.css?v=1d9926c8" />
+  <link rel="stylesheet" href="css/tokens.css?v=560520a5" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=1d9926c8"></script>
+  <script src="js/auth-guard.js?v=560520a5"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -37,12 +37,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=1d9926c8" />
+  <link rel="stylesheet" href="css/buttons.css?v=560520a5" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=1d9926c8" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=560520a5" />
   <style>
     :root {
       --c-primary:#1971c2; --c-primary-soft:#e7f0fb; --c-price:#d9480f;
@@ -1045,6 +1045,17 @@
     
 
 
+
+
+    
+    .ls-tbl.ls-pair th, #dp-panel-body .ls-tbl.ls-pair th { width:auto; }
+    .ls-tbl.ls-pair col:nth-child(odd) { width:74px; }
+    .ls-tbl.ls-pair th + td + th { padding-left:10px; }
+    .ls-tbl.ls-pair td { padding-right:6px; }
+    #dp-panel-body .ls-tbl.ls-pair col:nth-child(odd) { width:84px; }
+    
+
+
     .ls-plain { display:none; }
     
     .leaflet-popup-content .ls-tbl tr.row-fo { display:none; }
@@ -1449,7 +1460,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=1d9926c8"></script>
+  <script src="js/ie-guard.js?v=560520a5"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1717,22 +1728,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-15 15:55 · 1d9926c8</span></span>
+          · <span class="build-tag">build 2026-09-15 16:00 · 560520a5</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=1d9926c8"></script>
+  <script src="js/joinkey.js?v=560520a5"></script>
   
-  <script src="js/identity.js?v=1d9926c8"></script>
-  <script src="js/common.js?v=1d9926c8"></script>
-  <script src="js/ui-resize.js?v=1d9926c8"></script>
-  <script src="js/footer-resize.js?v=1d9926c8"></script>
-  <script src="js/route-line.js?v=1d9926c8"></script>
-  <script src="js/route-api.js?v=1d9926c8"></script>
-  <script src="js/footer-stats.js?v=1d9926c8"></script>
+  <script src="js/identity.js?v=560520a5"></script>
+  <script src="js/common.js?v=560520a5"></script>
+  <script src="js/ui-resize.js?v=560520a5"></script>
+  <script src="js/footer-resize.js?v=560520a5"></script>
+  <script src="js/route-line.js?v=560520a5"></script>
+  <script src="js/route-api.js?v=560520a5"></script>
+  <script src="js/footer-stats.js?v=560520a5"></script>
   <script>
     
     
@@ -10001,6 +10012,29 @@
         
         
         
+        
+        
+        
+        
+        
+        
+        
+        const _PAIR_MAX = 16;                       
+        const _pairTbl = (list) => {
+          let h = '', p = null;
+          const wide = (k, v) => `<tr><th>${k}</th><td colspan="3">${esc(v)}</td></tr>`;
+          list.forEach(([k, v]) => {
+            if (String(v).length <= _PAIR_MAX) {
+              if (p) { h += `<tr><th>${p[0]}</th><td>${esc(p[1])}</td><th>${k}</th><td>${esc(v)}</td></tr>`; p = null; }
+              else p = [k, v];
+            } else {
+              if (p) { h += wide(p[0], p[1]); p = null; }
+              h += wide(k, v);
+            }
+          });
+          if (p) h += wide(p[0], p[1]);
+          return `<table class="ls-tbl ls-pair"><colgroup><col><col><col><col></colgroup>${h}</table>`;
+        };
         const _dt = d.detail || {};
         const _ip = _dt.intrps || [];
         const _who = (kw) => {
@@ -10044,8 +10078,8 @@
           
           ['낙찰가율', _sr ? `${_sr.scope} 중앙 ${_sr.mid}% (사분위 ${_sr.lo}~${_sr.hi}% · ${_sr.n}건)`
             + (_srAppr ? ` → 예상 ${fmtAmtExact(_srAppr * 10000 * _sr.mid / 100)}` : '') : ''],
-        ].filter(([, v]) => v != null && v !== '')
-          .map(([k, v]) => `<tr><th>${k}</th><td>${esc(v)}</td></tr>`).join('');
+        ].filter(([, v]) => v != null && v !== '');
+        const rowsHtml = _pairTbl(rows);
         const favKey = auctionFavKey(d);
         const fav = auctionFavLoad().includes(favKey);
         
@@ -10336,7 +10370,7 @@
             })()}</div>
             <div class="apd-card"><span>매각기일</span><b>${esc(d.sale || '-')}</b>${d.sale ? `<span class="dday">${esc(aucDDay(d.sale))}</span>` : ''}</div>
           </div>
-          <table class="ls-tbl">${rows}</table>
+          ${rowsHtml}
           ${sections}
           <div class="apd-actions">
             <button type="button" class="apd-btn${fav ? ' on' : ''}" id="apd-fav">${fav ? '★ 즐겨찾기' : '☆ 즐겨찾기'}</button>
