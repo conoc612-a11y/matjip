@@ -108,7 +108,7 @@ button,
 .footer-stats .footer-note { color:var(--muted); font-size:11px; }
 .footer-admin { flex:none; font-size:12px; font-weight:600; color:var(--text); text-decoration:none;
   border:1px solid var(--line); border-radius:7px; padding:2px 10px; margin-left:4px; white-space:nowrap; }
-.footer-admin:hover { background:#8A6D1F; border-color:#8A6D1F; color:#fff; }
+.footer-admin:hover { background:#C83C52; border-color:#C83C52; color:#fff; }
 .footer-contact { font-size:13px; color:var(--muted); white-space:nowrap; }
 /* 한 줄 고정(2026-09-13): 통계 실측값이 채워지며 1920px 에서 두 줄로 접혔다.
    간격만 조여(16/14→10) 한 줄에 싣는다. 1500px 아래는 화면이 좁아 다시 접힘 허용. */

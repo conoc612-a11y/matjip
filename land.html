@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
-  <link rel="stylesheet" href="css/tokens.css?v=6e343821" />
+  <link rel="stylesheet" href="css/tokens.css?v=8d7dc524" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=6e343821"></script>
+  <script src="js/auth-guard.js?v=8d7dc524"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -37,15 +37,15 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=6e343821" />
+  <link rel="stylesheet" href="css/buttons.css?v=8d7dc524" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=6e343821" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=8d7dc524" />
   <style>
     :root {
-      --c-primary:#1971c2; --c-primary-soft:#e7f0fb; --c-price:#d9480f;
+      --c-primary:#C83C52; --c-primary-soft:#e7f0fb; --c-price:#d9480f;
       --c-success:#2f9e44; --c-danger:#e03131; --c-text:#1f2937; --c-muted:#6b7280;
       --c-border:#E2D5C2; --c-bg:#f3f5f8; --c-card:#ffffff; --c-hover:#f5f7fa;
       --c-shadow:0 1px 3px rgba(16,24,40,.06); --c-shadow-lg:0 10px 30px rgba(16,24,40,.14);
@@ -54,7 +54,15 @@
     }
     :root.dark {
       --bg:#101216; --card:#1b1e25; --line:#2a2e37; --text:#e8ecf2; --muted:#8b93a3;
-      --c-primary-soft:#1b2a40; --c-hover:#242a34; --c-border:#2a2e37; --c-bg:#101216;
+      
+
+
+
+
+
+
+      --c-primary:#E2647A; --c-primary-soft:#2A2114;
+      --c-hover:#242a34; --c-border:#2a2e37; --c-bg:#101216;
       --c-text:#e8ecf2; --c-muted:#8b93a3;
       --c-shadow:0 1px 3px rgba(0,0,0,.4); --c-shadow-lg:0 10px 30px rgba(0,0,0,.5);
     }
@@ -97,7 +105,7 @@
     .nav-tab { color:var(--muted); padding:7px 12px; border-radius:7px; text-decoration:none; font-weight:500; border:1px solid var(--line); background:var(--card); transition:background .15s,color .15s,border-color .15s; }
     .nav-tab:hover { background:var(--c-hover); color:var(--text); }
     
-    .nav-tab.active { background:#8A6D1F; color:#fff; border-color:#8A6D1F; }
+    .nav-tab.active { background:#C83C52; color:#fff; border-color:#C83C52; }
     .icon-btn { width:34px; height:34px; border:1px solid var(--line); background:var(--c-hover); color:var(--text); border-radius:7px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:16px; line-height:1; }
     .icon-btn svg { width:18px; height:18px; }
     .icon-btn:hover { background:var(--line); }
@@ -110,7 +118,7 @@
     
 
     .profile-menu a:not(#who), .profile-menu button { border:1px solid var(--line); border-radius:7px; margin:4px 8px; width:auto; }
-    .profile-menu a:not(#who):hover, .profile-menu button:hover { border-color:#8A6D1F; }
+    .profile-menu a:not(#who):hover, .profile-menu button:hover { border-color:#C83C52; }
     
     .ac-wrap { position:relative; flex:1; }
     .ac { position:absolute; left:0; right:0; top:calc(100% + 4px); background:var(--card); border:1px solid var(--line); border-radius:8px; z-index:1500; max-height:240px; overflow-y:auto; display:none; box-shadow:var(--c-shadow-lg); }
@@ -136,8 +144,8 @@
 
     
 
-    #nearby-go { background:#fff; border-color:var(--line); color:#8A6D1F; }
-    #nearby-go:hover { background:#8A6D1F; border-color:#8A6D1F; color:#fff; }
+    #nearby-go { background:#fff; border-color:var(--line); color:#C83C52; }
+    #nearby-go:hover { background:#C83C52; border-color:#C83C52; color:#fff; }
     
 
 
@@ -152,9 +160,9 @@
 
 
       .leaflet-popup-content-wrapper, .leaflet-popup-tip, .lp-body, .lc, .stat-bar) {
-      --c-card:#FFFDF9; --c-hover:#F5ECE6; --c-bg:#F5ECE6;
-      --c-border:#E9CBB2; --c-line:#E9CBB2;
-      --c-primary:#8A6D1F; --c-primary-soft:#F3E8D2;
+      --c-card:#FCFCFD; --c-hover:#F4F4F5; --c-bg:#F4F4F5;
+      --c-border:#E4E4E7; --c-line:#E4E4E7;
+      --c-primary:#C83C52; --c-primary-soft:#FBE9EC;
       
 
 
@@ -163,11 +171,11 @@
 
 
 
-      --c-price:#C83C52; --c-text:#3A332D;
+      --c-price:#C83C52; --c-text:#18181B;
       
 
-      --card:#FFFDF9; --bg:#F5ECE6; --line:#E9CBB2;
-      --text:#3A332D; --accent:#8A6D1F;
+      --card:#FCFCFD; --bg:#F4F4F5; --line:#E4E4E7;
+      --text:#18181B; --accent:#C83C52;
     }
     
 
@@ -175,7 +183,7 @@
     
 
 
-      a.pc-btn-primary:hover) { background:#6E5716; border-color:#6E5716; color:#fff; }
+      a.pc-btn-primary:hover) { background:#A82F43; border-color:#A82F43; color:#fff; }
     
 
 
@@ -186,40 +194,40 @@
 
 
     html:not(.dark) body {
-      --c-card:#FFFDF9; --c-hover:#F5ECE6; --c-bg:#F5ECE6;
-      --c-border:#E9CBB2; --c-line:#E9CBB2;
-      --c-primary:#8A6D1F; --c-primary-soft:#F3E8D2;
-      --c-price:#C83C52; --c-text:#3A332D;
-      --card:#FFFDF9; --bg:#F5ECE6; --line:#E9CBB2;
-      --text:#3A332D; --accent:#8A6D1F;
+      --c-card:#FCFCFD; --c-hover:#F4F4F5; --c-bg:#F4F4F5;
+      --c-border:#E4E4E7; --c-line:#E4E4E7;
+      --c-primary:#C83C52; --c-primary-soft:#FBE9EC;
+      --c-price:#C83C52; --c-text:#18181B;
+      --card:#FCFCFD; --bg:#F4F4F5; --line:#E4E4E7;
+      --text:#18181B; --accent:#C83C52;
     }
-    html:not(.dark) #panel { background:#F5ECE6; }
-    html:not(.dark) .search-row { background:#F5ECE6; }
+    html:not(.dark) #panel { background:#F4F4F5; }
+    html:not(.dark) .search-row { background:#F4F4F5; }
     html:not(.dark) .search-inp { background:#fff; }
     
-    html:not(.dark) .list-tabs { background:#F5ECE6; }
+    html:not(.dark) .list-tabs { background:#F4F4F5; }
     html:not(.dark) .list-tab { color:#7A6A58; }
     
     html:not(.dark) .list-tab.active { color:#fff; }
-    html:not(.dark) .rec { border-left:3px solid #C1935C; }
+    html:not(.dark) .rec { border-left:3px solid #E2647A; }
     html:not(.dark) .rec:hover { border-color:#ECA6A6; }
-    html:not(.dark) .tag { background:#F5ECE6; color:#7A6A58; }
+    html:not(.dark) .tag { background:#F4F4F5; color:#7A6A58; }
     html:not(.dark) .tag.hit { background:#C83C52; color:#fff; }
     
 
     html:not(.dark) :is(.pc-btn-primary, .btn-mini.primary) {
-      background:#fff; border-color:#8A6D1F; color:#8A6D1F; }
+      background:#fff; border-color:#C83C52; color:#C83C52; }
     html:not(.dark) :is(.pc-btn-primary:hover, .btn-mini.primary:hover,
-      a.pc-btn-primary:hover) { background:#6E5716; border-color:#6E5716; color:#fff; }
+      a.pc-btn-primary:hover) { background:#A82F43; border-color:#A82F43; color:#fff; }
     
 
 
-    .fi { font-size:14px; line-height:1; vertical-align:-.15em; margin-right:6px; color:#8A6D1F; }
+    .fi { font-size:14px; line-height:1; vertical-align:-.15em; margin-right:6px; color:#C83C52; }
     .list-tab .fi { font-size:15px; }
     .list-tab.active .fi { color:#fff; }
     #sp-go .fi { color:#fff; }
     
-    :focus-visible { outline:2px solid #8A6D1F; outline-offset:1px; }
+    :focus-visible { outline:2px solid #C83C52; outline-offset:1px; }
     
 
 
@@ -234,15 +242,15 @@
       .side-panel, .lp-body, .lc) .fi:not(.fi-keep) { display:none; }
     
 
-    body .ui-pop-btn { border:1px solid var(--line); background:var(--card); color:#8A6D1F; }
-    body .ui-pop-btn:hover { background:#8A6D1F; border-color:#8A6D1F; color:#fff; }
+    body .ui-pop-btn { border:1px solid var(--line); background:var(--card); color:#C83C52; }
+    body .ui-pop-btn:hover { background:#C83C52; border-color:#C83C52; color:#fff; }
     body .ui-grip::before, body .ui-grip::after { border-color:var(--line); }
     
-    * { scrollbar-width:thin; scrollbar-color:#8A6D1F transparent; }
+    * { scrollbar-width:thin; scrollbar-color:#C83C52 transparent; }
     *::-webkit-scrollbar { width:10px; height:10px; }
     *::-webkit-scrollbar-track { background:transparent; }
-    *::-webkit-scrollbar-thumb { background:#C1935C; border-radius:4px; border:2px solid transparent; background-clip:content-box; }
-    *::-webkit-scrollbar-thumb:hover { background:#8A6D1F; border:2px solid transparent; background-clip:content-box; }
+    *::-webkit-scrollbar-thumb { background:#E2647A; border-radius:4px; border:2px solid transparent; background-clip:content-box; }
+    *::-webkit-scrollbar-thumb:hover { background:#C83C52; border:2px solid transparent; background-clip:content-box; }
     
 
     .tool-btn, .list-tab { min-width:0; }
@@ -258,7 +266,7 @@
     
 
     .rp-chips .fav-cat { flex:1 1 0; min-width:0; white-space:nowrap; text-align:center; margin:0; }
-    #nearby-chips .nb-chip.active { background:#8A6D1F !important; border-color:#8A6D1F !important; color:#fff !important; }
+    #nearby-chips .nb-chip.active { background:#C83C52 !important; border-color:#C83C52 !important; color:#fff !important; }
     
 
     .layout { display:flex; flex-wrap:nowrap; align-items:stretch; flex:9.4; min-height:0; overflow:hidden; position:relative; }
@@ -347,16 +355,16 @@
     .ap-alert-btns button:hover { background:#ffe8cc; }
     .ap-alert-note { margin-top:5px; color:#a16207; font-size:11px; }
     .ap-links { display:flex; gap:4px; margin-left:auto; }
-    .ap-links a { font-size:12px; color:#8A6D1F; text-decoration:none; padding:3px 12px; border:1px solid var(--line); border-radius:7px; white-space:nowrap; }
+    .ap-links a { font-size:12px; color:#C83C52; text-decoration:none; padding:3px 12px; border:1px solid var(--line); border-radius:7px; white-space:nowrap; }
     .ap-links a:hover { background:var(--c-hover); }
     .ap-fav, .ap-close { border:1px solid var(--line); background:var(--card); color:var(--muted); border-radius:7px; padding:3px 12px; font-size:12px; cursor:pointer; white-space:nowrap; }
     .ap-fav.on { color:#f08c00; border-color:#f08c00; background:rgba(240,140,0,.12); font-weight:600; }
     .ap-fav:hover, .ap-close:hover { color:var(--text); background:var(--c-hover); }
     
 
-    .ap-update { font-size:12px; color:#8A6D1F; text-decoration:none; padding:3px 12px;
+    .ap-update { font-size:12px; color:#C83C52; text-decoration:none; padding:3px 12px;
       border:1px solid var(--line); border-radius:7px; white-space:nowrap; }
-    .ap-update:hover { background:#8A6D1F; color:#fff; }
+    .ap-update:hover { background:#C83C52; color:#fff; }
     
 
     .ap-search-row { padding:6px 12px; border-bottom:1px solid var(--line); }
@@ -365,7 +373,7 @@
     .ap-filt-row { display:flex; gap:5px; padding:0 12px 7px; border-bottom:1px solid var(--line); }
     .ap-filt-row select { flex:1 1 0; min-width:0; font:inherit; font-size:12px; padding:5px 4px;
       border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--text); }
-    .ap-filt-row select.on { border-color:#8A6D1F; color:#8A6D1F; font-weight:600; }
+    .ap-filt-row select.on { border-color:#C83C52; color:#C83C52; font-weight:600; }
     
 
 
@@ -393,7 +401,7 @@
                       animation:aucHop 1.15s ease-in-out infinite, aucPulse 1.15s ease-out infinite; }
     @media (prefers-reduced-motion: reduce) { .auc-hi, .auc-hi-cluster { animation:none; } }
     .ap-search-row input { width:100%; box-sizing:border-box; font:inherit; font-size:13px; padding:7px 10px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--text); outline:none; }
-    .ap-search-row input:focus { border-color:#8A6D1F; }
+    .ap-search-row input:focus { border-color:#C83C52; }
     .ap-list { flex:1; overflow-y:auto; padding:6px; min-height:0; }
     .ap-detail { flex:1; overflow-y:auto; padding:6px; min-height:0; }
     
@@ -423,8 +431,8 @@
     .auc-pop-gos { display:flex; flex-wrap:wrap; gap:4px; margin-top:7px; }
     .auc-pop-go { flex:1 1 30%; font:inherit; font-size:11px; font-weight:600; padding:6px 4px; border:1px solid var(--line);
       background:var(--card); color:var(--text); border-radius:7px; cursor:pointer; white-space:nowrap; }
-    .auc-pop-go:hover { border-color:#8A6D1F; color:#8A6D1F; }
-    .auc-pop-go:active { background:#8A6D1F; color:#fff; }
+    .auc-pop-go:hover { border-color:#C83C52; color:#C83C52; }
+    .auc-pop-go:active { background:#C83C52; color:#fff; }
     .ap-cn { text-align:left; border:none; background:none; color:var(--c-primary); cursor:pointer; font-size:12px; padding:0; text-decoration:underline; }
     .ap-court { color:var(--muted); font-size:12px; }
     .ap-meta { margin-top:3px; color:var(--muted); font-size:12px; overflow-wrap:anywhere; }
@@ -485,9 +493,9 @@
       pointer-events:auto; touch-action:none; transition:opacity .15s; }
     
 
-    .panel-slide-tab:hover { color:#8A6D1F; border-color:#8A6D1F; }
+    .panel-slide-tab:hover { color:#C83C52; border-color:#C83C52; }
     
-    .panel-slide-tab.dragging { cursor:col-resize; color:#8A6D1F; border-color:#8A6D1F; }
+    .panel-slide-tab.dragging { cursor:col-resize; color:#C83C52; border-color:#C83C52; }
     .panel-sliding { transition:width .2s ease; overflow:hidden; }
     .panel.panel-sliding { transition:flex-basis .2s ease, min-width .2s ease; }
     
@@ -502,7 +510,7 @@
     
     .apd-head { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
     .apd-back, .apd-close { border:1px solid var(--line); background:var(--card); color:var(--text); border-radius:7px; cursor:pointer; font:inherit; font-size:13px; padding:5px 10px; }
-    .apd-back:hover, .apd-close:hover { border-color:#8A6D1F; color:#8A6D1F; }
+    .apd-back:hover, .apd-close:hover { border-color:#C83C52; color:#C83C52; }
     .apd-title { flex:1; font-size:14px; }
     .apd-photo { position:relative; border-radius:8px; overflow:hidden; background:var(--c-hover); aspect-ratio:4/3; }
     .apd-photo img { width:100%; height:100%; object-fit:cover; display:block; cursor:zoom-in; }
@@ -515,25 +523,37 @@
     .apd-addr { font-weight:700; font-size:15px; margin:10px 0 2px; }
     .apd-badges { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
     .apd-badge { font-size:12px; color:#fff; padding:2px 10px; border-radius:999px; }
-    .apd-cards { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:10px; }
+    
+
+
+
+
+
+
+
+    .apd-cards { display:grid; grid-template-columns:repeat(2,1fr); gap:6px; margin-bottom:10px; }
     .apd-card { background:var(--c-hover); border-radius:8px; padding:8px 4px; text-align:center; }
     .apd-card b { display:block; font-size:13px; margin-top:2px; }
     .apd-card span { font-size:11px; color:var(--muted); }
     .apd-card .dday { color:var(--c-primary); font-weight:800; }
+    .apd-card-lead { grid-column:1 / -1; background:var(--c-primary-soft); border-radius:11px;
+      padding:10px 8px 9px; }
+    .apd-card-lead b { font-size:22px; line-height:1.15; letter-spacing:-.5px; color:var(--c-price); }
+    .apd-card-lead > span:first-child { font-size:11.5px; }
     
 
     .apd-actions { display:flex; gap:6px; flex-wrap:wrap; }
     .apd-btn { flex:1 1 30%; font:inherit; font-size:13px; font-weight:600; padding:9px 8px; border:1px solid var(--line); background:var(--card); color:var(--text); border-radius:7px; cursor:pointer; }
-    .apd-btn:hover { border-color:#8A6D1F; color:#8A6D1F; }
-    .apd-btn.on { background:#8A6D1F; color:#fff; border-color:#8A6D1F; }
+    .apd-btn:hover { border-color:#C83C52; color:#C83C52; }
+    .apd-btn.on { background:#C83C52; color:#fff; border-color:#C83C52; }
     .apd-gos { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
     .apd-go { flex:1 1 30%; font:inherit; font-size:12px; font-weight:600; padding:7px 6px; border:1px solid var(--line); background:var(--card); color:var(--text); border-radius:7px; cursor:pointer; }
-    .apd-go:hover { border-color:#8A6D1F; color:#8A6D1F; }
-    .apd-go:active { background:#8A6D1F; color:#fff; }
+    .apd-go:hover { border-color:#C83C52; color:#C83C52; }
+    .apd-go:active { background:#C83C52; color:#fff; }
     
 
 
-    .apd-go.has-local, .auc-pop-go.has-local { border-color:#8A6D1F; color:#8A6D1F; }
+    .apd-go.has-local, .auc-pop-go.has-local { border-color:#C83C52; color:#C83C52; }
     .apd-go-dot { font-size:7px; vertical-align:super; margin-left:3px; color:var(--c-primary); }
     .apd-go.has-local:active .apd-go-dot, .auc-pop-go.has-local:active .apd-go-dot { color:#fff; }
     
@@ -541,8 +561,13 @@
     .apd-go.has-doc, .auc-pop-go.has-doc { border-color:#1F6FEB; color:#1F6FEB; }
     .apd-go.has-doc:active, .auc-pop-go.has-doc:active { background:#1F6FEB; color:#fff; }
     
-    .apd-sec { margin-top:12px; }
-    .apd-sec-t { font-size:12px; font-weight:700; color:var(--c-primary); margin-bottom:5px; }
+    
+
+
+
+    .apd-sec { margin-top:11px; }
+    .apd-sec-t { font-size:12px; font-weight:700; color:var(--c-text); margin-bottom:5px;
+      letter-spacing:-.1px; }
     
 
 
@@ -551,8 +576,16 @@
 
     .apd-rslt { font-size:11px; color:#fff; padding:1px 8px; border-radius:999px; flex-shrink:0; }
     .apd-sec .dday { color:var(--c-primary); font-weight:800; flex-shrink:0; }
-    .apd-note { font-size:12px; line-height:1.6; color:var(--text); white-space:pre-wrap; word-break:break-all; }
-    .apd-muted { font-size:12px; color:var(--muted); line-height:1.6; white-space:pre-wrap; word-break:break-all; }
+    
+
+
+
+
+
+    .apd-note { font-size:12px; line-height:1.65; color:var(--text); white-space:pre-wrap;
+      word-break:keep-all; overflow-wrap:anywhere; }
+    .apd-muted { font-size:12px; color:var(--muted); line-height:1.65; white-space:pre-wrap;
+      word-break:keep-all; overflow-wrap:anywhere; }
     #apd-lightbox { position:fixed; inset:0; z-index:4000; background:rgba(0,0,0,.72); }
     #apd-lightbox[hidden] { display:none; }
     
@@ -634,14 +667,14 @@
     .engine-bar { display:flex; gap:4px; margin-bottom:10px; background:transparent; padding:0; border-radius:8px; }
     
     .tool-btn { flex:1; font:inherit; font-size:13px; font-weight:600; padding:7px 12px; border:1px solid var(--line); background:var(--card); color:var(--muted); border-radius:7px; cursor:pointer; transition:all .15s; }
-    .tool-btn:hover { color:var(--text); border-color:#8A6D1F; }
-    .tool-btn.on { background:#8A6D1F; color:#fff; border-color:#8A6D1F; box-shadow:var(--c-shadow); }
+    .tool-btn:hover { color:var(--text); border-color:#C83C52; }
+    .tool-btn.on { background:#C83C52; color:#fff; border-color:#C83C52; box-shadow:var(--c-shadow); }
     .search-row { display:flex; gap:8px; margin-bottom:12px; }
     .search-inp { width:100%; font:inherit; font-size:14px; padding:11px 14px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--text); }
     .search-inp::placeholder { color:var(--muted); }
-    .search-inp:focus { outline:2px solid #8A6D1F; outline-offset:-1px; border-color:#8A6D1F; }
-    .gps-btn { width:44px; flex-shrink:0; border:1px solid var(--line); background:var(--card); color:#8A6D1F; border-radius:7px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
-    .gps-btn:hover { border-color:#8A6D1F; background:var(--c-primary-soft); }
+    .search-inp:focus { outline:2px solid #C83C52; outline-offset:-1px; border-color:#C83C52; }
+    .gps-btn { width:44px; flex-shrink:0; border:1px solid var(--line); background:var(--card); color:#C83C52; border-radius:7px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+    .gps-btn:hover { border-color:#C83C52; background:var(--c-primary-soft); }
     
 
 
@@ -655,32 +688,32 @@
 
 
     .list-tab { min-width:0; font:inherit; font-size:13px; font-weight:600; padding:8px 12px; border:1px solid var(--line); background:var(--card); color:var(--muted); border-radius:7px; cursor:pointer; transition:all .15s; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .list-tab.active { background:#8A6D1F; color:#fff; border-color:#8A6D1F; }
-    .list-tab:hover { border-color:#8A6D1F; color:var(--text); }
+    .list-tab.active { background:#C83C52; color:#fff; border-color:#C83C52; }
+    .list-tab:hover { border-color:#C83C52; color:var(--text); }
     .fav-cats { display:none; gap:6px; flex-wrap:wrap; margin:-4px 0 14px; }
     .fav-cats.on { display:flex; }
     .fav-cat { font:inherit; font-size:13px; padding:6px 12px; border:1px solid var(--line); background:var(--card); color:var(--muted); border-radius:7px; cursor:pointer; transition:all .15s; }
     
 
 
-    .fav-cat:hover { border-color:#8A6D1F; color:#8A6D1F; }
-    .fav-cat.active { background:#8A6D1F; color:#fff; border-color:#8A6D1F; }
+    .fav-cat:hover { border-color:#C83C52; color:#C83C52; }
+    .fav-cat.active { background:#C83C52; color:#fff; border-color:#C83C52; }
     .banner { background:var(--c-primary-soft); color:var(--text); padding:11px 14px; border-radius:8px; font-size:14px; margin-bottom:12px; line-height:1.55; }
     .banner a { color:var(--c-primary); font-weight:600; }
     #recent { font-size:13px; margin-bottom:12px; color:var(--muted); line-height:2; }
     .recent-chip { display:inline-block; margin:2px 4px 2px 0; padding:3px 10px; border:1px solid var(--line); border-radius:8px; text-decoration:none; color:var(--text); background:var(--card); font-size:13px; }
-    .recent-chip:hover { border-color:#8A6D1F; color:#8A6D1F; }
+    .recent-chip:hover { border-color:#C83C52; color:#C83C52; }
     #cmp-bar { background:var(--card); border:1px solid var(--line); border-left:3px solid var(--c-primary); border-radius:8px; padding:10px 14px; font-size:14px; margin-bottom:12px; box-shadow:var(--c-shadow); }
-    .kakao-back { background:var(--card); border:1px solid var(--line); border-radius:7px; color:#8A6D1F; cursor:pointer; font:inherit; font-size:13px; font-weight:600; padding:8px 12px; margin-bottom:10px; }
-    .kakao-back:hover { border-color:#8A6D1F; }
+    .kakao-back { background:var(--card); border:1px solid var(--line); border-radius:7px; color:#C83C52; cursor:pointer; font:inherit; font-size:13px; font-weight:600; padding:8px 12px; margin-bottom:10px; }
+    .kakao-back:hover { border-color:#C83C52; }
     
     .rec { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:14px 16px; margin-bottom:10px; cursor:pointer; transition:border-color .15s; }
-    .rec:hover { border-color:#8A6D1F; }
+    .rec:hover { border-color:#C83C52; }
     .rec h3 { margin:0 0 5px; font-size:16px; font-weight:600; letter-spacing:-.2px; }
     .rec .meta { font-size:13px; color:var(--muted); }
     .rec .tags { margin:9px 0; display:flex; flex-wrap:wrap; gap:6px; }
     .tag { font-size:12px; background:var(--c-hover); color:var(--muted); border-radius:999px; padding:3px 10px; font-weight:500; }
-    .tag.hit { background:#8A6D1F; color:#fff; }
+    .tag.hit { background:#C83C52; color:#fff; }
     .rec .why { font-size:13px; color:var(--ok); margin:6px 0; min-height:15px; }
     
 
@@ -688,8 +721,8 @@
 
     .rec .actions { display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; align-items:flex-start; }
     .rec .actions a, .rec .actions button { font-size:13px; font-weight:500; padding:7px 12px; border-radius:7px; border:1px solid var(--line); cursor:pointer; background:var(--card); color:var(--text); text-decoration:none; white-space:nowrap; flex:0 0 auto; line-height:1.2; }
-    .rec .actions a:hover, .rec .actions button:hover { border-color:#8A6D1F; color:#8A6D1F; }
-    .rec .actions .save { background:#8A6D1F; color:#fff; border:none; }
+    .rec .actions a:hover, .rec .actions button:hover { border-color:#C83C52; color:#C83C52; }
+    .rec .actions .save { background:#C83C52; color:#fff; border:none; }
     .rec .actions .save:hover { color:#fff; }
     .score { float:right; font-size:15px; color:var(--c-price); font-weight:700; margin-left:8px; }
     .cmp-check { float:right; font-size:12px; color:var(--muted); cursor:pointer; user-select:none; margin-left:8px; }
@@ -771,18 +804,18 @@
 
     .rp-range { position:relative; padding:2px 2px 0; margin:2px 0 8px; }
     .rp-track { position:relative; height:4px; border-radius:4px; background:var(--line); margin:12px 11px 0; }
-    .rp-fill { position:absolute; top:0; bottom:0; border-radius:4px; background:#8A6D1F; }
+    .rp-fill { position:absolute; top:0; bottom:0; border-radius:4px; background:#C83C52; }
     .rp-range input[type="range"] { position:absolute; left:0; right:0; top:2px; width:100%; margin:0;
       appearance:none; -webkit-appearance:none; background:transparent; pointer-events:none; height:24px; }
     .rp-range input[type="range"]::-webkit-slider-thumb { -webkit-appearance:none; pointer-events:auto;
-      width:22px; height:22px; border-radius:50%; background:#fff; border:2px solid #8A6D1F;
+      width:22px; height:22px; border-radius:50%; background:#fff; border:2px solid #C83C52;
       box-shadow:var(--c-shadow); cursor:pointer; }
     .rp-range input[type="range"]::-moz-range-thumb { pointer-events:auto;
-      width:18px; height:18px; border-radius:50%; background:#fff; border:2px solid #8A6D1F;
+      width:18px; height:18px; border-radius:50%; background:#fff; border:2px solid #C83C52;
       box-shadow:var(--c-shadow); cursor:pointer; }
     .rp-range input[type="range"]::-moz-range-track { background:transparent; }
     .rp-ticks { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); margin-top:2px; padding:0 11px; }
-    #rp-price-lbl { color:#8A6D1F; }
+    #rp-price-lbl { color:#C83C52; }
     .lc-dot { display:inline-block; width:9px; height:9px; border-radius:50%; vertical-align:middle; margin-right:5px; }
     
 
@@ -791,7 +824,7 @@
     .toast.on { opacity:1; transform:translateX(-50%) translateY(0); pointer-events:auto; }
     .toast .action { color:#ffd43b; font-weight:700; cursor:pointer; text-decoration:underline; white-space:nowrap; }
     .jb-stage { font:inherit; font-size:13px; padding:3px 9px; border:1px solid var(--line); border-radius:7px; background:var(--card); color:var(--muted); cursor:pointer; }
-    .jb-stage.active { background:#8A6D1F; border-color:#8A6D1F; color:#fff; }
+    .jb-stage.active { background:#C83C52; border-color:#C83C52; color:#fff; }
     
     .jb-meta-k { font-size:11px; color:var(--c-muted); }
     .jb-meta-v { font-size:13px; font-weight:600; color:var(--c-text); }
@@ -803,18 +836,18 @@
 
     .bm-picker { display:flex; gap:6px; background:var(--card); border:1px solid var(--line); border-radius:8px; padding:6px; box-shadow:var(--c-shadow); }
     .bm-item { font:inherit; padding:0; border:2px solid var(--line); border-radius:7px; background:var(--card); cursor:pointer; overflow:hidden; width:72px; }
-    .bm-item:hover { border-color:#8A6D1F; }
+    .bm-item:hover { border-color:#C83C52; }
     .bm-thumb { display:block; width:100%; height:44px; background-size:cover; background-position:center; background-color:var(--line); }
     .bm-label { display:block; padding:4px 2px; font-size:13px; font-weight:600; color:var(--muted); white-space:nowrap; }
-    .bm-item.on { border-color:#8A6D1F; }
-    .bm-item.on .bm-label { color:#8A6D1F; }
+    .bm-item.on { border-color:#C83C52; }
+    .bm-item.on .bm-label { color:#C83C52; }
     
 
     
 
 
     .lp { position:relative; }
-    .lp-toggle { width:34px; height:34px; border:1px solid var(--line); background:var(--card); color:#8A6D1F;
+    .lp-toggle { width:34px; height:34px; border:1px solid var(--line); background:var(--card); color:#C83C52;
       border-radius:7px; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:var(--c-shadow); }
     .lp-toggle svg { width:20px; height:20px; }
     
@@ -849,8 +882,8 @@
     .lp-roles-lbl { width:100%; font-size:11px; color:var(--muted); margin-bottom:2px; }
     .lp-role { font:inherit; font-size:12px; padding:3px 12px; border-radius:7px; cursor:pointer;
       border:1px solid var(--line); background:var(--card); color:var(--text); transition:all .12s; }
-    .lp-role:hover { border-color:#8A6D1F; color:#8A6D1F; }
-    .lp-role.on { background:#8A6D1F; border-color:#8A6D1F; color:#fff; font-weight:600; }
+    .lp-role:hover { border-color:#C83C52; color:#C83C52; }
+    .lp-role.on { background:#C83C52; border-color:#C83C52; color:#fff; font-weight:600; }
     .lp-role-off { color:var(--muted); }
     
 
@@ -858,7 +891,7 @@
     .lp-hdr { display:grid; grid-template-columns:1fr 1fr 1fr; gap:4px; padding:2px 0 8px;
       border-bottom:1px solid var(--line); margin-bottom:6px; }
     .lp-hstat { text-align:center; }
-    .lp-hstat b { display:block; font-size:17px; color:#8A6D1F; }
+    .lp-hstat b { display:block; font-size:17px; color:#C83C52; }
     .lp-hstat span { font-size:11px; color:var(--muted); }
     
 
@@ -1093,7 +1126,7 @@
 
     .pc-actions { display:flex; flex-direction:column; gap:7px; }
     .pc-btn { display:block; width:100%; padding:9px 12px; border-radius:7px; font-family:inherit; font-size:14px; font-weight:500; cursor:pointer; text-align:center; text-decoration:none; box-sizing:border-box; background:var(--card); border:1px solid var(--line); color:var(--text); transition:all .15s; }
-    .pc-btn:hover { border-color:#8A6D1F; color:#8A6D1F; }
+    .pc-btn:hover { border-color:#C83C52; color:#C83C52; }
     .pc-btn-primary { background:var(--c-primary); color:#fff; border:1px solid var(--c-primary); }
     .pc-btn-primary:hover { background:#1a63a8; color:#fff; }
     
@@ -1231,8 +1264,10 @@
     .auc-sum-les { font-size:12px; margin-top:5px; padding-top:5px; border-top:1px dashed var(--c-border); }
     
 
-    .auc-doc-h { font-weight:700; font-size:12px; color:var(--c-primary); margin:9px 0 3px;
-                 padding-top:7px; border-top:1px solid var(--c-border); letter-spacing:-.2px; }
+    
+
+    .auc-doc-h { font-weight:800; font-size:12.5px; color:var(--c-primary); margin:16px 0 4px;
+                 padding-top:9px; border-top:1px solid var(--c-border); letter-spacing:-.2px; }
     .auc-doc-h.first { margin-top:0; padding-top:0; border-top:0; }
     
     .auc-doc-p { margin:3px 0; }
@@ -1262,10 +1297,10 @@
 
 
     .btn-mini { font:inherit; font-size:13px; font-weight:500; padding:5px 10px; border:1px solid var(--line); border-radius:7px; background:var(--card); color:var(--text); cursor:pointer; }
-    .btn-mini.active { background:#8A6D1F; color:#fff; border-color:#8A6D1F; }
-    .btn-mini.primary { background:#8A6D1F; color:#fff; border-color:#8A6D1F; }
+    .btn-mini.active { background:#C83C52; color:#fff; border-color:#C83C52; }
+    .btn-mini.primary { background:#C83C52; color:#fff; border-color:#C83C52; }
     .btn-mini.primary:hover { background:#1a63a8; color:#fff; }
-    .btn-mini.outline { background:transparent; color:#8A6D1F; border-color:#8A6D1F; }
+    .btn-mini.outline { background:transparent; color:#C83C52; border-color:#C83C52; }
     
 
     
@@ -1281,10 +1316,10 @@
       align-items:center; justify-content:center; gap:4px; white-space:nowrap;
       overflow:hidden; text-overflow:ellipsis; }
     .rt-mode { font:inherit; font-size:13px; font-weight:600; padding:8px 2px; border:1px solid var(--line); border-radius:7px; background:var(--card); color:var(--text); cursor:pointer; white-space:nowrap; }
-    .rt-mode.on { background:#8A6D1F; color:#fff; border-color:#8A6D1F; }
+    .rt-mode.on { background:#C83C52; color:#fff; border-color:#C83C52; }
     .pc-price { font-size:16px; font-weight:700; color:var(--c-price); margin-top:2px; }
     .unit-row { display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%; padding:6px 8px; margin-top:4px; background:var(--card); border:1px solid var(--line); border-radius:8px; cursor:pointer; font:inherit; font-size:13px; color:var(--text); text-align:left; box-sizing:border-box; }
-    .unit-row:hover { border-color:#8A6D1F; }
+    .unit-row:hover { border-color:#C83C52; }
     .unit-row b { color:var(--text); }
     .unit-row .ur-chev { color:var(--muted); font-size:11px; transition:transform .15s; flex-shrink:0; }
     .unit-row.open .ur-chev { transform:rotate(90deg); }
@@ -1384,7 +1419,7 @@
 
     .lp-min-btn { position:absolute; top:3px; right:30px; z-index:1100; }
     .lp-restore-chip { position:absolute; right:12px; bottom:12px; z-index:1500; display:flex; align-items:center; gap:6px; max-width:300px; padding:8px 12px; background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:7px; box-shadow:var(--c-shadow-lg); font-size:13px; cursor:pointer; }
-    .lp-restore-chip:hover { border-color:#8A6D1F; }
+    .lp-restore-chip:hover { border-color:#C83C52; }
     .lp-restore-chip b { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     
     .leaflet-tooltip.hov-tip { background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:8px; padding:7px 10px; box-shadow:var(--c-shadow-lg); font-size:13px; line-height:1.55; }
@@ -1398,7 +1433,7 @@
     .leaflet-control-layers, .leaflet-control-layers-expanded { background:var(--card); color:var(--text); }
     .leaflet-control-layers-separator { border-top-color:var(--line); }
     .leaflet-control-layers-toggle { background-color:var(--card); }
-    .leaflet-control-zoom a { background-color:var(--card); color:#8A6D1F; border-color:#8A6D1F; }
+    .leaflet-control-zoom a { background-color:var(--card); color:#C83C52; border-color:#C83C52; }
     .leaflet-control-zoom a:hover { background-color:var(--c-hover); }
     .leaflet-control-attribution { color:var(--muted); }
     :root.dark .leaflet-control-attribution { background:rgba(27,30,37,.85); }
@@ -1417,12 +1452,12 @@
     #view-search { position:absolute; bottom:70px; left:50%; transform:translateX(-50%) translateY(6px);
       display:none; align-items:center; gap:7px; padding:9px 12px;
       border:1px solid var(--line); border-radius:7px;
-      background:#fff; color:#8A6D1F; font:inherit; font-size:14px; font-weight:600; cursor:pointer;
+      background:#fff; color:#C83C52; font:inherit; font-size:14px; font-weight:600; cursor:pointer;
       box-shadow:var(--c-shadow-lg); z-index:950; white-space:nowrap;
       opacity:0; transition:opacity .18s ease, transform .18s ease; }
     #view-search.on { display:flex; opacity:1; transform:translateX(-50%) translateY(0); }
     
-    #view-search:hover { background:#8A6D1F; border-color:#8A6D1F; color:#fff; }
+    #view-search:hover { background:#C83C52; border-color:#C83C52; color:#fff; }
     #view-search:active { transform:translateX(-50%) translateY(1px); }
     #view-search .vs-ico { display:inline-block; font-size:15px; line-height:1; }
     #view-search.busy { opacity:.75; pointer-events:none; }
@@ -1433,8 +1468,8 @@
     }
     #jb-stage-bar { position:absolute; bottom:18px; left:50%; transform:translateX(-50%); display:flex; gap:6px; padding:6px 10px; background:var(--card); border-radius:999px; box-shadow:var(--c-shadow-lg); z-index:900; max-width:90vw; overflow-x:auto; white-space:nowrap; }
     .jb-chip { padding:6px 12px; border-radius:7px; border:1px solid var(--line); background:var(--card); font-size:13px; cursor:pointer; font-family:inherit; color:var(--muted); transition:all .15s; }
-    .jb-chip:hover { border-color:#8A6D1F; color:#8A6D1F; }
-    .jb-chip.active { border-color:#8A6D1F; background:#8A6D1F; color:#fff; }
+    .jb-chip:hover { border-color:#C83C52; color:#C83C52; }
+    .jb-chip.active { border-color:#C83C52; background:#C83C52; color:#fff; }
     
     .build-tag { opacity:.55; }
     @media (max-width:640px) {
@@ -1462,7 +1497,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=6e343821"></script>
+  <script src="js/ie-guard.js?v=8d7dc524"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1730,22 +1765,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-15 16:50 · 6e343821</span></span>
+          · <span class="build-tag">build 2026-09-15 17:35 · 8d7dc524</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=6e343821"></script>
+  <script src="js/joinkey.js?v=8d7dc524"></script>
   
-  <script src="js/identity.js?v=6e343821"></script>
-  <script src="js/common.js?v=6e343821"></script>
-  <script src="js/ui-resize.js?v=6e343821"></script>
-  <script src="js/footer-resize.js?v=6e343821"></script>
-  <script src="js/route-line.js?v=6e343821"></script>
-  <script src="js/route-api.js?v=6e343821"></script>
-  <script src="js/footer-stats.js?v=6e343821"></script>
+  <script src="js/identity.js?v=8d7dc524"></script>
+  <script src="js/common.js?v=8d7dc524"></script>
+  <script src="js/ui-resize.js?v=8d7dc524"></script>
+  <script src="js/footer-resize.js?v=8d7dc524"></script>
+  <script src="js/route-line.js?v=8d7dc524"></script>
+  <script src="js/route-api.js?v=8d7dc524"></script>
+  <script src="js/footer-stats.js?v=8d7dc524"></script>
   <script>
     
     
@@ -2585,7 +2620,7 @@
                         const cv = num(_xt(g2, 'curYearCaplAmount'));
                         const d = pv ? Math.round(((cv - pv) / pv) * 1000) / 10 : 0;
                         h4 += '<div style="margin-top:3px;">집단 자본금 <b>' + eok4(_xt(g2, 'curYearCaplAmount')) + '</b>'
-                          + (d ? ' <span style="color:' + (d > 0 ? '#e8590c' : '#1971c2') + ';">'
+                          + (d ? ' <span style="color:' + (d > 0 ? '#e8590c' : '#C83C52') + ';">'
                             + (d > 0 ? '+' : '') + d + '%</span>' : '')
                           + ' <span style="color:var(--muted);">전년 ' + eok4(_xt(g2, 'prvYearCaplAmount')) + '</span></div>';
                         if (_xt(g2, 'smerNm')) {
@@ -2760,7 +2795,7 @@
     };
 
     
-    const SCHOOL_COLOR = { '고': '#f59f00', '중': '#1971c2', '초': '#c2255c' };
+    const SCHOOL_COLOR = { '고': '#f59f00', '중': '#C83C52', '초': '#c2255c' };
     
     
     const SCHOOL_CAT = [
@@ -3378,7 +3413,7 @@
       const r = rpMoveRate(d);
       if (r == null) return '#868e96';
       if (r >= 2) return '#e03131';
-      if (r <= -2) return '#1971c2';
+      if (r <= -2) return '#C83C52';
       return '#868e96';
     };
     
@@ -3440,7 +3475,7 @@
         const u = a ? Math.round(r.priceEok * 10000 / a).toLocaleString() : null;
         let c = '';
         if (rpNewHigh(r)) c += chip('신고', '#c92a2a');
-        else if (rpNewLow(r)) c += chip('최저', '#1971c2');
+        else if (rpNewLow(r)) c += chip('최저', '#C83C52');
         if (r.cancel) c += chip('해제', '#e03131');
         if (r.gbn && r.gbn.indexOf('직거래') >= 0) c += chip('직거래', '#f08c00');
         if (r.lease) c += chip('임대', '#7048e8');
@@ -3757,7 +3792,7 @@
         if (rpColorMode.v === 'move') {
           L.innerHTML = '마커 색 (가격변동률)'
             + '<div class="lc-dot" style="background:#e03131;"></div>상승 +2%↑<br>'
-            + '<div class="lc-dot" style="background:#1971c2;"></div>하락 -2%↓<br>'
+            + '<div class="lc-dot" style="background:#C83C52;"></div>하락 -2%↓<br>'
             + '<div class="lc-dot" style="background:#868e96;"></div>보합/거래 부족';
         } else {
           L.innerHTML = '건축년도 (노후도)'
@@ -4869,7 +4904,7 @@
           + ' <span style="color:#748ffc;">■</span> 출퇴근(7~9·18~20)</div>';
       }
       
-      const BUS_COLOR = { 중앙차로: '#1971c2', 한강선착장: '#0ca678', 마을버스: '#f59f00' };
+      const BUS_COLOR = { 중앙차로: '#C83C52', 한강선착장: '#0ca678', 마을버스: '#f59f00' };
       function busPopupHtml(d) {
         const isPier = d.ty === '한강선착장';
         return '<div class="pc"><div class="pc-head">'
@@ -4938,7 +4973,7 @@
         for (const b of buses) {
           if (!b.lat || !b.lng) continue;
           
-          const color = b.last ? '#c92a2a' : (b.full ? '#e8590c' : '#1971c2');
+          const color = b.last ? '#c92a2a' : (b.full ? '#e8590c' : '#C83C52');
           const m = L.marker([b.lat, b.lng], { icon: svcIcon('fi-rr-bus', color, 30), zIndexOffset: 800 });
           const t = String(b.at || '').replace(/^\d{8}(\d{2})(\d{2})(\d{2})$/, '$1:$2:$3');
           m.bindTooltip(esc(busPosNo) + ' ' + esc(b.no), { direction: 'top' });
@@ -5422,7 +5457,7 @@
       
       
       
-      const TRDAR_SE_COLOR = { 골목상권: '#1971c2', 발달상권: '#e8590c', 전통시장: '#7048e8', 관광특구: '#0ca678' };
+      const TRDAR_SE_COLOR = { 골목상권: '#C83C52', 발달상권: '#e8590c', 전통시장: '#7048e8', 관광특구: '#0ca678' };
       const trdarCluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 50 });
       
       trdarCluster.on('click', (e) => {
@@ -5497,7 +5532,7 @@
             rows.push('<div style="margin-top:2px;height:18px;line-height:0;">'
               + R.age.map((v, i) => '<span title="' + AGE[i] + ' ' + nf(v) + '명" style="display:inline-block;'
                 + 'width:15.5%;height:' + Math.max(3, Math.round(v / amx * 100)) + '%;background:'
-                + (i === apk ? '#1971c2' : '#ced4da') + ';vertical-align:bottom;margin-right:1%;"></span>').join('')
+                + (i === apk ? '#C83C52' : '#ced4da') + ';vertical-align:bottom;margin-right:1%;"></span>').join('')
               + '</div><div style="font-size:11px;color:var(--c-muted);">연령 최다 ' + AGE[apk] + '</div>');
           }
         }
@@ -7769,7 +7804,7 @@
       }
       
       function aucGradeCol(g) {
-        return g === 'A' ? '#2f9e44' : g === 'B' ? '#1971c2' : g === 'C' ? '#f08c00' : '#e03131';
+        return g === 'A' ? '#2f9e44' : g === 'B' ? '#C83C52' : g === 'C' ? '#f08c00' : '#e03131';
       }
       function aucVerdictHtml(d) {
         const v = aucScore(d);
@@ -10121,13 +10156,21 @@
             const age = new Date().getFullYear() - Number(t.apr.slice(0, 4)) + 1;
             return `${t.apr.slice(0, 4)}.${t.apr.slice(4, 6)} (${age}년차)`;
           })()],
+          
+          
+          
+          
+          
+          
           ['세대수', (() => {
             const t = d._br && d._br.title;
             if (!t || !(t.hhld > 0)) return '';
+            if (!/공동주택|아파트|연립|다세대|다가구|단독|주택|오피스텔|기숙사/.test(t.purps || '')) return '';
+            
             
             const bld = ((_dt.objct || [])[0] || {}).bld || '';
             const same = bld && _aucNorm(t.bldNm).indexOf(_aucNorm(bld)) >= 0;
-            return `${t.hhld}세대` + (!same && t.bldNm ? ` (${t.bldNm})` : '');
+            return `${t.hhld}세대` + (!same && t.bldNm ? ` · ${t.bldNm}` : '');
           })()],
           ['건물규모', (() => {
             const t = d._br && d._br.title;
@@ -10490,12 +10533,12 @@
             ${d.sale ? `<span class="apd-badge" style="background:var(--c-primary);">${esc(aucDDay(d.sale))}</span>` : ''}
           </div>
           <div class="apd-cards">
-            <div class="apd-card"><span>감정평가액</span><b>${wonEok(aucApprEok(d)) || '-'}</b></div>
-            <div class="apd-card"><span>최저매각가격</span><b>${wonEok(aucLowEok(d)) || '-'}</b>${(() => {
+            <div class="apd-card apd-card-lead"><span>최저매각가격</span><b>${wonEok(aucLowEok(d)) || '-'}</b>${(() => {
               
               const a = aucApprEok(d), l = aucLowEok(d);
               return (a > 0 && l > 0) ? `<span>감정가의 ${Math.round(l / a * 100)}%</span>` : '';
             })()}</div>
+            <div class="apd-card"><span>감정평가액</span><b>${wonEok(aucApprEok(d)) || '-'}</b></div>
             <div class="apd-card"><span>매각기일</span><b>${esc(d.sale || '-')}</b>${d.sale ? `<span class="dday">${esc(aucDDay(d.sale))}</span>` : ''}</div>
           </div>
           ${rowsHtml}
@@ -11835,7 +11878,7 @@
         rpRows.forEach((r) => {
           if (r.lat == null) return;
           if (!rings.some((ring) => pointInRing(r.lat, r.lng, ring))) return;
-          const m = L.circleMarker([r.lat, r.lng], { radius: 10, color: '#000', weight: 2, fillColor: '#1971c2', fillOpacity: 0.85 });
+          const m = L.circleMarker([r.lat, r.lng], { radius: 10, color: '#000', weight: 2, fillColor: '#C83C52', fillOpacity: 0.85 });
           m._rp = r;
           m._pop = (() => `<b>${esc(r.name)}</b><br>매매 ${r.priceEok == null ? '-' : fmtAmtExact(r.priceEok * 1e4)} · ${esc(r.gu)} ${esc(r.dong)}<br><a href="https://map.naver.com/p/search/${encodeURIComponent(r.name + ' ' + (r.dong || r.gu || ''))}" target="_blank" rel="noopener">네이버 부동산</a>`);
           ms.push(m);
@@ -12785,11 +12828,11 @@
           const m = L.circleMarker([d.lat, d.lng], {
             renderer: L.svg({ padding: 0.4 }),
             radius: r / 2, color: '#ffffff', weight: 2,
-            fillColor: '#1971c2', fillOpacity: 0.55, interactive: true,
+            fillColor: '#C83C52', fillOpacity: 0.55, interactive: true,
           });
           const won = (v) => Number(v || 0).toLocaleString('ko-KR');
           m.bindPopup('<div class="pc"><div class="pc-head">'
-            + '<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#1971c2;flex-shrink:0;"></span>'
+            + '<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#C83C52;flex-shrink:0;"></span>'
             + '<span class="rp-name">국민연금 가입현황</span></div><div class="pc-body">'
             + '<div><b>' + esc(d.nm) + '</b></div>'
             + '<div class="pc-price">가입자 ' + won(cnt) + '명</div>'
@@ -12890,7 +12933,7 @@
             + '<br>좌표는 주소를 지오코딩한 값이라 실제 위치와 다를 수 있습니다',
         },
         wifi: {
-          dir: 'wifi/', idx: 'wifi_index.json', icon: 'fi-rr-wifi', color: '#1971c2',
+          dir: 'wifi/', idx: 'wifi_index.json', icon: 'fi-rr-wifi', color: '#C83C52',
           title: (d) => d.nm, minZ: 15,
           body: (d) => line('SSID', d.ssid) + line('시설', d.kind) + line('제공', d.isp)
             + line('설치', d.ym) + line('주소', d.addr),
@@ -13046,7 +13089,7 @@
           '상ㆍ하수도설비공사업', '철강구조물공사업', '수중ㆍ준설공사업', '조경식재ㆍ시설물공사업',
           '기계설비ㆍ가스공사업', '가스ㆍ난방공사업', '승강기ㆍ삭도공사업', '시설물유지관리업'],
       };
-      const KIS_COLOR = { '종합건설업': '#1971c2', '전문건설업': '#e8590c' };
+      const KIS_COLOR = { '종합건설업': '#C83C52', '전문건설업': '#e8590c' };
 
       
       
@@ -13435,7 +13478,7 @@
         return '<div style="font-size:12px;margin-top:3px;">'
           + '<b style="color:var(--c-danger);">' + esc(r.pn || '행정처분') + '</b>' + many
           
-          + (r.pd ? ' <span style="color:#1971c2;">(가처분으로 효력 정지)</span>' : '')
+          + (r.pd ? ' <span style="color:#C83C52;">(가처분으로 효력 정지)</span>' : '')
           + ' <span style="color:var(--muted);">' + esc(d) + '</span>' + stop + fine
           + (r.pw ? '<div style="color:var(--muted);padding-left:2px;">' + esc(r.pw) + '</div>' : '')
           + '</div>';
@@ -16187,7 +16230,7 @@
     const _trdarCache = new Map();
     
     const TRDAR_COLORS = {
-      음식: '#e8590c', 소매: '#1971c2', '수리·개인': '#7048e8', 보건의료: '#0ca678',
+      음식: '#e8590c', 소매: '#C83C52', '수리·개인': '#7048e8', 보건의료: '#0ca678',
       '과학·기술': '#495057', 교육: '#f08c00', 부동산: '#c2255c', '시설관리·임대': '#5c940d',
       숙박: '#1098ad', '예술·스포츠': '#d6336c',
     };
@@ -17143,13 +17186,13 @@
         + `<input id="sp-from" class="search-inp" style="border-radius:8px 7px 0 0;border-bottom:none;" value="${esc(cur)}" placeholder="출발지 입력 · 지도에서 클릭" autocomplete="off">`
         + '<input id="sp-via" class="search-inp" style="border-radius:0;margin-top:-1px;" placeholder="경유지(선택) · 비워 두면 안 들릅니다">'
         + `<input id="sp-to" class="search-inp" style="border-radius:0 0 7px 7px;margin-top:-1px;" placeholder="도착지 입력 · 지도에서 클릭" autocomplete="off">`
-        + '<button type="button" id="sp-swap" title="출발·도착 바꾸기" aria-label="출발 도착 바꾸기" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:50%;background:var(--card);border:1px solid var(--line);color:#8A6D1F;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;"><i class="fi fi-rr-exchange fi-keep" style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;margin:0;padding:0;line-height:1;"></i></button></div>'
+        + '<button type="button" id="sp-swap" title="출발·도착 바꾸기" aria-label="출발 도착 바꾸기" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:50%;background:var(--card);border:1px solid var(--line);color:#C83C52;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;"><i class="fi fi-rr-exchange fi-keep" style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;margin:0;padding:0;line-height:1;"></i></button></div>'
         
         
         + '<div class="sp-grid3" style="margin-bottom:10px;">'
         + '<button type="button" id="sp-book" class="fav-cat" title="주소록"><i class="fi fi-rr-address-book"></i>주소록</button>'
         + '<button type="button" id="sp-clear" class="fav-cat"><i class="fi fi-rr-rotate-right fi-keep"></i>다시입력</button>'
-        + '<button type="button" id="sp-go" class="fav-cat" style="background:#8A6D1F;color:#fff;border-color:#8A6D1F;"><i class="fi fi-rr-search fi-keep"></i>길찾기</button></div>'
+        + '<button type="button" id="sp-go" class="fav-cat" style="background:#C83C52;color:#fff;border-color:#C83C52;"><i class="fi fi-rr-search fi-keep"></i>길찾기</button></div>'
         + '<div id="sp-bookbox" style="display:none;margin-bottom:10px;"></div>'
         
         
@@ -17563,7 +17606,7 @@
               + '<b style="color:' + c + ';">' + esc(l.name) + '</b></span>';
           }
           return '<span style="display:inline-flex;align-items:center;gap:4px;">'
-            + '<span style="width:16px;height:16px;border-radius:4px;background:#1971c2;color:#fff;'
+            + '<span style="width:16px;height:16px;border-radius:4px;background:#C83C52;color:#fff;'
             + 'font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;">버</span>'
             + '<b>' + esc(l.name) + '</b></span>';
         };
@@ -19442,7 +19485,7 @@
       const last = (arr) => (arr.length ? arr[arr.length - 1] : null);
       const lb = last(s.buy), lj = last(s.jeonse);
       const dot = (d, c) => (d ? `<circle cx="${px(d.t).toFixed(1)}" cy="${py(d.v).toFixed(1)}" r="3" fill="#fff" stroke="${c}" stroke-width="2"/>` : '');
-      const CB = '#2f9e44', CJ = '#1971c2';
+      const CB = '#2f9e44', CJ = '#C83C52';
       
       const _fnSum = '<div class="ls-fn"><b>주변 시세</b>' + srcTier('deal')
         + ' <span style="font-size:12px;color:var(--c-muted);">반경 ' + PRICE_CHART_KM + 'km · '
@@ -19477,7 +19520,7 @@
     
     const SRC_TIER = {
       deal: ['실거래', '#e6f4ea', '#166534', '#a7d8b4', '신고된 실제 거래가입니다.'],
-      gov: ['공시·행정', '#F3E8D2', '#6E5716', '#E9CBB2',
+      gov: ['공시·행정', '#FBE9EC', '#A82F43', '#E4E4E7',
         '정부·지자체가 공시하거나 집계한 행정 자료입니다. 실제 거래가와 다를 수 있습니다.'],
       est: ['집계·추정', '#f1eee9', '#7A6A58', '#ddd5c9',
         '표본·카드매출 등으로 추정한 집계값입니다. 실거래가가 아닙니다.'],
@@ -19959,10 +20002,10 @@
               + (v > 0 ? '+' : '') + v.toLocaleString('ko-KR') + '명" style="display:inline-block;width:7.5%;'
               + 'height:26px;vertical-align:middle;position:relative;">'
               + '<span style="position:absolute;left:1px;right:1px;' + (up ? 'bottom:13px;' : 'top:13px;')
-              + 'height:' + pct + '%;background:' + (up ? '#1971c2' : '#e8590c') + ';"></span></span>';
+              + 'height:' + pct + '%;background:' + (up ? '#C83C52' : '#e8590c') + ';"></span></span>';
           }).join('');
           rows.push('<div style="font-size:12px;">12개월 순이동 <b style="color:'
-            + (sum >= 0 ? '#1971c2' : '#e8590c') + ';">' + (sum > 0 ? '+' : '')
+            + (sum >= 0 ? '#C83C52' : '#e8590c') + ';">' + (sum > 0 ? '+' : '')
             + sum.toLocaleString('ko-KR') + '명</b>'
             + (seoul && seoul.net12 != null ? ' <span style="color:var(--c-muted);">(서울 전체 '
                 + (seoul.net12 > 0 ? '+' : '') + seoul.net12.toLocaleString('ko-KR') + ')</span>' : '')
@@ -19970,7 +20013,7 @@
           rows.push('<div style="margin-top:2px;line-height:0;border-top:1px dashed var(--c-border);'
             + 'border-bottom:1px dashed var(--c-border);">' + bars + '</div>');
           rows.push('<div style="font-size:11px;color:var(--c-muted);">'
-            + '<span style="color:#1971c2;">■</span> 유입 <span style="color:#e8590c;">■</span> 유출 · 월별 12개월</div>');
+            + '<span style="color:#C83C52;">■</span> 유입 <span style="color:#e8590c;">■</span> 유출 · 월별 12개월</div>');
         }
         
         
@@ -19979,7 +20022,7 @@
           const t = String(G.idx.times[G.idx.times.length - 1] || '');
           const yoy = G.idxYoY;
           rows.push('<div style="margin-top:3px;font-size:12px;">아파트 매매지수 <b>' + v + '</b>'
-            + (yoy != null ? ' <span style="color:' + (yoy >= 0 ? '#c2255c' : '#1971c2') + ';">'
+            + (yoy != null ? ' <span style="color:' + (yoy >= 0 ? '#c2255c' : '#C83C52') + ';">'
                 + (yoy > 0 ? '+' : '') + yoy + '%</span> <span style="color:var(--c-muted);">전년 동기</span>' : '')
             + ' <span style="color:var(--c-muted);">(' + t.slice(0, 4) + '년 ' + t.slice(4) + '분기)</span></div>');
         }
@@ -20038,7 +20081,7 @@
         
         const last = (arr) => { for (let i = arr.length - 1; i >= 0; i--) if (arr[i] !== null && arr[i] !== undefined) return [i, arr[i]]; return null; };
         const sign = (v) => (v > 0 ? '+' : '') + v.toFixed(2) + '%';
-        const col = (v) => (v > 0 ? '#e03131' : v < 0 ? '#1971c2' : 'var(--c-muted)');
+        const col = (v) => (v > 0 ? '#e03131' : v < 0 ? '#C83C52' : 'var(--c-muted)');
         const m12 = compound(A.r.m.slice(-12));
         const lastM = last(A.r.m);
         const bits = [];
@@ -20075,7 +20118,7 @@
           const up = pts[pts.length - 1] >= pts[0];
           spark = '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" '
             + 'style="display:block;margin-top:3px;overflow:visible;" aria-hidden="true">'
-            + '<path d="' + d + '" fill="none" stroke="' + (up ? '#e03131' : '#1971c2') + '" stroke-width="1.6" stroke-linejoin="round"/></svg>';
+            + '<path d="' + d + '" fill="none" stroke="' + (up ? '#e03131' : '#C83C52') + '" stroke-width="1.6" stroke-linejoin="round"/></svg>';
         }
         
         const yv = [];
@@ -20110,7 +20153,7 @@
             const py2 = (v) => T2 + (1 - (v - lo2) / (hi2 - lo2)) * (H2 - T2 - B2);
             const dd = pts2.map((v, i) => (i ? 'L' : 'M') + px2(i).toFixed(1) + ' ' + py2(v).toFixed(1)).join(' ');
             const up2 = pts2[pts2.length - 1] >= pts2[0];
-            const cc = up2 ? '#e03131' : '#1971c2';
+            const cc = up2 ? '#e03131' : '#C83C52';
             const idx = (v) => (v).toFixed(1);
             const ticks2 = [lo2, (lo2 + hi2) / 2, hi2].map((v) => {
               const y = py2(v).toFixed(1);
@@ -20218,7 +20261,7 @@
                       
                       + (c.stk
                         ? `<div style="font-size:12px;margin-top:2px;">주가 <b>${Number(c.stk.clpr).toLocaleString('ko-KR')}원</b>`
-                          + (c.stk.fltRt != null ? ` <span style="color:${Number(c.stk.fltRt) >= 0 ? '#e03131' : '#1971c2'};">${c.stk.fltRt >= 0 ? '+' : ''}${esc(c.stk.fltRt)}%</span>` : '')
+                          + (c.stk.fltRt != null ? ` <span style="color:${Number(c.stk.fltRt) >= 0 ? '#e03131' : '#C83C52'};">${c.stk.fltRt >= 0 ? '+' : ''}${esc(c.stk.fltRt)}%</span>` : '')
                           + ` <span style="color:var(--c-muted);">(${esc(c.stk.basDt || '')})</span></div>`
                         : '')
                       
@@ -23419,7 +23462,7 @@
           const dm = Number(p.distance) || 0;
           const dtxt = dm ? `${dm >= 1000 ? (dm / 1000).toFixed(1) + 'km' : dm + 'm'} · 도보 ${Math.max(1, Math.round(dm / 1000 / 4.5 * 60))}분` : '';
           const isSaved = savedAgents.some((a) => a.id === p.id);
-          return `<div class="rec" data-i="${i}"><h3>${esc(p.place_name)}</h3><div class="meta">${esc((p.category_name || '').split('>').pop().trim())} · ${esc(p.road_address_name || p.address_name || '')}</div>${dtxt ? `<div class="meta" style="color:var(--muted);margin-top:2px;">${dtxt}</div>` : ''}<div class="actions">${p.phone ? `<a href="tel:${esc(p.phone)}">${esc(p.phone)}</a>` : ''}${p.place_url ? `<a href="${safeUrl(p.place_url)}" target="_blank" rel="noopener">카카오맵</a>` : ''}<button class="agent-save" data-i="${i}" style="font-size:13px;padding:5px 10px;border-radius:8px;cursor:pointer;border:1px solid var(--line);${isSaved ? 'background:#8A6D1F;color:#fff;' : 'background:var(--card);color:#8A6D1F;'}">${isSaved ? '★ 저장됨' : '☆ 저장'}</button></div></div>`;
+          return `<div class="rec" data-i="${i}"><h3>${esc(p.place_name)}</h3><div class="meta">${esc((p.category_name || '').split('>').pop().trim())} · ${esc(p.road_address_name || p.address_name || '')}</div>${dtxt ? `<div class="meta" style="color:var(--muted);margin-top:2px;">${dtxt}</div>` : ''}<div class="actions">${p.phone ? `<a href="tel:${esc(p.phone)}">${esc(p.phone)}</a>` : ''}${p.place_url ? `<a href="${safeUrl(p.place_url)}" target="_blank" rel="noopener">카카오맵</a>` : ''}<button class="agent-save" data-i="${i}" style="font-size:13px;padding:5px 10px;border-radius:8px;cursor:pointer;border:1px solid var(--line);${isSaved ? 'background:#C83C52;color:#fff;' : 'background:var(--card);color:#C83C52;'}">${isSaved ? '★ 저장됨' : '☆ 저장'}</button></div></div>`;
         }).join('');
         
         data.forEach((p) => {

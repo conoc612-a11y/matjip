@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>관리자 모드</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<link rel="stylesheet" href="css/buttons.css?v=6e343821" />
-<link rel="stylesheet" href="css/tokens.css?v=6e343821" />
+<link rel="stylesheet" href="css/buttons.css?v=8d7dc524" />
+<link rel="stylesheet" href="css/tokens.css?v=8d7dc524" />
 <style>
   :root { --bg:#0f1520; --card:#1a2332; --line:#2a3564; --text:#e8eef7; --muted:#8b9bb4; --accent:var(--brand-lt); }
   * { margin:0; }
@@ -185,13 +185,13 @@
     </div>
   </div>
 
-<script src="js/common.js?v=6e343821"></script>
+<script src="js/common.js?v=8d7dc524"></script>
 <script>
 const FN = SUPABASE_URL + '/functions/v1';
 let token = sessionStorage.getItem('admin_token');
 let data = null;
 let charts = {};
-const ACCENT = '#C1935C'; 
+const ACCENT = '#E2647A'; 
 
 async function doLogin() {
   const err = $('login-err');
@@ -394,7 +394,7 @@ function renderCharts() {
   mk('ch-wd', 'bar', ['월', '화', '수', '목', '금', '토', '일'], data.weekday.map((w) => w.c), '방문');
   const labels = Object.keys(data.byPage).map((k) => (k === 'main' ? '맛집지도(main)' : '부동산(land)'));
   const vals = Object.values(data.byPage);
-  mk('ch-page', 'doughnut', labels, vals, '방문', { backgroundColor: ['#C1935C', '#8A6D1F'] }); 
+  mk('ch-page', 'doughnut', labels, vals, '방문', { backgroundColor: ['#E2647A', '#C83C52'] }); 
 }
 
 
