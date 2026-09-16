@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
-  <link rel="stylesheet" href="css/tokens.css?v=f70ee0c6" />
+  <link rel="stylesheet" href="css/tokens.css?v=a12afe98" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=f70ee0c6"></script>
+  <script src="js/auth-guard.js?v=a12afe98"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -37,12 +37,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=f70ee0c6" />
+  <link rel="stylesheet" href="css/buttons.css?v=a12afe98" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=f70ee0c6" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=a12afe98" />
   <style>
     :root {
       
@@ -1721,7 +1721,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=f70ee0c6"></script>
+  <script src="js/ie-guard.js?v=a12afe98"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1991,22 +1991,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-16 17:30 · f70ee0c6</span></span>
+          · <span class="build-tag">build 2026-09-16 17:46 · a12afe98</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=f70ee0c6"></script>
+  <script src="js/joinkey.js?v=a12afe98"></script>
   
-  <script src="js/identity.js?v=f70ee0c6"></script>
-  <script src="js/common.js?v=f70ee0c6"></script>
-  <script src="js/ui-resize.js?v=f70ee0c6"></script>
-  <script src="js/footer-resize.js?v=f70ee0c6"></script>
-  <script src="js/route-line.js?v=f70ee0c6"></script>
-  <script src="js/route-api.js?v=f70ee0c6"></script>
-  <script src="js/footer-stats.js?v=f70ee0c6"></script>
+  <script src="js/identity.js?v=a12afe98"></script>
+  <script src="js/common.js?v=a12afe98"></script>
+  <script src="js/ui-resize.js?v=a12afe98"></script>
+  <script src="js/footer-resize.js?v=a12afe98"></script>
+  <script src="js/route-line.js?v=a12afe98"></script>
+  <script src="js/route-api.js?v=a12afe98"></script>
+  <script src="js/footer-stats.js?v=a12afe98"></script>
   <script>
     
     
@@ -6971,6 +6971,10 @@
       const o0 = (d) => ((d && d.detail && d.detail.objct) || [])[0] || {};
       function aucBrEnsure(d) {
         if (!d || d._br !== undefined) return Promise.resolve();   
+        
+        
+        
+        if (d._brP) return d._brP;
         const needArea = !aucArea(d.detail);
         const needUse = !aucNearKind(d.use);
         
@@ -6979,9 +6983,9 @@
         const addr = aucJibunAddr(d);
         const { ho } = aucDongHo(d && d.addr);
         if (!addr) { d._br = null; return Promise.resolve(); }
-        return new Promise((res) => {
+        d._brP = new Promise((res) => {
           let fin = false;
-          const done = (v) => { if (fin) return; fin = true; d._br = v || null; res(); };
+          const done = (v) => { if (fin) return; fin = true; d._br = v || null; d._brP = null; res(); };
           setTimeout(() => done(null), 12000);       
           try {
             vworldAddrToPnu(addr, (r) => {
@@ -7009,6 +7013,7 @@
             });
           } catch (e) { done(null); }
         });
+        return d._brP;   
       }
       
       
@@ -19302,11 +19307,25 @@
     
     
     
+    
+    
+    
+    
+    
+    
+    const _brInflight = new Map();
     function ledgerOp(op, pnu, cb, _attempt) {
       const p = pnuParts(pnu);
       if (!p) { cb(null); return; }
       const key = op + '|' + pnu;
       if (_brCache.has(key)) { cb(_brCache.get(key)); return; }
+      if (!_attempt) {
+        const q = _brInflight.get(key);
+        if (q) { q.push(cb); return; }             
+        const mine = [cb];
+        _brInflight.set(key, mine);
+        cb = (v) => { _brInflight.delete(key); mine.forEach((f) => { try { f(v); } catch (e) {} }); };
+      }
       const attempt = _attempt || 0;
       const fail = (err) => {
         
