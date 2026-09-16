@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
-  <link rel="stylesheet" href="css/tokens.css?v=5edb6b92" />
+  <link rel="stylesheet" href="css/tokens.css?v=93a0966b" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=5edb6b92"></script>
+  <script src="js/auth-guard.js?v=93a0966b"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -37,12 +37,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=5edb6b92" />
+  <link rel="stylesheet" href="css/buttons.css?v=93a0966b" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=5edb6b92" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=93a0966b" />
   <style>
     :root {
       
@@ -1721,7 +1721,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=5edb6b92"></script>
+  <script src="js/ie-guard.js?v=93a0966b"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1991,22 +1991,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-16 16:00 · 5edb6b92</span></span>
+          · <span class="build-tag">build 2026-09-16 16:33 · 93a0966b</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=5edb6b92"></script>
+  <script src="js/joinkey.js?v=93a0966b"></script>
   
-  <script src="js/identity.js?v=5edb6b92"></script>
-  <script src="js/common.js?v=5edb6b92"></script>
-  <script src="js/ui-resize.js?v=5edb6b92"></script>
-  <script src="js/footer-resize.js?v=5edb6b92"></script>
-  <script src="js/route-line.js?v=5edb6b92"></script>
-  <script src="js/route-api.js?v=5edb6b92"></script>
-  <script src="js/footer-stats.js?v=5edb6b92"></script>
+  <script src="js/identity.js?v=93a0966b"></script>
+  <script src="js/common.js?v=93a0966b"></script>
+  <script src="js/ui-resize.js?v=93a0966b"></script>
+  <script src="js/footer-resize.js?v=93a0966b"></script>
+  <script src="js/route-line.js?v=93a0966b"></script>
+  <script src="js/route-api.js?v=93a0966b"></script>
+  <script src="js/footer-stats.js?v=93a0966b"></script>
   <script>
     
     
@@ -7443,48 +7443,55 @@
         
         const pctA = (() => { const a = aucApprEok(d), l = aucLowEok(d);
           return (a > 0 && l > 0) ? Math.round(l / a * 100) : null; })();
-        bits.push(`${use || '물건'}${st ? ' · ' + st : ''}로 감정가의 ${pctA != null ? pctA + '%' : '?'}인`
-          + ` ${wonEok(aucLowEok(d))}부터 입찰합니다`
+        bits.push(`${use || '물건'}${st ? ' · ' + st : ''} 감정가 ${pctA != null ? pctA + '%' : '?'}`
+          + ` ${wonEok(aucLowEok(d))}부터 입찰`
           + (dd != null && dd >= 0 ? ` (매각기일까지 D-${dd})` : '') + '.');
         
         if (nr && nr.pct != null) {
-          bits.push(nr.pct <= 80 ? `${nr.tierNm} 실거래의 ${nr.pct}% 수준이라 가격 이점이 있습니다.`
-            : nr.pct >= 110 ? `${nr.tierNm} 실거래의 ${nr.pct}% 라 가격 이점은 없습니다.`
-              : `${nr.tierNm} 실거래의 ${nr.pct}% 로 시세와 비슷합니다.`);
+          bits.push(nr.pct <= 80 ? `${nr.tierNm} 실거래의 ${nr.pct}% 수준으로 가격 이점 있음.`
+            : nr.pct >= 110 ? `${nr.tierNm} 실거래의 ${nr.pct}% 로 가격 이점 없음.`
+              : `${nr.tierNm} 실거래의 ${nr.pct}% 로 시세와 비슷함.`);
         }
         
         if (rt) {
-          if (rt.conflict) bits.push(`명세서에는 임차내역이 없다고 적혀 있으나 현황조사서에 점유자 ${rt.n}명이 있습니다 — 확인이 필요합니다.`);
-          else if (rt.noTenant) bits.push('조사된 임차내역이 없어 인수할 임차보증금은 확인되지 않았습니다.');
+          if (rt.conflict) bits.push(`명세서에는 임차내역 없음으로 기재되나 현황조사서에 점유자 ${rt.n}명 — 확인 필요.`);
+          else if (rt.noTenant) bits.push('문서상 조사된 임차내역 없음으로 인수 임차보증금은 확인되지 않음.');
           else if (rt.risky) bits.push(`임차인 ${rt.n}명 중 ${rt.risky}명이 최선순위 설정일(${rt.senior})보다 빨라`
-            + ` 대항력이 있을 수 있습니다`
-            + (rt.unknownDep ? ` — 그중 ${rt.unknownDep}명은 보증금이 확인되지 않아 인수 규모를 알 수 없습니다.` : '.'));
-          else if (rt.n) bits.push(`임차인 ${rt.n}명은 최선순위 설정일(${rt.senior})보다 늦어 매각으로 소멸합니다.`);
+            + ` 대항력 있을 수 있음`
+            + (rt.unknownDep ? ` — 그중 ${rt.unknownDep}명은 보증금 미확인으로 인수 규모 산정 불가.` : '.'));
+          else if (rt.n) bits.push(`임차인 ${rt.n}명은 최선순위 설정일(${rt.senior})보다 늦어 매각으로 소멸.`);
           
           
           
           
           
           if (rt.conflict) {
-            bits.push('점유자가 있어 인도명령 대상인지 지금 자료로는 판정할 수 없습니다.');
+            bits.push('점유자 있음 — 인도명령 대상 여부는 현 자료로 판정 불가.');
           } else if (rt.noTenant) {
-            bits.push('점유자가 채무자·소유자라면 인도명령 대상입니다(대금 납부 후 6개월 이내 신청)'
-              + ' — 다만 현장에 누가 있는지는 문서로 확인되지 않습니다.');
+            bits.push('점유자가 채무자·소유자라면 인도명령 대상임(대금 납부 후 6개월 이내 신청)'
+              + ' — 현장 점유자는 문서로 확인되지 않음.');
           } else if (rt.n && !rt.risky) {
-            bits.push('점유자는 인도명령으로 내보낼 수 있습니다(대금 납부 후 6개월 이내 신청).');
+            bits.push('점유자는 인도명령으로 인도 가능(대금 납부 후 6개월 이내 신청).');
           } else if (rt.risky) {
-            bits.push('인도명령 대상이 아니어서 명도소송 또는 보증금 인수가 필요합니다.');
+            bits.push('인도명령 대상 아님 — 명도소송 또는 보증금 인수 필요.');
           }
-          if (rt.assume) bits.push('매각으로 소멸하지 않는 권리가 있습니다 — 인수되는 권리 항목을 확인하십시오.');
+          if (rt.assume) bits.push('매각으로 소멸하지 않는 권리 있음 — 인수되는 권리 항목 확인 요함.');
         } else {
-          bits.push('최선순위 설정일이 확인되지 않아 대항력 판단은 매각물건명세서 원문을 직접 보셔야 합니다.');
+          bits.push('최선순위 설정일 미확인 — 대항력 판단은 매각물건명세서 원문 확인 요함.');
         }
         
-        if (cost) bits.push(`최저가로 낙찰돼도 취득세 등을 더하면 ${fmtAmtExact(cost.totLo)}`
-          + (Math.abs(cost.lo - cost.hi) < 0.001 ? '' : `~${fmtAmtExact(cost.totHi)}`)
-          + ' 이 들고, 명도비·체납관리비는 여기 포함되지 않았습니다.'
-          + (() => { const m = aucMgmtInfo(d); return m && m.amt
-            ? ` 체납관리비는 ${m.amt.toLocaleString('ko-KR')}원 으로 신고돼 있습니다.` : ''; })());
+        
+        
+        if (cost) {
+          const same = Math.abs(cost.lo - cost.hi) < 0.001;
+          const rate = same ? `${cost.lo.toFixed(1)}%` : `${cost.lo.toFixed(1)}~${cost.hi.toFixed(1)}%`;
+          const taxAmt = same ? fmtAmtExact(cost.taxLo) : `${fmtAmtExact(cost.taxLo)}~${fmtAmtExact(cost.taxHi)}`;
+          bits.push(`최저가 낙찰 시 취득세(${rate} · ${taxAmt})를 합한 ${fmtAmtExact(cost.totLo)}`
+            + (same ? '' : `~${fmtAmtExact(cost.totHi)}`)
+            + ' 소요 — 명도비·체납관리비는 미포함 금액임.'
+            + (() => { const m = aucMgmtInfo(d); return m && m.amt
+              ? ` 체납관리비 ${m.amt.toLocaleString('ko-KR')}원 신고됨.` : ''; })());
+        }
         return bits.join(' ');
       }
 
@@ -7497,7 +7504,7 @@
       
       
       
-      function aucCostRange(d, eokIn, exact1) {
+      function aucCostRange(d, eokIn) {
         const lowEok = eokIn || aucLowEok(d);
         if (!lowEok) return null;
         const man = lowEok * 10000;                 
@@ -7509,15 +7516,8 @@
         const area = aucArea(d && d.detail) || (br && br.area) || 0;
         let lo, hi;
         if (!주거) { lo = hi = 4.6; }
-        else if (exact1) {
-          
-          
-          const eok = lowEok;
-          const base = eok <= 6 ? 1.0 : eok > 9 ? 3.0 : 1.0 + 2.0 * (eok - 6) / 3;
-          const edu = eok <= 6 ? 0.1 : eok > 9 ? 0.3 : 0.1 + 0.2 * (eok - 6) / 3;
-          const nong = area > 85 ? 0.2 : 0;
-          lo = hi = base + edu + nong;
-        }
+        
+        
         else {
           const eok = lowEok;
           const base = eok <= 6 ? [1.0, 1.0] : eok <= 9 ? [1.0, 3.0] : [3.0, 3.0];
@@ -7545,14 +7545,14 @@
           + (() => {
             const m = aucMgmtInfo(d);
             if (m && m.amt) {
-              return ` — 명도비·수리비는 포함하지 않았습니다. 체납관리비는 명세서에`
-                + ` ${m.amt.toLocaleString('ko-KR')}원 으로 신고돼 있고 이 금액도 위 합계에 없습니다`
+              return ` — 명도비·수리비 미포함. 체납관리비는 명세서에`
+                + ` ${m.amt.toLocaleString('ko-KR')}원 신고됐고 이 금액도 위 합계에 미포함`
                 + ` (아래 '체납관리비' 항목 참고).`;
             }
-            return ` — 명도비·체납관리비·수리비는 포함하지 않았습니다(금액을 알 수 없습니다;`
-              + ` 명도가 인도명령인지 소송인지는 '명도' 항목에서 판정합니다).`;
+            return ` — 명도비·체납관리비·수리비 미포함(금액 미상;`
+              + ` 명도가 인도명령인지 소송인지는 '명도' 항목에서 판정).`;
           })()
-          + ` 취득세율은 매수인의 주택 수에 따라 더 높아질 수 있습니다.`;
+          + ` 취득세율은 매수인의 주택 수에 따라 상향될 수 있음.`;
       }
       
       
@@ -7612,10 +7612,10 @@
         
         const head = amt
           ? `${where} 관리비 ${amt.toLocaleString('ko-KR')}원 미납 (명세서 신고 기준)`
-          : `${where} 관리비 미납이 적혀 있으나 금액은 명세서에 없습니다`;
+          : `${where} 관리비 미납 기재 있으나 금액은 명세서에 없음`;
         const tail = pub
-          ? ' 공용부분 관리비는 낙찰자가 인수할 수 있습니다 — 입찰 전 관리주체에 확인하십시오.'
-          : ' 전유부분 관리비는 원칙적으로 전 소유자 몫이지만 다툼이 있습니다 — 관리주체에 확인하십시오.';
+          ? ' 공용부분 관리비는 낙찰자 인수 가능 — 입찰 전 관리주체 확인 요함.'
+          : ' 전유부분 관리비는 원칙적으로 전 소유자 부담이나 분쟁 소지 있음 — 관리주체 확인 요함.';
         
         return head + '.' + tail + (evid ? ' 근거: ' + evid.slice(0, 160) : '');
       }
@@ -7629,11 +7629,11 @@
         const kind = aucNearKind(d && d.use, br && br.purps);
         if (!kind) return { why: /상가|근린/.test(String((d && d.use) || ''))
           ? (br && br.purps
-            ? `건축물대장 주용도가 '${br.purps}' 라 주거용 실거래와 비교할 대상이 아닙니다`
+            ? `건축물대장 주용도가 '${br.purps}' 로 주거용 실거래와 비교 대상 아님`
             : (br && br.capped
-              ? '용도가 묶음 라벨인데, 세대가 많은 단지라 건축물대장 응답 상한(500행)에 이 호실이 없어 주용도를 못 얻었습니다'
-              : '용도가 상가·오피스텔·근린시설로 묶여 있어 어떤 시세와 비교할지 정할 수 없습니다'))
-          : '주거용(아파트·연립·다세대·오피스텔)만 비교합니다' };
+              ? '용도가 묶음 라벨이나, 세대가 많은 단지라 건축물대장 응답 상한(500행)에 이 호실이 없어 주용도 미확인'
+              : '용도가 상가·오피스텔·근린시설로 묶여 있어 비교 기준 시세 특정 불가'))
+          : '주거용(아파트·연립·다세대·오피스텔)만 비교 대상' };
         
         
         
@@ -7649,18 +7649,18 @@
           const mine0 = low0 * 10000 / a0;
           return { kind, area: a0, areaSrc, tier: 'dong', tierNm: `${h.key} 단독·다가구`,
             n: h.cnt, mid: mid0, mine: mine0, pct: Math.round(mine0 / mid0 * 100),
-            note: '동 단위 집계입니다(국토부가 단독·다가구 지번을 마스킹해 건물 단위 비교가 불가능합니다)' };
+            note: '동 단위 집계(국토부가 단독·다가구 지번을 마스킹해 건물 단위 비교 불가)' };
         }
         
         const area = aucArea(d && d.detail) || (br && br.area) || 0;
         const areaSrc = aucArea(d && d.detail) ? '' : (br && br.area ? '건축물대장' : '');
         if (!area) return { why: (d.detail && (d.detail.objct || []).length > 1)
-          ? '일괄매각이라 면적을 합산해야 해 비교를 생략합니다'
+          ? '일괄매각이라 면적 합산이 필요해 비교 생략'
           : (br && br.capped
-            ? '세대가 많은 단지라 건축물대장 응답 상한(500행)에 이 호실이 없어 전유면적을 못 얻었습니다'
-            : '법원이 전유면적을 주지 않아 비교할 수 없습니다') };
+            ? '세대가 많은 단지라 건축물대장 응답 상한(500행)에 이 호실이 없어 전유면적 미확인'
+            : '법원이 전유면적 미제공으로 비교 불가') };
         const low = aucLowEok(d);
-        if (!low) return { why: '최저매각가격이 없어 비교할 수 없습니다' };
+        if (!low) return { why: '최저매각가격 없음으로 비교 불가' };
         const { list } = aucNearUnits(d);
         const med = (arr) => {
           const a = arr.slice().sort((x, y) => x - y);
@@ -7700,7 +7700,7 @@
           });
         }
         if (list.length < AUC_NEAR_MIN) {
-          return { why: `반경 ${AUC_NEAR_KM * 1000}m 안 ${AUC_NEAR_MONTHS}개월 실거래가 ${list.length}건뿐이라 중앙값을 내지 않습니다` };
+          return { why: `반경 ${AUC_NEAR_KM * 1000}m 안 ${AUC_NEAR_MONTHS}개월 실거래 ${list.length}건으로 표본 부족 — 중앙값 산출 안 함` };
         }
         const mid = med(list.map((x) => x.unit));
         const mine = low * 10000 / area;
@@ -7773,8 +7773,8 @@
         const what = [_bld, d.use, _nm, d.court, d.no ? '물건' + d.no : ''].filter(Boolean).map(esc).join(' · ');
         const stk = aucStake(det);
         const stkB = stk
-          ? `<span class="ap-tag ap-tag-risk danger" title="물건 전체가 아니라 이 지분만 낙찰됩니다.`
-            + ` 공유자 동의 없이는 사용·처분이 막혀 가치가 크게 달라집니다.">지분매각 ${stk.n}/${stk.d}</span>`
+          ? `<span class="ap-tag ap-tag-risk danger" title="물건 전체가 아니라 이 지분만 낙찰됨.`
+            + ` 공유자 동의 없이는 사용·처분이 제한돼 가치가 크게 달라짐.">지분매각 ${stk.n}/${stk.d}</span>`
           : '';
         const caseB = stkB + aucCaseBadges(d);
         
@@ -7797,7 +7797,7 @@
         const lesLine = les.length
           ? `<div class="auc-sum-les">임차인 <b>${les.length}명</b>`
             + `${nCfm ? ' · 확정일자 ' + nCfm + '건' : ''}`
-            + ` <span style="color:var(--c-muted);">— 대항력은 매각물건명세서의 최선순위 설정일과 비교해야 합니다</span></div>`
+            + ` <span style="color:var(--c-muted);">— 대항력은 매각물건명세서의 최선순위 설정일과 대조 요함</span></div>`
           : '';
 
         if (!price && !when.length && !risk && !lesLine && !ndLine && !lsLine) return '';
@@ -7860,12 +7860,10 @@
         
         
         
-        const notes = ['선순위 근저당권 등의 채권액은 명세서에서 확인하십시오 — 이 합계에 없습니다.',
-          '집행비용·당해세는 별도입니다.'];
-        
-        const cond = aucCondLoad();
+        const notes = ['선순위 근저당권 등 채권액은 명세서 확인 요함 — 이 합계에 미포함.',
+          '집행비용·당해세 별도.'];
         const scens2 = scens.map((s) => {
-          const c = aucCostRange(d, s.eok, cond.h === '1');
+          const c = aucCostRange(d, s.eok);
           if (!c) return null;
           const bidMan = s.eok * 10000;
           
@@ -7882,42 +7880,18 @@
             + `<td style="text-align:right;">${tax}</td><td style="text-align:right;">${insCell}</td>`
             + `<td style="text-align:right;"><b>${tot}</b></td></tr>`;
         }).join('');
-        let condLine = '';
         
         
-        if (cond.h === 'multi') notes.push('표의 세율은 일반세율입니다 — 다주택·법인 중과(조정대상지역·주택 수)는 반영하지 않았습니다. 세무사 확인이 필요합니다.');
         
         
-        const myExtra = (cond.ev || 0) + (cond.rp || 0);
-        if (myExtra > 0) {
-          const parts = [cond.ev > 0 ? `명도비 ${fmtAmtExact(cond.ev)}` : '', cond.rp > 0 ? `수리비 ${fmtAmtExact(cond.rp)}` : ''].filter(Boolean);
-          condLine += `<div style="margin-top:4px;"><b>내 비용 포함:</b> ` + parts.join(' + ') + ' → '
-            + scens2.map((s) => {
-              const lo = s.totLo + myExtra, hi = s.totHi + myExtra;
-              return `${esc(s.t)} ${fmtAmtExact(lo)}` + (Math.abs(lo - hi) < 0.001 ? '' : `~${fmtAmtExact(hi)}`);
-            }).join(' · ') + `</div>`;
-        }
-        if (cond.b > 0) {
-          const bMan = cond.b * 10000;
-          const lbl = `당신 조건(${cond.h === '1' ? '1주택' : cond.h === 'multi' ? '다주택·법인' : '주택 수 미선택'}·예산 ${fmtAmtExact(bMan)}`
-            + (myExtra > 0 ? `·내 비용 ${fmtAmtExact(myExtra)} 포함` : '') + `)`;
-          condLine += `<div style="margin-top:4px;"><b>${lbl}:</b> ` + scens2.map((s) => {
-            const lo = s.totLo + myExtra, hi = s.totHi + myExtra;
-            const v = hi <= bMan ? '예산 안에 듭니다'
-              : lo > bMan ? `${fmtAmtExact(lo - bMan)} 초과합니다`
-              : `${fmtAmtExact(hi - bMan)}까지 초과할 수 있습니다`;
-            return `${esc(s.t)} 합계가 ${v}`;
-          }).join(' · ') + `</div>`;
-        }
-        if (assumeUnknown > 0) notes.push(`보증금 미상 ${assumeUnknown}명은 합계에 빠졌습니다.`);
-        if (shop && les.length) notes.push('상가 임차보증금 인수는 사업자등록일 확인 후에 합산합니다 — 위 금액에 없습니다.');
-        if (r && r.conflict) notes.push('임차내역 조사 충돌 — 합계를 믿기 전 현장을 확인하십시오.');
-        if (r && r.demandEnd) notes.push(`배당요구종기 ${esc(r.demandEnd)} — 넘기면 배당을 못 받습니다.`);
-        if (mg && mg.amt && !mg.pub) notes.push('전유부분 체납관리비는 원칙적으로 전 소유자 몫이라 합계에 넣지 않았습니다.');
+        if (assumeUnknown > 0) notes.push(`보증금 미상 ${assumeUnknown}명은 합계에서 제외됨.`);
+        if (shop && les.length) notes.push('상가 임차보증금 인수는 사업자등록일 확인 후 합산 — 위 금액에 미포함.');
+        if (r && r.conflict) notes.push('임차내역 조사 충돌 — 합계 신뢰 전 현장 확인 요함.');
+        if (r && r.demandEnd) notes.push(`배당요구종기 ${esc(r.demandEnd)} — 경과 시 배당 불가.`);
+        if (mg && mg.amt && !mg.pub) notes.push('전유부분 체납관리비는 원칙적으로 전 소유자 부담이라 합계에 미포함.');
         return `<div class="auc-doc-h">낙찰 시뮬레이터 — 얼마를 더 내나</div>`
           + `<table class="rp-deals" style="width:100%;"><thead><tr><th>시나리오</th><th>입찰가</th>`
           + `<th>취득세 등</th><th>인수액</th><th>합계</th></tr></thead><tbody>${rows}</tbody></table>`
-          + condLine
           + `<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">${notes.join(' ')}</div>`;
       }
       
@@ -7929,53 +7903,22 @@
       
       
       
-      const AUCT_COND_LS = 'land_auction_cond';
-      function aucCondLoad() {
-        try {
-          const c = JSON.parse(localStorage.getItem(AUCT_COND_LS) || '{}');
-          return { h: (c && (c.h === '1' || c.h === 'multi')) ? c.h : '', b: Math.max(0, Number(c && c.b) || 0),
-            ev: Math.max(0, Number(c && c.ev) || 0), rp: Math.max(0, Number(c && c.rp) || 0) };
-        } catch (e) { return { h: '', b: 0, ev: 0, rp: 0 }; }
-      }
-      function aucCondSave(h, b, ev, rp) {
-        try { localStorage.setItem(AUCT_COND_LS, JSON.stringify({ h, b, ev, rp })); } catch (e) {}
-      }
-      window.__aucCondSave = aucCondSave;   
-      
       
       
       
       function aucGuide(d) {
         const a = aucApprEok(d), l = aucLowEok(d);
-        const pct = (a > 0 && l > 0) ? ` (이 물건은 감정가의 ${Math.round(l / a * 100)}%입니다)` : '';
+        const pct = (a > 0 && l > 0) ? ` (이 물건은 감정가의 ${Math.round(l / a * 100)}%)` : '';
+        
+        
         const steps = [
-          ['1. 최저가 확인', `감정가는 법원 정가, 최저가는 이번 회차 하한입니다. 최저가보다 낮게 쓰면 무효입니다${pct}.`],
-          ['2. 권리분석', `말소기준권리보다 전입이 빠르면 대항력 있음(인수)입니다. 위 '권리분석' 행의 판정을 보십시오.`],
-          ['3. 인수 vs 배당', `대항력 보증금은 낙찰자가 떠안습니다. 위 '낙찰 시뮬레이터'의 인수액을 보십시오.`],
-          ['4. 총액', `입찰가+취득세+인수액이 진짜 나가는 돈입니다. 합계는 위 표에 있습니다.`],
-          ['5. 입찰', `보증금(최저가의 10% 이상)을 준비해 기일에 입찰하십시오.`],
+          ['1. 최저가 확인', `감정가는 법원 정가, 최저가는 이번 회차 하한. 최저가보다 낮게 쓰면 무효${pct}.`],
+          ['2. 권리분석', `말소기준권리보다 전입이 빠르면 대항력 있음(인수). 위 '권리분석' 행 판정 확인.`],
+          ['3. 인수 vs 배당', `대항력 보증금은 낙찰자 인수분. 위 '낙찰 시뮬레이터' 의 인수액 확인.`],
+          ['4. 총액', `입찰가+취득세+인수액이 실제 지출액. 합계는 위 표 참조.`],
+          ['5. 입찰', `보증금(최저가의 10% 이상) 준비 후 기일에 입찰.`],
         ];
-        
-        const cond = aucCondLoad();
-        const opt = (v, t) => `<option value="${v}"${cond.h === v ? ' selected' : ''}>${t}</option>`;
-        
-        const _ci = 'width:96px;font:inherit;font-size:12px;padding:5px 7px;min-height:44px;'
-          + 'border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text);';
-        const condRow = `<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap;">`
-          + `<span style="color:var(--c-muted);font-size:12px;">내 조건</span>`
-          + `<select class="auc-cond-h" aria-label="주택 수" style="${_ci}width:auto;">`
-          + opt('', '주택 수') + opt('1', '1주택') + opt('multi', '다주택·법인') + `</select>`
-          + `<label style="font-size:12px;color:var(--c-muted);">예산(억원)</label>`
-          + `<input class="auc-cond-b" type="number" min="0" step="0.1" placeholder="예: 5" value="${cond.b > 0 ? cond.b : ''}" aria-label="예산(억원)"`
-          + ` style="${_ci}">`
-          
-          
-          + `<label style="font-size:12px;color:var(--c-muted);">명도비(만원)</label>`
-          + `<input class="auc-cond-ev" type="number" min="0" step="10" placeholder="예: 500" value="${cond.ev > 0 ? cond.ev : ''}" aria-label="명도비(만원)" style="${_ci}">`
-          + `<label style="font-size:12px;color:var(--c-muted);">수리비(만원)</label>`
-          + `<input class="auc-cond-rp" type="number" min="0" step="10" placeholder="예: 300" value="${cond.rp > 0 ? cond.rp : ''}" aria-label="수리비(만원)" style="${_ci}">`
-          + `</div>`;
-        return `<div class="auc-doc-h">경매 5분 가이드</div>` + condRow
+        return `<div class="auc-doc-h">경매 5분 가이드</div>`
           + steps.map(([k, v]) => `<div class="auc-doc-p"><span>${k}</span><div>${v}</div></div>`).join('');
       }
       
@@ -7999,7 +7942,7 @@
           return `<div style="margin-top:3px;">${s}</div>`;
         }).join('');
         return `<div class="auc-doc-h">과거 낙찰 — 예상과 실제</div>${lines}`
-          + `<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">매각결과 실측과의 대조입니다.</div>`;
+          + `<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">매각결과 실측과의 대조.</div>`;
       }
       
       
@@ -8090,12 +8033,13 @@
         
         if (v.score == null) return `<div class="auc-doc-h first">종합점수</div><div>판정 불가 — ${esc(v.why[0])}</div>`;
         const col = aucGradeCol(v.grade);
+        
+        
+        
         return `<div class="auc-doc-h first">종합점수</div>`
-          + `<div style="display:flex;align-items:baseline;gap:8px;"><b style="font-size:22px;">${v.score}점</b>`
-          + `<span style="font-size:12px;background:${col};color:#fff;padding:1px 8px;border-radius:999px;">${v.grade}</span></div>`
-          + (v.why.length
-            ? `<div style="font-size:12px;color:var(--c-muted);margin-top:3px;">${esc(v.why.join(' · '))}</div>`
-            : `<div style="font-size:12px;color:var(--c-muted);margin-top:3px;">감점 없음</div>`);
+          + `<div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;"><b style="font-size:22px;">${v.score}점</b>`
+          + `<span style="font-size:12px;background:${col};color:#fff;padding:1px 8px;border-radius:999px;">${v.grade}</span>`
+          + `<span style="font-size:12px;color:var(--c-muted);">${esc(v.why.length ? v.why.join(' · ') : '감점 없음')}</span></div>`;
       }
       function aucInvestHtml(d, sumHtml, rowsHtml, goBtns) {
         const det = d.detail || {};
@@ -8125,8 +8069,8 @@
               + (poss ? `<div class="apd-note">${esc(poss)}</div>` : '')
               + lesTbl
               + `<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">`
-              + `법원 집행관 현황조사 결과입니다. 대항력 유무는 <b>말소기준권리</b>와 비교해야 하며,`
-              + ` 그 날짜는 매각물건명세서에 있습니다 — 이 표만으로 판단하지 마십시오.</div>`
+              + `법원 집행관 현황조사 결과. 대항력 유무는 <b>말소기준권리</b>와 대조 요함.`
+              + ` 그 날짜는 매각물건명세서에 있음 — 이 표만으로 판단 금지.</div>`
             : '')
           + aucDivdSim(d)
           + aucHitRate(d)
@@ -8135,10 +8079,10 @@
           + (nd ? `<div class="auc-doc-h">고지사항 전문</div><div class="apd-note">${esc(nd)}</div>` : '')
           + `<div class="auc-doc-h">원문·전체</div>${goBtns}`
           + `<div style="margin-top:6px;font-size:12px;color:var(--c-muted);">외부에서 보기 · `
-          + `<a href="https://www.eum.go.kr/web/am/amMain.jsp" target="_blank" rel="noopener" title="토지이음 — 주소로 직접 검색하십시오">토지이음</a>`
-          + ` · <a href="https://asil.kr/asil/index.jsp" target="_blank" rel="noopener" title="아실 — 단지명으로 직접 검색하십시오">아실</a></div>`
+          + `<a href="https://www.eum.go.kr/web/am/amMain.jsp" target="_blank" rel="noopener" title="토지이음 — 주소로 직접 검색">토지이음</a>`
+          + ` · <a href="https://asil.kr/asil/index.jsp" target="_blank" rel="noopener" title="아실 — 단지명으로 직접 검색">아실</a></div>`
           + `<div style="font-size:11px;color:var(--c-muted);margin-top:4px;">`
-          + `사건내역·당사자·기일 전체는 <b>맨 왼쪽 '물건 상세'</b> 에 있습니다.</div>`
+          + `사건내역·당사자·기일 전체는 <b>맨 왼쪽 '물건 상세'</b> 에 있음.</div>`
           + `</div>`;
       }
       function auctionPopupHtml(d) {
@@ -8256,20 +8200,20 @@
             const head = `최선순위 설정 ${r.senior}${r.right ? ' ' + r.right : ''}`
               + (r.demandEnd ? ` · 배당요구종기 ${r.demandEnd}` : '');
             if (r.conflict) {
-              return `${head} — ⚠ 매각물건명세서는 "조사된 임차내역없음" 이라고 적혀 있으나`
-                + ` 현황조사서에는 점유자 ${r.n}명이 있습니다. 임대차 관계가 확인되지 않은 것이지`
-                + ` 비어 있다는 뜻이 아닙니다 — 아래 판정과 현장 확인이 함께 필요합니다.`
-                + (r.risky ? ` (그중 ${r.risky}명은 최선순위보다 빠릅니다)` : '');
+              return `${head} — ⚠ 매각물건명세서는 "조사된 임차내역없음" 으로 기재되나`
+                + ` 현황조사서에는 점유자 ${r.n}명. 임대차 관계 미확인일 뿐 공실을 뜻하지 않음`
+                + ` — 아래 판정과 현장 확인 병행 요함.`
+                + (r.risky ? ` (그중 ${r.risky}명은 최선순위보다 빠름)` : '');
             }
-            if (r.noTenant) return `${head} — 조사된 임차내역이 없습니다(인수할 임차보증금 없음)`;
+            if (r.noTenant) return `${head} — 조사된 임차내역 없음(인수 임차보증금 없음)`;
             if (!r.n) return head;
             
-            if (aucIsShop(d)) return `${head} — 상가 물건은 전입일이 아니라 사업자등록일로 판단합니다.`
-              + ` 등록일이 자료에 없어 대항력 판정을 보류합니다${r.n ? ` (임차인 ${r.n}명)` : ''}`;
+            if (aucIsShop(d)) return `${head} — 상가는 전입일이 아니라 사업자등록일로 판단.`
+              + ` 등록일 자료 없음으로 대항력 판정 보류${r.n ? ` (임차인 ${r.n}명)` : ''}`;
             
-            if (!r.risky) return `${head} — 임차인 ${r.n}명 전원이 최선순위보다 늦어 매각으로 소멸합니다`;
-            return `${head} — 임차인 ${r.n}명 중 ${r.risky}명이 최선순위보다 빠릅니다 (대항력 있음 → 낙찰자 인수 가능)`
-              + (r.unknownDep ? ` · 그중 ${r.unknownDep}명은 보증금이 확인되지 않아 인수 규모를 알 수 없습니다` : '');
+            if (!r.risky) return `${head} — 임차인 ${r.n}명 전원이 최선순위보다 늦어 매각으로 소멸`;
+            return `${head} — 임차인 ${r.n}명 중 ${r.risky}명이 최선순위보다 빠름 (대항력 있음 → 낙찰자 인수 가능)`
+              + (r.unknownDep ? ` · 그중 ${r.unknownDep}명은 보증금 미확인으로 인수 규모 산정 불가` : '');
           })()],
           
           ['명도', aucEvict(d)],
@@ -8280,8 +8224,8 @@
           ['고지사항', aucNdstrc(d)],
           ['확인할 부담', ((d.idx && d.idx.t) || []).join(' · ')],
           ['임차인', _les.length ? _les.length + '명' + (_cfm ? ' · 확정일자 ' + _cfm + '건' : '')
-            + ' — 대항력은 매각물건명세서의 최선순위 설정일과 비교해야 합니다' : ''],
-          ['지분매각', (() => { const k = aucStake(_det); return k ? `${k.n}/${k.d} (${k.pct}%) — 물건 전체가 아니라 이 지분만 낙찰됩니다` : ''; })()],
+            + ' — 대항력은 매각물건명세서의 최선순위 설정일과 대조 요함' : ''],
+          ['지분매각', (() => { const k = aucStake(_det); return k ? `${k.n}/${k.d} (${k.pct}%) — 물건 전체가 아니라 이 지분만 낙찰됨` : ''; })()],
           ['사건종류', (_det.base && _det.base.nm) || ''],
 
           
@@ -8327,11 +8271,10 @@
           : '';
         const rsLine = rs
           ? `<div style="margin:0 0 6px;padding:6px 8px;border-left:3px solid #7048e8;font-size:12px;">`
-            + `이 물건은 <b>${esc(aucRsltNm(rs.rslt))}</b> 이력이 있습니다`
-            + `${rs.y ? ' (' + esc(aucYmdDot(rs.y)) + ')' : ''}.`
-            + ` 낙찰이 무산돼 다시 나온 물건입니다.</div>`
+            + `<b>${esc(aucRsltNm(rs.rslt))}</b> 이력 있음`
+            + `${rs.y ? ' (' + esc(aucYmdDot(rs.y)) + ')' : ''}`
+            + ` — 낙찰 무산 후 재매각 물건.</div>`
           : '';
-        
         
         
         
@@ -8339,7 +8282,7 @@
         
         d._investArgs = [aucPopSummary(d), rowsHtml, goBtns];
         try { d._invest = aucInvestHtml(d, ...d._investArgs); } catch (e) { d._invest = ''; }
-        return `<div class="pc" data-kind="auc" data-favkey="${esc(auctionFavKey(d))}" data-i="${d._i}"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${aucColor(d.status)};flex-shrink:0;"></span><span class="rp-name">${esc(d.addr)}</span>${favBtn}${rsBadge}<span style="font-size:12px;background:${aucColor(d.status)};color:#fff;padding:1px 8px;border-radius:999px;">경매</span></div><div class="pc-body auc-body">${rsLine}${aucPopSummary(d)}${auctionPhotoHtml(d)}${rowsHtml}${goBtns}<div style="margin-top:3px;font-size:12px;color:var(--c-muted);">기일내역·당사자·감정평가·매각물건명세서는 위 바로가기에서 봅니다. 파란 ↗ 는 법원 원문(새 탭)입니다.</div></div></div>`;
+        return `<div class="pc" data-kind="auc" data-favkey="${esc(auctionFavKey(d))}" data-i="${d._i}"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${aucColor(d.status)};flex-shrink:0;"></span><span class="rp-name">${esc(d.addr)}</span>${favBtn}${rsBadge}<span style="font-size:12px;background:${aucColor(d.status)};color:#fff;padding:1px 8px;border-radius:999px;">경매</span></div><div class="pc-body auc-body">${rsLine}${aucPopSummary(d)}${auctionPhotoHtml(d)}${rowsHtml}${goBtns}<div style="margin-top:3px;font-size:12px;color:var(--c-muted);">기일내역·당사자·감정평가·매각물건명세서는 위 바로가기에서 확인. 파란 ↗ 는 법원 원문(새 탭).</div></div></div>`;
       }
       
       function aucPopWire(popup) {
@@ -8464,6 +8407,7 @@
       window.__aucInvest = (i) => {
         const d = auctionRows && auctionRows[+i];
         if (!d) return '';
+        
         
         
         try { if (d._investArgs) return aucInvestHtml(d, ...d._investArgs); } catch (e) {}
@@ -11114,18 +11058,6 @@
                   b.onclick = (ev) => {
                     ev.stopPropagation();
                     if (window.__aucGoClick) window.__aucGoClick(pc.dataset.i, b.dataset.go, b);
-                  };
-                });
-                
-                body.querySelectorAll('.auc-cond-h, .auc-cond-b, .auc-cond-ev, .auc-cond-rp').forEach((el) => {
-                  el.onchange = () => {
-                    const v = (sel) => Number((body.querySelector(sel) || {}).value) || 0;
-                    const h = (body.querySelector('.auc-cond-h') || {}).value || '';
-                    if (window.__aucCondSave) {
-                      window.__aucCondSave((h === '1' || h === 'multi') ? h : '',
-                        Math.max(0, v('.auc-cond-b')), Math.max(0, v('.auc-cond-ev')), Math.max(0, v('.auc-cond-rp')));
-                    }
-                    renderInvest();
                   };
                 });
                 
