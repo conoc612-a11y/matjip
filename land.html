@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
-  <link rel="stylesheet" href="css/tokens.css?v=f39e868b" />
+  <link rel="stylesheet" href="css/tokens.css?v=54db20f8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=f39e868b"></script>
+  <script src="js/auth-guard.js?v=54db20f8"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -37,12 +37,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=f39e868b" />
+  <link rel="stylesheet" href="css/buttons.css?v=54db20f8" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=f39e868b" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=54db20f8" />
   <style>
     :root {
       
@@ -174,7 +174,12 @@
     .nav-tab { color:var(--muted); padding:7px 12px; border-radius:8px; text-decoration:none; font-weight:500; border:1px solid var(--line); background:var(--card); transition:background .15s,color .15s,border-color .15s; }
     .nav-tab:hover { background:var(--c-hover); color:var(--text); }
     
-    .nav-tab.active { background:#D92A14; color:#fff; border-color:#D92A14; }
+    
+
+
+    
+
+
     .icon-btn { width:34px; height:34px; border:1px solid var(--line); background:var(--c-hover); color:var(--text); border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:16px; line-height:1; }
     .icon-btn svg { width:18px; height:18px; }
     .icon-btn:hover { background:var(--line); }
@@ -404,7 +409,8 @@
 
 
 
-    .panel { flex:0 0 20vw; min-width:340px; max-width:520px; min-height:0; overflow-y:auto; padding:14px 16px; transition:min-width .15s, padding .15s; border-left:1px solid var(--line); }
+    
+    .panel { flex:0 0 20vw; min-width:340px; max-width:520px; min-height:0; overflow-y:auto; padding:14px 16px; transition:min-width .15s, padding .15s; border-left:1px solid var(--c-primary); }
     
 
 
@@ -438,7 +444,7 @@
 
     
     .auction-panel { position:relative; flex:none; width:340px; min-width:200px; max-width:640px;
-      background:var(--card); border-right:1px solid var(--line);
+      background:var(--card); border-right:1px solid var(--c-primary);
       display:flex; flex-direction:column; font-size:13px; }
     
 
@@ -629,7 +635,7 @@
 
 
     .side-panel { position:relative; flex:none; width:20vw; min-width:300px; max-width:520px;
-      background:var(--card); border-right:1px solid var(--line);
+      background:var(--card); border-right:1px solid var(--c-primary);
       display:flex; flex-direction:column; font-size:13px; }
     .side-panel[hidden] { display:none; }
     
@@ -655,7 +661,7 @@
 
 
     .panel-slide-tab { position:absolute; top:50%; left:50%; margin-left:-10px; margin-top:-22px;
-      width:20px; height:44px; border-radius:8px; border:1px solid var(--line); background:var(--card);
+      width:20px; height:44px; border-radius:8px; border:1px solid var(--c-primary); background:var(--card);
       color:var(--muted); display:flex; align-items:center; justify-content:center; font-size:15px;
       line-height:1; cursor:pointer; z-index:2002; box-shadow:var(--c-shadow); padding:0;
       pointer-events:auto; touch-action:none; transition:opacity .15s; }
@@ -1170,7 +1176,7 @@
     
 
 
-    .lp-grip { margin-left:2px; color:var(--muted); font-size:13px; line-height:1; cursor:grab;
+    .lp-grip { margin-right:2px; color:var(--muted); font-size:13px; line-height:1; cursor:grab;
       opacity:.42; transition:opacity .12s; user-select:none; padding:2px 3px;
       
       touch-action:none; }
@@ -1711,7 +1717,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=f39e868b"></script>
+  <script src="js/ie-guard.js?v=54db20f8"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1729,7 +1735,6 @@
       <button id="bizno-btn" class="nav-tab" title="사업자등록증 조회 (국세청)" aria-label="사업자등록증 조회">사업자등록증조회</button>
     </div>
     <div class="right">
-      <a href="land.html" class="nav-tab active">부동산</a>
       <button id="theme-btn" class="icon-btn" title="다크모드" aria-label="다크모드"></button>
       <div class="profile">
         <button id="profile-btn" class="nav-tab profile-tab">내 정보 <span style="opacity:.6;">▾</span></button>
@@ -1982,22 +1987,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-16 12:13 · f39e868b</span></span>
+          · <span class="build-tag">build 2026-09-16 13:24 · 54db20f8</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=f39e868b"></script>
+  <script src="js/joinkey.js?v=54db20f8"></script>
   
-  <script src="js/identity.js?v=f39e868b"></script>
-  <script src="js/common.js?v=f39e868b"></script>
-  <script src="js/ui-resize.js?v=f39e868b"></script>
-  <script src="js/footer-resize.js?v=f39e868b"></script>
-  <script src="js/route-line.js?v=f39e868b"></script>
-  <script src="js/route-api.js?v=f39e868b"></script>
-  <script src="js/footer-stats.js?v=f39e868b"></script>
+  <script src="js/identity.js?v=54db20f8"></script>
+  <script src="js/common.js?v=54db20f8"></script>
+  <script src="js/ui-resize.js?v=54db20f8"></script>
+  <script src="js/footer-resize.js?v=54db20f8"></script>
+  <script src="js/route-line.js?v=54db20f8"></script>
+  <script src="js/route-api.js?v=54db20f8"></script>
+  <script src="js/footer-stats.js?v=54db20f8"></script>
   <script>
     
     
@@ -13772,7 +13777,7 @@
           { name: '병원·의원 (심평원)', layer: hospCluster },
           { name: '응급의료기관', layer: emrgCluster },
           
-          { name: '버스정류소 (11,239곳)', layer: busCluster },
+          { name: '버스정류소 및 이용률', layer: busCluster },
           
           { name: '실시간 버스 위치 (노선별)', layer: busPosLayer },
           
@@ -14200,8 +14205,13 @@
         LAYER_TREE.forEach(([big, mids]) => {
           const sec = L.DomUtil.create('div', 'lp-sec', body);
           const head = L.DomUtil.create('div', 'lp-head', sec);
-          head.innerHTML = `<input type="checkbox" class="lp-cb"><span class="lp-name">${big}</span>`
-            + `<span class="lp-grip" title="끌어서 목차 순서를 바꿉니다">⠿</span><span class="lp-arrow">▾</span>`;
+          
+          
+          
+          
+          head.innerHTML = `<span class="lp-grip" title="끌어서 목차 순서를 바꿉니다">⠿</span>`
+            + `<input type="checkbox" class="lp-cb"><span class="lp-name">${big}</span>`
+            + `<span class="lp-arrow">▾</span>`;
           sec.dataset.big = big;                 
           const kids = L.DomUtil.create('div', 'lp-kids', sec);
           head.querySelector('.lp-arrow').onclick = (e) => { e.stopPropagation(); sec.classList.toggle('closed'); };
@@ -14803,7 +14813,8 @@
             g.className = 'lp-grip';
             g.title = '끌어서 목차 순서를 바꿉니다';
             g.textContent = '⠿';
-            nm.insertAdjacentElement('afterend', g);
+            
+            sec.querySelector('.lp-head').prepend(g);
           }
         };
         secs().forEach(normalizeSec);
