@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
-  <link rel="stylesheet" href="css/tokens.css?v=f9f85a1f" />
+  <link rel="stylesheet" href="css/tokens.css?v=c77a8ea4" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=f9f85a1f"></script>
+  <script src="js/auth-guard.js?v=c77a8ea4"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -37,12 +37,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=f9f85a1f" />
+  <link rel="stylesheet" href="css/buttons.css?v=c77a8ea4" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=f9f85a1f" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=c77a8ea4" />
   <style>
     :root {
       
@@ -1465,6 +1465,11 @@
 
 
     .auc-sum { margin-bottom:8px; }
+    .auc-deal-tbl { width:100%; border-collapse:collapse; }
+    .auc-deal-tbl td { padding:3px 6px; font-size:12px; border-bottom:1px solid var(--c-border); vertical-align:top; }
+    .auc-deal-tbl .auc-deal-p { text-align:right; font-weight:700; white-space:nowrap; }
+    .auc-deal-tbl .auc-deal-m { color:var(--c-muted); }
+    .auc-deal-tbl tr.auc-deal-hit td { background:color-mix(in srgb, var(--c-primary) 10%, transparent); font-weight:600; }
     .auc-sum-price { display:flex; align-items:baseline; gap:7px; flex-wrap:wrap; }
     .auc-sum-price b { font-size:20px; color:var(--c-price); line-height:1.15; }
     
@@ -1721,7 +1726,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=f9f85a1f"></script>
+  <script src="js/ie-guard.js?v=c77a8ea4"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1991,22 +1996,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-16 23:32 · f9f85a1f</span></span>
+          · <span class="build-tag">build 2026-09-17 00:06 · c77a8ea4</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=f9f85a1f"></script>
+  <script src="js/joinkey.js?v=c77a8ea4"></script>
   
-  <script src="js/identity.js?v=f9f85a1f"></script>
-  <script src="js/common.js?v=f9f85a1f"></script>
-  <script src="js/ui-resize.js?v=f9f85a1f"></script>
-  <script src="js/footer-resize.js?v=f9f85a1f"></script>
-  <script src="js/route-line.js?v=f9f85a1f"></script>
-  <script src="js/route-api.js?v=f9f85a1f"></script>
-  <script src="js/footer-stats.js?v=f9f85a1f"></script>
+  <script src="js/identity.js?v=c77a8ea4"></script>
+  <script src="js/common.js?v=c77a8ea4"></script>
+  <script src="js/ui-resize.js?v=c77a8ea4"></script>
+  <script src="js/footer-resize.js?v=c77a8ea4"></script>
+  <script src="js/route-line.js?v=c77a8ea4"></script>
+  <script src="js/route-api.js?v=c77a8ea4"></script>
+  <script src="js/footer-stats.js?v=c77a8ea4"></script>
   <script>
     
     
@@ -7669,9 +7674,49 @@
         return [b.purps ? '주용도 ' + b.purps : '', b.area ? '전유 ' + fmtArea(b.area) : '',
           b.ho ? (b.dong ? b.dong + '동 ' : '') + b.ho + '호' : ''].filter(Boolean).join(' · ');
       }
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      const AUC_SIDO_RE = /^(?:\S+(?:특별시|광역시|특별자치시|특별자치도|도))\s+/;
+      const AUC_TAIL_RE = /(\S+?[동가리])\s+(\d+(?:-\d+)?)$/;
+      let _nrTail = null;
+      function aucNrTail() {
+        if (_nrTail) return _nrTail;
+        _nrTail = new Map();
+        const rows = window.__nonresRows || {};
+        for (const k in rows) {
+          const m = k.match(AUC_TAIL_RE);
+          if (!m) continue;
+          const t = m[1] + ' ' + m[2];
+          const a = _nrTail.get(t);
+          if (a) a.push(k); else _nrTail.set(t, [k]);
+        }
+        return _nrTail;
+      }
       function aucShopKey(d) {
-        const m = aucJibunAddr(d).match(/(\S+구)\s+(\S+?[동가])\s+(\d+(?:-\d+)?)$/);
-        return m ? m[1] + ' ' + m[2] + ' ' + m[3] : '';
+        const a = aucJibunAddr(d).replace(/\s+/g, ' ').trim();
+        if (!/\s\d+(?:-\d+)?$/.test(a)) return '';
+        const rows = window.__nonresRows;
+        const k0 = a.replace(AUC_SIDO_RE, '');
+        
+        if (!rows) return k0;
+        if (rows[k0]) return k0;
+        const m = a.match(AUC_TAIL_RE);
+        if (!m) return '';
+        const cand = (aucNrTail().get(m[1] + ' ' + m[2]) || []).filter((k) => {
+          const head = k.replace(/\s*\S+?[동가리]\s+\d+(?:-\d+)?$/, '').trim();
+          const last = head.split(' ').pop();
+          return last && a.indexOf(last) >= 0;
+        });
+        return cand.length === 1 ? cand[0] : '';
       }
       function aucShopNear(d) {
         
@@ -7702,6 +7747,48 @@
         return { kind: 'shop', tier: 'bld', tierNm: '같은 건물', area, areaSrc,
           n: list.length, mid, mine: low * 10000 / area,
           pct: Math.round((low * 10000 / area) / mid * 100), why: '구·동·지번 일치' };
+      }
+      
+      
+      
+      
+      
+      
+      
+      const AUC_DEAL_MAX = 40;        
+      function aucShopDealsHtml(d) {
+        const key = aucShopKey(d);
+        const all = key && window.__nonresRows && window.__nonresRows[key];
+        if (!all || !all.length) return '';
+        const live = all.filter((x) => x.p > 0 && x.a > 0);
+        if (!live.length) return '';
+        const area = aucArea(d && d.detail) || (d && d._br && d._br.area) || 0;
+        const hit = (x) => !!area && !x.cancel && Math.abs(x.a - area) / area <= AUC_SHOP_TOL;
+        const yms = live.map((x) => x.ym).filter(Boolean).sort();
+        const span = yms.length ? (yms[0] === yms[yms.length - 1] ? yms[0]
+          : yms[0] + '~' + yms[yms.length - 1]) : '';
+        const top = live.slice(0, AUC_DEAL_MAX);
+        const body = top.map((x) => {
+          const bits = [fmtArea(x.a)];
+          if (x.f) bits.push(x.f + '층');
+          if (x.u) bits.push(x.u);
+          if (x.n) bits.push(x.n);
+          return `<tr${hit(x) ? ' class="auc-deal-hit"' : ''}>`
+            + `<td>${esc(x.ym || '')}</td>`
+            + `<td class="auc-deal-p">${fmtAmtExact(x.p * 1e4)}</td>`
+            + `<td class="auc-deal-m">${esc(bits.join(' · '))}`
+            + `${x.cancel ? ' <b style="color:var(--c-primary);">해제</b>' : ''}</td></tr>`;
+        }).join('');
+        const nHit = live.filter(hit).length;
+        const more = live.length > top.length
+          ? `<div class="apd-note">외 ${live.length - top.length}건</div>` : '';
+        return `<div class="apd-sec" id="apd-sec-deal">`
+          + `<div class="apd-sec-t">같은 건물 실거래 ${live.length}건${span ? ' · ' + esc(span) : ''}</div>`
+          + `<table class="ls-tbl auc-deal-tbl"><tbody>${body}</tbody></table>${more}`
+          + (nHit ? `<div class="apd-note">진한 줄 ${nHit}건이 위 '실거래 대비' 에 쓴 같은 평형임`
+            + ` — 전용 ${fmtArea(area)} 기준 ±15%.</div>` : '')
+          + `<div class="apd-note">국토교통부 실거래가 · 구·동·지번(${esc(key)}) 완전일치.`
+          + ` 지번이 가려진 신고는 원본에서 빠져 있음.</div></div>`;
       }
       function aucNear(d) {
         const br = d && d._br;                       
@@ -10828,6 +10915,7 @@
             <div class="apd-card"><span>매각기일</span><b>${esc(d.sale || '-')}</b>${d.sale ? `<span class="dday">${esc(aucDDay(d.sale))}</span>` : ''}</div>
           </div>
           ${rowsHtml}
+          ${aucShopDealsHtml(d)}
           ${sections}
           <div class="apd-actions">
             <button type="button" class="apd-btn${fav ? ' on' : ''}" id="apd-fav">${fav ? '★ 즐겨찾기' : '☆ 즐겨찾기'}</button>
