@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
-  <link rel="stylesheet" href="css/tokens.css?v=4d93953d" />
+  <link rel="stylesheet" href="css/tokens.css?v=232e61b2" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=4d93953d"></script>
+  <script src="js/auth-guard.js?v=232e61b2"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -37,12 +37,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=4d93953d" />
+  <link rel="stylesheet" href="css/buttons.css?v=232e61b2" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=4d93953d" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=232e61b2" />
   <style>
     :root {
       
@@ -1721,7 +1721,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=4d93953d"></script>
+  <script src="js/ie-guard.js?v=232e61b2"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1787,7 +1787,7 @@
 
 
           <a id="ap-update" class="ap-update" href="http://localhost:8787/" target="_blank" rel="noopener"
-             title="경매 데이터 갱신 — 이 PC의 실행기(update.bat)가 켜져 있어야 합니다.">⟳ 데이터 갱신</a>
+             title="경매 데이터 갱신 — 이 PC의 실행기(update.bat)가 켜져 있어야 함.">⟳ 데이터 갱신</a>
           <button id="ap-close" class="ap-close" title="패널 닫기 (레이어는 유지)" aria-label="패널 닫기">✕</button>
         </div>
         <div class="ap-search-row"><input type="search" id="ap-search" placeholder="사건번호·주소·법원 검색" autocomplete="off" aria-label="경매 물건 검색"></div>
@@ -1991,22 +1991,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-16 16:42 · 4d93953d</span></span>
+          · <span class="build-tag">build 2026-09-16 17:20 · 232e61b2</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=4d93953d"></script>
+  <script src="js/joinkey.js?v=232e61b2"></script>
   
-  <script src="js/identity.js?v=4d93953d"></script>
-  <script src="js/common.js?v=4d93953d"></script>
-  <script src="js/ui-resize.js?v=4d93953d"></script>
-  <script src="js/footer-resize.js?v=4d93953d"></script>
-  <script src="js/route-line.js?v=4d93953d"></script>
-  <script src="js/route-api.js?v=4d93953d"></script>
-  <script src="js/footer-stats.js?v=4d93953d"></script>
+  <script src="js/identity.js?v=232e61b2"></script>
+  <script src="js/common.js?v=232e61b2"></script>
+  <script src="js/ui-resize.js?v=232e61b2"></script>
+  <script src="js/footer-resize.js?v=232e61b2"></script>
+  <script src="js/route-line.js?v=232e61b2"></script>
+  <script src="js/route-api.js?v=232e61b2"></script>
+  <script src="js/footer-stats.js?v=232e61b2"></script>
   <script>
     
     
@@ -2344,7 +2344,7 @@
                 
                 if (!bname) {
                   box.innerHTML = '<span style="color:var(--c-danger);font-size:14px;">'
-                    + '그 법인등록번호로 사업자등록번호를 찾지 못했습니다. '
+                    + '그 법인등록번호로 사업자등록번호를 찾지 못함. '
                     + '상호나 사업자등록번호로 다시 시도해 주세요.</span>';
                   return;
                 }
@@ -2374,7 +2374,7 @@
                       });
                     if (!g) {
                       box.innerHTML = '<span style="color:var(--c-danger);font-size:14px;">'
-                        + '그 상호로 사업자등록번호를 찾지 못했습니다. 다른 표기로 다시 시도하거나 '
+                        + '그 상호로 사업자등록번호를 찾지 못함. 다른 표기로 다시 시도하거나 '
                         + '사업자등록번호를 직접 입력해 주세요.</span>';
                       return;
                     }
@@ -2396,13 +2396,13 @@
                       + LOCALGOV_YEAR + '년 · 출처 한국지역정보개발원</div>'
                       + '</div></div>'
                       + '<div style="font-size:12px;color:var(--muted);">'
-                      + '지방공기업이라 <b>금융위 법인 등록부에는 없습니다</b> — 사업자등록번호를 자동으로 '
-                      + '채우지 못했습니다. 국세청 사업 상태·국민연금 사업장을 함께 보려면 '
+                      + '지방공기업이라 <b>금융위 법인 등록부에는 없음</b> — 사업자등록번호를 자동으로 '
+                      + '채우지 못함. 국세청 사업 상태·국민연금 사업장을 함께 보려면 '
                       + '사업자등록번호를 입력해 주세요.</div>';
                   })
                   .catch(() => {
                     box.innerHTML = '<span style="color:var(--c-danger);font-size:14px;">'
-                      + '그 상호로 사업자등록번호를 찾지 못했습니다.</span>';
+                      + '그 상호로 사업자등록번호를 찾지 못함.</span>';
                   });
                 return;
               }
@@ -2415,7 +2415,7 @@
         }
         if (name || startDt) {
           box.innerHTML = '<span style="color:var(--c-danger);font-size:14px;">'
-            + '대표자명·개업일자<b>만으로는</b> 찾을 수 없습니다 — 제공기관이 그 조건을 받지 않습니다.<br>'
+            + '대표자명·개업일자<b>만으로는</b> 찾을 수 없음 — 제공기관이 그 조건을 받지 않음.<br>'
             + '<b>사업자등록번호 · 상호 · 법인등록번호</b> 중 하나를 함께 넣어 주세요.</span>';
           return;
         }
@@ -2425,7 +2425,7 @@
       }
       const validate = !!(name && startDt);
       if ((name || startDt) && !validate) {
-        box.innerHTML = '<span style="color:var(--c-danger);font-size:14px;">진위확인은 대표자와 개업일자를 <b>모두</b> 입력해야 합니다. 번호만 입력하면 상태조회만 됩니다.</span>';
+        box.innerHTML = '<span style="color:var(--c-danger);font-size:14px;">진위확인은 대표자와 개업일자를 <b>모두</b> 입력해야 함. 번호만 입력하면 상태조회만 가능.</span>';
         if (name && $('bizno-date')) $('bizno-date').focus();
         if (startDt && $('bizno-name')) $('bizno-name').focus();
         return;
@@ -2438,7 +2438,7 @@
         .then((r) => (r.ok ? r.json() : Promise.reject(new Error('조회 API HTTP ' + r.status))))
         .then((j) => {
           const row = Array.isArray(j && j.data) ? j.data[0] : null;
-          if (!row) throw new Error('응답에 조회 결과가 없습니다.');
+          if (!row) throw new Error('응답에 조회 결과가 없음.');
           
           
           
@@ -2463,7 +2463,7 @@
               <table style="width:100%;border-collapse:collapse;font-size:14px;">
               ${rows.map(([k, v]) => `<tr><td style="padding:6px 4px;color:var(--muted);white-space:nowrap;">${esc(k)}</td><td style="padding:6px 4px;font-weight:600;">${esc(String(v))}</td></tr>`).join('')}
               </table>
-              <div style="margin-top:10px;font-size:12px;color:var(--muted);">${ok ? '입력하신 정보가 국세청 등록 정보와 일치합니다.' : '국세청 등록 정보와 일치하지 않습니다. 대표자·개업일을 확인하세요.'}<br>출처: 국세청(공공데이터포털), 30분 주기로 동기화됩니다.</div>`;
+              <div style="margin-top:10px;font-size:12px;color:var(--muted);">${ok ? '입력하신 정보가 국세청 등록 정보와 일치.' : '국세청 등록 정보와 일치하지 않음. 대표자·개업일을 확인하세요.'}<br>출처: 국세청(공공데이터포털), 30분 주기로 동기화됩니다.</div>`;
           } else {
             const stt = row.b_stt;
             badgeTxt = stt || '미등록';
@@ -2500,7 +2500,7 @@
             const paint = () => {
               painted = true;
               extra.innerHTML = parts.length ? parts.join('')
-                : '<div style="font-size:12px;color:var(--muted);">추가로 확인된 공공데이터가 없습니다.</div>';
+                : '<div style="font-size:12px;color:var(--muted);">추가로 확인된 공공데이터가 없음.</div>';
             };
             
             
@@ -2538,8 +2538,8 @@
                 else if (res) {
                   
                   parts.push(sec('건설업체 이력 (키스콘)',
-                    '<span style="color:var(--muted);">2003년 이후 행정처분·폐업 공시가 없습니다.'
-                    + ' <span style="font-size:12px;">(건설업 등록 업체가 아니면 원래 나오지 않습니다)</span></span>'));
+                    '<span style="color:var(--muted);">2003년 이후 행정처분·폐업 공시가 없음.'
+                    + ' <span style="font-size:12px;">(건설업 등록 업체가 아니면 원래 나오지 않음)</span></span>'));
                 }
                 
                 done();
@@ -2573,9 +2573,9 @@
                 
                 if (!hit.length) {
                   parts.push(sec('국민연금 가입 사업장',
-                    '<span style="color:var(--muted);">이 사업자로 특정하지 못했습니다. '
+                    '<span style="color:var(--muted);">이 사업자로 특정하지 못함. '
                     + '사업자번호 <b>앞 6자리</b>만 공개돼 여러 사업자가 같은 값을 씁니다'
-                    + (key ? ' (입력한 상호와 일치하는 사업장이 없습니다).' : ' — 상호를 함께 입력해 주세요.')
+                    + (key ? ' (입력한 상호와 일치하는 사업장이 없음).' : ' — 상호를 함께 입력해 주세요.')
                     + '<br>같은 앞자리 사업장 ' + (b.totalCount || a.length) + '건 · 출처 국민연금공단</span>'));
                   return;
                 }
@@ -2652,7 +2652,7 @@
                   if (ec && ['01', '02', '10', '11', '12', '20', '22', '30', '31', '32', '99'].includes(ec)
                     || /ERROR|FAIL|오류|실패|초과|승인|파라미터|NOT_|DENIED/i.test(em)) {
                     parts.push(sec('지방공기업 경영정보',
-                      '<span style="color:var(--muted);">경영정보를 불러오지 못했습니다(잠시 후 다시 눌러보세요).</span>'));
+                      '<span style="color:var(--muted);">경영정보를 불러오지 못함(잠시 후 다시 눌러보세요).</span>'));
                     return;
                   }
                   if (!hit.length) return;
@@ -2680,7 +2680,7 @@
               left -= 2;
               parts.push(sec('법인 · 가맹본부 정보',
                 '<span style="color:var(--muted);">상호를 함께 입력하면 '
-                + '법인등록번호·재무·가맹본부 여부까지 확인합니다.</span>'));
+                + '법인등록번호·재무·가맹본부 여부까지 확인.</span>'));
               if (left <= 0) paint();
             } else {
               
@@ -2783,7 +2783,7 @@
                 } else {
                   
                   parts.push(sec('가맹본부 (공정위)',
-                    '<span style="color:var(--muted);">공정위 가맹본부 목록에 없습니다 '
+                    '<span style="color:var(--muted);">공정위 가맹본부 목록에 없음 '
                     + '(프랜차이즈 본부가 아니거나 상호 표기가 다릅니다).</span>'));
                 }
                 done();
@@ -2817,7 +2817,7 @@
                   if (!hit) {
                     
                     parts.push(sec('대기업집단 (공정위)',
-                      '<span style="color:var(--muted);">공정위 대기업집단 소속회사 명단에 없습니다.</span>'));
+                      '<span style="color:var(--muted);">공정위 대기업집단 소속회사 명단에 없음.</span>'));
                     done();
                     return;
                   }
@@ -3880,7 +3880,7 @@
         applyTojiZoom();
         
         if (map.getZoom() < TOJI_MIN_ZOOM) {
-          toast(`토지거래허가구역은 확대해야 보입니다 — 줌 ${TOJI_MIN_ZOOM} 이상 (지금 ${map.getZoom()})`);
+          toast(`토지거래허가구역은 확대해야 보임 — 줌 ${TOJI_MIN_ZOOM} 이상 (지금 ${map.getZoom()})`);
         }
         if (_tojiLoaded) return;
         fetch('toji_heoga.geojson?v=2')
@@ -3895,7 +3895,7 @@
             
             
             console.error('토지거래허가구역 로드 실패:', err);
-            toast('토지거래허가구역을 불러오지 못했습니다 (toji_heoga.geojson)');
+            toast('토지거래허가구역을 불러오지 못함 (toji_heoga.geojson)');
           });
       });
 
@@ -4250,7 +4250,7 @@
             + ` <span style="color:var(--c-muted);">·</span> 대지지분당 <b>${fmtUnit(d.lup)}/㎡</b>`
             + `<div style="font-size:11px;color:var(--c-muted);">재개발·재건축은 전용면적이 아니라 대지지분으로 값을 매깁니다.</div></div>`
           : '';
-        return `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};flex-shrink:0;"></span><span class="rp-name">${esc(d.name)}</span><span style="font-size:12px;background:var(--c-primary);color:#fff;padding:1px 8px;border-radius:999px;">${esc(d.type)}</span></div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div>${rpFlagsHtml(d)}<div class="pc-price">매매 ${uPriceMain(d)} <span style="font-size:12px;font-weight:400;color:var(--c-muted);">${esc(fmtYm(d.ymd))} 거래</span></div>${uPriceSub(d) ? `<div style="margin-top:3px;">${uPriceSub(d)}</div>` : ''}<div class="rp-radius-stat rp-stat" style="display:none;"></div><div style="margin-top:3px;">전용 ${uAreaTxt(d.area)} · ${esc(d.floor)}층</div>${lshare}<div style="margin-top:3px;">${esc(d.build)}년 건축${oldTag}</div>${jeonseHtml(d, '건물 기준 참고')}${range}<details class="vu-det" data-lat="${d.lat}" data-lng="${d.lng}" data-dong="${esc(d.dong)}" style="margin-top:4px;"><summary style="font-size:12px;cursor:pointer;color:var(--c-primary);">층·호별 시세</summary><div class="vu-body" style="font-size:12px;line-height:1.6;max-height:220px;overflow:auto;margin-top:4px;">펼치면 조회합니다.</div></details></div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline" style="border-color:var(--line) !important;color:var(--c-price);"><i class="fi fi-rr-bookmark"></i>저장</button><a href="${naverSearchUrl(d.name + ' ' + (d.dong || d.gu || ''), d.lat, d.lng)}" target="_blank" rel="noopener" class="pc-btn pc-btn-primary rp-naver">네이버 부동산</a><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline"><i class="fi fi-rr-flag"></i>출발</button><button class="rt-end pc-btn pc-btn-outline"><i class="fi fi-rr-marker"></i>도착</button></div><button class="sv-btn pc-btn pc-btn-outline"><i class="fi fi-rr-video-camera"></i>거리뷰</button></div></div>`;
+        return `<div class="pc"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${ageColor(d.build)};flex-shrink:0;"></span><span class="rp-name">${esc(d.name)}</span><span style="font-size:12px;background:var(--c-primary);color:#fff;padding:1px 8px;border-radius:999px;">${esc(d.type)}</span></div><div class="pc-body"><div style="margin-bottom:4px;">${esc(d.gu)} ${esc(d.dong)}</div>${rpFlagsHtml(d)}<div class="pc-price">매매 ${uPriceMain(d)} <span style="font-size:12px;font-weight:400;color:var(--c-muted);">${esc(fmtYm(d.ymd))} 거래</span></div>${uPriceSub(d) ? `<div style="margin-top:3px;">${uPriceSub(d)}</div>` : ''}<div class="rp-radius-stat rp-stat" style="display:none;"></div><div style="margin-top:3px;">전용 ${uAreaTxt(d.area)} · ${esc(d.floor)}층</div>${lshare}<div style="margin-top:3px;">${esc(d.build)}년 건축${oldTag}</div>${jeonseHtml(d, '건물 기준 참고')}${range}<details class="vu-det" data-lat="${d.lat}" data-lng="${d.lng}" data-dong="${esc(d.dong)}" style="margin-top:4px;"><summary style="font-size:12px;cursor:pointer;color:var(--c-primary);">층·호별 시세</summary><div class="vu-body" style="font-size:12px;line-height:1.6;max-height:220px;overflow:auto;margin-top:4px;">펼치면 조회.</div></details></div><div class="pc-actions"><button class="rp-save pc-btn pc-btn-outline" style="border-color:var(--line) !important;color:var(--c-price);"><i class="fi fi-rr-bookmark"></i>저장</button><a href="${naverSearchUrl(d.name + ' ' + (d.dong || d.gu || ''), d.lat, d.lng)}" target="_blank" rel="noopener" class="pc-btn pc-btn-primary rp-naver">네이버 부동산</a><div class="pc-btn-row"><button class="rt-start pc-btn pc-btn-outline"><i class="fi fi-rr-flag"></i>출발</button><button class="rt-end pc-btn pc-btn-outline"><i class="fi fi-rr-marker"></i>도착</button></div><button class="sv-btn pc-btn pc-btn-outline"><i class="fi fi-rr-video-camera"></i>거리뷰</button></div></div>`;
       }
 
       
@@ -4286,14 +4286,14 @@
         const body = det.querySelector('.vu-body');
         const say = (t) => { if (body) body.innerHTML = t; };
         const lat = Number(det.dataset.lat), lng = Number(det.dataset.lng);
-        if (!isFinite(lat) || !isFinite(lng)) { say('좌표가 없어 조회할 수 없습니다.'); return; }
+        if (!isFinite(lat) || !isFinite(lng)) { say('좌표가 없어 조회할 수 없음.'); return; }
         say('조회 중…');
         
         
         
         const goVu = (pnu) => {
           const pp = pnuParts(pnu);
-          if (!pp) { say('필지를 확인하지 못했습니다.'); return; }
+          if (!pp) { say('필지를 확인하지 못함.'); return; }
           const jb = String(Number(pp.bun)) + (pp.ji === '0000' ? '' : '-' + String(Number(pp.ji)));
           ledgerOp('getBrExposPubuseAreaInfo', pnu, (arr) => {
             
@@ -4302,7 +4302,7 @@
             const units = arr.filter((x) => x.exposPubuseGbCdNm === '전유')
               .map((x) => ({ ho: String(x.hoNm || '').trim(), flr: vuFlr(x.flrNo), area: Number(x.area) || 0 }))
               .filter((u) => u.ho && u.area > 0 && u.flr !== 0);
-            if (!units.length) { say('대장에 전유부 기록이 없습니다.'); return; }
+            if (!units.length) { say('대장에 전유부 기록이 없음.'); return; }
             vuDeals(pp.sigunguCd, jb, det.dataset.dong || '', (res) => vuRender(det, body, units, res));
           });
         };
@@ -4660,7 +4660,7 @@
           
           
           if (!rows || !rows.length) {
-            toast('시내 CCTV 목록을 불러오지 못했습니다 (TOPIS 구조 변경 의심 — 수집기 재실행 필요)');
+            toast('시내 CCTV 목록을 불러오지 못함 (TOPIS 구조 변경 의심 — 수집기 재실행 필요)');
             return;
           }
           topisBuild();
@@ -5056,11 +5056,11 @@
       map.on('overlayadd', (e) => {
         if (e.layer !== silvCluster) return;
         loadSilv().then((rows) => {
-          if (!rows) { toast('분양권 전매 데이터를 불러오지 못했습니다.'); return; }
+          if (!rows) { toast('분양권 전매 데이터를 불러오지 못함.'); return; }
           silvBuild();
           
           if (_silvNoGeo) toast('분양권 전매 ' + rows.length.toLocaleString() + '건 표시 · '
-            + _silvNoGeo + '건은 좌표를 얻지 못해 지도에 없습니다');
+            + _silvNoGeo + '건은 좌표를 얻지 못해 지도에 없음');
         });
       });
 
@@ -5272,7 +5272,7 @@
             busPosDraw(buses);
             if (!buses.length) {
               
-              if (!quiet) toast(no + '번 — ' + (j && j.msg ? j.msg : '지금 운행 중인 차량이 없습니다.'));
+              if (!quiet) toast(no + '번 — ' + (j && j.msg ? j.msg : '지금 운행 중인 차량이 없음.'));
               return;
             }
             if (!quiet) {
@@ -5282,7 +5282,7 @@
               try { map.fitBounds(g.getBounds().pad(0.15)); } catch (e) {  }
             }
           })
-          .catch(() => { if (!quiet) toast('실시간 위치를 불러오지 못했습니다.'); });
+          .catch(() => { if (!quiet) toast('실시간 위치를 불러오지 못함.'); });
       }
 
       function busPosStart(rtid, no) {
@@ -5369,7 +5369,7 @@
             const buses = (j && j.buses) || [];
             tagoPosDraw(buses, label);
             if (!buses.length) {
-              if (!quiet) toast(label + ' — ' + (j && j.msg ? j.msg : '지금 운행 중인 차량이 없습니다.'));
+              if (!quiet) toast(label + ' — ' + (j && j.msg ? j.msg : '지금 운행 중인 차량이 없음.'));
               return;
             }
             if (!quiet) {
@@ -5378,7 +5378,7 @@
               try { map.fitBounds(g.getBounds().pad(0.15)); } catch (e) {  }
             }
           })
-          .catch(() => { if (!quiet) toast('실시간 위치를 불러오지 못했습니다.'); });
+          .catch(() => { if (!quiet) toast('실시간 위치를 불러오지 못함.'); });
       }
       function tagoPosStart(cc, rid, label, src) {
         tagoPosStop();
@@ -5460,7 +5460,7 @@
             const rows = (j && j.routes) || [];
             if (!rows.length) {
               box.innerHTML = '<span style="font-size:12px;color:var(--c-muted);">'
-                + esc(j && j.msg ? j.msg : '지금 오는 버스 정보가 없습니다.') + '</span>';
+                + esc(j && j.msg ? j.msg : '지금 오는 버스 정보가 없음.') + '</span>';
               return;
             }
             
@@ -5486,12 +5486,12 @@
               + (rows.length > 8 ? '<div style="font-size:11px;color:var(--c-muted);margin-top:2px;">외 '
                 + (rows.length - 8) + '개 노선</div>' : '')
               + '<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">'
-              + '서울시 버스도착정보 · <b>저상버스 기준</b>이라 일부 노선은 빠질 수 있습니다</div>'
+              + '서울시 버스도착정보 · <b>저상버스 기준</b>이라 일부 노선은 빠질 수 있음</div>'
               + '<div style="font-size:11px;color:var(--c-muted);">노선 번호를 누르면 <b>지금 그 노선 버스가 어디 있는지</b> 지도에 표시됩니다.</div>';
           })
           .catch(() => {
             box.innerHTML = '<span style="font-size:12px;color:var(--c-danger);">'
-              + '도착정보를 불러오지 못했습니다.</span>';
+              + '도착정보를 불러오지 못함.</span>';
           });
       }
       map.on('popupopen', (e) => {
@@ -5519,7 +5519,7 @@
         
         
         Promise.all([loadBusStop(), loadBusVolume()]).then(([r, v]) => {
-          if (!r) { toast('버스정류소를 불러오지 못했습니다.'); return; }
+          if (!r) { toast('버스정류소를 불러오지 못함.'); return; }
           busBuild();
           const n = v ? v.by.size : 0;
           toast('버스정류소 ' + r.length.toLocaleString() + '곳 — 파란색은 중앙차로, 초록은 한강버스 선착장'
@@ -6128,7 +6128,7 @@
       map.on('overlayadd', (e) => {
         if (e.layer === bikeCluster) {
           loadBike().then((r) => {
-            if (!r) { toast('따릉이 정보를 불러오지 못했습니다.'); return; }
+            if (!r) { toast('따릉이 정보를 불러오지 못함.'); return; }
             bikeBuild();
             const wh = r.filter((x) => x.hold).length;
             toast('따릉이 대여소 ' + r.length.toLocaleString() + '곳 — 핀 크기는 거치대 수('
@@ -6136,13 +6136,13 @@
           });
         } else if (e.layer === subCluster) {
           loadSubway().then((r) => {
-            if (!r) { toast('지하철 정보를 불러오지 못했습니다.'); return; }
+            if (!r) { toast('지하철 정보를 불러오지 못함.'); return; }
             subBuild();
             toast('지하철역 ' + r.length + '곳 — 핀 크기는 이용량, 색은 호선');
           });
         } else if (e.layer === trdarCluster) {
           loadTrdar().then((r) => {
-            if (!r) { toast('상권 정보를 불러오지 못했습니다.'); return; }
+            if (!r) { toast('상권 정보를 불러오지 못함.'); return; }
             trdarBuild();
             const c = {};
             r.forEach((d) => { c[d.se] = (c[d.se] || 0) + 1; });
@@ -6152,7 +6152,7 @@
           });
         } else if (e.layer === schoolCluster) {
           loadSchool().then((r) => {
-            if (!r) { toast('학교 정보를 불러오지 못했습니다.'); return; }
+            if (!r) { toast('학교 정보를 불러오지 못함.'); return; }
             schoolBuild();
             const c = { 초: 0, 중: 0, 고: 0 };
             r.forEach((d) => { if (c[d.lv] != null) c[d.lv]++; });
@@ -6160,13 +6160,13 @@
           });
         } else if (e.layer === hospCluster) {
           loadHosp().then((r) => {
-            if (!r) { toast('병원 정보를 불러오지 못했습니다.'); return; }
+            if (!r) { toast('병원 정보를 불러오지 못함.'); return; }
             hospBuild();
             toast('병원·의원 ' + r.length.toLocaleString() + '곳 — 종별로 색이 다릅니다(상급종합이 가장 진함)');
           });
         } else if (e.layer === emrgCluster) {
           loadEmrg().then((r) => {
-            if (!r) { toast('응급의료기관을 불러오지 못했습니다.'); return; }
+            if (!r) { toast('응급의료기관을 불러오지 못함.'); return; }
             emrgBuild();
           });
         }
@@ -6199,7 +6199,7 @@
             return evRows;
           }).catch((e) => {
             _evPromise = null;
-            toast('전기차 충전소를 불러오지 못했습니다 (evcharger.json)');
+            toast('전기차 충전소를 불러오지 못함 (evcharger.json)');
             console.error('충전소 로드 실패:', e);
             return null;
           });
@@ -6265,7 +6265,7 @@
             return agedRows;
           }).catch((e) => {
             _agedPromise = null;
-            toast('노후 공공시설물을 불러오지 못했습니다 (aged_facility.json)');
+            toast('노후 공공시설물을 불러오지 못함 (aged_facility.json)');
             console.error('노후시설 로드 실패:', e);
             return null;
           });
@@ -6772,7 +6772,7 @@
           
           }).catch((e) => {
             _auctionPromise = null;
-            toast('경매 목록을 불러오지 못했습니다 (auction.json — 수집기 실행 필요)');
+            toast('경매 목록을 불러오지 못함 (auction.json — 수집기 실행 필요)');
             console.error('경매 로드 실패:', e);
             return null;
           });
@@ -7889,7 +7889,7 @@
         if (r && r.conflict) notes.push('임차내역 조사 충돌 — 합계 신뢰 전 현장 확인 요함.');
         if (r && r.demandEnd) notes.push(`배당요구종기 ${esc(r.demandEnd)} — 경과 시 배당 불가.`);
         if (mg && mg.amt && !mg.pub) notes.push('전유부분 체납관리비는 원칙적으로 전 소유자 부담이라 합계에 미포함.');
-        return `<div class="auc-doc-h">낙찰 시뮬레이터 — 얼마를 더 내나</div>`
+        return `<div class="auc-doc-h">AI 낙찰 시뮬레이터</div>`
           + `<table class="rp-deals" style="width:100%;"><thead><tr><th>시나리오</th><th>입찰가</th>`
           + `<th>취득세 등</th><th>인수액</th><th>합계</th></tr></thead><tbody>${rows}</tbody></table>`
           + `<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">${notes.join(' ')}</div>`;
@@ -7914,7 +7914,7 @@
         const steps = [
           ['1. 최저가 확인', `감정가는 법원 정가, 최저가는 이번 회차 하한. 최저가보다 낮게 쓰면 무효${pct}.`],
           ['2. 권리분석', `말소기준권리보다 전입이 빠르면 대항력 있음(인수). 위 '권리분석' 행 판정 확인.`],
-          ['3. 인수 vs 배당', `대항력 보증금은 낙찰자 인수분. 위 '낙찰 시뮬레이터' 의 인수액 확인.`],
+          ['3. 인수 vs 배당', `대항력 보증금은 낙찰자 인수분. 위 'AI 낙찰 시뮬레이터' 의 인수액 확인.`],
           ['4. 총액', `입찰가+취득세+인수액이 실제 지출액. 합계는 위 표 참조.`],
           ['5. 입찰', `보증금(최저가의 10% 이상) 준비 후 기일에 입찰.`],
         ];
@@ -8590,7 +8590,7 @@
               _bkPromise = null;   
               
               bankruptRows = [];
-              toast('파산금융 매물을 불러오지 못했습니다 (bankrupt.json — 수집기 실행 필요)');
+              toast('파산금융 매물을 불러오지 못함 (bankrupt.json — 수집기 실행 필요)');
               console.warn('파산금융 로드 실패:', e);
             });
         }
@@ -8650,7 +8650,7 @@
             .catch((e) => {
               _tzPromise = null;   
               _tzRows = [];
-              toast('상권 영역을 불러오지 못했습니다 (tradezone.json)');
+              toast('상권 영역을 불러오지 못함 (tradezone.json)');
               console.warn('상권 영역 로드 실패:', e);
             });
         }
@@ -8700,7 +8700,7 @@
             .catch((e) => {
               _lifePromise = null;   
               lifeRows = [];
-              toast('생필품 판매점을 불러오지 못했습니다 (lifeprice.json — 수집기 실행 필요)');
+              toast('생필품 판매점을 불러오지 못함 (lifeprice.json — 수집기 실행 필요)');
               console.warn('생필품 로드 실패:', e);
             });
         }
@@ -8722,7 +8722,7 @@
         }
         
         if (!geo.length && (lifeRows || []).length) {
-          toast(`생필품 판매점 ${lifeRows.length}곳은 좌표가 없어 지도에 못 찍습니다 (팝업에서 구 단위로 보입니다)`);
+          toast(`생필품 판매점 ${lifeRows.length}곳은 좌표가 없어 지도에 못 표시 (팝업에서 구 단위로 보임)`);
         }
       }
       
@@ -8748,7 +8748,7 @@
             .catch((e) => {
               _grnMapPromise = null;   
               grnMapRows = [];
-              toast('녹색건축 인증을 불러오지 못했습니다 (greenbuild.json)');
+              toast('녹색건축 인증을 불러오지 못함 (greenbuild.json)');
               console.warn('녹색건축 로드 실패:', e);
             });
         }
@@ -8768,7 +8768,7 @@
               + (d.gf ? ` · 지상 ${d.gf}층` : '') + (d.bf ? ` · 지하 ${d.bf}층` : '') + '</div>' : '')
             + `<div style="font-size:12px;margin-top:3px;">${esc(d.addr || '')}</div>`
             + '<div style="font-size:11px;color:var(--c-muted);margin-top:4px;">한국부동산원 G-SEED · '
-            + '예비인증은 사업이 진행 중이라는 뜻입니다.</div>'
+            + '예비인증은 사업이 진행 중이라는 뜻.</div>'
             + '</div>';
           greenCluster.addLayer(m);
         }
@@ -8800,7 +8800,7 @@
             .catch((e) => {
               _rstMapPromise = null;   
               rstMapRows = [];
-              toast('공중화장실을 불러오지 못했습니다 (restroom.json)');
+              toast('공중화장실을 불러오지 못함 (restroom.json)');
               console.warn('공중화장실 로드 실패:', e);
             });
         }
@@ -8862,7 +8862,7 @@
               _onbidPromise = null;   
               
               onbidRows = [];
-              toast('공매 목록을 불러오지 못했습니다 (onbid.json — 수집기 실행 필요)');
+              toast('공매 목록을 불러오지 못함 (onbid.json — 수집기 실행 필요)');
               console.warn('공매 로드 실패:', e);
             });
         }
@@ -9055,10 +9055,10 @@
         }
         if (x.dtbt.length) out.push('<b>배당요구</b> ' + x.dtbt.length + '건');
         if (x.ocpy.length) out.push('<b>점유관계</b> ' + x.ocpy.length + '건');
-        if (!out.length) return box('<span style="font-size:12px;color:var(--c-muted);">이 물건의 권리·임대차 자료가 없습니다.</span>');
+        if (!out.length) return box('<span style="font-size:12px;color:var(--c-muted);">이 물건의 권리·임대차 자료가 없음.</span>');
         return box(out.join('<div style="height:5px;"></div>')
           + '<div style="margin-top:5px;font-size:11px;color:var(--c-muted);">'
-          + '온비드 물건상세 · 순위·인수 여부는 등기 전부와 배당요구를 함께 봐야 합니다</div>');
+          + '온비드 물건상세 · 순위·인수 여부는 등기 전부와 배당요구를 함께 확인 요함</div>');
       }
       
       
@@ -9187,7 +9187,7 @@
           loadOnbidDetail(d.mng, d.cdtn, (x) => {
             
             if (x) d._obDtl = x;
-            else { delete d._obDtl; toast('권리·임대차를 불러오지 못했습니다.'); }
+            else { delete d._obDtl; toast('권리·임대차를 불러오지 못함.'); }
             if (map.hasLayer(e.popup)) { e.popup.setContent(onbidPopupHtml(d)); wireObDtl(e.popup); }
           });
           
@@ -9698,13 +9698,13 @@
         if (!list.length) { el.hidden = true; el.innerHTML = ''; return; }
         const li = list.slice(0, 3).map((x) =>
           `<li><b>${esc(x.d.addr)}</b> \u2014 ${esc(x.ch.map((c) => c.t).join(' \u00b7 '))}</li>`).join('');
-        el.innerHTML = `관심물건 <b>${list.length}건</b>에 변동이 있습니다.`
+        el.innerHTML = `관심물건 <b>${list.length}건</b>에 변동이 있음.`
           + `<ul>${li}${list.length > 3 ? `<li>\u2026 외 ${list.length - 3}건</li>` : ''}</ul>`
           + '<div class="ap-alert-btns">'
           + '<button type="button" id="ap-alert-go">관심물건만 보기</button>'
           + '<button type="button" id="ap-alert-ok">확인</button></div>'
           + '<div class="ap-alert-note">이 알림은 이 브라우저에만 저장됩니다 \u2014'
-          + ' 기기를 바꾸면 이어지지 않습니다.</div>';
+          + ' 기기를 바꾸면 이어지지 않음.</div>';
         el.hidden = false;
         $('ap-alert-ok').onclick = aucWatchAck;
         
@@ -9833,7 +9833,7 @@
               
               const ch = fav ? aucWatchMap().get(auctionFavKey(d)) : null;
               return ch ? `<div class="ap-tags"><span class="ap-tag ap-tag-chg"
-                title="즐겨찾기에 담은 뒤 달라진 값입니다.">변동 ${esc(ch.map((c) => c.t).join(' \u00b7 '))}</span></div>` : '';
+                title="즐겨찾기에 담은 뒤 달라진 값.">변동 ${esc(ch.map((c) => c.t).join(' \u00b7 '))}</span></div>` : '';
             })()}
             ${(() => { const b = aucBadges(d); return b ? `<div class="ap-tags">${b}</div>` : ''; })()}
           </div>
@@ -9909,7 +9909,7 @@
         
         if (!capped.length && auctionRows && (q || auctionFavOnly || aucFiltOn())) {
           auctionList.innerHTML = `<div style="padding:26px 16px;text-align:center;color:var(--c-muted);font-size:13px;">`
-            + `조건에 맞는 물건이 없습니다.<br>필터를 풀고 다시 보십시오.</div>`
+            + `조건에 맞는 물건이 없음.<br>필터를 풀고 다시 확인.</div>`
             + `<div style="padding:0 16px;"><button type="button" class="auc-empty-clear pc-btn pc-btn-outline">필터 해제</button></div>`;
           const b = auctionList.querySelector('.auc-empty-clear');
           if (b) b.onclick = () => auctionFilterReset();
@@ -10601,8 +10601,8 @@
                 + `<button type="button" class="pc-btn pc-btn-outline" id="apd-aee-court" style="display:inline-block;">`
                 + `법원에서 감정평가서 원문 보기</button>`
                 + `<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">`
-                + `이 사건은 아직 PDF 주소를 확보하지 못했습니다. 사건번호를 복사하고 법원경매정보 `
-                + `사건검색을 엽니다 — 붙여넣고 검색한 뒤 <b>감정평가서</b> 버튼을 누르면 볼 수 있습니다.`
+                + `이 사건은 아직 PDF 주소를 확보하지 못함. 사건번호를 복사하고 법원경매정보 `
+                + `사건검색을 엽니다 — 붙여넣고 검색한 뒤 <b>감정평가서</b> 버튼을 누르면 볼 수 있음.`
                 + `</div></div>`;
             sections += sec('apd-sec-aee', '감정평가서',
               `${aeeRows.length ? _pairTbl(aeeRows) : ''}${_aeeLink}${evltHtml}`);
@@ -10668,10 +10668,10 @@
                 }).join('')
                 + '</tbody></table>'
                 + '<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">'
-                + '법원 집행관 현황조사서 + 매각물건명세서로 만든 표입니다. <b>등기부등본이 아닙니다</b> —'
-                + ' 근저당·가압류·가처분 등 등기 권리는 여기 없습니다.'
+                + '법원 집행관 현황조사서 + 매각물건명세서로 만든 표. <b>등기부등본이 아닙니다</b> —'
+                + ' 근저당·가압류·가처분 등 등기 권리는 여기 없음.'
                 + (_sen ? ' 결과는 전입일자와 최선순위 설정일만 비교한 것이며, 확정일자·배당요구에 따른'
-                  + ' 실제 배당 결과는 다를 수 있습니다.' : ' 최선순위 설정일이 문서에 없어 인수 여부를 판정하지 않았습니다.')
+                  + ' 실제 배당 결과는 다를 수 있음.' : ' 최선순위 설정일이 문서에 없어 인수 여부를 판정하지 않음.')
                 + '</div>';
             }
             if (_cuHtml) {
@@ -11019,7 +11019,7 @@
         const paint = (pc) => {
           const src = pc.querySelector('.pc-body');
           body.innerHTML = '';
-          if (!src) { body.textContent = '표시할 내용이 없습니다.'; return; }
+          if (!src) { body.textContent = '표시할 내용이 없음.'; return; }
           const copy = src.cloneNode(true);
           
           copy.querySelectorAll('button, input, select, textarea').forEach((n) => n.remove());
@@ -11392,7 +11392,7 @@
             + `<span class="jb-meta-k">연결 근거</span> ${esc(cu.k)} 일치`
             + (cu.d != null ? ` · 두 출처 좌표 ${fmtCnt(cu.d, 'm')} 차이` : '')
             + (cu.d != null && cu.d > 500
-              ? ' <span style="color:var(--c-price);">⚠ 위치가 많이 벌어집니다 — 확인하십시오</span>' : '')
+              ? ' <span style="color:var(--c-price);">⚠ 위치가 많이 벌어집니다 — 확인 요함</span>' : '')
             + '</div>');
         }
         if (!rows.length) return '';
@@ -11512,7 +11512,7 @@
             ({ error: insErr } = await s.from('jb_posts').insert({ zone_rc: zoneKey, zone_name: d.name, nickname: nick, content }));
           } catch (e) {
             insErr = e;
-            toast('글을 등록하지 못했습니다 (네트워크).');
+            toast('글을 등록하지 못함 (네트워크).');
           } finally {
             submitBtn.disabled = false;
           }
@@ -12306,8 +12306,8 @@
           const c = video.error && video.error.code;
           
           fail(c === 4
-            ? '영상을 불러오지 못했습니다. ITS 스트림 토큰은 120분 뒤 만료됩니다 — 다시 시도해 보세요.'
-            : '영상 재생에 실패했습니다.');
+            ? '영상을 불러오지 못함. ITS 스트림 토큰은 120분 뒤 만료됩니다 — 다시 시도해 보세요.'
+            : '영상 재생에 실패.');
         });
         
         
@@ -12323,7 +12323,7 @@
         
         
         
-        const guard = setTimeout(() => { if (!video.videoWidth) fail('영상이 응답하지 않습니다.'); }, 22000);
+        const guard = setTimeout(() => { if (!video.videoWidth) fail('영상이 응답하지 않음.'); }, 22000);
         video.addEventListener('loadeddata', () => clearTimeout(guard));
         
         let _hlsRef = null;
@@ -12437,7 +12437,7 @@
             + `<div class="cctv-pc-head"><span>${esc(title)}</span></div>`
             + '<div class="cctv-pc-info">'
             + '<div class="cctv-info-row"><span class="cctv-info-v" style="color:var(--c-muted);">'
-            + '📹 영상 미제공 — 위치·설치 정보만 공개됩니다(생활방범 CCTV 는 지자체가 영상을 공개하지 않습니다)'
+            + '📹 영상 미제공 — 위치·설치 정보만 공개됩니다(생활방범 CCTV 는 지자체가 영상을 공개하지 않음)'
             + '</span></div>'
             + `${metaHtml}</div>`
             + `<div class="cctv-pc-meta">행정안전부 전국 CCTV 표준데이터 · 좌표 ${it.lat.toFixed(5)}, ${it.lng.toFixed(5)}</div></div>`;
@@ -12704,7 +12704,7 @@
         
         
         if (n.geoAddr && n.geoAddr !== n.addr) {
-          rows.push(`<div style="margin-top:6px;font-size:12px;color:var(--c-warn,#e8590c);">위치는 <b>${esc(n.geoAddr)}</b> 기준입니다 (공고 주소를 좌표로 바꿀 수 없어 인접 지번을 씀)</div>`);
+          rows.push(`<div style="margin-top:6px;font-size:12px;color:var(--c-warn,#e8590c);">위치는 <b>${esc(n.geoAddr)}</b> 기준 (공고 주소를 좌표로 바꿀 수 없어 인접 지번을 씀)</div>`);
         }
         rows.push(`<div style="margin-top:6px;font-size:12px;color:var(--c-muted);">한국부동산원 청약홈 공공지원민간임대 공고</div>`);
         const st = pubrentNoticeState(n);
@@ -12898,7 +12898,7 @@
             
             const open = it.rcptEnd && it.rcptEnd >= chungakToday();
             rows.push('<span style="color:var(--c-muted);font-size:12px;">'
-              + (open ? '경쟁률은 접수 마감 후 집계됩니다.' : '이 공고의 경쟁률 자료가 없습니다.')
+              + (open ? '경쟁률은 접수 마감 후 집계됩니다.' : '이 공고의 경쟁률 자료가 없음.')
               + '</span>');
           }
         }
@@ -13025,7 +13025,7 @@
             + '<div class="pc-price">가입자 ' + won(cnt) + '명</div>'
             + (d.pen ? '<div style="margin-top:3px;">평균 예상연금 <b>' + won(d.pen) + '원</b></div>' : '')
             + '<div style="margin-top:6px;font-size:11px;color:var(--c-muted);">'
-            + '국민연금공단 가입현황 · 자치구 단위 통계입니다</div>'
+            + '국민연금공단 가입현황 · 자치구 단위 통계</div>'
             + '</div></div>');
           m.bindTooltip(esc(d.nm) + ' ' + won(cnt) + '명', { direction: 'top' });
           npsAreaLayer.addLayer(m);
@@ -13034,7 +13034,7 @@
       map.on('overlayadd', (e) => {
         if (e.layer !== npsAreaLayer) return;
         loadNpsArea().then((rows) => {
-          if (!rows || !rows.length) { toast('국민연금 가입현황을 불러오지 못했습니다.'); return; }
+          if (!rows || !rows.length) { toast('국민연금 가입현황을 불러오지 못함.'); return; }
           npsAreaBuild();
           toast('국민연금 가입현황 — 자치구 ' + rows.length + '곳 · 원 크기는 가입자 수');
         });
@@ -13092,7 +13092,7 @@
           body: (d) => line('업종', d.ind) + line('건물', d.bld)
             + line('층', d.flr ? d.flr + '층' : '') + line('주소', d.addr),
           note: '소상공인시장진흥공단 상가(상권)정보 · <b>분기 갱신</b>이라 폐업이 늦게 반영됩니다'
-            + '<br>상가업소 대상이라 사무실·일반 사무업은 빠져 있습니다',
+            + '<br>상가업소 대상이라 사무실·일반 사무업은 빠져 있음',
         },
         
         
@@ -13116,8 +13116,8 @@
           title: (d) => d.nm, minZ: 15,
           body: (d) => line('음식 유형', d.kind) + line('주된 음식', d.food)
             + line('지정일', d.desig) + line('주소', d.addr),
-          note: '행정안전부 모범음식점 지정 현황(공공데이터 제공표준) · 지자체가 지정합니다'
-            + '<br>좌표는 주소를 지오코딩한 값이라 실제 위치와 다를 수 있습니다',
+          note: '행정안전부 모범음식점 지정 현황(공공데이터 제공표준) · 지자체가 지정'
+            + '<br>좌표는 주소를 지오코딩한 값이라 실제 위치와 다를 수 있음',
         },
         wifi: {
           dir: 'wifi/', idx: 'wifi_index.json', icon: 'fi-rr-wifi', color: '#2260C3',
@@ -13133,8 +13133,8 @@
           dir: 'goodprice/', idx: 'goodprice_index.json', icon: 'fi-rr-coins', color: '#e67700',
           title: (d) => d.nm, minZ: 15,
           body: (d) => line('업종', d.kind) + line('전화', d.tel) + line('주소', d.addr),
-          note: '행정안전부 착한가격업소(공공데이터 제공표준) · 지자체가 지정합니다'
-            + '<br>좌표는 주소를 지오코딩한 값이라 실제 위치와 다를 수 있습니다',
+          note: '행정안전부 착한가격업소(공공데이터 제공표준) · 지자체가 지정'
+            + '<br>좌표는 주소를 지오코딩한 값이라 실제 위치와 다를 수 있음',
         },
       };
       const line = (k, v) => (v ? '<div class="pc-row"><span class="pc-k">' + k + '</span>'
@@ -13229,7 +13229,7 @@
                   }));
                 })
                 
-                .catch(() => { toast(a.area + ' 자료를 불러오지 못했습니다.'); })
+                .catch(() => { toast(a.area + ' 자료를 불러오지 못함.'); })
                 .finally(() => { pending.delete(a.area); build(); });
             }
           });
@@ -13423,8 +13423,8 @@
           + 'font-size:12px;color:var(--muted);">행정처분·폐업 이력 확인 중…</div>'
           
           + '<div style="font-size:11px;color:var(--muted);margin-top:6px;">'
-          + '국토교통부 키스콘 건설업체정보 · 공시(등록·변경)를 낸 업체입니다. '
-          + '주소는 <b>본사 소재지</b>이고 좌표는 주소를 지오코딩한 값이라 실제 위치와 다를 수 있습니다.'
+          + '국토교통부 키스콘 건설업체정보 · 공시(등록·변경)를 낸 업체. '
+          + '주소는 <b>본사 소재지</b>이고 좌표는 주소를 지오코딩한 값이라 실제 위치와 다를 수 있음.'
           + '</div></div></div>';
       }
 
@@ -13443,8 +13443,8 @@
           
           
           if (!a) {
-            if (kisRetry) { kisRetry = false; toast('현재 위치를 알 수 없어 다시 시도합니다…'); setTimeout(kisLoad, 900); }
-            else { kisRetry = true; toast('현재 위치를 알 수 없어 건설업체를 불러오지 못했습니다.'); }
+            if (kisRetry) { kisRetry = false; toast('현재 위치를 알 수 없어 다시 시도…'); setTimeout(kisLoad, 900); }
+            else { kisRetry = true; toast('현재 위치를 알 수 없어 건설업체를 불러오지 못함.'); }
             return;
           }
           kisRetry = true;
@@ -13510,7 +13510,7 @@
             if (!okPages) {
               kisRows = [];
               kisArea = '';                       
-              toast(a.sgg + ' 건설업체를 지금 불러올 수 없습니다 — 제공기관 응답이 없습니다.'
+              toast(a.sgg + ' 건설업체를 지금 불러올 수 없음 — 제공기관 응답이 없음.'
                 + ' 잠시 뒤 다시 시도해 주세요.');
               kisDraw();
               return;
@@ -13519,10 +13519,10 @@
             kisArea = tag;
             
             if (okPages < js.length) {
-              toast(a.sgg + ' — ' + js.length + '쪽 중 ' + okPages + '쪽만 받았습니다(부분 결과).');
+              toast(a.sgg + ' — ' + js.length + '쪽 중 ' + okPages + '쪽만 받음(부분 결과).');
             }
             
-            if (!rows.length) { toast(a.sgg + ' 최근 3년 공시가 없습니다.'); kisDraw(); return; }
+            if (!rows.length) { toast(a.sgg + ' 최근 3년 공시가 없음.'); kisDraw(); return; }
             const need = rows.filter((r) => kisOn.has(r.item));
             kisGeocodeAll(need, () => {}, (miss) => {
               if (my !== kisSeq) return;
@@ -13532,10 +13532,10 @@
               
               
               if (!drawn && miss) {
-                toast('주소 변환(V-World)이 지금 불안정해 위치를 찍지 못했습니다. 잠시 뒤 다시 시도해 주세요.');
+                toast('주소 변환(V-World)이 지금 불안정해 위치를 찍지 못함. 잠시 뒤 다시 시도해 주세요.');
               } else if (miss > need.length * 0.3) {
                 toast(a.sgg + ' 건설업체 ' + drawn + '곳 — 주소 변환이 불안정해 '
-                  + miss + '곳을 못 찍었습니다(다시 열면 재시도합니다).');
+                  + miss + '곳을 못 표시함(다시 열면 재시도).');
               } else {
                 toast(a.sgg + ' 건설업체 ' + drawn + '곳' + (drawn < need.length
                   ? ' (주소를 못 찾은 ' + (need.length - drawn) + '곳 제외)' : ''));
@@ -13592,7 +13592,7 @@
             
             bc.innerHTML = badge;
             if (res && res.confidence === 'name-ambiguous') {
-              bc.title = `같은 상호가 ${res.dup}곳입니다 — 합산한 값입니다.`;
+              bc.title = `같은 상호가 ${res.dup}곳 — 합산한 값.`;
               bc.innerHTML += ' <span style="font-size:10px;color:var(--c-muted);">동명 '
                 + res.dup + '곳 합산</span>';
             }
@@ -13607,8 +13607,8 @@
         kisRisk(row.name, row.bizno, (res) => {
           const h = kisRiskHtml(res, row.name);
           if (h) { box.innerHTML = h; box.style.color = 'var(--text)'; }
-          else if (res) box.textContent = '2003년 이후 행정처분·폐업 공시가 없습니다.';
-          else box.textContent = '행정처분·폐업 색인이 아직 없습니다.';
+          else if (res) box.textContent = '2003년 이후 행정처분·폐업 공시가 없음.';
+          else box.textContent = '행정처분·폐업 색인이 아직 없음.';
           
           
           
@@ -13686,7 +13686,7 @@
         } else if (res.dup > 1) {
           
           h += '<div style="color:#e8590c;font-size:12px;margin-top:3px;">'
-            + '⚠️ 같은 상호가 <b>' + res.dup + '곳</b>입니다 — 아래는 그 전부입니다. '
+            + '⚠️ 같은 상호가 <b>' + res.dup + '곳</b> — 아래는 그 전부. '
             + '사업자등록번호를 함께 넣으면 한 곳으로 좁혀집니다.</div>';
         }
         h += '</div>';
@@ -13706,7 +13706,7 @@
             + (gs.length - 8) + '종류</div>';
         }
         h += '<div style="font-size:11px;color:var(--muted);margin-top:5px;">'
-          + '국토교통부 키스콘 건설업체정보 · 2003년 이후 공시 · 상호로 맞춘 결과입니다.</div>';
+          + '국토교통부 키스콘 건설업체정보 · 2003년 이후 공시 · 상호로 맞춘 결과.</div>';
         return h;
       }
 
@@ -13962,7 +13962,7 @@
           const now = Date.now();
           if (now - _upisZoomWarned > 4000) {   
             _upisZoomWarned = now;
-            toast(`이 레이어는 확대해야 보입니다 — 줌 ${minNeed} 이상 (지금 ${z})`);
+            toast(`이 레이어는 확대해야 보임 — 줌 ${minNeed} 이상 (지금 ${z})`);
           }
         }
       }
@@ -14242,7 +14242,7 @@
                 if (midCb.checked && big === '정비·개발사업'
                     && typeof jbCluster !== 'undefined' && map.hasLayer(jbCluster)) {
                   midCb.checked = false;
-                  toast('‘정비사업 상세’(벡터)를 끄면 이 레이어를 켤 수 있어요 — 겹쳐 그리면 경계가 이중으로 보입니다.');
+                  toast('‘정비사업 상세’(벡터)를 끄면 이 레이어를 켤 수 있어요 — 겹쳐 그리면 경계가 이중으로 보임.');
                   return;
                 }
                 mid._on = new Set(midCb.checked ? [soloId] : []);
@@ -14281,7 +14281,7 @@
                 ? `<span class="lp-sw" style="background:${mid.swatch(id)};border-radius:4px;"></span>`
                 : (UPIS_SWATCH[id]
                   ? `<img class="lp-sw" src="data:image/png;base64,${UPIS_SWATCH[id]}" alt="">`
-                  : '<span class="lp-sw lp-sw-none" title="이 레이어는 제공기관이 범례를 주지 않습니다">?</span>');
+                  : '<span class="lp-sw lp-sw-none" title="이 레이어는 제공기관이 범례를 주지 않음">?</span>');
               s.innerHTML = `<input type="checkbox" class="lp-cb">${sw}<span>${label}</span>`;
               const cb = s.querySelector('input');
               cb.dataset.id = id;   
@@ -14295,7 +14295,7 @@
                 
                 if (!mid.vecBz && cb.checked && big === '정비·개발사업' && typeof jbCluster !== 'undefined' && map.hasLayer(jbCluster)) {
                   cb.checked = false;
-                  toast('‘정비사업’(벡터)을 끄면 이 레이어를 켤 수 있어요 — 겹쳐 그리면 경계가 이중으로 보입니다.');
+                  toast('‘정비사업’(벡터)을 끄면 이 레이어를 켤 수 있어요 — 겹쳐 그리면 경계가 이중으로 보임.');
                   return;
                 }
                 cb.checked ? mid._on.add(id) : mid._on.delete(id);
@@ -14604,11 +14604,11 @@
                 
                 box.innerHTML = (d && d.d ? d.d + '<br>' : '')
                   + (it.pk
-                    ? '<div><b>필지를 클릭</b>하면 팝업 안에서 보입니다.</div>'
+                    ? '<div><b>필지를 클릭</b>하면 팝업 안에서 보임.</div>'
                       + `<div style="margin-top:3px;">제공 op <b>${it.n}개</b> 중 <b>${it.u}개</b> 사용</div>`
                       + `<div style="margin-top:3px;">포털 pk <a href="https://www.data.go.kr/data/${esc(it.pk)}/openapi.do" target="_blank" rel="noopener">${esc(it.pk)}</a></div>`
                     : esc(it.d || '') + '<div style="margin-top:3px;">공공데이터포털을 거치지 않고 '
-                      + '<b>기관이 직접 운영</b>하는 서비스입니다.</div>');
+                      + '<b>기관이 직접 운영</b>하는 서비스.</div>');
               }
               box.style.display = box.style.display === 'none' ? 'block' : 'none';
             };
@@ -14769,7 +14769,7 @@
             b.classList.add('on');
             const p = ROLE_PRESETS[+b.dataset.i];
             applyRolePreset(p[2]);
-            toast(p[0] + ' 레이어를 켰습니다 — ' + p[1]);
+            toast(p[0] + ' 레이어를 켬 — ' + p[1]);
           };
         });
 
@@ -15136,7 +15136,7 @@
           p: '프록시 <code>svc=AptRepairsCostServiceV3</code> · 포털 pk <a href="https://www.data.go.kr/data/15059160/openapi.do" target="_blank" rel="noopener">15059160</a>',
         },
         '공동주택 입찰결과공지': {
-          d: '팝업 · 입찰 · 수의계약(입찰공고의 결과보기). 정식명 <b>국토교통부_공동주택 입찰결과공지 정보제공 서비스</b>. ⚠️ <b>제공기관 자료가 비어 있습니다</b> — 2013~2026 전 연도 0건(2026-09-03 확인).',
+          d: '팝업 · 입찰 · 수의계약(입찰공고의 결과보기). 정식명 <b>국토교통부_공동주택 입찰결과공지 정보제공 서비스</b>. ⚠️ <b>제공기관 자료가 비어 있음</b> — 2013~2026 전 연도 0건(2026-09-03 확인).',
           o: ['getBidEntrpsInfoSearchV3'],
           p: '프록시 <code>svc=ApHusBidResultNoticeInfoOfferServiceV3</code> · 포털 pk <a href="https://www.data.go.kr/data/15059177/openapi.do" target="_blank" rel="noopener">15059177</a>',
         },
@@ -15179,7 +15179,7 @@
           p: '프록시 <code>svc=kamcoRlcBidTrgtCltr</code> · 포털 pk <a href="https://www.data.go.kr/data/15126370/openapi.do" target="_blank" rel="noopener">15126370</a>',
         },
         '전국지가변동률 마이크로데이터(부동산원)': {
-          d: '팝업 · 공공데이터 더보기. 정식명 <b>한국부동산원_전국지가변동률조사 마이크로데이터 조회 서비스</b>. 필지별 용도지역·이용상황·면적·토지단가를 주는 감정평가 근거 자료다. ⚠️ <b>제공기관 자료가 아직 비어 있습니다</b>(2026-09-03 확인). 화면에 "제공기관 데이터 0건" 이라고 그대로 밝힌다. ⛔ 이걸 "미연결" 로 되돌리지 마라.',
+          d: '팝업 · 공공데이터 더보기. 정식명 <b>한국부동산원_전국지가변동률조사 마이크로데이터 조회 서비스</b>. 필지별 용도지역·이용상황·면적·토지단가를 주는 감정평가 근거 자료다. ⚠️ <b>제공기관 자료가 아직 비어 있음</b>(2026-09-03 확인). 화면에 "제공기관 데이터 0건" 이라고 그대로 밝힌다. ⛔ 이걸 "미연결" 로 되돌리지 마라.',
           o: ['getLfrMicro'],
           p: '프록시 <code>svc=LfrMasterSvc</code>(odcloud) · 포털 pk <a href="https://www.data.go.kr/data/15121307/openapi.do" target="_blank" rel="noopener">15121307</a>',
         },
@@ -15204,7 +15204,7 @@
           p: '수집기 + 프록시 <code>svc=FftcBrandFrcsIntInfo2_Service</code> · 포털 pk <a href="https://www.data.go.kr/data/15125479/openapi.do" target="_blank" rel="noopener">15125479</a>',
         },
         '의료서비스 이용률(복지부)': {
-          d: '팝업 · 공공데이터 더보기(연령대별 외래 이용률). 정식명 <b>보건복지부_보건·복지현황_의료서비스 이용률</b>. 고령 비중이 큰 지역에서 병원 접근성이 임대 수요를 가르는 이유를 수치로 받친다. ⚠️ 전국 단위 통계라 필지마다 달라지지 않습니다 — 화면에 「전국」으로 표시합니다.',
+          d: '팝업 · 공공데이터 더보기(연령대별 외래 이용률). 정식명 <b>보건복지부_보건·복지현황_의료서비스 이용률</b>. 고령 비중이 큰 지역에서 병원 접근성이 임대 수요를 가르는 이유를 수치로 받친다. ⚠️ 전국 단위 통계라 필지마다 달라지지 않음 — 화면에 「전국」으로 표시.',
           o: ['callStat12Api'],
           p: '프록시 <code>svc=ODMS_STAT_12</code> · 포털 pk <a href="https://www.data.go.kr/data/15098808/openapi.do" target="_blank" rel="noopener">15098808</a>',
         },
@@ -15263,7 +15263,7 @@
           p: '프록시 <code>svc=AptBasisInfoServiceV5</code> · 포털 pk <a href="https://www.data.go.kr/data/15058453/openapi.do" target="_blank" rel="noopener">15058453</a>',
         },
         '아파트 매매 실거래가(기본판)': {
-          d: '자료 연동 완료 · 화면 표시는 준비 중입니다. 정식명 <b>국토교통부_아파트 매매 실거래가 자료</b>.',
+          d: '자료 연동 완료 · 화면 표시는 준비 중. 정식명 <b>국토교통부_아파트 매매 실거래가 자료</b>.',
           o: ['getRTMSDataSvcAptTrade'],
           p: '프록시 <code>svc=RTMSDataSvcAptTrade</code> · 포털 pk <a href="https://www.data.go.kr/data/15126469/openapi.do" target="_blank" rel="noopener">15126469</a>',
         },
@@ -15278,27 +15278,27 @@
           p: '프록시 <code>svc=HsmpWrantRspnsblPdService</code> · 포털 pk <a href="https://www.data.go.kr/data/15057231/openapi.do" target="_blank" rel="noopener">15057231</a>',
         },
         'LH 분양임대공고 상세': {
-          d: '자료 연동 완료 · 화면 표시는 준비 중입니다. 정식명 <b>한국토지주택공사_분양임대공고별 상세정보 조회 서비스</b>.',
+          d: '자료 연동 완료 · 화면 표시는 준비 중. 정식명 <b>한국토지주택공사_분양임대공고별 상세정보 조회 서비스</b>.',
           o: ['lhLeaseNoticeDtlInfo1', 'getLeaseNoticeDtlInfo1', 'dsAhflInfo'],
           p: '프록시 <code>svc=lhLeaseNoticeDtlInfo1</code> · 포털 pk <a href="https://www.data.go.kr/data/15057999/openapi.do" target="_blank" rel="noopener">15057999</a>',
         },
         'LH 분양임대공고문': {
-          d: '자료 연동 완료 · 화면 표시는 준비 중입니다. 정식명 <b>한국토지주택공사_분양임대공고문 조회 서비스</b>.',
+          d: '자료 연동 완료 · 화면 표시는 준비 중. 정식명 <b>한국토지주택공사_분양임대공고문 조회 서비스</b>.',
           o: ['lhLeaseNoticeInfo1', 'selectWrtancInfo'],
           p: '프록시 <code>svc=lhLeaseNoticeInfo1</code> · 포털 pk <a href="https://www.data.go.kr/data/15058530/openapi.do" target="_blank" rel="noopener">15058530</a>',
         },
         'LH 임대주택단지': {
-          d: '자료 연동 완료 · 화면 표시는 준비 중입니다. 정식명 <b>한국토지주택공사_임대주택단지 조회 서비스</b>.',
+          d: '자료 연동 완료 · 화면 표시는 준비 중. 정식명 <b>한국토지주택공사_임대주택단지 조회 서비스</b>.',
           o: ['lhLeaseInfo1'],
           p: '프록시 <code>svc=lhLeaseInfo1</code> · 포털 pk <a href="https://www.data.go.kr/data/15059475/openapi.do" target="_blank" rel="noopener">15059475</a>',
         },
         'CCTV 도로날씨': {
-          d: '자료 연동 완료 · 화면 표시는 준비 중입니다. 정식명 <b>기상청_CCTV 기반 도로날씨정보 조회서비스</b>.',
+          d: '자료 연동 완료 · 화면 표시는 준비 중. 정식명 <b>기상청_CCTV 기반 도로날씨정보 조회서비스</b>.',
           o: ['getCctvStnRoadWthr', 'getStdNodeLinkRoadWw'],
           p: '프록시 <code>svc=RoadWthrInfoService</code> · 포털 pk <a href="https://www.data.go.kr/data/15057966/openapi.do" target="_blank" rel="noopener">15057966</a>',
         },
         '공항 출국장 혼잡도': {
-          d: '자료 연동 완료 · 화면 표시는 준비 중입니다. 정식명 <b>인천국제공항공사_출국장 혼잡도 조회</b>.',
+          d: '자료 연동 완료 · 화면 표시는 준비 중. 정식명 <b>인천국제공항공사_출국장 혼잡도 조회</b>.',
           o: ['getDepartureCongestion'],
           p: '프록시 <code>svc=statusOfDepartureCongestion</code> · 포털 pk <a href="https://www.data.go.kr/data/15148225/openapi.do" target="_blank" rel="noopener">15148225</a>',
         },
@@ -15308,7 +15308,7 @@
           p: '프록시 <code>svc=WthrWrnInfoService</code> · 포털 pk <a href="https://www.data.go.kr/data/15000415/openapi.do" target="_blank" rel="noopener">15000415</a>',
         },
         '데이터 제공표준(행안부)': {
-          d: '자료 연동 완료 · 화면 표시는 준비 중입니다. 정식명 <b>행정안전부_공공데이터 제공표준 조회 서비스</b>.',
+          d: '자료 연동 완료 · 화면 표시는 준비 중. 정식명 <b>행정안전부_공공데이터 제공표준 조회 서비스</b>.',
           o: ['retrievePrvdStdInfo', 'retrievePrvdStdList'],
           p: '프록시 <code>svc=prvdstd20</code> · 포털 pk <a href="https://www.data.go.kr/data/15156266/openapi.do" target="_blank" rel="noopener">15156266</a>',
         },
@@ -15318,7 +15318,7 @@
           p: '프록시 <code>svc=mojmabyun</code> · 포털 pk <a href="https://www.data.go.kr/data/15121954/openapi.do" target="_blank" rel="noopener">15121954</a>',
         },
         '명산 등산로': {
-          d: '자료 연동 완료 · 화면 표시는 준비 중입니다. 정식명 <b>산림청_명산등산로_GW</b>.',
+          d: '자료 연동 완료 · 화면 표시는 준비 중. 정식명 <b>산림청_명산등산로_GW</b>.',
           o: ['gdTrailInfoImgOpenAPI', 'gdTrailInfoOpenAPI'],
           p: '프록시 <code>svc=cultureInfoService</code> · 포털 pk <a href="https://www.data.go.kr/data/15158915/openapi.do" target="_blank" rel="noopener">15158915</a>',
         },
@@ -15368,7 +15368,7 @@
           p: '프록시 <code>svc=GetCGDiscInfoService</code> · 포털 pk <a href="https://www.data.go.kr/data/15151165/openapi.do" target="_blank" rel="noopener">15151165</a>',
         },
         '기업집단 내부지분(공정위)': {
-          d: '자료 연동 완료 · 화면 표시는 준비 중입니다. 기업집단 코드 연결에 필요한 자료가 더 있어야 합니다. 정식명 <b>공정거래위원회_기업집단포털_특수관계인 내부지분 현황 정보 조회</b>.',
+          d: '자료 연동 완료 · 화면 표시는 준비 중. 기업집단 코드 연결에 필요한 자료가 더 있어야 함. 정식명 <b>공정거래위원회_기업집단포털_특수관계인 내부지분 현황 정보 조회</b>.',
           o: ['innerQotaEqltrmCmprList', 'innerQotaEqltrmCmprUnityListApi', 'innerQotaEqltrmCmprAssetsListApi', 'appnGroupSttusList', 'innerQotaEqltrmCmprUnityList', 'publicYmList'],
           p: '프록시 <code>svc=innerQotaEqltrmCmprList</code> · 포털 pk <a href="https://www.data.go.kr/data/15093663/openapi.do" target="_blank" rel="noopener">15093663</a>',
         },
@@ -15383,7 +15383,7 @@
           p: '프록시 <code>svc=GetStockSecuritiesInfoService</code> · 포털 pk <a href="https://www.data.go.kr/data/15094808/openapi.do" target="_blank" rel="noopener">15094808</a>',
         },
         '주식정보 서비스(예탁결제원)': {
-          d: '자료 연동 완료 · 화면 표시는 준비 중입니다. 정식명 <b>한국예탁결제원_주식정보서비스_GW</b>.',
+          d: '자료 연동 완료 · 화면 표시는 준비 중. 정식명 <b>한국예탁결제원_주식정보서비스_GW</b>.',
           o: ['getKDRSecnInfo', 'getVctfDivRankInfo', 'getTotIssuStkQty', 'getKDRIssuLmtDetailsN1', 'getSecSetlCostStatN1', 'getStkIsinByNmN1'],
           p: '프록시 <code>svc=StockSvc</code> · 포털 pk <a href="https://www.data.go.kr/data/15157413/openapi.do" target="_blank" rel="noopener">15157413</a>',
         },
@@ -15398,42 +15398,42 @@
           p: '프록시 <code>svc=OrderPlanSttusService</code> · 포털 pk <a href="https://www.data.go.kr/data/15129462/openapi.do" target="_blank" rel="noopener">15129462</a>',
         },
         '바다갈라짐 체험지수': {
-          d: '자료 연동 완료 · 화면 표시는 준비 중입니다. 정식명 <b>해양수산부 국립해양조사원_바다갈라짐 체험지수 조회</b>.',
+          d: '자료 연동 완료 · 화면 표시는 준비 중. 정식명 <b>해양수산부 국립해양조사원_바다갈라짐 체험지수 조회</b>.',
           o: ['getFcstSeaSplitApi'],
           p: '프록시 <code>svc=GetFcstSeaSplitApiServicev2</code> · 포털 pk <a href="https://www.data.go.kr/data/15142485/openapi.do" target="_blank" rel="noopener">15142485</a>',
         },
         '바다여행지수': {
-          d: '자료 연동 완료 · 화면 표시는 준비 중입니다. 정식명 <b>해양수산부 국립해양조사원_바다여행지수 조회</b>.',
+          d: '자료 연동 완료 · 화면 표시는 준비 중. 정식명 <b>해양수산부 국립해양조사원_바다여행지수 조회</b>.',
           o: ['getFcstSeaTripApi'],
           p: '프록시 <code>svc=GetFcstSeaTripApiServicev2</code> · 포털 pk <a href="https://www.data.go.kr/data/15142491/openapi.do" target="_blank" rel="noopener">15142491</a>',
         },
         '분실물 정보(경찰청)': {
-          d: '자료 연동 완료 · 화면 표시는 준비 중입니다. 정식명 <b>경찰청_분실물정보 조회 서비스</b>.',
+          d: '자료 연동 완료 · 화면 표시는 준비 중. 정식명 <b>경찰청_분실물정보 조회 서비스</b>.',
           o: ['getLostGoodsInfoAccToClAreaPd', 'getLostGoodsInfoAccTpNmCstdyPlace', 'getLostGoodsDetailInfo'],
           p: '프록시 <code>svc=LostGoodsInfoInqireService</code> · 포털 pk <a href="https://www.data.go.kr/data/15000799/openapi.do" target="_blank" rel="noopener">15000799</a>',
         },
         '습득물 정보(경찰청)': {
-          d: '자료 연동 완료 · 화면 표시는 준비 중입니다. 정식명 <b>경찰청_습득물정보 조회 서비스</b>.',
+          d: '자료 연동 완료 · 화면 표시는 준비 중. 정식명 <b>경찰청_습득물정보 조회 서비스</b>.',
           o: ['getLosfundInfoAccToClAreaPd', 'getLosfundInfoAccTpNmCstdyPlace', 'getLosfundDetailInfo'],
           p: '프록시 <code>svc=LosfundInfoInqireService</code> · 포털 pk <a href="https://www.data.go.kr/data/15058696/openapi.do" target="_blank" rel="noopener">15058696</a>',
         },
         '포락지 관리정보(해수부)': {
-          d: '자료 연동 완료 · 화면 표시는 준비 중입니다. 정식명 <b>해양수산부_포락지관리정보</b>.',
+          d: '자료 연동 완료 · 화면 표시는 준비 중. 정식명 <b>해양수산부_포락지관리정보</b>.',
           o: ['getSubmergedLandsList2.0', 'getSubmergedLandsAreaList2.0', 'getSubmergedLandsAreaExtentList2.0', 'getSubmergedLandsExaminationAreaExtentList2.0', 'getSubmergedLandsManagementNumberList2.0', 'getSubmergedLandsLotNumberList2.0'],
           p: '프록시 <code>svc=submergedLandsInfoService2.0</code> · 포털 pk <a href="https://www.data.go.kr/data/3056339/openapi.do" target="_blank" rel="noopener">3056339</a>',
         },
         '포털기관 습득물(경찰청)': {
-          d: '자료 연동 완료 · 화면 표시는 준비 중입니다. 정식명 <b>경찰청_포털기관 습득물정보 조회 서비스</b>.',
+          d: '자료 연동 완료 · 화면 표시는 준비 중. 정식명 <b>경찰청_포털기관 습득물정보 조회 서비스</b>.',
           o: ['getPtLosfundInfoAccToClAreaPd', 'getPtLosfundInfoAccTpNmCstdyPlace', 'getPtLosfundDetailInfo', 'getPtLosfundInfoAccToLc'],
           p: '프록시 <code>svc=LosPtfundInfoInqireService</code> · 포털 pk <a href="https://www.data.go.kr/data/15057670/openapi.do" target="_blank" rel="noopener">15057670</a>',
         },
         '핸드폰 찾기(경찰청)': {
-          d: '자료 연동 완료 · 화면 표시는 준비 중입니다. 정식명 <b>경찰청_핸드폰 찾기 정보 조회 서비스</b>.',
+          d: '자료 연동 완료 · 화면 표시는 준비 중. 정식명 <b>경찰청_핸드폰 찾기 정보 조회 서비스</b>.',
           o: ['getMoblphonAcctoKindAreaPeriodInfo', 'getMoblphonDetailInfo'],
           p: '프록시 <code>svc=SearchMoblphonInfoInqireService</code> · 포털 pk <a href="https://www.data.go.kr/data/15000442/openapi.do" target="_blank" rel="noopener">15000442</a>',
         },
         '공공도서관 소장도서': {
-          d: '자료 연동 완료 · 화면 표시는 준비 중입니다. 정식명 <b>서울특별시교육청 도서관 소장도서 정보</b>. 응답이 약 22초로 느려 화면 표시는 준비 중입니다.',
+          d: '자료 연동 완료 · 화면 표시는 준비 중. 정식명 <b>서울특별시교육청 도서관 소장도서 정보</b>. 응답이 약 22초로 느려 화면 표시는 준비 중.',
           o: ['getList'],
           p: '프록시 <code>svc=lib</code> · 포털 pk <a href="https://www.data.go.kr/data/3036346/openapi.do" target="_blank" rel="noopener">3036346</a>',
         },
@@ -15452,7 +15452,7 @@
           p: '프록시 <code>svc=path2</code> · 포털 pk <a href="https://www.data.go.kr/data/15143842/openapi.do" target="_blank" rel="noopener">15143842</a>',
         },
         '청약 당첨자 정보(청약홈)': {
-          d: '자료 연동 완료 · 화면 표시는 준비 중입니다. 정식명 <b>한국부동산원_청약홈 청약 신청·당첨자 정보 조회 서비스</b>. 예: 서울 연령대별 당첨자 통계 868건.',
+          d: '자료 연동 완료 · 화면 표시는 준비 중. 정식명 <b>한국부동산원_청약홈 청약 신청·당첨자 정보 조회 서비스</b>. 예: 서울 연령대별 당첨자 통계 868건.',
           o: ['getAPTPrzwnerAreaStat', 'getAPTPrzwnerAgeStat', 'getAPTReqstAreaStat', 'getAPTCmpetrtAreaStat'],
           p: '프록시 <code>svc=v1</code> · 포털 pk <a href="https://www.data.go.kr/data/15110812/openapi.do" target="_blank" rel="noopener">15110812</a>',
         },
@@ -15468,7 +15468,7 @@
         },
         '공동주택 단지 목록(kaptCode 브리지)': {
           d: 'PNU 앞 10자리(법정동코드)로 <code>kaptCode</code> 를 얻는 다리. 이것 없이는 관리비·장기수선충당금을 '
-            + '부를 수 없습니다.',
+            + '부를 수 없음.',
         },
         '건축HUB 폐쇄말소대장정보': { d: '철거된 건물 이력 → 재개발 진행 확인.' },
         '건축HUB 유지점검정보': { d: '안전점검 이력·하자 리스크.' },
@@ -15501,12 +15501,12 @@
           p: '프록시 <code>svc=AptIndvdlzManageCostServiceV3</code> · 포털 pk <a href="https://www.data.go.kr/data/15059469/openapi.do" target="_blank" rel="noopener">15059469</a>',
         },
         '노후 공공시설물(안전관리원)': {
-          d: '준공 30년 이상 1·2종 공공시설물(공동주택 제외) 현황. 좌표가 경위도(WGS84)라 지도에 바로 표시할 수 있습니다.',
+          d: '준공 30년 이상 1·2종 공공시설물(공동주택 제외) 현황. 좌표가 경위도(WGS84)라 지도에 바로 표시할 수 있음.',
           o: ['getFacil30YearsOldList'],
           p: 'serviceKey · numOfRows · pageNo (+옵션 type/facilNm/facilAddr 지역 필터). sfGrade 안전등급 · mgmBldrgstPk 대장PK 필드 포함'
         },
       };
-      const UA_DEFAULT_DETAIL = '제공 항목 상세는 공공데이터포털 상세페이지에서 확인하실 수 있습니다.';
+      const UA_DEFAULT_DETAIL = '제공 항목 상세는 공공데이터포털 상세페이지에서 확인하실 수 있음.';
       
       
       
@@ -17496,7 +17496,7 @@
         if (spMode === 'subway' && stFrom && stTo) {
           const apiFrom = stFrom, apiTo = stTo;
           loadShortPath(apiFrom, apiTo, (r) => {
-            if (!r) { box.innerHTML = ''; toast('최단 경로를 불러오지 못했습니다. 역 이름을 확인해 주세요.'); return; }
+            if (!r) { box.innerHTML = ''; toast('최단 경로를 불러오지 못함. 역 이름을 확인해 주세요.'); return; }
             
             const legHtml = (r.legs || []).map((g, i) => '<li style="margin-top:2px;">'
               + '<b>' + esc(g.line) + '</b> ' + esc(g.from) + ' → ' + esc(g.to)
@@ -17526,7 +17526,7 @@
         ]).then(([o, d, v]) => {
           if (!o || !d) {
             box.innerHTML = '';
-            toast('출발지·도착지 좌표를 찾지 못했습니다. 지도에서 클릭하거나 정확한 주소·역명을 입력해 주세요.');
+            toast('출발지·도착지 좌표를 찾지 못함. 지도에서 클릭하거나 정확한 주소·역명을 입력해 주세요.');
             return;
           }
           routeOrigin = o; routeDest = d;
@@ -17539,7 +17539,7 @@
           if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
           if (routeRL) routeRL.clear();
           if (viaEl && viaEl.value.trim() && !v) {
-            toast('경유지 좌표를 찾지 못해 빼고 계산합니다.');
+            toast('경유지 좌표를 찾지 못해 빼고 계산.');
           }
           spDraw(spMode, o, d, box, v ? [v] : null);
         });
@@ -17879,10 +17879,10 @@
             + MODE_NM + ' 경로 <b style="color:var(--text);">' + paths.length + '개</b>'
             + spSvBtn(o.lng, o.lat, '출발지', '출발지 거리뷰')
             + spSvBtn(d.lng, d.lat, '도착지', '도착지 거리뷰') + '</div>'
-            + (cards || '<div style="font-size:12px;color:var(--c-muted);">해당 경로가 없습니다.</div>')
+            + (cards || '<div style="font-size:12px;color:var(--c-muted);">해당 경로가 없음.</div>')
             + '<div style="font-size:11px;color:var(--c-muted);margin-top:7px;">'
-            + '서울시 대중교통환승경로 · <b>요금은 제공되지 않습니다</b>'
-            + '<br>소요시간은 서울시 기준이고 <b>도보는 보행 라우팅 기준</b>이라 서로 다를 수 있습니다.</div>';
+            + '서울시 대중교통환승경로 · <b>요금은 제공되지 않음</b>'
+            + '<br>소요시간은 서울시 기준이고 <b>도보는 보행 라우팅 기준</b>이라 서로 다를 수 있음.</div>';
           box.querySelectorAll('.sp-card').forEach((c) => {
             c.onclick = () => { sel = Number(c.dataset.i); draw(); spDrawPath(paths[sel], o, d); };
           });
@@ -17979,7 +17979,7 @@
                   + '</li>').join('')
                 + '</ol>'
                 + '<div style="font-size:11px;color:var(--c-muted);margin-top:4px;">'
-                + '서울시 버스도착정보 · 걷는 거리 ' + direct[0].walk + ' · <b>환승은 빠져 있습니다</b></div>');
+                + '서울시 버스도착정보 · 걷는 거리 ' + direct[0].walk + ' · <b>환승은 빠져 있음</b></div>');
               return;
             }
             
@@ -18001,16 +18001,16 @@
             
             if (seoulPath && Array.isArray(seoulPath.paths) && !seoulPath.paths.length && !seoulPath.outside) {
               const what = mode === 'subway' ? '지하철' : mode === 'bus' ? '버스' : '최단경로';
-              put('<div style="font-size:13px;">' + what + ' 경로를 찾지 못했습니다.</div>'
+              put('<div style="font-size:13px;">' + what + ' 경로를 찾지 못함.</div>'
                 + '<div style="font-size:12px;color:var(--c-muted);margin-top:4px;">'
                 + esc(seoulPath.msg || '')
-                + (mode === 'subway' ? '<br>출발지나 도착지가 역에서 멀면 나오지 않습니다.'
+                + (mode === 'subway' ? '<br>출발지나 도착지가 역에서 멀면 나오지 않음.'
                   + ' <b>최단경로</b> 로 바꿔 보세요.' : '') + '</div>');
               return;
             }
             
             if (mode === 'subway') {
-              put('<div style="font-size:13px;">지하철 경로를 찾지 못했습니다.</div>');
+              put('<div style="font-size:13px;">지하철 경로를 찾지 못함.</div>');
               return;
             }
             const r = await RouteAPI.transit(o, d);
@@ -18065,7 +18065,7 @@
         try { a = loadSavedProps(); } catch (e) { a = []; }
         if (!a.length) {
           return '<div style="font-size:12px;color:var(--c-muted);">'
-            + '즐겨찾기한 부동산이 없습니다. 오른쪽 <b>즐겨찾기</b> 목록에서 ★ 로 담으면 여기 나옵니다.</div>';
+            + '즐겨찾기한 부동산이 없음. 오른쪽 <b>즐겨찾기</b> 목록에서 ★ 로 담으면 여기 나옵니다.</div>';
         }
         return a.map((x, i) => '<div style="display:flex;align-items:center;gap:4px;'
           + 'padding:4px 0;border-bottom:1px solid var(--line);">'
@@ -18110,13 +18110,13 @@
           + 'title="앱 즐겨찾기(저장한 부동산) 불러오기">'
           + (bookOnlyFav ? '★ 즐겨찾기' : '☆ 즐겨찾기') + '</button></div>'
           + (bookOnlyFav ? favRows() : (rows
-            || '<div style="font-size:12px;color:var(--c-muted);">저장한 주소가 없습니다. '
+            || '<div style="font-size:12px;color:var(--c-muted);">저장한 주소가 없음. '
               + '출발지·도착지를 넣고 위 단추로 담아 두세요.</div>'));
         const add = (el) => {
           const v = (el && el.value || '').trim();
           if (!v) { toast('먼저 주소를 입력해 주세요.'); return; }
           const a = bookGet();
-          if (a.some((x) => x.v === v)) { toast('이미 주소록에 있습니다.'); return; }
+          if (a.some((x) => x.v === v)) { toast('이미 주소록에 있음.'); return; }
           a.unshift({ v, fav: false }); bookSet(a); paintBook();
         };
         const f1 = bookBox.querySelector('#bk-add-from');
@@ -18195,7 +18195,7 @@
         loadAreas().then((areas) => {
           if (!areas.length) {
             liveBox.innerHTML = '<div style="font-size:12px;color:var(--c-danger);">'
-              + '장소 목록을 불러오지 못했습니다 (citydata_areas.json).</div>';
+              + '장소 목록을 불러오지 못함 (citydata_areas.json).</div>';
             return;
           }
           const c = map.getCenter();
@@ -18210,7 +18210,7 @@
             .then((j) => {
               if (!j || j.error) {
                 liveBox.innerHTML = '<div style="font-size:12px;color:var(--c-danger);">'
-                  + '실시간 정보를 불러오지 못했습니다.</div>';
+                  + '실시간 정보를 불러오지 못함.</div>';
                 return;
               }
               const cg = j.congest || {};
@@ -18256,15 +18256,15 @@
                   + Number(cg.min).toLocaleString('ko-KR') + '~' + Number(cg.max).toLocaleString('ko-KR') + '명'
                   + (cg.time ? ' <span style="color:var(--c-muted);">· ' + esc(cg.time) + '</span>' : '')
                   + '</div>' : '')
-                + part('지하철 도착', sub, '이 장소엔 지하철 정보가 없습니다')
-                + part('주차장 실시간', prk, '실시간을 주는 주차장이 없습니다')
-                + part('따릉이 (거치/총)', bk, '이 장소엔 대여소 정보가 없습니다')
+                + part('지하철 도착', sub, '이 장소엔 지하철 정보가 없음')
+                + part('주차장 실시간', prk, '실시간을 주는 주차장이 없음')
+                + part('따릉이 (거치/총)', bk, '이 장소엔 대여소 정보가 없음')
                 + '<div style="font-size:11px;color:var(--c-muted);margin-top:6px;">'
-                + '출처 서울시 실시간 도시데이터 · 동네 단위 값입니다</div>';
+                + '출처 서울시 실시간 도시데이터 · 동네 단위 값</div>';
             })
             .catch(() => {
               liveBox.innerHTML = '<div style="font-size:12px;color:var(--c-danger);">'
-                + '실시간 정보를 불러오지 못했습니다 (네트워크).</div>';
+                + '실시간 정보를 불러오지 못함 (네트워크).</div>';
             });
         });
       };
@@ -18330,7 +18330,7 @@
           const f = fromEl.value.trim();
           if (!f) { toast('출발지를 먼저 입력해 주세요.'); fromEl.focus(); return; }
           spFavSet(k, f); paintFavs();
-          toast((k === 'mj_sp_home' ? '집' : '회사') + '으로 저장했습니다.');
+          toast((k === 'mj_sp_home' ? '집' : '회사') + '으로 저장함.');
         }
       }));
       paintFavs();
@@ -19744,11 +19744,11 @@
     
     
     const SRC_TIER = {
-      deal: ['실거래', '#e6f4ea', '#166534', '#a7d8b4', '신고된 실제 거래가입니다.'],
+      deal: ['실거래', '#e6f4ea', '#166534', '#a7d8b4', '신고된 실제 거래가.'],
       gov: ['공시·행정', '#FDEAE7', '#B32210', '#FFFFFF',
-        '정부·지자체가 공시하거나 집계한 행정 자료입니다. 실제 거래가와 다를 수 있습니다.'],
+        '정부·지자체가 공시하거나 집계한 행정 자료. 실제 거래가와 다를 수 있음.'],
       est: ['집계·추정', '#f1eee9', '#7A6A58', '#ddd5c9',
-        '표본·카드매출 등으로 추정한 집계값입니다. 실거래가가 아닙니다.'],
+        '표본·카드매출 등으로 추정한 집계값. 실거래가가 아닙니다.'],
     };
     function srcTier(k) {
       const t = SRC_TIER[k];
@@ -19858,9 +19858,9 @@
           
           const _pyMan = Math.round(jg * M2_PER_PY / 10000).toLocaleString('ko-KR');
           
-          const _jgNote = ' <span title="공시지가는 과세·보상 기준으로 산정한 &#39;토지만&#39;의 값입니다.'
+          const _jgNote = ' <span title="공시지가는 과세·보상 기준으로 산정한 &#39;토지만&#39;의 값.'
             + ' 아래 주변 시세 추이의 평당가는 &#39;건물을 포함한 거래총액&#39;을 대지 평수로 나눈 값이라'
-            + ' 몇 배 높게 나오는 것이 정상입니다.">ⓘ</span>';
+            + ' 몇 배 높게 나오는 것이 정상.">ⓘ</span>';
           rows.push(['공시지가', `<b>${jg.toLocaleString()}원/㎡</b>${_jgNote} <span style="color:var(--c-muted);">(평당 ${_pyMan}${NB}만원${when ? ' · ' + fmtYm(when) + ' 기준' : ''})</span>`,
             
             
@@ -20199,7 +20199,7 @@
           + (say ? '<div style="font-size:12px;margin-top:2px;">' + say + '</div>' : '')
           
           + (st.trdar && st.trdar.adong && st.trdar.adong.share < 60
-              ? '<div style="font-size:11px;color:var(--c-price);margin-top:2px;">행정동 판정 근거가 약합니다('
+              ? '<div style="font-size:11px;color:var(--c-price);margin-top:2px;">행정동 판정 근거가 약함('
                 + st.trdar.adong.share + '% · 동 경계)</div>' : '')
           + ((lvpMeta && lvpMeta.date) ? '<div class="ls-fn" style="font-size:11px;color:var(--c-muted);margin-top:3px;">기준 '
             + lvpMeta.date.slice(0, 4) + '.' + lvpMeta.date.slice(4, 6) + '</div>' : '')
@@ -20497,10 +20497,10 @@
                       + '</div>';
                   }).join('')
                   + '<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">금융위 기업기본정보 · '
-                  + '<b>등록된 법인만</b> 나옵니다 — 안 나오는 것은 없는 회사가 아니라 미등록입니다.</div>'
+                  + '<b>등록된 법인만</b> 나옵니다 — 안 나오는 것은 없는 회사가 아니라 미등록.</div>'
                   + '</div>'
                 : '<div style="font-size:11px;color:var(--c-muted);margin-top:4px;">'
-                  + '이 법인들은 금융위 기업기본정보에 등록돼 있지 않습니다(소규모 법인은 빠집니다).</div>')
+                  + '이 법인들은 금융위 기업기본정보에 등록돼 있지 않음(소규모 법인은 빠집니다).</div>')
               : '<div style="margin-top:4px;"><button type="button" class="ld-corp btn-mini">기업 정보 보기</button>'
                 + '<span style="font-size:11px;color:var(--c-muted);margin-left:6px;">설립·대표·업종·본사</span></div>'))
           + '<div style="font-size:11px;color:var(--c-muted);margin-top:3px;">'
@@ -20973,7 +20973,7 @@
               + (use ? ` <span style="color:var(--c-muted);">${esc(use)}</span>` : '')
               + '</div>';
           })()
-          + '<div style="font-size:12px;color:var(--c-muted);margin-top:4px;">등기상 건물이 남아 있어도 <b>현황은 다를 수 있습니다.</b> 입찰 전 현장과 등기부로 직접 확인하십시오.</div>'
+          + '<div style="font-size:12px;color:var(--c-muted);margin-top:4px;">등기상 건물이 남아 있어도 <b>현황은 다를 수 있음.</b> 입찰 전 현장과 등기부로 직접 확인 요함.</div>'
           + '</div>';
       }
 
@@ -21015,8 +21015,8 @@
             + '<b>에너지 사용량</b>'
             + (ymTxt ? ` <span style="font-size:12px;color:var(--c-muted);">${esc(ymTxt)} 기준</span>` : '')
             + '<br>' + parts.join(' · ')
-            + '<div style="font-size:12px;color:var(--c-muted);margin-top:3px;">제공기관이 단위를 표기하지 않습니다 —'
-            + ' 같은 건물의 월별 추이나 비슷한 규모끼리 비교하는 용도로만 보십시오.</div>'
+            + '<div style="font-size:12px;color:var(--c-muted);margin-top:3px;">제공기관이 단위를 표기하지 않음 —'
+            + ' 같은 건물의 월별 추이나 비슷한 규모끼리 비교하는 용도로만 확인.</div>'
             + '</div>';
         }
       }
@@ -21101,7 +21101,7 @@
           + `<br>적립 잔액 <b>${wonEok(r0.sTot / 100000000)}</b>`
           + (r0.name ? ` <span style="font-size:12px;color:var(--c-muted);">${esc(r0.name)}</span>` : '')
           + '<div style="font-size:12px;color:var(--c-muted);margin-top:3px;">300세대 이상 의무관리대상만 공개됩니다 —'
-          + ' 잔액이 적으면 향후 수선 시 추가 부담이 생길 수 있습니다.</div>'
+          + ' 잔액이 적으면 향후 수선 시 추가 부담이 생길 수 있음.</div>'
           + '</div>';
       }
       
@@ -21146,22 +21146,22 @@
             + (st.mgmtFull === 'loading'
               ? '<div style="font-size:12px;color:var(--c-muted);margin-top:3px;">나머지 16개 항목 불러오는 중…</div>'
               : isFull
-                ? '<div style="font-size:12px;color:var(--c-muted);margin-top:3px;">공용 17 + 개별 10 = <b>27개 항목 전부</b>를 합한 값입니다.'
+                ? '<div style="font-size:12px;color:var(--c-muted);margin-top:3px;">공용 17 + 개별 10 = <b>27개 항목 전부</b>를 합한 값.'
                   + ' 300세대 이상 의무관리대상만 공개됩니다.</div>'
                 : full
                   ? `<div style="font-size:12px;color:var(--c-muted);margin-top:3px;">${full.failed}개 항목을 못 받아 총액이 아닙니다 —`
                     + ' 다시 눌러 보세요. 300세대 이상 의무관리대상만 공개됩니다.</div>'
-                  : '<div style="font-size:12px;color:var(--c-muted);margin-top:3px;">주요 11개 항목만 합한 값입니다 —'
+                  : '<div style="font-size:12px;color:var(--c-muted);margin-top:3px;">주요 11개 항목만 합한 값 —'
                     + ' 관리비 총액이 아닙니다. 300세대 이상 의무관리대상만 공개됩니다.'
                     + '<br><button type="button" class="ld-mgmt-all btn-mini" style="margin-top:4px;">나머지 16개 항목 (총액 보기)</button>'
-                    + ' <span style="margin-left:4px;">호출 16회 — 누를 때만 조회합니다</span></div>')
+                    + ' <span style="margin-left:4px;">호출 16회 — 누를 때만 조회</span></div>')
             + '</div>';
         } else if (st.mgmt && st.mgmt.items && !st.mgmt.items.length) {
           mgmtHtml = '<div class="ls-sec sec-mgmt" style="font-size:12px;color:var(--c-muted);">관리비 공개 대상이 아닙니다 (300세대 미만 등)</div>';
         } else if (wantInfo.fund) {
           mgmtHtml = '<div class="ls-sec sec-mgmt cta-only">'
             + '<button type="button" class="ld-mgmt btn-mini">관리비 보기</button>'
-            + '<span style="font-size:12px;color:var(--c-muted);margin-left:6px;">호출 11회 — 누를 때만 조회합니다</span></div>';
+            + '<span style="font-size:12px;color:var(--c-muted);margin-left:6px;">호출 11회 — 누를 때만 조회</span></div>';
         }
       }
       
@@ -21226,17 +21226,17 @@
             + (prvRows ? '<div style="margin-top:6px;"><span style="font-size:12px;color:var(--c-muted);">수의계약 <b>'
               + st.bid.prv.reduce((n, g) => n + g.items.length, 0) + '건</b></span>' + prvRows + '</div>' : '')
             + '<div style="font-size:12px;color:var(--c-muted);margin-top:4px;">K-apt 사업자 선정 — '
-            + (whole ? '단지코드로 전 기간 조회' : '단지명으로 최근 4년만 조회') + '. 관리 상태의 간접 지표입니다.</div>'
+            + (whole ? '단지코드로 전 기간 조회' : '단지명으로 최근 4년만 조회') + '. 관리 상태의 간접 지표.</div>'
             + '</div>';
         } else if (st.bid && !st.bid.ann.length && !st.bid.prv.length) {
           
           
           bidHtml = '<div class="ls-sec sec-bid" style="font-size:12px;color:var(--c-muted);">'
-            + 'K-apt 입찰공고·수의계약 기록이 없습니다.</div>';
+            + 'K-apt 입찰공고·수의계약 기록이 없음.</div>';
         } else {
           bidHtml = '<div class="ls-sec sec-bid cta-only">'
             + '<button type="button" class="ld-bid btn-mini">입찰 · 수의계약 보기</button>'
-            + '<span style="font-size:12px;color:var(--c-muted);margin-left:6px;">최근 4년 — 누를 때만 조회합니다</span></div>';
+            + '<span style="font-size:12px;color:var(--c-muted);margin-left:6px;">최근 4년 — 누를 때만 조회</span></div>';
         }
       }
       
@@ -21262,15 +21262,15 @@
             + (no.length ? '<div style="margin-top:3px;">금지 ' + no.map((x) => chip(x, false)).join('') + '</div>' : '')
             
             + '<div style="font-size:12px;color:var(--c-muted);margin-top:3px;">'
-            + '대표 ' + LANDUSE_ACTS.length + '개 행위만 조회한 결과입니다 — 전체 행위제한이 아닙니다.'
-            + ' 근거는 각 항목에 마우스를 올리면 보입니다(국토교통부 토지이용규제).</div>');
+            + '대표 ' + LANDUSE_ACTS.length + '개 행위만 조회한 결과 — 전체 행위제한이 아닙니다.'
+            + ' 근거는 각 항목에 마우스를 올리면 보임(국토교통부 토지이용규제).</div>');
         } else if (Array.isArray(st.landuse)) {
-          luHtml = box('<span style="font-size:12px;color:var(--c-muted);">이 지역지구에 등재된 행위제한이 없습니다.</span>');
+          luHtml = box('<span style="font-size:12px;color:var(--c-muted);">이 지역지구에 등재된 행위제한이 없음.</span>');
         } else {
           
           luHtml = box('<button type="button" class="ld-landuse btn-mini">행위제한 보기</button>'
             + '<span style="font-size:12px;color:var(--c-muted);margin-left:6px;">'
-            + '이 땅에 무엇을 지을 수 있나 — 호출 ' + LANDUSE_ACTS.length + '회, 누를 때만 조회합니다.</span>', true);
+            + '이 땅에 무엇을 지을 수 있나 — 호출 ' + LANDUSE_ACTS.length + '회, 누를 때만 조회.</span>', true);
         }
       }
       
@@ -21337,7 +21337,7 @@
       const vuDm = String((st.parcel && st.parcel.addr) || '').match(/(\S+구)\s+(\S+?[동가])(?:\s|$)/);
       const vuLat = Number(lat), vuLng = Number(lng);
       const vuHtml = (vuPnu || (isFinite(vuLat) && isFinite(vuLng)))
-        ? `<details class="vu-det"${vuPnu ? ` data-pnu="${vuPnu}"` : ''} data-lat="${isFinite(vuLat) ? vuLat : ''}" data-lng="${isFinite(vuLng) ? vuLng : ''}" data-dong="${vuDm ? esc(vuDm[2]) : ''}" style="margin-top:4px;"><summary style="font-size:12px;cursor:pointer;color:var(--c-primary);">층·호별 시세</summary><div class="vu-body" style="font-size:12px;line-height:1.6;max-height:220px;overflow:auto;margin-top:4px;">펼치면 조회합니다.</div></details>`
+        ? `<details class="vu-det"${vuPnu ? ` data-pnu="${vuPnu}"` : ''} data-lat="${isFinite(vuLat) ? vuLat : ''}" data-lng="${isFinite(vuLng) ? vuLng : ''}" data-dong="${vuDm ? esc(vuDm[2]) : ''}" style="margin-top:4px;"><summary style="font-size:12px;cursor:pointer;color:var(--c-primary);">층·호별 시세</summary><div class="vu-body" style="font-size:12px;line-height:1.6;max-height:220px;overflow:auto;margin-top:4px;">펼치면 조회.</div></details>`
         : '';
       const _blocks = [
         ['부동산 정보', '',
@@ -21698,7 +21698,7 @@
           loadMgmtCost(_pnu, (st.br && st.br.bldNm) || '', (r) => {
             
             st.mgmt = r || null;
-            if (!r) toast('관리비를 불러오지 못했습니다. 다시 시도해 주세요.');
+            if (!r) toast('관리비를 불러오지 못함. 다시 시도해 주세요.');
             render();
           });
         };
@@ -21713,7 +21713,7 @@
           render();
           loadMgmtRest(m.code, m.ym, (r) => {
             st.mgmtFull = r || null;
-            if (!r) toast('나머지 항목을 불러오지 못했습니다. 다시 시도해 주세요.');
+            if (!r) toast('나머지 항목을 불러오지 못함. 다시 시도해 주세요.');
             render();
           });
         };
@@ -21752,7 +21752,7 @@
             if (r) out.push(r);
             if (--left > 0) return;
             
-            if (!out.length) { st.corp = null; toast('기업 정보를 불러오지 못했습니다.'); render(); return; }
+            if (!out.length) { st.corp = null; toast('기업 정보를 불러오지 못함.'); render(); return; }
             st.corp = out;
             render();
             
@@ -21791,7 +21791,7 @@
           const _pnu = st.addrPnu || (st.bld && st.bld.pnu) || (st.parcel && st.parcel.pnu) || '';
           loadBidInfo(_pnu, (st.br && st.br.bldNm) || '', (r) => {
             st.bid = r || null;
-            if (!r) toast('입찰정보를 불러오지 못했습니다. 다시 시도해 주세요.');
+            if (!r) toast('입찰정보를 불러오지 못함. 다시 시도해 주세요.');
             render();
           });
         };
@@ -21809,8 +21809,8 @@
             box.textContent = '불러오는 중…';
             bn.after(box);
             loadBidResult(bidNum, (arr) => {
-              if (arr === null) { box.textContent = '결과를 불러오지 못했습니다.'; return; }
-              if (!arr || !arr.length) { box.textContent = '등록된 결과가 없습니다.'; return; }
+              if (arr === null) { box.textContent = '결과를 불러오지 못함.'; return; }
+              if (!arr || !arr.length) { box.textContent = '등록된 결과가 없음.'; return; }
               box.innerHTML = arr.map((x) => {
                 const win = x.bidSuccessfulYn === 'Y' ? ' <b style="color:#166534;">낙찰</b>' : '';
                 return '<div>· ' + esc(x.companyName || '') + win
@@ -21826,13 +21826,13 @@
         
         const _pnu = st.addrPnu || (st.bld && st.bld.pnu) || (st.parcel && st.parcel.pnu) || '';
         const areaCd = _pnu.slice(0, 5);
-        if (!areaCd || !st.zoneCode) { toast('용도지역 코드를 얻지 못해 조회할 수 없습니다.'); return; }
+        if (!areaCd || !st.zoneCode) { toast('용도지역 코드를 얻지 못해 조회할 수 없음.'); return; }
         st.landuse = 'loading';
         render();
         loadLandUse(areaCd, st.zoneCode, (rows) => {
           
           st.landuse = rows || undefined;
-          if (!rows) toast('행위제한을 불러오지 못했습니다. 다시 시도해 주세요.');
+          if (!rows) toast('행위제한을 불러오지 못함. 다시 시도해 주세요.');
           render();
         });
       };
@@ -23128,7 +23128,7 @@
       X.writeFile(wb, `즐겨찾기_${favStamp()}.xlsx`);
     }
     function _favTable(cols, rows) {
-      if (!rows.length) return '<p>저장한 항목이 없습니다.</p>';
+      if (!rows.length) return '<p>저장한 항목이 없음.</p>';
       const th = cols.map((c) => `<th>${esc(c)}</th>`).join('');
       const tr = rows.map((r) => `<tr>${r.map((v) => `<td>${esc(v)}</td>`).join('')}</tr>`).join('');
       return `<table border="1" cellspacing="0" cellpadding="4"><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table>`;
@@ -23157,7 +23157,7 @@
       lines.push(e('내보낸 날짜: ' + new Date().toLocaleString('ko-KR')) + '\\par\\par');
       const block = (title, cols, rows) => {
         lines.push('\\b ' + e(title) + '\\b0\\par');
-        if (!rows.length) { lines.push(e('저장한 항목이 없습니다.') + '\\par\\par'); return; }
+        if (!rows.length) { lines.push(e('저장한 항목이 없음.') + '\\par\\par'); return; }
         rows.forEach((r, i) => {
           const body = cols.map((c, k) => `${c}: ${r[k]}`).filter((t) => !/: $/.test(t)).join('  |  ');
           lines.push(e(`${i + 1}. ${body}`) + '\\par');
@@ -23605,7 +23605,7 @@
         : `지도 중심 기준 · 반경 2km · '${q}' (지도를 클릭하면 그 지점 기준으로 바뀝니다)`;
       if (!(window.kakao && kakao.maps && kakao.maps.services)) {
         $('rec-list').innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px 0;">'
-          + '장소검색(카카오)을 불러오지 못했어요.<br>배포본에서만 동작합니다(도메인 잠금).</div>';
+          + '장소검색(카카오)을 불러오지 못했어요.<br>배포본에서만 동작(도메인 잠금).</div>';
         return;
       }
       clearNearbyMarkers();
@@ -23671,7 +23671,7 @@
       agentMarkers.forEach((m) => map.removeLayer(m)); agentMarkers = [];
       if (!(window.kakao && kakao.maps && kakao.maps.services)) {
         if (kakaoTries++ < 8) { $('rec-list').innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px 0;">장소검색 로딩 중…</div>'; setTimeout(() => { if (landMode === 'agents') renderAgents(); }, 800); }
-        else { $('banner').textContent = '인근 공인중개사'; $('rec-list').innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px 0;">장소검색(카카오)을 불러오지 못했어요.<br>즐겨찾기 탭은 정상 이용 가능합니다.</div>'; }
+        else { $('banner').textContent = '인근 공인중개사'; $('rec-list').innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px 0;">장소검색(카카오)을 불러오지 못했어요.<br>즐겨찾기 탭은 정상 이용 가능.</div>'; }
         return;
       }
       kakaoTries = 0;
@@ -23723,7 +23723,7 @@
               
               box.outerHTML = r ? brokerHtml(r)
                 : '<div style="font-size:11px;color:var(--c-muted);margin-top:6px;">'
-                  + '국토부 등록정보에서 같은 상호를 찾지 못했습니다.</div>';
+                  + '국토부 등록정보에서 같은 상호를 찾지 못함.</div>';
             });
           });
           agentMarkers.push(m);
@@ -23779,12 +23779,12 @@
       Object.values(markers).forEach((m) => map.removeLayer(m));
       for (const k in markers) delete markers[k]; 
       agentMarkers.forEach((m) => map.removeLayer(m)); agentMarkers = [];
-      $('banner').textContent = '아파트 실거래가로 전반기 대비 후반기 평균가를 비교한 자체 계산 랭킹입니다 (AI 예측 아님).';
+      $('banner').textContent = '아파트 실거래가로 전반기 대비 후반기 평균가를 비교한 자체 계산 랭킹 (AI 예측 아님).';
       loadRp().then(() => {
         if (landMode !== 'ranking') return;
         const list = computeRanking().slice(0, 20);
         if (!list.length) { $('rec-list').innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px 0;">실거래 데이터가 부족해요. 잠시 후 다시 시도하세요.</div>'; return; }
-        $('rec-list').innerHTML = list.map((r, i) => `<div class="rec" data-i="${i}"><h3>${esc(r.name)}</h3><div class="meta">${esc(r.gu || '')} ${esc(r.dong || '')} · 거래 ${r.cnt}건</div><div class="meta" style="margin-top:2px;"><b style="color:${r.pct >= 0 ? 'var(--c-danger)' : 'var(--c-primary)'};">${r.pct >= 0 ? '+' : ''}${r.pct.toFixed(1)}%</b> · 최근 평균 ${fmtAmt(r.latest * 1e4)}</div><div class="meta" style="color:var(--muted);font-size:12px;margin-top:3px;">거래를 시점순으로 반씩 갈라 평균을 비교했습니다${r.from && r.to ? ` · ${esc(fmtYm(r.from))}~${esc(fmtYm(r.to))}` : ''}</div></div>`).join('');
+        $('rec-list').innerHTML = list.map((r, i) => `<div class="rec" data-i="${i}"><h3>${esc(r.name)}</h3><div class="meta">${esc(r.gu || '')} ${esc(r.dong || '')} · 거래 ${r.cnt}건</div><div class="meta" style="margin-top:2px;"><b style="color:${r.pct >= 0 ? 'var(--c-danger)' : 'var(--c-primary)'};">${r.pct >= 0 ? '+' : ''}${r.pct.toFixed(1)}%</b> · 최근 평균 ${fmtAmt(r.latest * 1e4)}</div><div class="meta" style="color:var(--muted);font-size:12px;margin-top:3px;">거래를 시점순으로 반씩 갈라 평균을 비교함${r.from && r.to ? ` · ${esc(fmtYm(r.from))}~${esc(fmtYm(r.to))}` : ''}</div></div>`).join('');
         $('rec-list').querySelectorAll('.rec').forEach((card) => card.addEventListener('click', () => {
           const r = list[Number(card.dataset.i)];
           if (r.lat != null && r.lng != null) map.setView([r.lat, r.lng], 17);
@@ -23902,13 +23902,13 @@
     (function initSheet() { const h = $('sheet-handle'), p = document.querySelector('.panel'); if (h && p) h.addEventListener('click', () => p.classList.toggle('sheet-open')); })();
     $('logout').addEventListener('click', async () => { const s = await ensureSb(); if (s) { try { await s.auth.signOut(); } catch (e) {} } location.href = 'index.html'; });
     $('delete-account').addEventListener('click', async () => {
-      if (!confirm('정말 탈퇴하시겠습니까?\n회원 정보와 저장한 모든 데이터가 삭제되며 복구할 수 없습니다.')) return;
+      if (!confirm('정말 탈퇴하시겠습니까?\n회원 정보와 저장한 모든 데이터가 삭제되며 복구할 수 없음.')) return;
       const s = await ensureSb();
       const btn = $('delete-account');
       btn.disabled = true; btn.textContent = '탈퇴 처리 중…';
       try {
         const { data: { session } } = await s.auth.getSession();
-        if (!session) { alert('로그인 정보가 없습니다.'); return; }
+        if (!session) { alert('로그인 정보가 없음.'); return; }
         const r = await fetch(SUPABASE_URL + '/functions/v1/delete-account', {
           method: 'POST', headers: { 'Authorization': 'Bearer ' + session.access_token, 'Content-Type': 'application/json' },
         });

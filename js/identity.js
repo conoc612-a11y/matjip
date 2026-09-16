@@ -22,7 +22,7 @@
 
   const KEY = g.mjNameKey;
   const BUCKET = g.mjBucket;
-  if (!KEY) { g.console && console.error('identity.js: joinkey.js 를 먼저 로드해야 합니다.'); return; }
+  if (!KEY) { g.console && console.error('identity.js: joinkey.js 를 먼저 로드해야 함.'); return; }
 
   // ── 키스콘 시공사 리스크 색인 ────────────────────────────────────
   // 🔴 상류(키스콘 API)가 **업체명 검색을 안 받는다** — 조건이 공시기간+지역뿐이다.
@@ -144,8 +144,8 @@
   const UNCERTAIN = {
     bizno: null,                                  // 사업자번호로 좁혔다 — 덧붙일 말이 없다
     name: null,                                   // 동명이 없다
-    'name-ambiguous': (n) => `같은 상호가 <b>${n}곳</b>입니다 — 아래는 그 전부입니다.`
-      + ' 사업자등록번호를 함께 넣으면 한 곳으로 좁혀집니다.',
+    'name-ambiguous': (n) => `같은 상호가 <b>${n}곳</b> — 아래는 그 전부.`
+      + ' 사업자등록번호를 함께 넣으면 한 곳으로 좁혀짐.',
   };
   function uncertainHtml(res) {
     const f = res && UNCERTAIN[res.confidence];
