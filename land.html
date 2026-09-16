@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
-  <link rel="stylesheet" href="css/tokens.css?v=54db20f8" />
+  <link rel="stylesheet" href="css/tokens.css?v=5edb6b92" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=54db20f8"></script>
+  <script src="js/auth-guard.js?v=5edb6b92"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -37,12 +37,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=54db20f8" />
+  <link rel="stylesheet" href="css/buttons.css?v=5edb6b92" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=54db20f8" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=5edb6b92" />
   <style>
     :root {
       
@@ -1460,7 +1460,11 @@
     .auc-popbox .auc-photos { flex:0 0 auto; min-height:0; margin-bottom:6px; }
     .auc-popbox .auc-photo { aspect-ratio:auto; height:56px; }
     
-    .auc-sum { border:1px solid var(--c-border); border-radius:8px; padding:8px 10px; margin-bottom:8px; background:var(--c-primary-soft); }
+    
+
+
+
+    .auc-sum { margin-bottom:8px; }
     .auc-sum-price { display:flex; align-items:baseline; gap:7px; flex-wrap:wrap; }
     .auc-sum-price b { font-size:20px; color:var(--c-price); line-height:1.15; }
     
@@ -1717,7 +1721,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=54db20f8"></script>
+  <script src="js/ie-guard.js?v=5edb6b92"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1987,22 +1991,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-16 13:24 · 54db20f8</span></span>
+          · <span class="build-tag">build 2026-09-16 16:00 · 5edb6b92</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=54db20f8"></script>
+  <script src="js/joinkey.js?v=5edb6b92"></script>
   
-  <script src="js/identity.js?v=54db20f8"></script>
-  <script src="js/common.js?v=54db20f8"></script>
-  <script src="js/ui-resize.js?v=54db20f8"></script>
-  <script src="js/footer-resize.js?v=54db20f8"></script>
-  <script src="js/route-line.js?v=54db20f8"></script>
-  <script src="js/route-api.js?v=54db20f8"></script>
-  <script src="js/footer-stats.js?v=54db20f8"></script>
+  <script src="js/identity.js?v=5edb6b92"></script>
+  <script src="js/common.js?v=5edb6b92"></script>
+  <script src="js/ui-resize.js?v=5edb6b92"></script>
+  <script src="js/footer-resize.js?v=5edb6b92"></script>
+  <script src="js/route-line.js?v=5edb6b92"></script>
+  <script src="js/route-api.js?v=5edb6b92"></script>
+  <script src="js/footer-stats.js?v=5edb6b92"></script>
   <script>
     
     
@@ -7854,36 +7858,57 @@
         const insCell = esc(insParts.join(' + '));
         const knownExtra = (r ? assumeMan : 0) + mgmtMan;
         
+        
+        
+        const notes = ['선순위 근저당권 등의 채권액은 명세서에서 확인하십시오 — 이 합계에 없습니다.',
+          '집행비용·당해세는 별도입니다.'];
+        
         const cond = aucCondLoad();
         const scens2 = scens.map((s) => {
           const c = aucCostRange(d, s.eok, cond.h === '1');
           if (!c) return null;
           const bidMan = s.eok * 10000;
-          return { ...s, bidMan, taxLo: c.taxLo, taxHi: c.taxHi,
+          
+          return { ...s, bidMan, taxLo: c.taxLo, taxHi: c.taxHi, rateLo: c.lo, rateHi: c.hi,
             totLo: bidMan + c.taxLo + knownExtra, totHi: bidMan + c.taxHi + knownExtra };
         }).filter(Boolean);
         const rows = scens2.map((s) => {
           const same = Math.abs(s.taxLo - s.taxHi) < 0.001;
           const tot = `${fmtAmtExact(s.totLo)}` + (same ? '' : `~${fmtAmtExact(s.totHi)}`);
-          const tax = same ? fmtAmtExact(s.taxLo) : `${fmtAmtExact(s.taxLo)}~${fmtAmtExact(s.taxHi)}`;
+          const tax = (same ? fmtAmtExact(s.taxLo) : `${fmtAmtExact(s.taxLo)}~${fmtAmtExact(s.taxHi)}`)
+            + `<div style="font-size:11px;color:var(--c-muted);">`
+            + (same ? `${s.rateLo.toFixed(1)}%` : `${s.rateLo.toFixed(1)}~${s.rateHi.toFixed(1)}%`) + `</div>`;
           return `<tr><td>${esc(s.t)}</td><td style="text-align:right;">${fmtAmtExact(s.bidMan)}</td>`
             + `<td style="text-align:right;">${tax}</td><td style="text-align:right;">${insCell}</td>`
             + `<td style="text-align:right;"><b>${tot}</b></td></tr>`;
         }).join('');
         let condLine = '';
-        if (cond.h === 'multi') notes.push('다주택·법인은 취득세 중과가 있을 수 있습니다 — 세무사 확인 필요.');
+        
+        
+        if (cond.h === 'multi') notes.push('표의 세율은 일반세율입니다 — 다주택·법인 중과(조정대상지역·주택 수)는 반영하지 않았습니다. 세무사 확인이 필요합니다.');
+        
+        
+        const myExtra = (cond.ev || 0) + (cond.rp || 0);
+        if (myExtra > 0) {
+          const parts = [cond.ev > 0 ? `명도비 ${fmtAmtExact(cond.ev)}` : '', cond.rp > 0 ? `수리비 ${fmtAmtExact(cond.rp)}` : ''].filter(Boolean);
+          condLine += `<div style="margin-top:4px;"><b>내 비용 포함:</b> ` + parts.join(' + ') + ' → '
+            + scens2.map((s) => {
+              const lo = s.totLo + myExtra, hi = s.totHi + myExtra;
+              return `${esc(s.t)} ${fmtAmtExact(lo)}` + (Math.abs(lo - hi) < 0.001 ? '' : `~${fmtAmtExact(hi)}`);
+            }).join(' · ') + `</div>`;
+        }
         if (cond.b > 0) {
           const bMan = cond.b * 10000;
-          const lbl = `당신 조건(${cond.h === '1' ? '1주택' : cond.h === 'multi' ? '다주택·법인' : '주택 수 미선택'}·예산 ${fmtAmtExact(bMan)})`;
-          condLine = `<div style="margin-top:4px;"><b>${lbl}:</b> ` + scens2.map((s) => {
-            const v = s.totHi <= bMan ? '예산 안에 듭니다'
-              : s.totLo > bMan ? `${fmtAmtExact(s.totLo - bMan)} 초과합니다`
-              : `${fmtAmtExact(s.totHi - bMan)}까지 초과할 수 있습니다`;
+          const lbl = `당신 조건(${cond.h === '1' ? '1주택' : cond.h === 'multi' ? '다주택·법인' : '주택 수 미선택'}·예산 ${fmtAmtExact(bMan)}`
+            + (myExtra > 0 ? `·내 비용 ${fmtAmtExact(myExtra)} 포함` : '') + `)`;
+          condLine += `<div style="margin-top:4px;"><b>${lbl}:</b> ` + scens2.map((s) => {
+            const lo = s.totLo + myExtra, hi = s.totHi + myExtra;
+            const v = hi <= bMan ? '예산 안에 듭니다'
+              : lo > bMan ? `${fmtAmtExact(lo - bMan)} 초과합니다`
+              : `${fmtAmtExact(hi - bMan)}까지 초과할 수 있습니다`;
             return `${esc(s.t)} 합계가 ${v}`;
           }).join(' · ') + `</div>`;
         }
-        const notes = ['선순위 근저당권 등의 채권액은 명세서에서 확인하십시오 — 이 합계에 없습니다.',
-          '집행비용·당해세는 별도입니다.'];
         if (assumeUnknown > 0) notes.push(`보증금 미상 ${assumeUnknown}명은 합계에 빠졌습니다.`);
         if (shop && les.length) notes.push('상가 임차보증금 인수는 사업자등록일 확인 후에 합산합니다 — 위 금액에 없습니다.');
         if (r && r.conflict) notes.push('임차내역 조사 충돌 — 합계를 믿기 전 현장을 확인하십시오.');
@@ -7901,15 +7926,19 @@
       
       
       
+      
+      
+      
       const AUCT_COND_LS = 'land_auction_cond';
       function aucCondLoad() {
         try {
           const c = JSON.parse(localStorage.getItem(AUCT_COND_LS) || '{}');
-          return { h: (c && (c.h === '1' || c.h === 'multi')) ? c.h : '', b: Math.max(0, Number(c && c.b) || 0) };
-        } catch (e) { return { h: '', b: 0 }; }
+          return { h: (c && (c.h === '1' || c.h === 'multi')) ? c.h : '', b: Math.max(0, Number(c && c.b) || 0),
+            ev: Math.max(0, Number(c && c.ev) || 0), rp: Math.max(0, Number(c && c.rp) || 0) };
+        } catch (e) { return { h: '', b: 0, ev: 0, rp: 0 }; }
       }
-      function aucCondSave(h, b) {
-        try { localStorage.setItem(AUCT_COND_LS, JSON.stringify({ h, b })); } catch (e) {}
+      function aucCondSave(h, b, ev, rp) {
+        try { localStorage.setItem(AUCT_COND_LS, JSON.stringify({ h, b, ev, rp })); } catch (e) {}
       }
       window.__aucCondSave = aucCondSave;   
       
@@ -7929,13 +7958,22 @@
         
         const cond = aucCondLoad();
         const opt = (v, t) => `<option value="${v}"${cond.h === v ? ' selected' : ''}>${t}</option>`;
+        
+        const _ci = 'width:96px;font:inherit;font-size:12px;padding:5px 7px;min-height:44px;'
+          + 'border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text);';
         const condRow = `<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap;">`
           + `<span style="color:var(--c-muted);font-size:12px;">내 조건</span>`
-          + `<select class="auc-cond-h" aria-label="주택 수" style="font:inherit;font-size:12px;padding:5px 7px;min-height:44px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text);">`
+          + `<select class="auc-cond-h" aria-label="주택 수" style="${_ci}width:auto;">`
           + opt('', '주택 수') + opt('1', '1주택') + opt('multi', '다주택·법인') + `</select>`
           + `<label style="font-size:12px;color:var(--c-muted);">예산(억원)</label>`
           + `<input class="auc-cond-b" type="number" min="0" step="0.1" placeholder="예: 5" value="${cond.b > 0 ? cond.b : ''}" aria-label="예산(억원)"`
-          + ` style="width:96px;font:inherit;font-size:12px;padding:5px 7px;min-height:44px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text);">`
+          + ` style="${_ci}">`
+          
+          
+          + `<label style="font-size:12px;color:var(--c-muted);">명도비(만원)</label>`
+          + `<input class="auc-cond-ev" type="number" min="0" step="10" placeholder="예: 500" value="${cond.ev > 0 ? cond.ev : ''}" aria-label="명도비(만원)" style="${_ci}">`
+          + `<label style="font-size:12px;color:var(--c-muted);">수리비(만원)</label>`
+          + `<input class="auc-cond-rp" type="number" min="0" step="10" placeholder="예: 300" value="${cond.rp > 0 ? cond.rp : ''}" aria-label="수리비(만원)" style="${_ci}">`
           + `</div>`;
         return `<div class="auc-doc-h">경매 5분 가이드</div>` + condRow
           + steps.map(([k, v]) => `<div class="auc-doc-p"><span>${k}</span><div>${v}</div></div>`).join('');
@@ -8048,9 +8086,11 @@
       function aucVerdictHtml(d) {
         const v = aucScore(d);
         if (!v) return '';
-        if (v.score == null) return `<div class="auc-doc-h">종합점수</div><div>판정 불가 — ${esc(v.why[0])}</div>`;
+        
+        
+        if (v.score == null) return `<div class="auc-doc-h first">종합점수</div><div>판정 불가 — ${esc(v.why[0])}</div>`;
         const col = aucGradeCol(v.grade);
-        return `<div class="auc-doc-h">종합점수</div>`
+        return `<div class="auc-doc-h first">종합점수</div>`
           + `<div style="display:flex;align-items:baseline;gap:8px;"><b style="font-size:22px;">${v.score}점</b>`
           + `<span style="font-size:12px;background:${col};color:#fff;padding:1px 8px;border-radius:999px;">${v.grade}</span></div>`
           + (v.why.length
@@ -8077,7 +8117,9 @@
         const poss = String((((det.curst && det.curst.dlt_ordTsRlet) || [])[0] || {}).gdsPossCtt || '')
           .replace(/<br\s*\/?>/gi, '\n').trim();
         const nd = aucNdstrc(d);
-        return `<div class="auc-inv">${sumHtml}${aucVerdictHtml(d)}${rowsHtml}`
+        
+        
+        return `<div class="auc-inv">${aucVerdictHtml(d)}${sumHtml}${rowsHtml}`
           + (poss || lesTbl
             ? `<div class="auc-doc-h">현황조사서</div>`
               + (poss ? `<div class="apd-note">${esc(poss)}</div>` : '')
@@ -8291,7 +8333,12 @@
           : '';
         
         
-        try { d._invest = aucInvestHtml(d, aucPopSummary(d), rowsHtml, goBtns); } catch (e) { d._invest = ''; }
+        
+        
+        
+        
+        d._investArgs = [aucPopSummary(d), rowsHtml, goBtns];
+        try { d._invest = aucInvestHtml(d, ...d._investArgs); } catch (e) { d._invest = ''; }
         return `<div class="pc" data-kind="auc" data-favkey="${esc(auctionFavKey(d))}" data-i="${d._i}"><div class="pc-head"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${aucColor(d.status)};flex-shrink:0;"></span><span class="rp-name">${esc(d.addr)}</span>${favBtn}${rsBadge}<span style="font-size:12px;background:${aucColor(d.status)};color:#fff;padding:1px 8px;border-radius:999px;">경매</span></div><div class="pc-body auc-body">${rsLine}${aucPopSummary(d)}${auctionPhotoHtml(d)}${rowsHtml}${goBtns}<div style="margin-top:3px;font-size:12px;color:var(--c-muted);">기일내역·당사자·감정평가·매각물건명세서는 위 바로가기에서 봅니다. 파란 ↗ 는 법원 원문(새 탭)입니다.</div></div></div>`;
       }
       
@@ -8416,7 +8463,11 @@
       
       window.__aucInvest = (i) => {
         const d = auctionRows && auctionRows[+i];
-        return d ? (d._invest || '') : '';
+        if (!d) return '';
+        
+        
+        try { if (d._investArgs) return aucInvestHtml(d, ...d._investArgs); } catch (e) {}
+        return d._invest || '';
       };
       
       
@@ -11066,11 +11117,14 @@
                   };
                 });
                 
-                body.querySelectorAll('.auc-cond-h, .auc-cond-b').forEach((el) => {
+                body.querySelectorAll('.auc-cond-h, .auc-cond-b, .auc-cond-ev, .auc-cond-rp').forEach((el) => {
                   el.onchange = () => {
+                    const v = (sel) => Number((body.querySelector(sel) || {}).value) || 0;
                     const h = (body.querySelector('.auc-cond-h') || {}).value || '';
-                    const b = Number((body.querySelector('.auc-cond-b') || {}).value) || 0;
-                    if (window.__aucCondSave) window.__aucCondSave((h === '1' || h === 'multi') ? h : '', Math.max(0, b));
+                    if (window.__aucCondSave) {
+                      window.__aucCondSave((h === '1' || h === 'multi') ? h : '',
+                        Math.max(0, v('.auc-cond-b')), Math.max(0, v('.auc-cond-ev')), Math.max(0, v('.auc-cond-rp')));
+                    }
                     renderInvest();
                   };
                 });
