@@ -81,13 +81,23 @@ button,
 
 /* 🔑 손잡이는 **푸터 안에** 둔다(top:0 = 빨간 줄 바로 아래). 예전 top:-6px 은 손잡이와
    알약을 푸터 밖으로 내보내 **지도가 알약을 덮었다**(2026-09-16 사용자 지적). */
-.footer-resize { position:absolute; top:0; left:0; right:0; height:12px; cursor:ns-resize; z-index:5; }
+.footer-resize { position:absolute; top:-0.5px; left:0; right:0; height:12px; cursor:ns-resize; z-index:5; }
 /* 알약은 길이 64px · 굵기 **3px**. 굵기를 5 에서 3 으로 내린 이유는, 눈에 들어오는 것이
    알약만이 아니라 `빨간 줄 + 알약` 한 덩어리이기 때문이다(3+3=6px).
-   ⛔ 줄을 물지 마라(겹침 0) — 물리면 3px 줄이 가운데서 얇아져 끊겨 보인다.
+   ⛔ 줄을 **눈에 띄게** 물지 마라 — 1px 이상 물리면 3px 줄이 가운데서 얇아져 끊겨 보인다.
+      단 **0.5px 은 물린다**: devicePixelRatio 가 1 이 아닌 화면(여기선 0.9)에서 CSS 경계가
+      화면 픽셀 경계와 어긋나, 줄과 알약이 화면 픽셀 한 줄을 나눠 쓰면서 양쪽보다 연한
+      이음매가 생긴다 — 그게 흰 틈으로 보인다. 0.5 를 물리면 그 줄이 꽉 찬다.
       알약은 `top:0` 으로 손잡이 위끝(= 줄 아래끝)에 고정하고, 손잡이만 움직인다.
       산술이 두 군데로 갈리면 어긋난다(2026-09-16 에 네 번 헛돌았다). */
-.footer-resize::after { content:''; position:absolute; top:0; left:50%; transform:translateX(-50%); width:64px; height:3px; border-radius:3px; background:#c1c4c9; }
+/* 🔴 줄(::before)과 알약(::after)을 **같은 부모의 의사요소**로 만들어 z-index 로 앞뒤를 정한다.
+   테두리로 두면 테두리가 배경 층에서 먼저 칠해져 알약이 항상 그 위에 얹히고, 물린 만큼
+   빨간 줄을 가린다(2026-09-16 사용자 지적). 줄이 앞(z-index:2), 알약이 뒤(z-index:1).
+   계산: 손잡이 top:-0.5 → 2.5~14.5 · 줄 ::before top:-2.5 h3 → **0~3** · 알약 top:0 h3 → **2.5~5.5**
+   ⛔ 0.5px 물림을 없애지 마라 — 배율이 1 이 아닌 화면에서 연한 이음매(=흰 틈)가 보인다. */
+.footer-resize::before { content:''; position:absolute; left:0; right:0; top:-2.5px;
+  height:3px; background:var(--c-primary); z-index:2; }
+.footer-resize::after { content:''; position:absolute; top:0; left:50%; transform:translateX(-50%); width:64px; height:3px; border-radius:3px; background:#c1c4c9; z-index:1; }
 
 /* ── 공용 기반 (2026-08-12) ──
    box-sizing: 6개 페이지 인라인 중복, .hidden: onboarding·admin 바이트 동일 중복 → 여기로. */
@@ -99,8 +109,9 @@ button,
    통일했다 — main 푸터는 테두리 2→1px·패딩 12/24→9/18·글자 12→13·통계 구분선→gap 으로
    미세 변화. 색은 항상 var(--*) 로 참조해 두 페이지 테마(주황/파랑)를 그대로 따른다. */
 /* 🔴 푸터 윗줄은 **3px 레드**다(2026-09-16 사용자 지시 "하단 푸터 상단처럼 만들어줘").
-   머리글·지도경계와 같은 줄이라 화면에 빨간 가로줄이 셋, 전부 같은 두께다. */
-.site-footer { flex:0 0 auto; position:relative; background:var(--card); border-top:3px solid var(--c-primary);
+   ⚠️ 줄은 테두리가 아니라 손잡이의 ::before 가 그린다(아래 참조). 여기 transparent 는
+      높이 배치를 그대로 두려고 남긴 것이다 — 지우면 푸터가 3px 짧아진다. */
+.site-footer { flex:0 0 auto; position:relative; background:var(--card); border-top:3px solid transparent;
   padding:9px 12px; display:flex; flex-direction:column; justify-content:center; gap:4px; }
 .footer-top { display:flex; align-items:center; gap:8px; flex-wrap:nowrap; }
 .footer-links { flex:1; display:flex; gap:8px; white-space:nowrap; }
