@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
-  <link rel="stylesheet" href="css/tokens.css?v=43c0d00b" />
+  <link rel="stylesheet" href="css/tokens.css?v=7d6a520a" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=43c0d00b"></script>
+  <script src="js/auth-guard.js?v=7d6a520a"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -37,12 +37,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=43c0d00b" />
+  <link rel="stylesheet" href="css/buttons.css?v=7d6a520a" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=43c0d00b" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=7d6a520a" />
   <style>
     :root {
       
@@ -1726,7 +1726,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=43c0d00b"></script>
+  <script src="js/ie-guard.js?v=7d6a520a"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1996,22 +1996,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-17 01:00 · 43c0d00b</span></span>
+          · <span class="build-tag">build 2026-09-17 01:26 · 7d6a520a</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=43c0d00b"></script>
+  <script src="js/joinkey.js?v=7d6a520a"></script>
   
-  <script src="js/identity.js?v=43c0d00b"></script>
-  <script src="js/common.js?v=43c0d00b"></script>
-  <script src="js/ui-resize.js?v=43c0d00b"></script>
-  <script src="js/footer-resize.js?v=43c0d00b"></script>
-  <script src="js/route-line.js?v=43c0d00b"></script>
-  <script src="js/route-api.js?v=43c0d00b"></script>
-  <script src="js/footer-stats.js?v=43c0d00b"></script>
+  <script src="js/identity.js?v=7d6a520a"></script>
+  <script src="js/common.js?v=7d6a520a"></script>
+  <script src="js/ui-resize.js?v=7d6a520a"></script>
+  <script src="js/footer-resize.js?v=7d6a520a"></script>
+  <script src="js/route-line.js?v=7d6a520a"></script>
+  <script src="js/route-api.js?v=7d6a520a"></script>
+  <script src="js/footer-stats.js?v=7d6a520a"></script>
   <script>
     
     
@@ -7741,7 +7741,22 @@
         if (!rows || !rows.length) return null;
         const low = aucLowEok(d);
         if (!low) return null;
-        const list = rows.filter((x) => !x.cancel && x.p > 0 && x.a > 0);
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        if (!aucShopPurps(d)) return null;
+        
+        
+        
+        const list = rows.filter((x) => !x.cancel && x.p > 0 && x.a > 0 && x.k !== 'offi');
         if (list.length < AUC_SHOP_MIN) return null;
         const area = aucArea(d && d.detail) || (d && d._br && d._br.area) || 0;
         const areaSrc = aucArea(d && d.detail) ? '' : (d && d._br && d._br.area ? '건축물대장' : '');
@@ -7755,7 +7770,8 @@
           if (midEok > 0) return { kind: 'shop', tier: 'unit', tierNm: '같은 건물 같은 평형',
             area, areaSrc, n: same.length, midEok, mineEok: low,
             pct: Math.round(low / midEok * 100),
-            why: '구·동·지번 일치 + 전용면적 ±15%' + (aucViaRoad(d) ? ' · 도로명→지번 변환(V-World)' : '') };
+            why: `구·동·지번 일치 + 전용면적 ±15% · 비주거 거래만(주용도 ${aucShopPurps(d)})`
+              + (aucViaRoad(d) ? ' · 도로명→지번 변환(V-World)' : '') };
         }
         if (!area) return null;                  
         const mid = med(list.map((x) => x.p * 10000 / x.a));
@@ -7763,7 +7779,8 @@
         return { kind: 'shop', tier: 'bld', tierNm: '같은 건물', area, areaSrc,
           n: list.length, mid, mine: low * 10000 / area,
           pct: Math.round((low * 10000 / area) / mid * 100),
-          why: '구·동·지번 일치' + (aucViaRoad(d) ? ' · 도로명→지번 변환(V-World)' : '') };
+          why: `구·동·지번 일치 · 비주거 거래만(주용도 ${aucShopPurps(d)})`
+            + (aucViaRoad(d) ? ' · 도로명→지번 변환(V-World)' : '') };
       }
       
       
@@ -7772,6 +7789,9 @@
       
       
       
+      const AUC_DEAL_KIND = { nrg: '상업·업무용', offi: '오피스텔', indu: '공장·창고' };
+      
+      const aucShopPurps = (d) => String((d && d._br && d._br.purps) || '').trim();
       const AUC_DEAL_MAX = 40;        
       function aucShopDealsHtml(d) {
         const key = aucShopKey(d);
@@ -7780,13 +7800,16 @@
         const live = all.filter((x) => x.p > 0 && x.a > 0);
         if (!live.length) return '';
         const area = aucArea(d && d.detail) || (d && d._br && d._br.area) || 0;
-        const hit = (x) => !!area && !x.cancel && Math.abs(x.a - area) / area <= AUC_SHOP_TOL;
+        
+        const purps = aucShopPurps(d);
+        const usable = (x) => !x.cancel && x.k !== 'offi';
+        const hit = (x) => !!area && usable(x) && Math.abs(x.a - area) / area <= AUC_SHOP_TOL;
         const yms = live.map((x) => x.ym).filter(Boolean).sort();
         const span = yms.length ? (yms[0] === yms[yms.length - 1] ? yms[0]
           : yms[0] + '~' + yms[yms.length - 1]) : '';
         const top = live.slice(0, AUC_DEAL_MAX);
         const body = top.map((x) => {
-          const bits = [fmtArea(x.a)];
+          const bits = [AUC_DEAL_KIND[x.k] || x.k, fmtArea(x.a)];
           if (x.f) bits.push(x.f + '층');
           if (x.u) bits.push(x.u);
           if (x.n) bits.push(x.n);
@@ -7797,13 +7820,23 @@
             + `${x.cancel ? ' <b style="color:var(--c-primary);">해제</b>' : ''}</td></tr>`;
         }).join('');
         const nHit = live.filter(hit).length;
+        
+        
+        const nUse = live.filter(usable).length;
+        const hold = !purps
+          ? '건축물대장 주용도를 확인하지 못해 비율은 보류함 — 상가·오피스텔 중 무엇인지 모르는 채로 견주면 틀림.'
+          : (nUse < AUC_SHOP_MIN
+            ? `이 건물의 비주거(오피스텔 제외) 거래가 ${nUse}건뿐이라 비율은 내지 않음.`
+            : '');
         const more = live.length > top.length
           ? `<div class="apd-note">외 ${live.length - top.length}건</div>` : '';
+        const holdNote = hold ? `<div class="apd-note">${esc(hold)}</div>` : '';
         return `<div class="apd-sec" id="apd-sec-deal">`
           + `<div class="apd-sec-t">같은 건물 실거래 ${live.length}건${span ? ' · ' + esc(span) : ''}</div>`
           + `<table class="ls-tbl auc-deal-tbl"><tbody>${body}</tbody></table>${more}`
-          + (nHit ? `<div class="apd-note">진한 줄 ${nHit}건이 위 '실거래 대비' 에 쓴 같은 평형임`
+          + (nHit && !hold ? `<div class="apd-note">진한 줄 ${nHit}건이 위 '실거래 대비' 에 쓴 같은 평형임`
             + ` — 전용 ${fmtArea(area)} 기준 ±15%.</div>` : '')
+          + holdNote
           + `<div class="apd-note">국토교통부 실거래가 · 구·동·지번(${esc(key)}) 완전일치.`
           + ` 지번이 가려진 신고는 원본에서 빠져 있음.</div></div>`;
       }
