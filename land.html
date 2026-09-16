@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
-  <link rel="stylesheet" href="css/tokens.css?v=93a0966b" />
+  <link rel="stylesheet" href="css/tokens.css?v=4d93953d" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=93a0966b"></script>
+  <script src="js/auth-guard.js?v=4d93953d"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -37,12 +37,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=93a0966b" />
+  <link rel="stylesheet" href="css/buttons.css?v=4d93953d" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=93a0966b" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=4d93953d" />
   <style>
     :root {
       
@@ -1721,7 +1721,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=93a0966b"></script>
+  <script src="js/ie-guard.js?v=4d93953d"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1991,22 +1991,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-16 16:33 · 93a0966b</span></span>
+          · <span class="build-tag">build 2026-09-16 16:42 · 4d93953d</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=93a0966b"></script>
+  <script src="js/joinkey.js?v=4d93953d"></script>
   
-  <script src="js/identity.js?v=93a0966b"></script>
-  <script src="js/common.js?v=93a0966b"></script>
-  <script src="js/ui-resize.js?v=93a0966b"></script>
-  <script src="js/footer-resize.js?v=93a0966b"></script>
-  <script src="js/route-line.js?v=93a0966b"></script>
-  <script src="js/route-api.js?v=93a0966b"></script>
-  <script src="js/footer-stats.js?v=93a0966b"></script>
+  <script src="js/identity.js?v=4d93953d"></script>
+  <script src="js/common.js?v=4d93953d"></script>
+  <script src="js/ui-resize.js?v=4d93953d"></script>
+  <script src="js/footer-resize.js?v=4d93953d"></script>
+  <script src="js/route-line.js?v=4d93953d"></script>
+  <script src="js/route-api.js?v=4d93953d"></script>
+  <script src="js/footer-stats.js?v=4d93953d"></script>
   <script>
     
     
@@ -7066,7 +7066,7 @@
         
         
         const one = (n) => (unit === '㎡' ? fmtArea(n) : Math.round(n * 100) / 100 + '㎡');
-        if (x.only) return `${v} (${x.srcs[0]} 단독 — 대조할 다른 출처가 없습니다)`;
+        if (x.only) return `${v} (${x.srcs[0]} 단독 — 대조할 다른 출처 없음)`;
         if (x.agree) return `${v} (${x.srcs.join('·')} 일치)`
           + (x.others && x.others.length ? ` ⚠ ${x.others.map((o) => o[0] + ' ' + one(o[1])).join(', ')} 는 다릅니다` : '');
         return `${v} ⚠ 출처가 어긋납니다 — ${x.conflict.map((c) => c[0] + ' ' + one(c[1])).join(' / ')}`;
@@ -7120,29 +7120,29 @@
       function aucEvict(d) {
         const r = aucRights(d);
         if (!r) return '';
-        const term = ' 인도명령은 매각대금을 낸 뒤 6개월 안에만 신청할 수 있습니다(민사집행법 제136조).';
+        const term = ' 인도명령은 매각대금 납부 후 6개월 이내에만 신청 가능(민사집행법 제136조).';
         if (r.conflict) {
-          return `명세서는 "조사된 임차내역없음" 이나 현황조사서에 점유자 ${r.n}명이 있습니다`
-            + ' — 대항력 여부가 확정되지 않아 인도명령 대상인지 판정할 수 없습니다. 현장 확인이 필요합니다.';
+          return `명세서는 "조사된 임차내역없음" 이나 현황조사서에 점유자 ${r.n}명 있음`
+            + ' — 대항력 미확정으로 인도명령 대상 여부 판정 불가. 현장 확인 요함.';
         }
         if (r.noTenant) {
-          return '조사된 임차내역이 없습니다 — 점유자가 채무자·소유자라면 인도명령 대상입니다.'
-            + term + ' 다만 현장에 누가 있는지는 문서로 확인되지 않으니 직접 보셔야 합니다.';
+          return '조사된 임차내역 없음 — 점유자가 채무자·소유자라면 인도명령 대상임.'
+            + term + ' 현장 점유자는 문서로 확인되지 않아 직접 확인 요함.';
         }
         if (!r.n) return '';
         
         if (aucIsShop(d)) {
-          return `상가 임차인 ${r.n}명은 전입일이 아니라 사업자등록일+인도로 대항력이 정해집니다.`
-            + ` 등록일이 자료에 없어 인도명령 대상인지 판단할 수 없습니다. 사업자등록증명과 확정일자를 확인하십시오.` + term;
+          return `상가 임차인 ${r.n}명은 전입일이 아니라 사업자등록일+인도로 대항력 결정.`
+            + ` 등록일 자료 없음으로 인도명령 대상 여부 판단 불가. 사업자등록증명·확정일자 확인 요함.` + term;
         }
         
         
         if (!r.risky) {
-          return `임차인 ${r.n}명 전원이 대항력이 없어 인도명령 대상입니다 — 명도소송이 필요 없습니다.` + term;
+          return `임차인 ${r.n}명 전원 대항력 없음으로 인도명령 대상 — 명도소송 불요.` + term;
         }
-        return `임차인 ${r.n}명 중 ${r.risky}명이 대항력이 있어 인도명령을 낼 수 없습니다`
-          + ' — 보증금을 인수하고 계약을 승계하거나, 명도소송으로 가야 합니다.'
-          + ' 기간과 비용이 인도명령과 크게 다릅니다.';
+        return `임차인 ${r.n}명 중 ${r.risky}명이 대항력 있어 인도명령 불가`
+          + ' — 보증금 인수 후 계약 승계 또는 명도소송 필요.'
+          + ' 기간·비용이 인도명령과 크게 다름.';
       }
       
       
@@ -7353,9 +7353,9 @@
       
       
       const AUC_CASE_WARN = [
-        [/자동차|중기/, '자동차·중기', '부동산이 아닙니다. 지도 위치는 자동차 등록상 <b>사용본거지</b>라 실제 보관 장소와 다를 수 있습니다.'],
-        [/공유물분할/, '공유물분할', '형식적경매입니다. 공유자 사이 분할을 위해 전체를 매각합니다 — 일반 임의·강제경매와 <b>인수되는 권리의 범위가 다를 수 있어</b> 매각물건명세서를 꼭 확인하십시오.'],
-        [/청산/, '청산형식적경매', '형식적경매입니다. 말소주의가 당연히 적용되지 않아 <b>소멸하지 않는 권리</b>가 남을 수 있습니다.'],
+        [/자동차|중기/, '자동차·중기', '부동산 아님. 지도 위치는 자동차 등록상 <b>사용본거지</b>라 실제 보관 장소와 다를 수 있음.'],
+        [/공유물분할/, '공유물분할', '형식적경매. 공유자 사이 분할을 위해 전체 매각 — 일반 임의·강제경매와 <b>인수되는 권리의 범위가 다를 수 있어</b> 매각물건명세서 확인 필수.'],
+        [/청산/, '청산형식적경매', '형식적경매. 말소주의가 당연히 적용되지 않아 <b>소멸하지 않는 권리</b>가 남을 수 있음.'],
       ];
       
       function aucCaseBadges(d) {
@@ -7367,8 +7367,8 @@
         });
         if (/중복/.test(String((d && d.cn) || ''))) {
           const cnt = (String(d.cn).match(/타경/g) || []).length;
-          out.push('<span class="ap-tag ap-tag-risk" title="채권자가 여럿이라 사건이 여러 개 붙어 있습니다.'
-            + ' 하나가 취하돼도 다른 사건으로 진행되지만, 정지·취하·배당 변수가 늘어납니다.">중복사건'
+          out.push('<span class="ap-tag ap-tag-risk" title="채권자가 여럿이라 사건이 여러 개 병합됨.'
+            + ' 하나가 취하돼도 다른 사건으로 진행되나, 정지·취하·배당 변수가 늘어남.">중복사건'
             + (cnt > 1 ? ' ' + cnt : '') + '</span>');
         }
         return out.join('');
@@ -7973,7 +7973,7 @@
         const items = pick.map((c) => {
           const depTxt = c.dep > 0 ? `보증금 ${fmtAmtExact(c.dep)}` : '보증금 미상';
           return `<div class="auc-quiz" style="margin-top:5px;padding:7px 9px;border:1px solid var(--line);border-radius:8px;">`
-            + `<div>전입 ${esc(c.mv)} · ${depTxt} 임차인 — 대항력이 있을까요?</div>`
+            + `<div>전입 ${esc(c.mv)} · ${depTxt} 임차인 — 대항력 유무는?</div>`
             + `<div style="display:flex;gap:6px;margin-top:5px;">`
             + `<button type="button" class="auc-quiz-btn pc-btn pc-btn-outline" data-a="${c.risky ? 1 : 0}" data-v="1" style="padding:6px 10px;font-size:12px;min-height:44px;">있음</button>`
             + `<button type="button" class="auc-quiz-btn pc-btn pc-btn-outline" data-a="${c.risky ? 1 : 0}" data-v="0" style="padding:6px 10px;font-size:12px;min-height:44px;">없음</button></div>`
