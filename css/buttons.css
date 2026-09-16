@@ -111,7 +111,13 @@ button,
 /* 🔴 푸터 윗줄은 **3px 레드**다(2026-09-16 사용자 지시 "하단 푸터 상단처럼 만들어줘").
    ⚠️ 줄은 테두리가 아니라 손잡이의 ::before 가 그린다(아래 참조). 여기 transparent 는
       높이 배치를 그대로 두려고 남긴 것이다 — 지우면 푸터가 3px 짧아진다. */
-.site-footer { flex:0 0 auto; position:relative; background:var(--card); border-top:3px solid transparent;
+/* 🔴 `overflow:hidden` 이 필요하다(2026-09-16 사용자 지시 "맨오른쪽 스크롤바 삭제").
+   푸터는 손잡이로 줄일 수 있는데, 줄이면 내용이 아래로 새어 **문서가 2px 넘치고**
+   그 2px 때문에 세로 스크롤바가 선다. 스크롤바가 서면 폭이 10px 깎여
+   빨간 줄이 1910 에서 끊기고 알약 중심도 960 → 955 로 밀린다.
+   실측: 푸터 24px(사용자 설정) · 내용 23px · 문서 913 vs 뷰포트 911.
+   ⛔ 지우지 마라 — 푸터를 줄이는 순간 스크롤바가 다시 선다. */
+.site-footer { flex:0 0 auto; position:relative; overflow:hidden; background:var(--card); border-top:3px solid transparent;
   padding:9px 12px; display:flex; flex-direction:column; justify-content:center; gap:4px; }
 .footer-top { display:flex; align-items:center; gap:8px; flex-wrap:nowrap; }
 .footer-links { flex:1; display:flex; gap:8px; white-space:nowrap; }
