@@ -23,14 +23,20 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;
 // land.html 은 초기 지도 렌더와 무관하므로(푸터 통계·로그아웃 전용) 이 패턴을 쓴다.
 let _sb = null;
 let _sbPromise = null;
+// 🔴 클라이언트는 **한 페이지에 하나**다. js/auth-guard.js 가 먼저 돌며 만들어
+//    `window.__mjSb` 에 걸어 둔다 — 여기서 또 만들면 같은 저장소 키로 둘이 되어
+//    "Multiple GoTrueClient instances detected" 경고가 뜬다(2026-09-16 콘솔 실측).
+//    ⛔ 양쪽에서 따로 만들지 마라. 토큰 갱신이 겹칠 수 있다.
+const _mkSb = () => (window.__mjSb || (window.__mjSb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)));
 function ensureSb() {
   if (_sbPromise) return _sbPromise;
-  if (window.supabase) { _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY); _sbPromise = Promise.resolve(_sb); return _sbPromise; }
+  if (window.__mjSb) { _sb = window.__mjSb; _sbPromise = Promise.resolve(_sb); return _sbPromise; }
+  if (window.supabase) { _sb = _mkSb(); _sbPromise = Promise.resolve(_sb); return _sbPromise; }
   _sbPromise = new Promise((resolve) => {
     const s = document.createElement('script');
     s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
     s.async = true;
-    s.onload = () => { try { _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY); } catch (e) { _sb = null; } resolve(_sb); };
+    s.onload = () => { try { _sb = _mkSb(); } catch (e) { _sb = null; } resolve(_sb); };
     s.onerror = () => resolve(null);
     document.head.appendChild(s);
   });

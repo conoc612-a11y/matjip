@@ -4,11 +4,19 @@
 (async () => {
   const SUPABASE_URL = 'https://bhgijvaxxjnocgfnaaeu.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_rYaGd3kk5UuFBe3TSpFA8g_uGHWwkqM';
+  // 🔴 클라이언트는 **한 페이지에 하나**여야 한다(2026-09-16 콘솔 실측).
+  //    land.html 은 이 파일(8행)과 js/common.js(2004행)를 둘 다 싣는데, 각자
+  //    createClient 를 불러 **같은 저장소 키로 클라이언트가 둘** 생겼다 —
+  //    "Multiple GoTrueClient instances detected ... may produce undefined behavior
+  //     when used concurrently under the same storage key" 경고가 그것이다.
+  //    이 파일이 먼저 도므로 여기서 만들어 `window.__mjSb` 에 걸어 두고,
+  //    ensureSb(common.js)가 그것을 재사용한다. ⛔ 양쪽에서 따로 만들지 마라.
+  const mk = () => (window.__mjSb || (window.__mjSb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)));
   const sb = await new Promise((resolve) => {
-    if (window.supabase) return resolve(window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY));
+    if (window.supabase) return resolve(mk());
     const s = document.createElement('script');
     s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
-    s.onload = () => resolve(window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY));
+    s.onload = () => resolve(mk());
     s.onerror = () => resolve(null);
     document.head.appendChild(s);
   });
