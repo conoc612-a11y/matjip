@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>관리자 모드</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<link rel="stylesheet" href="css/buttons.css?v=232e61b2" />
-<link rel="stylesheet" href="css/tokens.css?v=232e61b2" />
+<link rel="stylesheet" href="css/buttons.css?v=f70ee0c6" />
+<link rel="stylesheet" href="css/tokens.css?v=f70ee0c6" />
 <style>
   :root { --bg:#0f1520; --card:#1a2332; --line:#2a3564; --text:#e8eef7; --muted:#8b9bb4; --accent:var(--brand-lt); }
   * { margin:0; }
@@ -99,7 +99,7 @@
     <div id="newpw-view" class="hidden">
       <div style="max-width:360px;margin:12vh auto 0;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:28px;">
         <h2 style="font-size:17px;margin-bottom:8px;">새 비밀번호 설정</h2>
-        <p class="sub">이메일 인증이 완료되었습니다.</p>
+        <p class="sub">이메일 인증이 완료됨.</p>
         <input type="password" id="new-pw" placeholder="새 관리자 비밀번호 (6자 이상)" autocomplete="new-password" onkeydown="if(event.key==='Enter')applyReset()">
         <button onclick="applyReset()">비밀번호 변경</button>
         <div id="newpw-msg" style="color:#8b9bb4;font-size:13px;margin-top:10px;min-height:18px;"></div>
@@ -149,7 +149,7 @@
       
       <div id="view-stat" class="hidden">
         <div class="row">
-          <div class="sub" style="margin:0;">방문자 수는 동일 IP를 하루 1회만 집계한 값입니다.</div>
+          <div class="sub" style="margin:0;">방문자 수는 동일 IP를 하루 1회만 집계한 값임.</div>
           <button class="btn" onclick="exportStats()">통계 CSV</button>
         </div>
         <div class="charts">
@@ -164,7 +164,7 @@
       
       <div id="view-loc" class="hidden">
         <div class="row">
-          <div class="sub" style="margin:0;">IP 위치는 ipwho.is 로 조회한 값입니다. IP는 개인정보 보호를 위해 앞 3옥텟만 표시합니다. 시간은 한국시간, 브라우저는 당일 첫 방문 기준입니다.</div>
+          <div class="sub" style="margin:0;">IP 위치는 ipwho.is 로 조회한 값임. IP는 개인정보 보호를 위해 앞 3옥텟만 표시. 시간은 한국시간, 브라우저는 당일 첫 방문 기준임.</div>
           <button class="btn" onclick="exportLocations()">위치 CSV</button>
         </div>
         <div class="tablebox">
@@ -177,7 +177,7 @@
     
       <div id="view-health" class="hidden">
         <div class="row">
-          <div class="sub" id="hc-asof" style="margin:0;">matjip이 연결하는 API·DB 상태를 확인합니다.</div>
+          <div class="sub" id="hc-asof" style="margin:0;">matjip이 연결하는 API·DB 상태를 확인.</div>
           <button class="btn" onclick="loadHealth(true)">다시 확인</button>
         </div>
         <div class="tablebox" id="health-list" style="max-height:430px;"></div>
@@ -185,7 +185,7 @@
     </div>
   </div>
 
-<script src="js/common.js?v=232e61b2"></script>
+<script src="js/common.js?v=f70ee0c6"></script>
 <script>
 const FN = SUPABASE_URL + '/functions/v1';
 let token = sessionStorage.getItem('admin_token');
