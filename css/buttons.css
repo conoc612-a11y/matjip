@@ -93,10 +93,12 @@ button,
 /* 🔴 줄(::before)과 알약(::after)을 **같은 부모의 의사요소**로 만들어 z-index 로 앞뒤를 정한다.
    테두리로 두면 테두리가 배경 층에서 먼저 칠해져 알약이 항상 그 위에 얹히고, 물린 만큼
    빨간 줄을 가린다(2026-09-16 사용자 지적). 줄이 앞(z-index:2), 알약이 뒤(z-index:1).
-   계산: 손잡이 top:-0.5 → 2.5~14.5 · 줄 ::before top:-2.5 h3 → **0~3** · 알약 top:0 h3 → **2.5~5.5**
+   계산(줄 **2px** · 2026-09-16 사용자 지시): border-top 2 → 패딩상자 위끝 2
+     손잡이 top:-0.5 → 1.5~13.5 · 줄 ::before top:-1.5 h2 → **0~2** · 알약 top:0 h3 → **1.5~4.5**
+   ⚠️ 줄 두께를 바꾸면 패딩상자 위끝이 움직인다 — ::before 의 top 도 다시 재라(-2.5 → -1.5).
    ⛔ 0.5px 물림을 없애지 마라 — 배율이 1 이 아닌 화면에서 연한 이음매(=흰 틈)가 보인다. */
-.footer-resize::before { content:''; position:absolute; left:0; right:0; top:-2.5px;
-  height:3px; background:var(--c-primary); z-index:2; }
+.footer-resize::before { content:''; position:absolute; left:0; right:0; top:-1.5px;
+  height:2px; background:var(--c-primary); z-index:2; }
 /* ⛔ 알약에 테두리(box-shadow)를 주지 마라 — 2026-09-16 사용자 지시 "테두리 없애".
    한때 지도 위에서 잘 보이라고 흰 테를 둘렀는데, 가림 문제의 진짜 원인은 테가 아니라
    z-index 였다(통계 띠가 Leaflet 에 덮이고 있었다). 그걸 고쳤으니 테는 필요 없다. */
@@ -119,7 +121,7 @@ button,
    890~911 이고, 줄은 손잡이의 ::before 가 887~890 에 그리므로 **전부 잘린다.**
    스크롤바는 여기가 아니라 `body { overflow:hidden }` 으로 막는다(land.html).
    (스크롤바가 서는 이유: 푸터를 손잡이로 줄이면 내용이 아래로 새어 문서가 2px 넘친다.) */
-.site-footer { flex:0 0 auto; position:relative; background:var(--card); border-top:3px solid transparent;
+.site-footer { flex:0 0 auto; position:relative; background:var(--card); border-top:2px solid transparent;
   padding:9px 12px; display:flex; flex-direction:column; justify-content:center; gap:4px; }
 .footer-top { display:flex; align-items:center; gap:8px; flex-wrap:nowrap; }
 .footer-links { flex:1; display:flex; gap:8px; white-space:nowrap; }
