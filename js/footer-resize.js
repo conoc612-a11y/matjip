@@ -41,3 +41,24 @@
     }
   });
 })();
+
+// 통계 띠 세로 크기 조절 — 지도와의 경계선. 헤더와 같은 부품·같은 방향이다.
+// 손잡이가 띠 **아래**에 있으므로 reverseH 를 쓰지 않는다 — 아래로 끌면 커진다.
+(function () {
+  var bar = document.getElementById('stat-bar');
+  var handle = document.getElementById('stat-resize');
+  if (!bar || !handle) return;
+  var KEY = 'mj-statbar-height';
+  var wide = function () { return window.matchMedia('(min-width:641px)').matches; };
+  var saved = parseInt(localStorage.getItem(KEY), 10);
+  if (wide() && saved >= 18 && saved <= 60) bar.style.height = saved + 'px';
+
+  makeResizable(handle, bar, {
+    axis: 'h',
+    minH: 18,              // 12.5px 글자가 잘리지 않는 최소값
+    maxH: 60,
+    onEnd: function () {
+      try { localStorage.setItem(KEY, String(bar.offsetHeight)); } catch (e) {}
+    }
+  });
+})();

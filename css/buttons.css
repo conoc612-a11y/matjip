@@ -97,7 +97,11 @@ button,
    ⛔ 0.5px 물림을 없애지 마라 — 배율이 1 이 아닌 화면에서 연한 이음매(=흰 틈)가 보인다. */
 .footer-resize::before { content:''; position:absolute; left:0; right:0; top:-2.5px;
   height:3px; background:var(--c-primary); z-index:2; }
-.footer-resize::after { content:''; position:absolute; top:0; left:50%; transform:translateX(-50%); width:64px; height:3px; border-radius:3px; background:#c1c4c9; z-index:1; }
+/* 🔑 흰 테 2px 는 **셋 다** 준다. 알약 아래가 흰 바탕인 머리글·푸터에서는 흰 테가
+   흰 배경에 묻혀 안 보이고, 지도 위에 얹히는 지도 윗변 줄에서만 살아난다 —
+   규칙은 하나인데 결과는 셋 다 또렷하다. 예전엔 이 테를 지도 윗변에만 줘서
+   그것만 혼자 달라 보였다(2026-09-16 사용자 지적). ⛔ 한 곳에만 주지 마라. */
+.footer-resize::after { content:''; position:absolute; top:0; left:50%; transform:translateX(-50%); width:64px; height:3px; border-radius:3px; background:#c1c4c9; z-index:1; box-shadow:0 0 0 2px #FFFFFF; }
 
 /* ── 공용 기반 (2026-08-12) ──
    box-sizing: 6개 페이지 인라인 중복, .hidden: onboarding·admin 바이트 동일 중복 → 여기로. */
@@ -111,13 +115,12 @@ button,
 /* 🔴 푸터 윗줄은 **3px 레드**다(2026-09-16 사용자 지시 "하단 푸터 상단처럼 만들어줘").
    ⚠️ 줄은 테두리가 아니라 손잡이의 ::before 가 그린다(아래 참조). 여기 transparent 는
       높이 배치를 그대로 두려고 남긴 것이다 — 지우면 푸터가 3px 짧아진다. */
-/* 🔴 `overflow:hidden` 이 필요하다(2026-09-16 사용자 지시 "맨오른쪽 스크롤바 삭제").
-   푸터는 손잡이로 줄일 수 있는데, 줄이면 내용이 아래로 새어 **문서가 2px 넘치고**
-   그 2px 때문에 세로 스크롤바가 선다. 스크롤바가 서면 폭이 10px 깎여
-   빨간 줄이 1910 에서 끊기고 알약 중심도 960 → 955 로 밀린다.
-   실측: 푸터 24px(사용자 설정) · 내용 23px · 문서 913 vs 뷰포트 911.
-   ⛔ 지우지 마라 — 푸터를 줄이는 순간 스크롤바가 다시 선다. */
-.site-footer { flex:0 0 auto; position:relative; overflow:hidden; background:var(--card); border-top:3px solid transparent;
+/* ⛔ 여기에 `overflow:hidden` 을 넣지 마라 — **빨간 줄이 통째로 사라진다**(2026-09-16 실제 사고).
+   `overflow` 는 **패딩 상자** 기준으로 자른다. 푸터 887~911 에 위 테두리 3px 이라 패딩 상자는
+   890~911 이고, 줄은 손잡이의 ::before 가 887~890 에 그리므로 **전부 잘린다.**
+   스크롤바는 여기가 아니라 `body { overflow:hidden }` 으로 막는다(land.html).
+   (스크롤바가 서는 이유: 푸터를 손잡이로 줄이면 내용이 아래로 새어 문서가 2px 넘친다.) */
+.site-footer { flex:0 0 auto; position:relative; background:var(--card); border-top:3px solid transparent;
   padding:9px 12px; display:flex; flex-direction:column; justify-content:center; gap:4px; }
 .footer-top { display:flex; align-items:center; gap:8px; flex-wrap:nowrap; }
 .footer-links { flex:1; display:flex; gap:8px; white-space:nowrap; }
