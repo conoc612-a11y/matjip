@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
-  <link rel="stylesheet" href="css/tokens.css?v=94321438" />
+  <link rel="stylesheet" href="css/tokens.css?v=f9f85a1f" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=94321438"></script>
+  <script src="js/auth-guard.js?v=f9f85a1f"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -37,12 +37,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=94321438" />
+  <link rel="stylesheet" href="css/buttons.css?v=f9f85a1f" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=94321438" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=f9f85a1f" />
   <style>
     :root {
       
@@ -1721,7 +1721,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=94321438"></script>
+  <script src="js/ie-guard.js?v=f9f85a1f"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1991,22 +1991,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-16 23:16 · 94321438</span></span>
+          · <span class="build-tag">build 2026-09-16 23:32 · f9f85a1f</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=94321438"></script>
+  <script src="js/joinkey.js?v=f9f85a1f"></script>
   
-  <script src="js/identity.js?v=94321438"></script>
-  <script src="js/common.js?v=94321438"></script>
-  <script src="js/ui-resize.js?v=94321438"></script>
-  <script src="js/footer-resize.js?v=94321438"></script>
-  <script src="js/route-line.js?v=94321438"></script>
-  <script src="js/route-api.js?v=94321438"></script>
-  <script src="js/footer-stats.js?v=94321438"></script>
+  <script src="js/identity.js?v=f9f85a1f"></script>
+  <script src="js/common.js?v=f9f85a1f"></script>
+  <script src="js/ui-resize.js?v=f9f85a1f"></script>
+  <script src="js/footer-resize.js?v=f9f85a1f"></script>
+  <script src="js/route-line.js?v=f9f85a1f"></script>
+  <script src="js/route-api.js?v=f9f85a1f"></script>
+  <script src="js/footer-stats.js?v=f9f85a1f"></script>
   <script>
     
     
@@ -7010,10 +7010,17 @@
                 } : null;
                 
                 if (!ho || (!needArea && !needUse)) return done(title ? { title } : null);
-                ledgerOp('getBrExposPubuseAreaInfo', r.pnu, (arr) => {
+                
+                
+                
+                const fin = (arr) => {
                   const v = Object.assign({}, aucBrPick(arr, d.addr) || {}, title ? { title } : {});
                   done(Object.keys(v).length ? v : null);
-                });
+                };
+                ledgerOp('getBrExposPubuseAreaInfo', r.pnu, (arr) => {
+                  if (arr && arr.length) { fin(arr); return; }
+                  ledgerOp('getBrExposPubuseAreaInfo', r.pnu, fin);
+                }, 0, ho);
               });
             });
           } catch (e) { done(null); }
@@ -19380,10 +19387,13 @@
     
     
     const _brInflight = new Map();
-    function ledgerOp(op, pnu, cb, _attempt) {
+    
+    
+    
+    function ledgerOp(op, pnu, cb, _attempt, ho) {
       const p = pnuParts(pnu);
       if (!p) { cb(null); return; }
-      const key = op + '|' + pnu;
+      const key = op + '|' + pnu + (ho ? '|' + ho : '');
       if (_brCache.has(key)) { cb(_brCache.get(key)); return; }
       if (!_attempt) {
         const q = _brInflight.get(key);
@@ -19399,7 +19409,7 @@
         
         if (err && err.status === 429) { cb(null); return; }
         const wait = [600, 1800, 0][attempt];
-        if (wait) { setTimeout(() => ledgerOp(op, pnu, cb, attempt + 1), wait); return; }
+        if (wait) { setTimeout(() => ledgerOp(op, pnu, cb, attempt + 1, ho), wait); return; }
         cb(null);  
       };
       
@@ -19414,7 +19424,8 @@
       const pageSize = op === 'getBrTitleInfo' ? 10 : 100;
       const page = (pno, acc) => {
         const q = `op=${op}&sigunguCd=${p.sigunguCd}&bjdongCd=${p.bjdongCd}`
-          + `&platGbCd=${p.platGbCd}&bun=${p.bun}&ji=${p.ji}&numOfRows=${pageSize}&pageNo=${pno}`;
+          + `&platGbCd=${p.platGbCd}&bun=${p.bun}&ji=${p.ji}&numOfRows=${pageSize}&pageNo=${pno}`
+          + (ho ? `&hoNm=${encodeURIComponent(ho)}` : '');
         fetch(`${MOLIT_PROXY}?${q}`)
           .then((r) => { if (r.ok) return r.json(); const e = new Error('HTTP ' + r.status); e.status = r.status; throw e; })
           .then((j) => {
