@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
-  <link rel="stylesheet" href="css/tokens.css?v=c77a8ea4" />
+  <link rel="stylesheet" href="css/tokens.css?v=a6fa57d5" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=c77a8ea4"></script>
+  <script src="js/auth-guard.js?v=a6fa57d5"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -37,12 +37,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=c77a8ea4" />
+  <link rel="stylesheet" href="css/buttons.css?v=a6fa57d5" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=c77a8ea4" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=a6fa57d5" />
   <style>
     :root {
       
@@ -1726,7 +1726,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=c77a8ea4"></script>
+  <script src="js/ie-guard.js?v=a6fa57d5"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1996,22 +1996,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-17 00:06 · c77a8ea4</span></span>
+          · <span class="build-tag">build 2026-09-17 00:48 · a6fa57d5</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=c77a8ea4"></script>
+  <script src="js/joinkey.js?v=a6fa57d5"></script>
   
-  <script src="js/identity.js?v=c77a8ea4"></script>
-  <script src="js/common.js?v=c77a8ea4"></script>
-  <script src="js/ui-resize.js?v=c77a8ea4"></script>
-  <script src="js/footer-resize.js?v=c77a8ea4"></script>
-  <script src="js/route-line.js?v=c77a8ea4"></script>
-  <script src="js/route-api.js?v=c77a8ea4"></script>
-  <script src="js/footer-stats.js?v=c77a8ea4"></script>
+  <script src="js/identity.js?v=a6fa57d5"></script>
+  <script src="js/common.js?v=a6fa57d5"></script>
+  <script src="js/ui-resize.js?v=a6fa57d5"></script>
+  <script src="js/footer-resize.js?v=a6fa57d5"></script>
+  <script src="js/route-line.js?v=a6fa57d5"></script>
+  <script src="js/route-api.js?v=a6fa57d5"></script>
+  <script src="js/footer-stats.js?v=a6fa57d5"></script>
   <script>
     
     
@@ -7001,6 +7001,8 @@
             vworldAddrToPnu(addr, (r) => {
               if (!r || !r.pnu) return done(null);
               
+              if (r.parcel) { const h = aucSggHead(addr); d._jibun = (h ? h + ' ' : '') + r.parcel; }
+              
               
               
               
@@ -7701,8 +7703,21 @@
         }
         return _nrTail;
       }
+      
+      function aucSggHead(addr) {
+        const t = String(addr || '').replace(/\s+/g, ' ').trim().split(' ');
+        const i = t.findIndex((x) => /(?:로|길)\d*$/.test(x));
+        return i > 0 ? t.slice(0, i).join(' ') : '';
+      }
+      const AUC_JB_RE = /[가-힣]+(?:동|가|리)\s+(?:산\s+)?\d+(?:-\d+)?$/;
+      
+      const aucViaRoad = (d) => !AUC_JB_RE.test(aucJibunAddr(d)) && !!(d && d._jibun);
       function aucShopKey(d) {
-        const a = aucJibunAddr(d).replace(/\s+/g, ' ').trim();
+        let a = aucJibunAddr(d).replace(/\s+/g, ' ').trim();
+        
+        
+        
+        if (!AUC_JB_RE.test(a) && d && d._jibun) a = String(d._jibun).replace(/\s+/g, ' ').trim();
         if (!/\s\d+(?:-\d+)?$/.test(a)) return '';
         const rows = window.__nonresRows;
         const k0 = a.replace(AUC_SIDO_RE, '');
@@ -7739,14 +7754,16 @@
           const midEok = med(same.map((x) => x.p));
           if (midEok > 0) return { kind: 'shop', tier: 'unit', tierNm: '같은 건물 같은 평형',
             area, areaSrc, n: same.length, midEok, mineEok: low,
-            pct: Math.round(low / midEok * 100), why: '구·동·지번 일치 + 전용면적 ±15%' };
+            pct: Math.round(low / midEok * 100),
+            why: '구·동·지번 일치 + 전용면적 ±15%' + (aucViaRoad(d) ? ' · 도로명→지번 변환(V-World)' : '') };
         }
         if (!area) return null;                  
         const mid = med(list.map((x) => x.p * 10000 / x.a));
         if (!(mid > 0)) return null;
         return { kind: 'shop', tier: 'bld', tierNm: '같은 건물', area, areaSrc,
           n: list.length, mid, mine: low * 10000 / area,
-          pct: Math.round((low * 10000 / area) / mid * 100), why: '구·동·지번 일치' };
+          pct: Math.round((low * 10000 / area) / mid * 100),
+          why: '구·동·지번 일치' + (aucViaRoad(d) ? ' · 도로명→지번 변환(V-World)' : '') };
       }
       
       
@@ -16261,7 +16278,11 @@
             const cands = [it.address && it.address.parcel, it.address && it.address.road, it.title]
               .map(norm).filter(Boolean);
             if (pnu && x && y && (!cands.length || !tail || cands.some((c) => c.endsWith(tail)))) {
-              finish({ pnu, lat: y, lng: x }); return;
+              
+              
+              
+              
+              finish({ pnu, lat: y, lng: x, parcel: (it.address && it.address.parcel) || '' }); return;
             }
           }
         } catch (e) {}
