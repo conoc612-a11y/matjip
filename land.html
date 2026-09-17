@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
-  <link rel="stylesheet" href="css/tokens.css?v=633880f8" />
+  <link rel="stylesheet" href="css/tokens.css?v=d88ac734" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=633880f8"></script>
+  <script src="js/auth-guard.js?v=d88ac734"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -37,12 +37,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=633880f8" />
+  <link rel="stylesheet" href="css/buttons.css?v=d88ac734" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=633880f8" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=d88ac734" />
   <style>
     :root {
       
@@ -1726,7 +1726,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=633880f8"></script>
+  <script src="js/ie-guard.js?v=d88ac734"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1996,22 +1996,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-17 09:44 · 633880f8</span></span>
+          · <span class="build-tag">build 2026-09-17 10:22 · d88ac734</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=633880f8"></script>
+  <script src="js/joinkey.js?v=d88ac734"></script>
   
-  <script src="js/identity.js?v=633880f8"></script>
-  <script src="js/common.js?v=633880f8"></script>
-  <script src="js/ui-resize.js?v=633880f8"></script>
-  <script src="js/footer-resize.js?v=633880f8"></script>
-  <script src="js/route-line.js?v=633880f8"></script>
-  <script src="js/route-api.js?v=633880f8"></script>
-  <script src="js/footer-stats.js?v=633880f8"></script>
+  <script src="js/identity.js?v=d88ac734"></script>
+  <script src="js/common.js?v=d88ac734"></script>
+  <script src="js/ui-resize.js?v=d88ac734"></script>
+  <script src="js/footer-resize.js?v=d88ac734"></script>
+  <script src="js/route-line.js?v=d88ac734"></script>
+  <script src="js/route-api.js?v=d88ac734"></script>
+  <script src="js/footer-stats.js?v=d88ac734"></script>
   <script>
     
     
@@ -6892,12 +6892,43 @@
       
       
       
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      const AUC_HO_RE = /([가-힣A-Za-z0-9-]*\d[가-힣A-Za-z0-9-]*)\s*호(?!실)/;
       function aucDongHo(addr) {
         const t = String(addr || '');
-        const ho = (t.match(/(\d+(?:-\d+)?)\s*호(?!실)/g) || []).pop();
+        const i = t.lastIndexOf('층');
+        const m = (i >= 0 ? t.slice(i + 1) : t).match(AUC_HO_RE);
         const dong = (t.match(/(\d+)\s*동/) || [])[1] || '';
-        return { ho: ho ? ho.replace(/[^\d-]/g, '') : '', dong };
+        return { ho: m ? m[1] : '', dong };
       }
+      
+      
+      
+      const AUC_ROMAN = { 에이: 'A', 비: 'B', 씨: 'C', 디: 'D', 이: 'E', 에프: 'F', 지: 'G',
+        에이치: 'H', 아이: 'I', 제이: 'J', 케이: 'K', 엘: 'L', 엠: 'M', 엔: 'N', 오: 'O',
+        피: 'P', 큐: 'Q', 알: 'R', 에스: 'S', 티: 'T', 유: 'U', 브이: 'V', 더블유: 'W',
+        엑스: 'X', 와이: 'Y', 제트: 'Z' };
+      
+      
+      
+      
+      const AUC_ROMAN_KEYS = Object.keys(AUC_ROMAN).sort((a, b) => b.length - a.length);
+      const aucHoRoman = (ho) => String(ho || '').replace(/[가-힣]+/g, (run) => {
+        let out = '', i = 0;
+        while (i < run.length) {
+          const k = AUC_ROMAN_KEYS.find((x) => run.startsWith(x, i));
+          if (k) { out += AUC_ROMAN[k]; i += k.length; } else { out += run[i]; i += 1; }
+        }
+        return out;
+      });
       
       
       
@@ -6910,17 +6941,39 @@
         const na = _aucNorm(addr);
         const num = (v) => String(v == null ? '' : v).replace(/[^\d]/g, '');
         const nm = (v) => _aucNorm(v).replace(/호$/, '');
-        const hoRaw = (String(addr).match(/[가-힣A-Za-z]?\d+(?:-\d+)?\s*호(?!실)/g) || []).pop() || '';
         
         
-        const hoB = nm(hoRaw).replace(/^비/, 'B');
-        let rows = arr.filter((x) => nm(x.hoNm) === nm(hoRaw));         
-        if (!rows.length) rows = arr.filter((x) => nm(x.hoNm) === hoB); 
+        const hoR = aucHoRoman(ho);
+        let rows = arr.filter((x) => nm(x.hoNm) === nm(ho));                 
+        if (!rows.length) rows = arr.filter((x) => nm(x.hoNm) === nm(hoR));  
         if (!rows.length) rows = arr.filter((x) => num(x.hoNm) === num(ho)); 
         
         
         
-        if (!rows.length) return arr.length >= 500 ? { capped: true } : null;
+        if (!rows.length) {
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          const cnt = {};
+          arr.forEach((x) => {
+            if (String(x.exposPubuseGbCd) !== '1') return;      
+            const p = String(x.mainPurpsCdNm || '').trim();
+            if (p) cnt[p] = (cnt[p] || 0) + 1;
+          });
+          const keys = Object.keys(cnt);
+          const mixed = keys.some((k) => /오피스텔/.test(k));
+          const top = keys.sort((a, b) => cnt[b] - cnt[a])[0] || '';
+          const n = keys.reduce((t, k) => t + cnt[k], 0);
+          const capped = arr.length >= 500;
+          if (!top || mixed) return capped ? { capped } : null;
+          return { capped, bldPurps: top, bldN: cnt[top], bldTot: n };
+        }
         
         const byName = rows.filter((x) => x.dongNm && _aucNorm(x.dongNm).length >= 2
           && na.includes(_aucNorm(x.dongNm)));
@@ -7036,9 +7089,16 @@
                   const v = Object.assign({}, aucBrPick(arr, d.addr) || {}, title ? { title } : {});
                   done(Object.keys(v).length ? v : null);
                 };
-                ledgerOp('getBrExposPubuseAreaInfo', r.pnu, (arr) => {
-                  if (arr && arr.length) { fin(arr); return; }
-                  ledgerOp('getBrExposPubuseAreaInfo', r.pnu, fin);
+                
+                
+                
+                const OP = 'getBrExposPubuseAreaInfo';
+                const hoR = aucHoRoman(ho);
+                const all = () => ledgerOp(OP, r.pnu, fin);
+                ledgerOp(OP, r.pnu, (a1) => {
+                  if (a1 && a1.length) { fin(a1); return; }
+                  if (!hoR || hoR === ho) { all(); return; }
+                  ledgerOp(OP, r.pnu, (a2) => { if (a2 && a2.length) { fin(a2); return; } all(); }, 0, hoR);
                 }, 0, ho);
               });
             });
@@ -7684,7 +7744,15 @@
       
       function aucBrLine(d) {
         const b = d && d._br;
-        if (!b || b.capped) return '';
+        if (!b) return '';
+        
+        
+        if (!b.purps && b.bldPurps) {
+          return `건물 표본 주용도 ${b.bldPurps}`
+            + (b.bldTot ? ` (${b.bldN}/${b.bldTot}건)` : '')
+            + ' — 이 호실은 대장에서 특정하지 못함';
+        }
+        if (b.capped) return '';
         return [b.purps ? '주용도 ' + b.purps : '', b.area ? '전유 ' + fmtArea(b.area) : '',
           b.ho ? (b.dong ? b.dong + '동 ' : '') + b.ho + '호' : ''].filter(Boolean).join(' · ');
       }
@@ -7782,7 +7850,8 @@
           if (midEok > 0) return { kind: 'shop', tier: 'unit', tierNm: '같은 건물 같은 평형',
             area, areaSrc, n: same.length, midEok, mineEok: low,
             pct: Math.round(low / midEok * 100),
-            why: `구·동·지번 일치 + 전용면적 ±15% · 비주거 거래만(주용도 ${aucShopPurps(d)})`
+            why: `구·동·지번 일치 + 전용면적 ±15% · 비주거 거래만(주용도 ${aucShopPurps(d)}`
+              + `${aucPurpsFromBld(d) ? ' · 건물 표본' : ''})`
               + (aucViaRoad(d) ? ' · 도로명→지번 변환(V-World)' : '') };
         }
         if (!area) return null;                  
@@ -7791,7 +7860,8 @@
         return { kind: 'shop', tier: 'bld', tierNm: '같은 건물', area, areaSrc,
           n: list.length, mid, mine: low * 10000 / area,
           pct: Math.round((low * 10000 / area) / mid * 100),
-          why: `구·동·지번 일치 · 비주거 거래만(주용도 ${aucShopPurps(d)})`
+          why: `구·동·지번 일치 · 비주거 거래만(주용도 ${aucShopPurps(d)}`
+            + `${aucPurpsFromBld(d) ? ' · 건물 표본' : ''})`
             + (aucViaRoad(d) ? ' · 도로명→지번 변환(V-World)' : '') };
       }
       
@@ -7803,7 +7873,17 @@
       
       const AUC_DEAL_KIND = { nrg: '상업·업무용', offi: '오피스텔', indu: '공장·창고' };
       
-      const aucShopPurps = (d) => String((d && d._br && d._br.purps) || '').trim();
+      
+      
+      const aucShopPurps = (d) => {
+        const b = (d && d._br) || {};
+        return String(b.purps || b.bldPurps || '').trim();
+      };
+      
+      const aucPurpsFromBld = (d) => {
+        const b = (d && d._br) || {};
+        return !b.purps && !!b.bldPurps;
+      };
       const AUC_DEAL_MAX = 40;        
       function aucShopDealsHtml(d) {
         const key = aucShopKey(d);
