@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
-  <link rel="stylesheet" href="css/tokens.css?v=d88ac734" />
+  <link rel="stylesheet" href="css/tokens.css?v=42dac022" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=d88ac734"></script>
+  <script src="js/auth-guard.js?v=42dac022"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -37,12 +37,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=d88ac734" />
+  <link rel="stylesheet" href="css/buttons.css?v=42dac022" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=d88ac734" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=42dac022" />
   <style>
     :root {
       
@@ -1726,7 +1726,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=d88ac734"></script>
+  <script src="js/ie-guard.js?v=42dac022"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1996,22 +1996,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-17 10:22 · d88ac734</span></span>
+          · <span class="build-tag">build 2026-09-17 10:29 · 42dac022</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=d88ac734"></script>
+  <script src="js/joinkey.js?v=42dac022"></script>
   
-  <script src="js/identity.js?v=d88ac734"></script>
-  <script src="js/common.js?v=d88ac734"></script>
-  <script src="js/ui-resize.js?v=d88ac734"></script>
-  <script src="js/footer-resize.js?v=d88ac734"></script>
-  <script src="js/route-line.js?v=d88ac734"></script>
-  <script src="js/route-api.js?v=d88ac734"></script>
-  <script src="js/footer-stats.js?v=d88ac734"></script>
+  <script src="js/identity.js?v=42dac022"></script>
+  <script src="js/common.js?v=42dac022"></script>
+  <script src="js/ui-resize.js?v=42dac022"></script>
+  <script src="js/footer-resize.js?v=42dac022"></script>
+  <script src="js/route-line.js?v=42dac022"></script>
+  <script src="js/route-api.js?v=42dac022"></script>
+  <script src="js/footer-stats.js?v=42dac022"></script>
   <script>
     
     
@@ -7914,7 +7914,12 @@
             + `<td class="auc-deal-m">${esc(bits.join(' · '))}`
             + `${x.cancel ? ' <b style="color:var(--c-primary);">해제</b>' : ''}</td></tr>`;
         }).join('');
-        const nHit = live.filter(hit).length;
+        
+        
+        
+        
+        const nHit = live.filter(hit).length;          
+        const nHitShown = top.filter(hit).length;      
         
         
         const nUse = live.filter(usable).length;
@@ -7929,8 +7934,10 @@
         return `<div class="apd-sec" id="apd-sec-deal">`
           + `<div class="apd-sec-t">같은 건물 실거래 ${live.length}건${span ? ' · ' + esc(span) : ''}</div>`
           + `<table class="ls-tbl auc-deal-tbl"><tbody>${body}</tbody></table>${more}`
-          + (nHit && !hold ? `<div class="apd-note">진한 줄 ${nHit}건이 위 '실거래 대비' 에 쓴 같은 평형임`
-            + ` — 전용 ${fmtArea(area)} 기준 ±15%.</div>` : '')
+          + (nHit && !hold ? `<div class="apd-note">위 '실거래 대비' 는 같은 평형 ${nHit}건으로 계산함`
+            + ` — 전용 ${fmtArea(area)} 기준 ±15%.`
+            + `${nHit === nHitShown ? ' 진한 줄이 그 건들임.'
+              : ` 목록은 최신 ${top.length}건만 보여 그중 ${nHitShown}건이 진한 줄임.`}</div>` : '')
           + holdNote
           + `<div class="apd-note">국토교통부 실거래가 · 구·동·지번(${esc(key)}) 완전일치.`
           + ` 지번이 가려진 신고는 원본에서 빠져 있음.</div></div>`;
