@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="favicon.png" />
-  <link rel="stylesheet" href="css/tokens.css?v=42dac022" />
+  <link rel="stylesheet" href="css/tokens.css?v=7aa46489" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="js/auth-guard.js?v=42dac022"></script>
+  <script src="js/auth-guard.js?v=7aa46489"></script>
   <title>부동산 all in one</title>
   <meta name="description" content="서울 부동산 통합 지도. 정비사업 진행단계, 아파트·연립다세대 실거래가, 건축년도(노후도), 청약·토지거래허가구역을 지도 위에서 한 번에 확인하세요." />
   <meta property="og:type" content="website" />
@@ -37,12 +37,12 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <link rel="stylesheet" href="css/buttons.css?v=42dac022" />
+  <link rel="stylesheet" href="css/buttons.css?v=7aa46489" />
   
 
 
 
-  <link rel="stylesheet" href="css/flaticon-subset.css?v=42dac022" />
+  <link rel="stylesheet" href="css/flaticon-subset.css?v=7aa46489" />
   <style>
     :root {
       
@@ -1726,7 +1726,7 @@
   </script>
 </head>
 <body>
-  <script src="js/ie-guard.js?v=42dac022"></script>
+  <script src="js/ie-guard.js?v=7aa46489"></script>
   <header>
     <div class="brand-group">
       <a href="land.html" class="brand">
@@ -1996,22 +1996,22 @@
       <div class="footer-right">
         <span class="footer-contact">호룡리싱앤리얼리티 | 사업자등록번호 : 369-37-00360 | 오재호 010.4353.6501 · conoc@naver.com
           
-          · <span class="build-tag">build 2026-09-17 10:29 · 42dac022</span></span>
+          · <span class="build-tag">build 2026-09-17 10:45 · 7aa46489</span></span>
         <a href="admin.html" class="footer-admin">관리자</a>
       </div>
     </div>
   </footer>
   
 
-  <script src="js/joinkey.js?v=42dac022"></script>
+  <script src="js/joinkey.js?v=7aa46489"></script>
   
-  <script src="js/identity.js?v=42dac022"></script>
-  <script src="js/common.js?v=42dac022"></script>
-  <script src="js/ui-resize.js?v=42dac022"></script>
-  <script src="js/footer-resize.js?v=42dac022"></script>
-  <script src="js/route-line.js?v=42dac022"></script>
-  <script src="js/route-api.js?v=42dac022"></script>
-  <script src="js/footer-stats.js?v=42dac022"></script>
+  <script src="js/identity.js?v=7aa46489"></script>
+  <script src="js/common.js?v=7aa46489"></script>
+  <script src="js/ui-resize.js?v=7aa46489"></script>
+  <script src="js/footer-resize.js?v=7aa46489"></script>
+  <script src="js/route-line.js?v=7aa46489"></script>
+  <script src="js/route-api.js?v=7aa46489"></script>
+  <script src="js/footer-stats.js?v=7aa46489"></script>
   <script>
     
     
@@ -7838,8 +7838,8 @@
         
         const list = rows.filter((x) => !x.cancel && x.p > 0 && x.a > 0 && x.k !== 'offi');
         if (list.length < AUC_SHOP_MIN) return null;
-        const area = aucArea(d && d.detail) || (d && d._br && d._br.area) || 0;
-        const areaSrc = aucArea(d && d.detail) ? '' : (d && d._br && d._br.area ? '건축물대장' : '');
+        const area = aucShopArea(d);
+        const areaSrc = aucShopAreaSrc(d);
         const med = (a) => {
           const v = a.slice().sort((x, y) => x - y);
           return v.length % 2 ? v[(v.length - 1) / 2] : (v[v.length / 2 - 1] + v[v.length / 2]) / 2;
@@ -7875,6 +7875,23 @@
       
       
       
+      
+      
+      
+      function aucShopArea(d) {
+        const det = (d && d.detail) || {};
+        return aucArea(det) || Number((det.objctDoc || {}).exclusiveAr) || (d && d._br && d._br.area) || 0;
+      }
+      
+      function aucShopAreaSrc(d) {
+        const det = (d && d.detail) || {};
+        if (aucArea(det)) return '';
+        if (Number((det.objctDoc || {}).exclusiveAr)) return '매각물건명세서';
+        return (d && d._br && d._br.area) ? '건축물대장' : '';
+      }
+      
+      
+      
       const aucShopPurps = (d) => {
         const b = (d && d._br) || {};
         return String(b.purps || b.bldPurps || '').trim();
@@ -7891,7 +7908,7 @@
         if (!all || !all.length) return '';
         const live = all.filter((x) => x.p > 0 && x.a > 0);
         if (!live.length) return '';
-        const area = aucArea(d && d.detail) || (d && d._br && d._br.area) || 0;
+        const area = aucShopArea(d);
         
         const purps = aucShopPurps(d);
         const usable = (x) => !x.cancel && x.k !== 'offi';
@@ -7935,7 +7952,7 @@
           + `<div class="apd-sec-t">같은 건물 실거래 ${live.length}건${span ? ' · ' + esc(span) : ''}</div>`
           + `<table class="ls-tbl auc-deal-tbl"><tbody>${body}</tbody></table>${more}`
           + (nHit && !hold ? `<div class="apd-note">위 '실거래 대비' 는 같은 평형 ${nHit}건으로 계산함`
-            + ` — 전용 ${fmtArea(area)} 기준 ±15%.`
+            + ` — 전용 ${fmtArea(area)}${aucShopAreaSrc(d) ? '(' + aucShopAreaSrc(d) + ')' : ''} 기준 ±15%.`
             + `${nHit === nHitShown ? ' 진한 줄이 그 건들임.'
               : ` 목록은 최신 ${top.length}건만 보여 그중 ${nHitShown}건이 진한 줄임.`}</div>` : '')
           + holdNote
